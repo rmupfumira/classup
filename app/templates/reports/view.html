@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Report - {{ report.student.first_name }} {{ report.student.last_name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <a href="/reports" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">{{ report.template.name }}</h1>
+                <p class="mt-1 text-sm text-gray-500">
+                    {{ report.student.first_name }} {{ report.student.last_name }} - {{ report.report_date.strftime('%B %d, %Y') }}
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                {% if report.status == 'FINALIZED' %}bg-green-100 text-green-700
+                {% else %}bg-amber-100 text-amber-700{% endif %}">
+                {{ report.status }}
+            </span>
+            {% if permissions.is_staff and report.status == 'DRAFT' %}
+            <a href="/reports/{{ report.id }}/edit"
+               class="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Edit
+            </a>
+            <button type="button" onclick="finalizeReport()"
+                    class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Finalize
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Report Meta -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Student</p>
+                <p class="mt-1 text-sm font-medium text-gray-900">
+                    {{ report.student.first_name }} {{ report.student.last_name }}
+                </p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Class</p>
+                <p class="mt-1 text-sm font-medium text-gray-900">{{ report.school_class.name }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Report Date</p>
+                <p class="mt-1 text-sm font-medium text-gray-900">{{ report.report_date.strftime('%B %d, %Y') }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Created By</p>
+                <p class="mt-1 text-sm font-medium text-gray-900">
+                    {{ report.created_by_user.first_name }} {{ report.created_by_user.last_name }}
+                </p>
+            </div>
+        </div>
+        {% if report.finalized_at %}
+        <div class="mt-4 pt-4 border-t border-gray-200">
+            <p class="text-xs text-gray-500">
+                Finalized on {{ report.finalized_at.strftime('%B %d, %Y at %H:%M') }}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Report Content -->
+    <div class="space-y-6">
+        {% for section in report.template.sections %}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-md font-medium text-gray-900">{{ section.title }}</h3>
+            </div>
+            <div class="p-4">
+                {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
+
+                {% if section.type == 'REPEATABLE_ENTRIES' %}
+                    {% set entries = section_data.get('entries', []) %}
+                    {% if entries %}
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-500 border-b border-gray-200">
+                                    {% for field in section.fields %}
+                                    <th class="py-2 pr-4 font-medium">{{ field.label }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                {% for entry in entries %}
+                                <tr>
+                                    {% for field in section.fields %}
+                                    <td class="py-2 pr-4 text-gray-900">
+                                        {{ entry.get(field.id, '-') or '-' }}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-gray-500 italic">No entries recorded</p>
+                    {% endif %}
+
+                {% else %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for field in section.fields %}
+                        <div class="{% if field.type == 'TEXTAREA' %}md:col-span-2{% endif %}">
+                            <p class="text-xs text-gray-500 uppercase tracking-wide">{{ field.label }}</p>
+                            {% set field_value = section_data.get(field.id, '') %}
+                            <p class="mt-1 text-sm text-gray-900">
+                                {% if field.type == 'MULTISELECT' and field_value %}
+                                    {% if field_value is iterable and field_value is not string %}
+                                        {{ field_value | join(', ') }}
+                                    {% else %}
+                                        {{ field_value or '-' }}
+                                    {% endif %}
+                                {% elif field_value %}
+                                    {{ field_value }}
+                                {% else %}
+                                    <span class="text-gray-400 italic">Not recorded</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Print Button -->
+    <div class="flex justify-end">
+        <button type="button" onclick="window.print()"
+                class="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+            </svg>
+            Print Report
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function finalizeReport() {
+    if (!confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/reports/{{ report.id }}/finalize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ notify_parents: true })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert('Report finalized successfully!');
+            window.location.reload();
+        } else {
+            alert(result.message || 'Failed to finalize report');
+        }
+    } catch (error) {
+        console.error('Error finalizing report:', error);
+        alert('An error occurred while finalizing the report');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if template else 'Create' }} Report Template - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/reports/templates/manage" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900">
+            {{ 'Edit' if template else 'Create' }} Report Template
+        </h1>
+    </div>
+
+    <!-- Template Details -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 class="text-md font-medium text-gray-900">Template Details</h2>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                        Template Name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="name" name="name" required
+                           value="{{ template.name if template else '' }}"
+                           placeholder="e.g., Daily Activity Report"
+                           class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                    <label for="report_type" class="block text-sm font-medium text-gray-700 mb-1">
+                        Report Type <span class="text-red-500">*</span>
+                    </label>
+                    <select id="report_type" name="report_type" required
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="DAILY_ACTIVITY" {% if template and template.report_type == 'DAILY_ACTIVITY' %}selected{% endif %}>
+                            Daily Activity
+                        </option>
+                        <option value="PROGRESS_REPORT" {% if template and template.report_type == 'PROGRESS_REPORT' %}selected{% endif %}>
+                            Progress Report
+                        </option>
+                        <option value="REPORT_CARD" {% if template and template.report_type == 'REPORT_CARD' %}selected{% endif %}>
+                            Report Card
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea id="description" name="description" rows="2"
+                          placeholder="Brief description of this template..."
+                          class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">{{ template.description if template else '' }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="frequency" class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                    <select id="frequency" name="frequency"
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="DAILY" {% if template and template.frequency == 'DAILY' %}selected{% endif %}>Daily</option>
+                        <option value="WEEKLY" {% if template and template.frequency == 'WEEKLY' %}selected{% endif %}>Weekly</option>
+                        <option value="TERMLY" {% if template and template.frequency == 'TERMLY' %}selected{% endif %}>Termly</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="applies_to" class="block text-sm font-medium text-gray-700 mb-1">
+                        Applies To (Grade/Age Levels)
+                    </label>
+                    <input type="text" id="applies_to" name="applies_to"
+                           value="{{ template.applies_to_grade_level if template else '' }}"
+                           placeholder="e.g., TODDLER,PRESCHOOL or Grade 1,Grade 2"
+                           class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                    <p class="mt-1 text-xs text-gray-500">Comma-separated. Leave empty for all students.</p>
+                </div>
+            </div>
+
+            <div class="flex items-center">
+                <input type="checkbox" id="is_active" name="is_active"
+                       {% if not template or template.is_active %}checked{% endif %}
+                       class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                <label for="is_active" class="ml-2 text-sm text-gray-700">Active (available for creating reports)</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sections Builder -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-md font-medium text-gray-900">Report Sections</h2>
+            <button type="button" onclick="addSection()"
+                    class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Section
+            </button>
+        </div>
+        <div class="p-6">
+            <div id="sections-container" class="space-y-4">
+                <!-- Sections will be rendered here -->
+            </div>
+            <div id="empty-sections" class="text-center py-8 text-gray-500 {% if template and template.sections %}hidden{% endif %}">
+                <p>No sections yet. Click "Add Section" to create your first section.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="flex items-center justify-end gap-3">
+        <a href="/reports/templates/manage"
+           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Cancel
+        </a>
+        <button type="button" onclick="saveTemplate()"
+                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M5 13l4 4L19 7"></path>
+            </svg>
+            Save Template
+        </button>
+    </div>
+</div>
+
+<!-- Section Template (hidden) -->
+<template id="section-template">
+    <div class="section-item border border-gray-200 rounded-lg overflow-hidden" data-section-index="">
+        <div class="px-4 py-3 bg-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <button type="button" class="drag-handle text-gray-400 cursor-move">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+                    </svg>
+                </button>
+                <input type="text" class="section-title font-medium text-gray-900 border-0 bg-transparent focus:ring-0 p-0"
+                       placeholder="Section Title" value="">
+            </div>
+            <div class="flex items-center gap-2">
+                <select class="section-type text-sm border-gray-300 rounded focus:ring-primary-500 focus:border-primary-500">
+                    <option value="CHECKLIST">Checklist</option>
+                    <option value="REPEATABLE_ENTRIES">Repeatable Entries</option>
+                    <option value="NARRATIVE">Narrative/Notes</option>
+                </select>
+                <button type="button" class="toggle-section text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <button type="button" class="remove-section text-gray-400 hover:text-red-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="section-content p-4">
+            <div class="fields-container space-y-3">
+                <!-- Fields will be added here -->
+            </div>
+            <button type="button" class="add-field mt-3 inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Field
+            </button>
+        </div>
+    </div>
+</template>
+
+<!-- Field Template (hidden) -->
+<template id="field-template">
+    <div class="field-item flex items-start gap-3 p-3 bg-gray-50 rounded-lg" data-field-index="">
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Label</label>
+                <input type="text" class="field-label block w-full text-sm rounded border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                       placeholder="Field label">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Type</label>
+                <select class="field-type block w-full text-sm rounded border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                    <option value="TEXT">Text</option>
+                    <option value="TEXTAREA">Text Area</option>
+                    <option value="SELECT">Dropdown</option>
+                    <option value="MULTISELECT">Multi-Select</option>
+                    <option value="TIME">Time</option>
+                    <option value="NUMBER">Number</option>
+                </select>
+            </div>
+            <div class="field-options-container">
+                <label class="block text-xs text-gray-500 mb-1">Options (comma-separated)</label>
+                <input type="text" class="field-options block w-full text-sm rounded border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                       placeholder="Option 1, Option 2">
+            </div>
+            <div class="flex items-end">
+                <label class="inline-flex items-center">
+                    <input type="checkbox" class="field-required rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    <span class="ml-2 text-sm text-gray-600">Required</span>
+                </label>
+            </div>
+        </div>
+        <button type="button" class="remove-field mt-5 text-gray-400 hover:text-red-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let sections = [];
+{% if template and template.sections %}
+sections = {{ template.sections | tojson | safe }};
+{% endif %}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderSections();
+});
+
+function renderSections() {
+    const container = document.getElementById('sections-container');
+    const emptyState = document.getElementById('empty-sections');
+
+    container.innerHTML = '';
+
+    if (sections.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+
+    sections.forEach((section, index) => {
+        const sectionEl = createSectionElement(section, index);
+        container.appendChild(sectionEl);
+    });
+}
+
+function createSectionElement(section, index) {
+    const template = document.getElementById('section-template');
+    const clone = template.content.cloneNode(true);
+    const sectionEl = clone.querySelector('.section-item');
+
+    sectionEl.dataset.sectionIndex = index;
+    sectionEl.querySelector('.section-title').value = section.title || '';
+    sectionEl.querySelector('.section-type').value = section.type || 'CHECKLIST';
+
+    // Add fields
+    const fieldsContainer = sectionEl.querySelector('.fields-container');
+    (section.fields || []).forEach((field, fieldIndex) => {
+        const fieldEl = createFieldElement(field, fieldIndex);
+        fieldsContainer.appendChild(fieldEl);
+    });
+
+    // Event listeners
+    sectionEl.querySelector('.section-title').addEventListener('change', function() {
+        sections[index].title = this.value;
+        sections[index].id = this.value.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    });
+
+    sectionEl.querySelector('.section-type').addEventListener('change', function() {
+        sections[index].type = this.value;
+    });
+
+    sectionEl.querySelector('.toggle-section').addEventListener('click', function() {
+        const content = sectionEl.querySelector('.section-content');
+        const icon = this.querySelector('svg');
+        content.classList.toggle('hidden');
+        icon.classList.toggle('rotate-180');
+    });
+
+    sectionEl.querySelector('.remove-section').addEventListener('click', function() {
+        if (confirm('Remove this section?')) {
+            sections.splice(index, 1);
+            renderSections();
+        }
+    });
+
+    sectionEl.querySelector('.add-field').addEventListener('click', function() {
+        addField(index);
+    });
+
+    return sectionEl;
+}
+
+function createFieldElement(field, fieldIndex) {
+    const template = document.getElementById('field-template');
+    const clone = template.content.cloneNode(true);
+    const fieldEl = clone.querySelector('.field-item');
+
+    fieldEl.dataset.fieldIndex = fieldIndex;
+    fieldEl.querySelector('.field-label').value = field.label || '';
+    fieldEl.querySelector('.field-type').value = field.type || 'TEXT';
+    fieldEl.querySelector('.field-options').value = (field.options || []).join(', ');
+    fieldEl.querySelector('.field-required').checked = field.required || false;
+
+    // Show/hide options based on type
+    const optionsContainer = fieldEl.querySelector('.field-options-container');
+    if (['SELECT', 'MULTISELECT'].includes(field.type)) {
+        optionsContainer.classList.remove('hidden');
+    } else {
+        optionsContainer.classList.add('hidden');
+    }
+
+    // Event listeners
+    fieldEl.querySelector('.field-type').addEventListener('change', function() {
+        if (['SELECT', 'MULTISELECT'].includes(this.value)) {
+            optionsContainer.classList.remove('hidden');
+        } else {
+            optionsContainer.classList.add('hidden');
+        }
+    });
+
+    fieldEl.querySelector('.remove-field').addEventListener('click', function() {
+        const sectionIndex = fieldEl.closest('.section-item').dataset.sectionIndex;
+        sections[sectionIndex].fields.splice(fieldIndex, 1);
+        renderSections();
+    });
+
+    return fieldEl;
+}
+
+function addSection() {
+    const newSection = {
+        id: `section_${sections.length + 1}`,
+        title: '',
+        type: 'CHECKLIST',
+        display_order: sections.length + 1,
+        fields: []
+    };
+    sections.push(newSection);
+    renderSections();
+}
+
+function addField(sectionIndex) {
+    const newField = {
+        id: `field_${sections[sectionIndex].fields.length + 1}`,
+        label: '',
+        type: 'TEXT',
+        required: false,
+        options: []
+    };
+    sections[sectionIndex].fields.push(newField);
+    renderSections();
+}
+
+function collectSections() {
+    const sectionElements = document.querySelectorAll('.section-item');
+
+    sections = [];
+    sectionElements.forEach((sectionEl, sIndex) => {
+        const title = sectionEl.querySelector('.section-title').value;
+        const type = sectionEl.querySelector('.section-type').value;
+
+        const fields = [];
+        sectionEl.querySelectorAll('.field-item').forEach((fieldEl, fIndex) => {
+            const label = fieldEl.querySelector('.field-label').value;
+            const fieldType = fieldEl.querySelector('.field-type').value;
+            const optionsStr = fieldEl.querySelector('.field-options').value;
+            const required = fieldEl.querySelector('.field-required').checked;
+
+            if (label) {
+                const field = {
+                    id: label.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                    label: label,
+                    type: fieldType,
+                    required: required
+                };
+
+                if (['SELECT', 'MULTISELECT'].includes(fieldType) && optionsStr) {
+                    field.options = optionsStr.split(',').map(o => o.trim()).filter(o => o);
+                }
+
+                fields.push(field);
+            }
+        });
+
+        if (title) {
+            sections.push({
+                id: title.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                title: title,
+                type: type,
+                display_order: sIndex + 1,
+                fields: fields
+            });
+        }
+    });
+
+    return sections;
+}
+
+async function saveTemplate() {
+    const name = document.getElementById('name').value;
+    const reportType = document.getElementById('report_type').value;
+    const description = document.getElementById('description').value;
+    const frequency = document.getElementById('frequency').value;
+    const appliesTo = document.getElementById('applies_to').value;
+    const isActive = document.getElementById('is_active').checked;
+
+    if (!name) {
+        alert('Please enter a template name');
+        return;
+    }
+
+    const sectionsData = collectSections();
+
+    const payload = {
+        name: name,
+        report_type: reportType,
+        description: description || null,
+        frequency: frequency,
+        applies_to_grade_level: appliesTo || null,
+        is_active: isActive,
+        sections: sectionsData.map(s => ({
+            id: s.id,
+            title: s.title,
+            type: s.type,
+            display_order: s.display_order,
+            fields: s.fields.map(f => ({
+                id: f.id,
+                label: f.label,
+                type: f.type,
+                required: f.required,
+                options: f.options || null
+            }))
+        }))
+    };
+
+    try {
+        const url = '{{ "/api/v1/reports/templates/" + (template.id|string) if template else "/api/v1/reports/templates" }}';
+        const method = '{{ "PUT" if template else "POST" }}';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert('Template saved successfully!');
+            window.location.href = '/reports/templates/manage';
+        } else {
+            alert(result.message || 'Failed to save template');
+        }
+    } catch (error) {
+        console.error('Error saving template:', error);
+        alert('An error occurred while saving the template');
+    }
+}
+</script>
+{% endblock %}

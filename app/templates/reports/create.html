@@ -1,0 +1,571 @@
+{% extends "base.html" %}
+
+{% block title %}Create Report - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/reports" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900">Create Report</h1>
+    </div>
+
+    <!-- Step 1: Select Student -->
+    <div id="step-1" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Step 1: Select Student</h2>
+
+            <div class="space-y-4">
+                <!-- Class Selection -->
+                <div>
+                    <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                    <select id="class_id" name="class_id" onchange="handleClassChange()"
+                            class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select class...</option>
+                        {% for cls in classes %}
+                        <option value="{{ cls.id }}" {% if selected_student and selected_student.class_id == cls.id %}selected{% endif %}>
+                            {{ cls.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Student Selection -->
+                <div>
+                    <label for="student_id" class="block text-sm font-medium text-gray-700 mb-1">Student</label>
+                    <select id="student_id" name="student_id" onchange="handleStudentChange()"
+                            class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select student...</option>
+                        {% if selected_student %}
+                        <option value="{{ selected_student.id }}" selected>
+                            {{ selected_student.first_name }} {{ selected_student.last_name }}
+                        </option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Select Template & Date -->
+    <div id="step-2" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden {% if not selected_student %}opacity-50 pointer-events-none{% endif %}">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Step 2: Select Template & Date</h2>
+
+            <div class="space-y-4">
+                <!-- Template Selection -->
+                <div>
+                    <label for="template_id" class="block text-sm font-medium text-gray-700 mb-1">Report Template</label>
+                    <select id="template_id" name="template_id" onchange="handleTemplateChange()"
+                            class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select template...</option>
+                        {% for template in templates %}
+                        <option value="{{ template.id }}"
+                                data-sections='{{ template.sections | tojson }}'
+                                {% if selected_template and selected_template.id == template.id %}selected{% endif %}>
+                            {{ template.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Report Date -->
+                <div>
+                    <label for="report_date" class="block text-sm font-medium text-gray-700 mb-1">Report Date</label>
+                    <input type="date" id="report_date" name="report_date"
+                           value="{{ report_date }}"
+                           class="block w-full sm:w-48 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Fill Report -->
+    <div id="step-3" class="{% if not selected_template %}hidden{% endif %}">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Step 3: Fill Report</h2>
+
+                <!-- Dynamic Form Sections -->
+                <div id="report-sections" class="space-y-6">
+                    {% if selected_template and selected_template.sections %}
+                    {% for section in selected_template.sections %}
+                    <div class="border-t border-gray-200 pt-6 first:border-t-0 first:pt-0" data-section-id="{{ section.id }}">
+                        <h3 class="text-md font-medium text-gray-900 mb-4">{{ section.title }}</h3>
+
+                        {% if section.type == 'CHECKLIST' or section.type == 'NARRATIVE' %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for field in section.fields %}
+                            <div class="{% if field.type == 'TEXTAREA' %}md:col-span-2{% endif %}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    {{ field.label }}
+                                    {% if field.required %}<span class="text-red-500">*</span>{% endif %}
+                                </label>
+
+                                {% if field.type == 'SELECT' %}
+                                <select name="sections.{{ section.id }}.{{ field.id }}"
+                                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                        {% if field.required %}required{% endif %}>
+                                    <option value="">Select...</option>
+                                    {% for option in field.options %}
+                                    <option value="{{ option }}">{{ option }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                {% elif field.type == 'MULTISELECT' %}
+                                <div class="flex flex-wrap gap-2">
+                                    {% for option in field.options %}
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" name="sections.{{ section.id }}.{{ field.id }}" value="{{ option }}"
+                                               class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                        <span class="ml-2 text-sm text-gray-700">{{ option }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+
+                                {% elif field.type == 'TIME' %}
+                                <input type="time" name="sections.{{ section.id }}.{{ field.id }}"
+                                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                       {% if field.required %}required{% endif %}>
+
+                                {% elif field.type == 'NUMBER' %}
+                                <input type="number" name="sections.{{ section.id }}.{{ field.id }}"
+                                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                       {% if field.required %}required{% endif %}>
+
+                                {% elif field.type == 'TEXTAREA' %}
+                                <textarea name="sections.{{ section.id }}.{{ field.id }}" rows="3"
+                                          class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                          {% if field.required %}required{% endif %}></textarea>
+
+                                {% else %}
+                                <input type="text" name="sections.{{ section.id }}.{{ field.id }}"
+                                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                       {% if field.required %}required{% endif %}>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        {% elif section.type == 'REPEATABLE_ENTRIES' %}
+                        <div class="space-y-3">
+                            <table class="w-full" id="table-{{ section.id }}">
+                                <thead>
+                                    <tr class="text-left text-sm text-gray-500">
+                                        {% for field in section.fields %}
+                                        <th class="pr-2 pb-2 font-medium">{{ field.label }}</th>
+                                        {% endfor %}
+                                        <th class="w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="entries-{{ section.id }}">
+                                    <!-- Entries will be added here -->
+                                </tbody>
+                            </table>
+                            <button type="button" onclick="addRepeatableEntry('{{ section.id }}')"
+                                    class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Add Entry
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div id="form-actions" class="flex items-center justify-end gap-3 {% if not selected_template %}hidden{% endif %}">
+        <a href="/reports"
+           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Cancel
+        </a>
+        <button type="button" onclick="saveReport(false)"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Save as Draft
+        </button>
+        <button type="button" onclick="saveReport(true)"
+                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            Save & Finalize
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTemplate = null;
+let templateSections = {};
+
+{% if selected_template and selected_template.sections %}
+templateSections = {{ selected_template.sections | tojson | safe }};
+{% endif %}
+
+async function handleClassChange() {
+    const classId = document.getElementById('class_id').value;
+    const studentSelect = document.getElementById('student_id');
+    const step2 = document.getElementById('step-2');
+
+    studentSelect.innerHTML = '<option value="">Select student...</option>';
+    step2.classList.add('opacity-50', 'pointer-events-none');
+    hideStep3();
+
+    if (!classId) return;
+
+    try {
+        const response = await fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`, {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (result.data) {
+            result.data.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = `${student.first_name} ${student.last_name}`;
+                studentSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching students:', error);
+    }
+}
+
+async function handleStudentChange() {
+    const studentId = document.getElementById('student_id').value;
+    const templateSelect = document.getElementById('template_id');
+    const step2 = document.getElementById('step-2');
+
+    templateSelect.innerHTML = '<option value="">Select template...</option>';
+    hideStep3();
+
+    if (!studentId) {
+        step2.classList.add('opacity-50', 'pointer-events-none');
+        return;
+    }
+
+    step2.classList.remove('opacity-50', 'pointer-events-none');
+
+    try {
+        const response = await fetch(`/api/v1/reports/templates/for-student/${studentId}`, {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (result.data) {
+            result.data.forEach(template => {
+                const option = document.createElement('option');
+                option.value = template.id;
+                option.textContent = template.name;
+                templateSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching templates:', error);
+    }
+}
+
+async function handleTemplateChange() {
+    const templateId = document.getElementById('template_id').value;
+    const step3 = document.getElementById('step-3');
+    const formActions = document.getElementById('form-actions');
+
+    if (!templateId) {
+        hideStep3();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/reports/templates/${templateId}`, {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (result.data) {
+            currentTemplate = result.data;
+            templateSections = result.data.sections || [];
+            renderFormSections();
+            step3.classList.remove('hidden');
+            formActions.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching template:', error);
+    }
+}
+
+function hideStep3() {
+    document.getElementById('step-3').classList.add('hidden');
+    document.getElementById('form-actions').classList.add('hidden');
+    currentTemplate = null;
+}
+
+function renderFormSections() {
+    const container = document.getElementById('report-sections');
+    container.innerHTML = '';
+
+    templateSections.forEach((section, index) => {
+        const sectionEl = document.createElement('div');
+        sectionEl.className = 'border-t border-gray-200 pt-6' + (index === 0 ? ' border-t-0 pt-0' : '');
+        sectionEl.dataset.sectionId = section.id;
+
+        let fieldsHtml = '';
+
+        if (section.type === 'CHECKLIST' || section.type === 'NARRATIVE') {
+            fieldsHtml = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+            section.fields.forEach(field => {
+                fieldsHtml += renderField(section.id, field);
+            });
+            fieldsHtml += '</div>';
+        } else if (section.type === 'REPEATABLE_ENTRIES') {
+            fieldsHtml = renderRepeatableSection(section);
+        }
+
+        sectionEl.innerHTML = `
+            <h3 class="text-md font-medium text-gray-900 mb-4">${section.title}</h3>
+            ${fieldsHtml}
+        `;
+
+        container.appendChild(sectionEl);
+    });
+}
+
+function renderField(sectionId, field) {
+    const required = field.required ? '<span class="text-red-500">*</span>' : '';
+    const requiredAttr = field.required ? 'required' : '';
+    const colSpan = field.type === 'TEXTAREA' ? 'md:col-span-2' : '';
+    const fieldName = `sections.${sectionId}.${field.id}`;
+
+    let inputHtml = '';
+
+    switch (field.type) {
+        case 'SELECT':
+            inputHtml = `<select name="${fieldName}" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>
+                <option value="">Select...</option>
+                ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+            </select>`;
+            break;
+        case 'MULTISELECT':
+            inputHtml = `<div class="flex flex-wrap gap-2">
+                ${field.options.map(opt => `
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" name="${fieldName}" value="${opt}" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm text-gray-700">${opt}</span>
+                    </label>
+                `).join('')}
+            </div>`;
+            break;
+        case 'TIME':
+            inputHtml = `<input type="time" name="${fieldName}" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>`;
+            break;
+        case 'NUMBER':
+            inputHtml = `<input type="number" name="${fieldName}" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>`;
+            break;
+        case 'TEXTAREA':
+            inputHtml = `<textarea name="${fieldName}" rows="3" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}></textarea>`;
+            break;
+        default:
+            inputHtml = `<input type="text" name="${fieldName}" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>`;
+    }
+
+    return `<div class="${colSpan}">
+        <label class="block text-sm font-medium text-gray-700 mb-1">${field.label} ${required}</label>
+        ${inputHtml}
+    </div>`;
+}
+
+function renderRepeatableSection(section) {
+    const headers = section.fields.map(f => `<th class="pr-2 pb-2 font-medium">${f.label}</th>`).join('');
+
+    return `<div class="space-y-3">
+        <table class="w-full" id="table-${section.id}">
+            <thead>
+                <tr class="text-left text-sm text-gray-500">
+                    ${headers}
+                    <th class="w-10"></th>
+                </tr>
+            </thead>
+            <tbody id="entries-${section.id}">
+            </tbody>
+        </table>
+        <button type="button" onclick="addRepeatableEntry('${section.id}')"
+                class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Entry
+        </button>
+    </div>`;
+}
+
+function addRepeatableEntry(sectionId) {
+    const section = templateSections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    const tbody = document.getElementById(`entries-${sectionId}`);
+    const rowIndex = tbody.children.length;
+    const tr = document.createElement('tr');
+
+    let cells = '';
+    section.fields.forEach(field => {
+        let input = '';
+        const fieldName = `sections.${sectionId}.entries[${rowIndex}].${field.id}`;
+
+        switch (field.type) {
+            case 'SELECT':
+                input = `<select name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">-</option>
+                    ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                </select>`;
+                break;
+            case 'TIME':
+                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                break;
+            case 'NUMBER':
+                input = `<input type="number" name="${fieldName}" class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                break;
+            default:
+                input = `<input type="text" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+        }
+        cells += `<td class="pr-2 pb-2">${input}</td>`;
+    });
+
+    cells += `<td class="pb-2">
+        <button type="button" onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </td>`;
+
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+}
+
+function collectFormData() {
+    const reportData = { sections: {} };
+
+    templateSections.forEach(section => {
+        if (section.type === 'REPEATABLE_ENTRIES') {
+            // Collect repeatable entries
+            const entries = [];
+            const tbody = document.getElementById(`entries-${section.id}`);
+            if (tbody) {
+                tbody.querySelectorAll('tr').forEach((row, rowIndex) => {
+                    const entry = {};
+                    section.fields.forEach(field => {
+                        const input = row.querySelector(`[name*="${field.id}"]`);
+                        if (input) {
+                            entry[field.id] = input.value;
+                        }
+                    });
+                    // Only add non-empty entries
+                    if (Object.values(entry).some(v => v)) {
+                        entries.push(entry);
+                    }
+                });
+            }
+            reportData.sections[section.id] = { entries };
+        } else {
+            // Collect regular fields
+            const sectionData = {};
+            section.fields.forEach(field => {
+                if (field.type === 'MULTISELECT') {
+                    // Collect all checked checkboxes
+                    const checkboxes = document.querySelectorAll(`[name="sections.${section.id}.${field.id}"]:checked`);
+                    sectionData[field.id] = Array.from(checkboxes).map(cb => cb.value);
+                } else {
+                    const input = document.querySelector(`[name="sections.${section.id}.${field.id}"]`);
+                    if (input) {
+                        sectionData[field.id] = input.value;
+                    }
+                }
+            });
+            reportData.sections[section.id] = sectionData;
+        }
+    });
+
+    return reportData;
+}
+
+async function saveReport(finalize = false) {
+    const studentId = document.getElementById('student_id').value;
+    const templateId = document.getElementById('template_id').value;
+    const reportDate = document.getElementById('report_date').value;
+    const classId = document.getElementById('class_id').value;
+
+    if (!studentId || !templateId || !reportDate || !classId) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    const reportData = collectFormData();
+
+    try {
+        // Create the report
+        const createResponse = await fetch('/api/v1/reports', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                student_id: studentId,
+                class_id: classId,
+                template_id: templateId,
+                report_date: reportDate,
+                report_data: reportData
+            })
+        });
+
+        const createResult = await createResponse.json();
+
+        if (!createResponse.ok) {
+            alert(createResult.message || 'Failed to create report');
+            return;
+        }
+
+        const reportId = createResult.data.id;
+
+        // Finalize if requested
+        if (finalize) {
+            const finalizeResponse = await fetch(`/api/v1/reports/${reportId}/finalize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ notify_parents: true })
+            });
+
+            if (!finalizeResponse.ok) {
+                const finalizeResult = await finalizeResponse.json();
+                alert(finalizeResult.message || 'Report created but failed to finalize');
+                window.location.href = `/reports/${reportId}`;
+                return;
+            }
+
+            alert('Report created and finalized successfully!');
+        } else {
+            alert('Report saved as draft');
+        }
+
+        window.location.href = `/reports/${reportId}`;
+    } catch (error) {
+        console.error('Error saving report:', error);
+        alert('An error occurred while saving the report');
+    }
+}
+
+// Initialize if student is pre-selected
+{% if selected_student and selected_student.class_id %}
+document.addEventListener('DOMContentLoaded', function() {
+    handleClassChange();
+});
+{% endif %}
+</script>
+{% endblock %}

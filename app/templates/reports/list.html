@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Reports</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                {{ total }} report{{ 's' if total != 1 else '' }}
+            </p>
+        </div>
+        <div class="flex gap-2">
+            {% if permissions.is_staff %}
+            <a href="/reports/templates/manage"
+               class="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                </svg>
+                Manage Templates
+            </a>
+            <a href="/reports/create"
+               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 4v16m8-8H4"></path>
+                </svg>
+                Create Report
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-4">
+            {% if classes %}
+            <div class="sm:w-48">
+                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <select name="class_id" id="class_id" onchange="this.form.submit()"
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Classes</option>
+                    {% for cls in classes %}
+                    <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
+                        {{ cls.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="sm:w-40">
+                <label for="report_date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" name="report_date" id="report_date" onchange="this.form.submit()"
+                       value="{{ current_date if current_date else '' }}"
+                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div class="sm:w-36">
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select name="status" id="status" onchange="this.form.submit()"
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Statuses</option>
+                    <option value="DRAFT" {% if current_status == 'DRAFT' %}selected{% endif %}>Draft</option>
+                    <option value="FINALIZED" {% if current_status == 'FINALIZED' %}selected{% endif %}>Finalized</option>
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <!-- Reports List -->
+    {% if reports %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="divide-y divide-gray-200">
+            {% for report in reports %}
+            <a href="/reports/{{ report.id }}" class="block p-4 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <!-- Student Info -->
+                    <div class="flex-shrink-0">
+                        <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                            <span class="text-primary-600 font-medium text-sm">
+                                {{ report.student_name[0] if report.student_name else '?' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Report Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ report.student_name }}</p>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                {% if report.status == 'FINALIZED' %}bg-green-100 text-green-700
+                                {% else %}bg-amber-100 text-amber-700{% endif %}">
+                                {{ report.status }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-gray-500">{{ report.template_name }}</span>
+                            <span class="text-xs text-gray-300">|</span>
+                            <span class="text-xs text-gray-500">{{ report.class_name }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Date -->
+                    <div class="flex-shrink-0 text-right">
+                        <p class="text-sm font-medium text-gray-900">{{ report.report_date.strftime('%b %d, %Y') }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ report.created_at.strftime('%H:%M') }}</p>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="flex-shrink-0 text-gray-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+        <div class="flex-1 flex justify-between sm:hidden">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
+               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Previous
+            </a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
+               class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Next
+            </a>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
+                </p>
+            </div>
+            <div class="flex gap-2">
+                {% if page > 1 %}
+                <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Previous
+                </a>
+                {% endif %}
+                {% if page < total_pages %}
+                <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900">No reports found</h3>
+        <p class="mt-2 text-sm text-gray-500">
+            {% if current_class_id or current_date or current_status %}
+                No reports match your current filters.
+            {% else %}
+                No reports have been created yet.
+            {% endif %}
+        </p>
+        {% if permissions.is_staff %}
+        <div class="mt-6">
+            <a href="/reports/create"
+               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                Create Report
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

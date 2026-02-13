@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Report - {{ report.student.first_name }} {{ report.student.last_name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/reports/{{ report.id }}" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Edit Report</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                {{ report.student.first_name }} {{ report.student.last_name }} - {{ report.report_date.strftime('%B %d, %Y') }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Report Meta -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+                <span class="text-gray-500">Template:</span>
+                <span class="ml-1 font-medium">{{ report.template.name }}</span>
+            </div>
+            <div>
+                <span class="text-gray-500">Class:</span>
+                <span class="ml-1 font-medium">{{ report.school_class.name }}</span>
+            </div>
+            <div>
+                <span class="text-gray-500">Date:</span>
+                <span class="ml-1 font-medium">{{ report.report_date.strftime('%B %d, %Y') }}</span>
+            </div>
+            <div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                    DRAFT
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Sections Form -->
+    <form id="report-form">
+        {% for section in report.template.sections %}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-md font-medium text-gray-900">{{ section.title }}</h3>
+            </div>
+            <div class="p-4">
+                {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
+
+                {% if section.type == 'REPEATABLE_ENTRIES' %}
+                <div class="space-y-3">
+                    <table class="w-full" id="table-{{ section.id }}">
+                        <thead>
+                            <tr class="text-left text-sm text-gray-500">
+                                {% for field in section.fields %}
+                                <th class="pr-2 pb-2 font-medium">{{ field.label }}</th>
+                                {% endfor %}
+                                <th class="w-10"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="entries-{{ section.id }}">
+                            {% set entries = section_data.get('entries', []) %}
+                            {% for entry in entries %}
+                            <tr>
+                                {% for field in section.fields %}
+                                <td class="pr-2 pb-2">
+                                    {% if field.type == 'SELECT' %}
+                                    <select name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
+                                            class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                        <option value="">-</option>
+                                        {% for opt in field.options %}
+                                        <option value="{{ opt }}" {% if entry.get(field.id) == opt %}selected{% endif %}>{{ opt }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% elif field.type == 'TIME' %}
+                                    <input type="time" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
+                                           value="{{ entry.get(field.id, '') }}"
+                                           class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                    {% elif field.type == 'NUMBER' %}
+                                    <input type="number" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
+                                           value="{{ entry.get(field.id, '') }}"
+                                           class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                    {% else %}
+                                    <input type="text" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
+                                           value="{{ entry.get(field.id, '') }}"
+                                           class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                                <td class="pb-2">
+                                    <button type="button" onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <button type="button" onclick="addRepeatableEntry('{{ section.id }}')"
+                            class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add Entry
+                    </button>
+                </div>
+
+                {% else %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for field in section.fields %}
+                    <div class="{% if field.type == 'TEXTAREA' %}md:col-span-2{% endif %}">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ field.label }}
+                            {% if field.required %}<span class="text-red-500">*</span>{% endif %}
+                        </label>
+
+                        {% set field_value = section_data.get(field.id, '') %}
+
+                        {% if field.type == 'SELECT' %}
+                        <select name="sections.{{ section.id }}.{{ field.id }}"
+                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                {% if field.required %}required{% endif %}>
+                            <option value="">Select...</option>
+                            {% for opt in field.options %}
+                            <option value="{{ opt }}" {% if field_value == opt %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+
+                        {% elif field.type == 'MULTISELECT' %}
+                        <div class="flex flex-wrap gap-2">
+                            {% for opt in field.options %}
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="sections.{{ section.id }}.{{ field.id }}" value="{{ opt }}"
+                                       {% if field_value and opt in field_value %}checked{% endif %}
+                                       class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                <span class="ml-2 text-sm text-gray-700">{{ opt }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+
+                        {% elif field.type == 'TIME' %}
+                        <input type="time" name="sections.{{ section.id }}.{{ field.id }}"
+                               value="{{ field_value }}"
+                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               {% if field.required %}required{% endif %}>
+
+                        {% elif field.type == 'NUMBER' %}
+                        <input type="number" name="sections.{{ section.id }}.{{ field.id }}"
+                               value="{{ field_value }}"
+                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               {% if field.required %}required{% endif %}>
+
+                        {% elif field.type == 'TEXTAREA' %}
+                        <textarea name="sections.{{ section.id }}.{{ field.id }}" rows="3"
+                                  class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                  {% if field.required %}required{% endif %}>{{ field_value }}</textarea>
+
+                        {% else %}
+                        <input type="text" name="sections.{{ section.id }}.{{ field.id }}"
+                               value="{{ field_value }}"
+                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               {% if field.required %}required{% endif %}>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </form>
+
+    <!-- Form Actions -->
+    <div class="flex items-center justify-end gap-3">
+        <a href="/reports/{{ report.id }}"
+           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Cancel
+        </a>
+        <button type="button" onclick="saveReport(false)"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Save Draft
+        </button>
+        <button type="button" onclick="saveReport(true)"
+                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            Save & Finalize
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const templateSections = {{ report.template.sections | tojson | safe }};
+
+function addRepeatableEntry(sectionId) {
+    const section = templateSections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    const tbody = document.getElementById(`entries-${sectionId}`);
+    const rowIndex = tbody.children.length;
+    const tr = document.createElement('tr');
+
+    let cells = '';
+    section.fields.forEach(field => {
+        let input = '';
+        const fieldName = `sections.${sectionId}.entries[${rowIndex}].${field.id}`;
+
+        switch (field.type) {
+            case 'SELECT':
+                input = `<select name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">-</option>
+                    ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                </select>`;
+                break;
+            case 'TIME':
+                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                break;
+            case 'NUMBER':
+                input = `<input type="number" name="${fieldName}" class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                break;
+            default:
+                input = `<input type="text" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+        }
+        cells += `<td class="pr-2 pb-2">${input}</td>`;
+    });
+
+    cells += `<td class="pb-2">
+        <button type="button" onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </td>`;
+
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+}
+
+function collectFormData() {
+    const reportData = { sections: {} };
+
+    templateSections.forEach(section => {
+        if (section.type === 'REPEATABLE_ENTRIES') {
+            const entries = [];
+            const tbody = document.getElementById(`entries-${section.id}`);
+            if (tbody) {
+                tbody.querySelectorAll('tr').forEach((row, rowIndex) => {
+                    const entry = {};
+                    section.fields.forEach(field => {
+                        const input = row.querySelector(`[name*="${field.id}"]`);
+                        if (input) {
+                            entry[field.id] = input.value;
+                        }
+                    });
+                    if (Object.values(entry).some(v => v)) {
+                        entries.push(entry);
+                    }
+                });
+            }
+            reportData.sections[section.id] = { entries };
+        } else {
+            const sectionData = {};
+            section.fields.forEach(field => {
+                if (field.type === 'MULTISELECT') {
+                    const checkboxes = document.querySelectorAll(`[name="sections.${section.id}.${field.id}"]:checked`);
+                    sectionData[field.id] = Array.from(checkboxes).map(cb => cb.value);
+                } else {
+                    const input = document.querySelector(`[name="sections.${section.id}.${field.id}"]`);
+                    if (input) {
+                        sectionData[field.id] = input.value;
+                    }
+                }
+            });
+            reportData.sections[section.id] = sectionData;
+        }
+    });
+
+    return reportData;
+}
+
+async function saveReport(finalize = false) {
+    const reportData = collectFormData();
+
+    try {
+        // Update the report
+        const updateResponse = await fetch('/api/v1/reports/{{ report.id }}', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ report_data: reportData })
+        });
+
+        const updateResult = await updateResponse.json();
+
+        if (!updateResponse.ok) {
+            alert(updateResult.message || 'Failed to update report');
+            return;
+        }
+
+        // Finalize if requested
+        if (finalize) {
+            if (!confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.')) {
+                alert('Report saved as draft');
+                window.location.href = '/reports/{{ report.id }}';
+                return;
+            }
+
+            const finalizeResponse = await fetch('/api/v1/reports/{{ report.id }}/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ notify_parents: true })
+            });
+
+            if (!finalizeResponse.ok) {
+                const finalizeResult = await finalizeResponse.json();
+                alert(finalizeResult.message || 'Report saved but failed to finalize');
+                window.location.href = '/reports/{{ report.id }}';
+                return;
+            }
+
+            alert('Report saved and finalized successfully!');
+        } else {
+            alert('Report saved');
+        }
+
+        window.location.href = '/reports/{{ report.id }}';
+    } catch (error) {
+        console.error('Error saving report:', error);
+        alert('An error occurred while saving the report');
+    }
+}
+</script>
+{% endblock %}
