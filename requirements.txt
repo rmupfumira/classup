@@ -52,8 +52,8 @@ babel==2.16.0
 # UUID7 support
 uuid7==0.1.0
 
-# File type detection (Windows)
-python-magic-bin==0.4.14
+# File type detection
+python-magic==0.4.27
 
 # Redis
 redis==5.2.1
