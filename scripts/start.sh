@@ -13,5 +13,5 @@ if [ "$WORKER_MODE" = "true" ]; then
     arq app.worker.WorkerSettings
 else
     echo "Starting web server on port ${PORT:-8000}..."
-    uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_WORKERS:-2}
+    exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_WORKERS:-2}
 fi
