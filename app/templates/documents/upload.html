@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Document - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/documents" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900">Upload Document</h1>
+    </div>
+
+    <!-- Upload Form -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-6 space-y-6">
+            <!-- Document Category -->
+            <div class="space-y-4">
+                <label class="block text-sm font-medium text-gray-700">Document Category</label>
+                <div class="flex flex-wrap gap-4">
+                    <label class="flex items-center">
+                        <input type="radio" name="category" value="School-wide"
+                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                               onchange="handleCategoryChange()" checked>
+                        <span class="ml-2 text-sm text-gray-700">School-wide</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="category" value="Class"
+                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                               onchange="handleCategoryChange()">
+                        <span class="ml-2 text-sm text-gray-700">Class Document</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="category" value="Student"
+                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                               onchange="handleCategoryChange()">
+                        <span class="ml-2 text-sm text-gray-700">Student Document</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Class Selection -->
+            <div id="class-section" class="hidden">
+                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <select id="class_id" name="class_id"
+                        class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                        onchange="handleClassChange()">
+                    <option value="">Select class...</option>
+                    {% for cls in classes %}
+                    <option value="{{ cls.id }}" {% if selected_class_id and (selected_class_id|string) == (cls.id|string) %}selected{% endif %}>
+                        {{ cls.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Student Selection -->
+            <div id="student-section" class="hidden">
+                <label for="student_id" class="block text-sm font-medium text-gray-700 mb-1">Student</label>
+                <select id="student_id" name="student_id"
+                        class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">Select student...</option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500">Document will be shared with this student's parents</p>
+            </div>
+
+            <!-- Document Title -->
+            <div>
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Document Title</label>
+                <input type="text" id="title" name="title" maxlength="255"
+                       placeholder="Enter document title..."
+                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <textarea id="description" name="description" rows="3" maxlength="500"
+                          placeholder="Add a description for this document..."
+                          class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
+            </div>
+
+            <!-- Upload Area -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Document File</label>
+                <div id="upload-area"
+                     class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
+                     onclick="document.getElementById('file-input').click()">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600">
+                        <span class="text-primary-600 font-medium">Click to upload</span> or drag and drop
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500">PDF, DOC, DOCX, XLS, XLSX up to 10MB</p>
+                </div>
+                <input type="file" id="file-input" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            </div>
+
+            <!-- Selected File Preview -->
+            <div id="file-preview" class="hidden">
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div id="file-icon" class="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 4h7l5 5v11H6V4zm2 10h8v2H8v-2zm0-4h8v2H8v-2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p id="file-name" class="text-sm font-medium text-gray-900"></p>
+                            <p id="file-size" class="text-xs text-gray-500"></p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="clearFile()" class="text-gray-400 hover:text-red-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upload Progress -->
+            <div id="upload-progress" class="hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-700">Uploading...</span>
+                    <span id="progress-text" class="text-sm text-gray-500">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar" class="bg-primary-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+            <a href="/documents"
+               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </a>
+            <button type="button" id="upload-btn" onclick="uploadDocument()"
+                    class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Upload Document
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+
+function handleCategoryChange() {
+    const category = document.querySelector('input[name="category"]:checked').value;
+    const classSection = document.getElementById('class-section');
+    const studentSection = document.getElementById('student-section');
+    const classSelect = document.getElementById('class_id');
+    const studentSelect = document.getElementById('student_id');
+
+    if (category === 'School-wide') {
+        classSection.classList.add('hidden');
+        studentSection.classList.add('hidden');
+        classSelect.required = false;
+        studentSelect.required = false;
+    } else if (category === 'Class') {
+        classSection.classList.remove('hidden');
+        studentSection.classList.add('hidden');
+        classSelect.required = true;
+        studentSelect.required = false;
+    } else if (category === 'Student') {
+        classSection.classList.remove('hidden');
+        studentSection.classList.remove('hidden');
+        classSelect.required = true;
+        studentSelect.required = true;
+        handleClassChange();
+    }
+}
+
+async function handleClassChange() {
+    const category = document.querySelector('input[name="category"]:checked').value;
+    if (category !== 'Student') return;
+
+    const classId = document.getElementById('class_id').value;
+    const studentSelect = document.getElementById('student_id');
+
+    if (!classId) {
+        studentSelect.innerHTML = '<option value="">Select student...</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`, {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+
+        if (result.data) {
+            studentSelect.innerHTML = '<option value="">Select student...</option>';
+            result.data.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = `${student.first_name} ${student.last_name}`;
+                studentSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching students:', error);
+    }
+}
+
+// File input handling
+document.getElementById('file-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        selectFile(file);
+    }
+});
+
+// Drag and drop handling
+const uploadArea = document.getElementById('upload-area');
+
+uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.add('border-primary-500', 'bg-primary-50');
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('border-primary-500', 'bg-primary-50');
+});
+
+uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('border-primary-500', 'bg-primary-50');
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+        selectFile(file);
+    }
+});
+
+function selectFile(file) {
+    const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+        alert('Invalid file type. Please upload PDF, DOC, DOCX, XLS, or XLSX files.');
+        return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+        alert('File is too large (max 10MB)');
+        return;
+    }
+
+    selectedFile = file;
+    updateFilePreview();
+}
+
+function updateFilePreview() {
+    const preview = document.getElementById('file-preview');
+    const uploadArea = document.getElementById('upload-area');
+    const uploadBtn = document.getElementById('upload-btn');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    const fileIcon = document.getElementById('file-icon');
+
+    if (!selectedFile) {
+        preview.classList.add('hidden');
+        uploadArea.classList.remove('hidden');
+        uploadBtn.disabled = true;
+        return;
+    }
+
+    preview.classList.remove('hidden');
+    uploadArea.classList.add('hidden');
+    uploadBtn.disabled = false;
+
+    fileName.textContent = selectedFile.name;
+    fileSize.textContent = formatFileSize(selectedFile.size);
+
+    // Update icon based on file type
+    if (selectedFile.type === 'application/pdf') {
+        fileIcon.className = 'h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center';
+        fileIcon.innerHTML = '<svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 4h7l5 5v11H6V4zm2 10h8v2H8v-2zm0-4h8v2H8v-2z"/></svg>';
+    } else if (selectedFile.type.includes('word')) {
+        fileIcon.className = 'h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center';
+        fileIcon.innerHTML = '<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>';
+    } else if (selectedFile.type.includes('excel') || selectedFile.type.includes('spreadsheet')) {
+        fileIcon.className = 'h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center';
+        fileIcon.innerHTML = '<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function clearFile() {
+    selectedFile = null;
+    document.getElementById('file-input').value = '';
+    updateFilePreview();
+}
+
+async function uploadDocument() {
+    const category = document.querySelector('input[name="category"]:checked').value;
+    const classId = document.getElementById('class_id').value;
+    const studentId = document.getElementById('student_id').value;
+    const title = document.getElementById('title').value;
+    const description = document.getElementById('description').value;
+
+    if (category === 'Class' && !classId) {
+        alert('Please select a class');
+        return;
+    }
+
+    if (category === 'Student' && (!classId || !studentId)) {
+        alert('Please select a class and student');
+        return;
+    }
+
+    if (!selectedFile) {
+        alert('Please select a document to upload');
+        return;
+    }
+
+    const uploadProgress = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const uploadBtn = document.getElementById('upload-btn');
+
+    uploadProgress.classList.remove('hidden');
+    uploadBtn.disabled = true;
+
+    // Upload file
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('file_category', 'DOCUMENT');
+
+    try {
+        // Simulate progress for better UX
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 10;
+            if (progress <= 90) {
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `${progress}%`;
+            }
+        }, 100);
+
+        const uploadResponse = await fetch('/api/v1/files/upload', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        });
+
+        clearInterval(progressInterval);
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok || !uploadResult.data) {
+            throw new Error(uploadResult.message || 'Failed to upload file');
+        }
+
+        progressBar.style.width = '50%';
+        progressText.textContent = '50%';
+
+        // Determine message type
+        let messageType;
+        if (category === 'School-wide') {
+            messageType = 'SCHOOL_DOCUMENT';
+        } else if (category === 'Class') {
+            messageType = 'CLASS_DOCUMENT';
+        } else {
+            messageType = 'STUDENT_DOCUMENT';
+        }
+
+        // Create message with document
+        const payload = {
+            message_type: messageType,
+            subject: title || selectedFile.name,
+            body: description || `Document shared: ${selectedFile.name}`,
+            class_id: classId || null,
+            student_id: studentId || null,
+            attachment_ids: [uploadResult.data.id]
+        };
+
+        const messageResponse = await fetch('/api/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+        });
+
+        progressBar.style.width = '100%';
+        progressText.textContent = '100%';
+
+        if (messageResponse.ok) {
+            alert('Document uploaded and shared successfully!');
+            window.location.href = '/documents';
+        } else {
+            const result = await messageResponse.json();
+            alert(result.message || 'Failed to share document');
+        }
+    } catch (error) {
+        console.error('Error uploading document:', error);
+        alert(error.message || 'Failed to upload document. Please try again.');
+    }
+
+    uploadProgress.classList.add('hidden');
+    uploadBtn.disabled = false;
+}
+</script>
+{% endblock %}

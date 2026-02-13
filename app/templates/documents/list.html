@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Documents - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Documents</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                {{ total }} document{{ 's' if total != 1 else '' }}
+            </p>
+        </div>
+        {% if permissions.is_staff %}
+        <a href="/documents/upload"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+            </svg>
+            Upload Document
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Filters -->
+    {% if classes %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-4">
+            <div class="sm:w-64">
+                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Filter by Class</label>
+                <select name="class_id" id="class_id" onchange="this.form.submit()"
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Documents</option>
+                    {% for cls in classes %}
+                    <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
+                        {{ cls.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Documents List -->
+    {% if documents %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="divide-y divide-gray-200">
+            {% for doc in documents %}
+            <div class="p-4 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <!-- File Icon -->
+                    <div class="flex-shrink-0">
+                        {% if doc.file.is_pdf %}
+                        <div class="h-12 w-12 rounded-lg bg-red-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 4h7l5 5v11H6V4zm2 10h8v2H8v-2zm0-4h8v2H8v-2z"/>
+                            </svg>
+                        </div>
+                        {% else %}
+                        <div class="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Document Info -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ doc.file.original_name }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-gray-500">{{ doc.file.file_size_human }}</span>
+                            <span class="text-xs text-gray-300">|</span>
+                            <span class="text-xs text-gray-500">{{ doc.file.created_at.strftime('%b %d, %Y') }}</span>
+                            {% if doc.category %}
+                            <span class="text-xs text-gray-300">|</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                         {% if doc.category == 'School-wide' %}bg-amber-100 text-amber-700
+                                         {% elif doc.category == 'Class' %}bg-blue-100 text-blue-700
+                                         {% else %}bg-green-100 text-green-700{% endif %}">
+                                {{ doc.category }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if doc.class_name %}
+                        <p class="text-xs text-gray-500 mt-1">{{ doc.class_name }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Download Button -->
+                    <div class="flex-shrink-0">
+                        <a href="{{ doc.download_url }}" target="_blank"
+                           class="inline-flex items-center px-3 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Download
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+        <div class="flex-1 flex justify-between sm:hidden">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Previous
+            </a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+               class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Next
+            </a>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
+                </p>
+            </div>
+            <div class="flex gap-2">
+                {% if page > 1 %}
+                <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Previous
+                </a>
+                {% endif %}
+                {% if page < total_pages %}
+                <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900">No documents</h3>
+        <p class="mt-2 text-sm text-gray-500">
+            {% if current_class_id %}
+                No documents have been shared with this class yet.
+            {% else %}
+                No documents have been shared yet.
+            {% endif %}
+        </p>
+        {% if permissions.is_staff %}
+        <div class="mt-6">
+            <a href="/documents/upload"
+               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                Upload Document
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

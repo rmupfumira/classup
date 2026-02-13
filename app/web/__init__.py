@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.web import attendance, auth, classes, dashboard, messages, students
+from app.web import attendance, auth, classes, dashboard, documents, messages, photos, students
 
 web_router = APIRouter(include_in_schema=False)
 
@@ -13,3 +13,5 @@ web_router.include_router(students.router)
 web_router.include_router(classes.router)
 web_router.include_router(attendance.router)
 web_router.include_router(messages.router)
+web_router.include_router(photos.router)
+web_router.include_router(documents.router)
