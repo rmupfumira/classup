@@ -2,12 +2,14 @@
 """
 CLI script to create the initial super admin user.
 
-Usage:
+Usage (interactive):
     python scripts/create_super_admin.py
 
-The script will prompt for email and password.
+Usage (non-interactive, for Railway):
+    python scripts/create_super_admin.py --email admin@example.com --password yourpassword --first-name John --last-name Doe
 """
 
+import argparse
 import asyncio
 import sys
 from pathlib import Path
@@ -25,39 +27,58 @@ from app.models.user import Role
 from app.utils.security import hash_password
 
 
-async def create_super_admin():
-    """Create a super admin user interactively."""
+async def create_super_admin(
+    email: str | None = None,
+    password: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    interactive: bool = True
+):
+    """Create a super admin user."""
     print("\n" + "=" * 50)
     print("ClassUp v2 - Super Admin Setup")
     print("=" * 50 + "\n")
 
     # Get email
-    while True:
-        email = input("Enter email address: ").strip().lower()
-        if "@" in email and "." in email:
-            break
-        print("Please enter a valid email address.")
+    if not email:
+        while True:
+            email = input("Enter email address: ").strip().lower()
+            if "@" in email and "." in email:
+                break
+            print("Please enter a valid email address.")
+    else:
+        email = email.strip().lower()
+        if "@" not in email or "." not in email:
+            print("Invalid email address.")
+            return False
 
     # Get password
-    while True:
-        password = getpass("Enter password (min 8 characters): ")
-        if len(password) >= 8:
-            break
-        print("Password must be at least 8 characters.")
+    if not password:
+        while True:
+            password = getpass("Enter password (min 8 characters): ")
+            if len(password) >= 8:
+                break
+            print("Password must be at least 8 characters.")
 
-    password_confirm = getpass("Confirm password: ")
-    if password != password_confirm:
-        print("\nPasswords do not match. Aborting.")
-        return False
+        password_confirm = getpass("Confirm password: ")
+        if password != password_confirm:
+            print("\nPasswords do not match. Aborting.")
+            return False
+    else:
+        if len(password) < 8:
+            print("Password must be at least 8 characters.")
+            return False
 
     # Get name
-    first_name = input("Enter first name: ").strip()
     if not first_name:
-        first_name = "Super"
+        first_name = input("Enter first name: ").strip()
+        if not first_name:
+            first_name = "Super"
 
-    last_name = input("Enter last name: ").strip()
     if not last_name:
-        last_name = "Admin"
+        last_name = input("Enter last name: ").strip()
+        if not last_name:
+            last_name = "Admin"
 
     # Create the user
     async with async_session_factory() as session:
@@ -72,9 +93,13 @@ async def create_super_admin():
 
         if existing:
             print(f"\nA super admin already exists: {existing.email}")
-            confirm = input("Create another super admin? (y/n): ").strip().lower()
-            if confirm != "y":
-                print("Aborting.")
+            if interactive:
+                confirm = input("Create another super admin? (y/n): ").strip().lower()
+                if confirm != "y":
+                    print("Aborting.")
+                    return False
+            else:
+                print("Use --force to create another super admin.")
                 return False
 
         # Check if email already exists
@@ -114,8 +139,26 @@ async def create_super_admin():
 
 async def main():
     """Main entry point."""
+    parser = argparse.ArgumentParser(description="Create a ClassUp super admin user")
+    parser.add_argument("--email", "-e", help="Admin email address")
+    parser.add_argument("--password", "-p", help="Admin password (min 8 chars)")
+    parser.add_argument("--first-name", "-f", help="First name", default="Super")
+    parser.add_argument("--last-name", "-l", help="Last name", default="Admin")
+    parser.add_argument("--force", action="store_true", help="Force creation even if super admin exists")
+
+    args = parser.parse_args()
+
+    # Determine if running interactively
+    interactive = not (args.email and args.password)
+
     try:
-        success = await create_super_admin()
+        success = await create_super_admin(
+            email=args.email,
+            password=args.password,
+            first_name=args.first_name,
+            last_name=args.last_name,
+            interactive=interactive
+        )
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
         print("\n\nAborted by user.")
