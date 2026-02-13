@@ -74,6 +74,29 @@ class Settings(BaseSettings):
         return self.app_env == "development"
 
     @property
+    def async_database_url(self) -> str:
+        """Get database URL with asyncpg driver for async SQLAlchemy."""
+        url = self.database_url
+        # Convert postgresql:// to postgresql+asyncpg://
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url
+
+    @property
+    def sync_database_url(self) -> str:
+        """Get database URL with psycopg2 driver for sync operations (Alembic)."""
+        url = self.database_url
+        # Convert to standard postgresql:// format
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        # Remove any async driver specification
+        if "+asyncpg" in url:
+            url = url.replace("+asyncpg", "", 1)
+        return url
+
+    @property
     def is_production(self) -> bool:
         """Check if running in production mode."""
         return self.app_env == "production"

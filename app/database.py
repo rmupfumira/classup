@@ -31,7 +31,7 @@ def create_engine() -> AsyncEngine:
         engine_kwargs["max_overflow"] = settings.database_max_overflow
         engine_kwargs["pool_pre_ping"] = True
 
-    return create_async_engine(settings.database_url, **engine_kwargs)
+    return create_async_engine(settings.async_database_url, **engine_kwargs)
 
 
 # Global engine instance
