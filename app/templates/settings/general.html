@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - ClassUp{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+        <p class="mt-1 text-sm text-gray-500">Manage your school settings and preferences.</p>
+    </div>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-6 rounded-lg bg-green-50 p-4">
+        <div class="flex">
+            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <p class="ml-3 text-sm text-green-700">Settings saved successfully.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+            <a href="/settings/general"
+               class="{% if active_tab == 'general' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                General
+            </a>
+            <a href="/settings/features"
+               class="{% if active_tab == 'features' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Features
+            </a>
+            <a href="/settings/terminology"
+               class="{% if active_tab == 'terminology' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Terminology
+            </a>
+            <a href="/settings/webhooks"
+               class="{% if active_tab == 'webhooks' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Webhooks
+            </a>
+        </nav>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="/settings/general" class="space-y-6">
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">School Information</h3>
+
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label for="name" class="block text-sm font-medium text-gray-700">School Name</label>
+                    <input type="text" name="name" id="name" required
+                           value="{{ tenant.name }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" name="email" id="email"
+                           value="{{ tenant.email or '' }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                </div>
+
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                    <input type="tel" name="phone" id="phone"
+                           value="{{ tenant.phone or '' }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
+                    <textarea name="address" id="address" rows="3"
+                              class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">{{ tenant.address or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Regional Settings</h3>
+
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <label for="timezone" class="block text-sm font-medium text-gray-700">Timezone</label>
+                    <select name="timezone" id="timezone"
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        {% set current_tz = (tenant.settings or {}).get('timezone', 'Africa/Johannesburg') %}
+                        <option value="Africa/Johannesburg" {% if current_tz == 'Africa/Johannesburg' %}selected{% endif %}>Africa/Johannesburg (SAST)</option>
+                        <option value="Africa/Cairo" {% if current_tz == 'Africa/Cairo' %}selected{% endif %}>Africa/Cairo (EET)</option>
+                        <option value="Africa/Lagos" {% if current_tz == 'Africa/Lagos' %}selected{% endif %}>Africa/Lagos (WAT)</option>
+                        <option value="Europe/London" {% if current_tz == 'Europe/London' %}selected{% endif %}>Europe/London (GMT)</option>
+                        <option value="America/New_York" {% if current_tz == 'America/New_York' %}selected{% endif %}>America/New York (EST)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="language" class="block text-sm font-medium text-gray-700">Language</label>
+                    <select name="language" id="language"
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                        {% set current_lang = (tenant.settings or {}).get('language', 'en') %}
+                        <option value="en" {% if current_lang == 'en' %}selected{% endif %}>English</option>
+                        <option value="af" {% if current_lang == 'af' %}selected{% endif %}>Afrikaans</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit"
+                    class="inline-flex justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+                Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

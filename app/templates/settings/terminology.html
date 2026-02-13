@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Terminology Settings - ClassUp{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+        <p class="mt-1 text-sm text-gray-500">Customize the terminology used throughout the app.</p>
+    </div>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-6 rounded-lg bg-green-50 p-4">
+        <div class="flex">
+            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <p class="ml-3 text-sm text-green-700">Settings saved successfully.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+            <a href="/settings/general"
+               class="{% if active_tab == 'general' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                General
+            </a>
+            <a href="/settings/features"
+               class="{% if active_tab == 'features' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Features
+            </a>
+            <a href="/settings/terminology"
+               class="{% if active_tab == 'terminology' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Terminology
+            </a>
+            <a href="/settings/webhooks"
+               class="{% if active_tab == 'webhooks' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Webhooks
+            </a>
+        </nav>
+    </div>
+
+    <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+        <p class="text-sm text-gray-600 mb-4">
+            Customize the terms used in your school. For example, a daycare might prefer "child" instead of "student", or "educator" instead of "teacher".
+        </p>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="/settings/terminology" class="space-y-6">
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <label for="student" class="block text-sm font-medium text-gray-700">Student (singular)</label>
+                    <input type="text" name="student" id="student"
+                           value="{{ terminology.get('student', 'student') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="student">
+                </div>
+                <div>
+                    <label for="students" class="block text-sm font-medium text-gray-700">Students (plural)</label>
+                    <input type="text" name="students" id="students"
+                           value="{{ terminology.get('students', 'students') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="students">
+                </div>
+                <div>
+                    <label for="teacher" class="block text-sm font-medium text-gray-700">Teacher (singular)</label>
+                    <input type="text" name="teacher" id="teacher"
+                           value="{{ terminology.get('teacher', 'teacher') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="teacher">
+                </div>
+                <div>
+                    <label for="teachers" class="block text-sm font-medium text-gray-700">Teachers (plural)</label>
+                    <input type="text" name="teachers" id="teachers"
+                           value="{{ terminology.get('teachers', 'teachers') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="teachers">
+                </div>
+                <div>
+                    <label for="class_term" class="block text-sm font-medium text-gray-700">Class (singular)</label>
+                    <input type="text" name="class_term" id="class_term"
+                           value="{{ terminology.get('class', 'class') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="class">
+                </div>
+                <div>
+                    <label for="classes" class="block text-sm font-medium text-gray-700">Classes (plural)</label>
+                    <input type="text" name="classes" id="classes"
+                           value="{{ terminology.get('classes', 'classes') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="classes">
+                </div>
+                <div>
+                    <label for="parent" class="block text-sm font-medium text-gray-700">Parent (singular)</label>
+                    <input type="text" name="parent" id="parent"
+                           value="{{ terminology.get('parent', 'parent') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="parent">
+                </div>
+                <div>
+                    <label for="parents" class="block text-sm font-medium text-gray-700">Parents (plural)</label>
+                    <input type="text" name="parents" id="parents"
+                           value="{{ terminology.get('parents', 'parents') }}"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           placeholder="parents">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit"
+                    class="inline-flex justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+                Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

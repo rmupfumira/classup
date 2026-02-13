@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Import - ClassUp{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-8">
+        <a href="/imports" class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Imports
+        </a>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">Upload CSV File</h1>
+        <p class="mt-1 text-sm text-gray-500">Upload a CSV file to import data into ClassUp.</p>
+    </div>
+
+    <form id="uploadForm" enctype="multipart/form-data" class="space-y-6">
+        <!-- Import Type Selection -->
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <label class="block text-sm font-medium text-gray-700 mb-4">What would you like to import?</label>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm hover:border-primary-500 transition-colors">
+                    <input type="radio" name="import_type" value="STUDENTS" class="sr-only peer" required checked>
+                    <span class="flex flex-1 flex-col items-center text-center">
+                        <svg class="h-8 w-8 text-gray-400 peer-checked:text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <span class="mt-2 block text-sm font-medium text-gray-900">Students</span>
+                    </span>
+                    <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
+                </label>
+
+                <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm hover:border-primary-500 transition-colors">
+                    <input type="radio" name="import_type" value="TEACHERS" class="sr-only peer">
+                    <span class="flex flex-1 flex-col items-center text-center">
+                        <svg class="h-8 w-8 text-gray-400 peer-checked:text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        <span class="mt-2 block text-sm font-medium text-gray-900">Teachers</span>
+                    </span>
+                    <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
+                </label>
+
+                <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm hover:border-primary-500 transition-colors">
+                    <input type="radio" name="import_type" value="PARENTS" class="sr-only peer">
+                    <span class="flex flex-1 flex-col items-center text-center">
+                        <svg class="h-8 w-8 text-gray-400 peer-checked:text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        <span class="mt-2 block text-sm font-medium text-gray-900">Parents</span>
+                    </span>
+                    <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <label class="block text-sm font-medium text-gray-700 mb-4">Upload CSV File</label>
+            <div id="dropzone"
+                 class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-500 transition-colors cursor-pointer">
+                <div class="space-y-1 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <div class="flex text-sm text-gray-600">
+                        <label for="file" class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                            <span>Upload a file</span>
+                            <input id="file" name="file" type="file" accept=".csv" class="sr-only" required>
+                        </label>
+                        <p class="pl-1">or drag and drop</p>
+                    </div>
+                    <p class="text-xs text-gray-500">CSV files only</p>
+                </div>
+            </div>
+            <div id="selectedFile" class="hidden mt-4 flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span id="fileName" class="text-sm text-gray-700"></span>
+                </div>
+                <button type="button" id="removeFile" class="text-sm text-red-600 hover:text-red-800">Remove</button>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" id="submitBtn"
+                    class="inline-flex items-center rounded-lg bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span id="btnText">Continue to Column Mapping</span>
+                <svg id="btnSpinner" class="hidden ml-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+const form = document.getElementById('uploadForm');
+const fileInput = document.getElementById('file');
+const dropzone = document.getElementById('dropzone');
+const selectedFile = document.getElementById('selectedFile');
+const fileName = document.getElementById('fileName');
+const removeFile = document.getElementById('removeFile');
+const submitBtn = document.getElementById('submitBtn');
+const btnText = document.getElementById('btnText');
+const btnSpinner = document.getElementById('btnSpinner');
+
+// Drag and drop
+dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('border-primary-500');
+});
+
+dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('border-primary-500');
+});
+
+dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('border-primary-500');
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].name.endsWith('.csv')) {
+        fileInput.files = files;
+        showSelectedFile(files[0].name);
+    }
+});
+
+dropzone.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        showSelectedFile(fileInput.files[0].name);
+    }
+});
+
+removeFile.addEventListener('click', () => {
+    fileInput.value = '';
+    selectedFile.classList.add('hidden');
+    dropzone.classList.remove('hidden');
+});
+
+function showSelectedFile(name) {
+    fileName.textContent = name;
+    selectedFile.classList.remove('hidden');
+    dropzone.classList.add('hidden');
+}
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    submitBtn.disabled = true;
+    btnText.textContent = 'Uploading...';
+    btnSpinner.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/api/v1/imports/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            window.location.href = `/imports/${data.data.job_id}/mapping`;
+        } else {
+            alert(data.message || 'Upload failed');
+            submitBtn.disabled = false;
+            btnText.textContent = 'Continue to Column Mapping';
+            btnSpinner.classList.add('hidden');
+        }
+    } catch (err) {
+        alert('Upload failed: ' + err.message);
+        submitBtn.disabled = false;
+        btnText.textContent = 'Continue to Column Mapping';
+        btnSpinner.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

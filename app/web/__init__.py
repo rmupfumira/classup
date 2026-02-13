@@ -8,10 +8,12 @@ from app.web import (
     classes,
     dashboard,
     documents,
+    imports,
     messages,
     onboarding,
     photos,
     reports,
+    settings,
     students,
 )
 
@@ -28,3 +30,5 @@ web_router.include_router(photos.router)
 web_router.include_router(documents.router)
 web_router.include_router(reports.router)
 web_router.include_router(onboarding.router)
+web_router.include_router(settings.router)
+web_router.include_router(imports.router)

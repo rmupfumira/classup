@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Column Mapping - ClassUp{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <a href="/imports" class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Imports
+        </a>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">Map Columns</h1>
+        <p class="mt-1 text-sm text-gray-500">Map your CSV columns to ClassUp fields.</p>
+    </div>
+
+    <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-sm font-medium text-gray-700">File: {{ job.file_name }}</h3>
+                <p class="text-sm text-gray-500">Import type: {{ job.import_type }}</p>
+            </div>
+            <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
+                {{ job.total_rows }} rows
+            </span>
+        </div>
+    </div>
+
+    <form id="mappingForm" class="space-y-6">
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Column Mapping</h3>
+            <p class="text-sm text-gray-500 mb-6">Match each CSV column to the corresponding ClassUp field, or skip columns you don't want to import.</p>
+
+            <div class="space-y-4">
+                {% for header in headers %}
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900">{{ header }}</div>
+                        {% if sample_rows %}
+                        <div class="text-xs text-gray-500 mt-1">
+                            Example: {{ sample_rows[0].get(header, '-')[:50] }}{% if sample_rows[0].get(header, '')|length > 50 %}...{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="ml-4">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4 flex-1">
+                        <select name="mapping_{{ loop.index0 }}" data-csv-column="{{ header }}"
+                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm">
+                            <option value="">-- Skip this column --</option>
+                            {% for field_name, field_info in available_fields.items() %}
+                            <option value="{{ field_name }}"
+                                    {% if header.lower().replace(' ', '_').replace('-', '_') == field_name.lower() %}selected{% endif %}>
+                                {{ field_info.label }}{% if field_info.required %} *{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Preview -->
+        {% if sample_rows %}
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Preview (first 3 rows)</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            {% for header in headers %}
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ header }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for row in sample_rows %}
+                        <tr>
+                            {% for header in headers %}
+                            <td class="px-4 py-2 whitespace-nowrap text-gray-600">{{ row.get(header, '')[:30] }}{% if row.get(header, '')|length > 30 %}...{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="flex justify-end gap-4">
+            <a href="/imports" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50">
+                Cancel
+            </a>
+            <button type="submit" id="startBtn"
+                    class="inline-flex items-center rounded-lg bg-primary-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+                <span id="btnText">Start Import</span>
+                <svg id="btnSpinner" class="hidden ml-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+const form = document.getElementById('mappingForm');
+const startBtn = document.getElementById('startBtn');
+const btnText = document.getElementById('btnText');
+const btnSpinner = document.getElementById('btnSpinner');
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Build column mapping
+    const mapping = {};
+    document.querySelectorAll('select[data-csv-column]').forEach(select => {
+        const csvColumn = select.dataset.csvColumn;
+        const systemField = select.value || null;
+        mapping[csvColumn] = systemField;
+    });
+
+    startBtn.disabled = true;
+    btnText.textContent = 'Importing...';
+    btnSpinner.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/api/v1/imports/{{ job.id }}/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ column_mapping: mapping })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            window.location.href = `/imports/{{ job.id }}`;
+        } else {
+            alert(data.message || 'Import failed');
+            startBtn.disabled = false;
+            btnText.textContent = 'Start Import';
+            btnSpinner.classList.add('hidden');
+        }
+    } catch (err) {
+        alert('Import failed: ' + err.message);
+        startBtn.disabled = false;
+        btnText.textContent = 'Start Import';
+        btnSpinner.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}
