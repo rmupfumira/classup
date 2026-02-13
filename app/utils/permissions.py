@@ -148,6 +148,14 @@ class PermissionChecker:
             Role.TEACHER.value,
         )
 
+    def can_view_attendance(self) -> bool:
+        """Check if user can view attendance records."""
+        return self.role in (
+            Role.SUPER_ADMIN.value,
+            Role.SCHOOL_ADMIN.value,
+            Role.TEACHER.value,
+        )
+
     def can_create_reports(self) -> bool:
         """Check if user can create reports."""
         return self.role in (

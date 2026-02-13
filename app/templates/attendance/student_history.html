@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - {{ student.first_name }} {{ student.last_name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <a href="/students/{{ student.id }}" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <div class="flex items-center">
+                {% if student.photo_path %}
+                <img class="h-12 w-12 rounded-full object-cover" src="{{ student.photo_path }}" alt="">
+                {% else %}
+                <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
+                    <span class="text-primary-700 font-medium text-lg">
+                        {{ student.first_name[0] }}{{ student.last_name[0] }}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="ml-4">
+                    <h1 class="text-2xl font-bold text-gray-900">{{ student.first_name }} {{ student.last_name }}</h1>
+                    <p class="text-sm text-gray-500">Attendance History</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Card -->
+    {% if summary %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Attendance Summary</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-6 gap-4">
+            <div>
+                <p class="text-sm text-gray-500">Total Days</p>
+                <p class="text-2xl font-bold text-gray-900">{{ summary.total_days }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-green-600">Present</p>
+                <p class="text-2xl font-bold text-green-700">{{ summary.present_days }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-red-600">Absent</p>
+                <p class="text-2xl font-bold text-red-700">{{ summary.absent_days }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-amber-600">Late</p>
+                <p class="text-2xl font-bold text-amber-700">{{ summary.late_days }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Excused</p>
+                <p class="text-2xl font-bold text-gray-700">{{ summary.excused_days }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-blue-600">Rate</p>
+                <p class="text-2xl font-bold text-blue-700">{{ summary.attendance_rate }}%</p>
+            </div>
+        </div>
+
+        <!-- Visual Progress Bar -->
+        <div class="mt-6">
+            <div class="flex h-4 rounded-full overflow-hidden bg-gray-100">
+                {% if summary.total_days > 0 %}
+                <div class="bg-green-500" style="width: {{ (summary.present_days / summary.total_days * 100)|round }}%"></div>
+                <div class="bg-amber-500" style="width: {{ (summary.late_days / summary.total_days * 100)|round }}%"></div>
+                <div class="bg-red-500" style="width: {{ (summary.absent_days / summary.total_days * 100)|round }}%"></div>
+                <div class="bg-gray-400" style="width: {{ (summary.excused_days / summary.total_days * 100)|round }}%"></div>
+                {% endif %}
+            </div>
+            <div class="flex justify-between mt-2 text-xs text-gray-500">
+                <div class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span>Present</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                    <span>Late</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span>Absent</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+                    <span>Excused</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Date Filter -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-4">
+            <div class="sm:w-40">
+                <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">From</label>
+                <input type="date" name="date_from" id="date_from"
+                       value="{{ date_from.isoformat() if date_from else '' }}"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div class="sm:w-40">
+                <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                <input type="date" name="date_to" id="date_to"
+                       value="{{ date_to.isoformat() if date_to else '' }}"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div class="flex items-end">
+                <button type="submit"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Records Timeline -->
+    {% if records %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Recent Records</h2>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for record in records %}
+            <div class="p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="text-center min-w-[60px]">
+                        <p class="text-lg font-bold text-gray-900">{{ record.date.strftime('%d') }}</p>
+                        <p class="text-xs text-gray-500">{{ record.date.strftime('%b %Y') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">{{ record.date.strftime('%A') }}</p>
+                        {% if record.check_in_time %}
+                        <p class="text-xs text-gray-500">Check in: {{ record.check_in_time.strftime('%H:%M') }}</p>
+                        {% endif %}
+                        {% if record.notes %}
+                        <p class="text-xs text-gray-500 mt-1">{{ record.notes }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    {% if record.status == 'PRESENT' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        Present
+                    </span>
+                    {% elif record.status == 'ABSENT' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        Absent
+                    </span>
+                    {% elif record.status == 'LATE' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                        </svg>
+                        Late
+                    </span>
+                    {% elif record.status == 'EXCUSED' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        Excused
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+        <div class="flex-1 flex justify-between sm:hidden">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
+               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Previous
+            </a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
+               class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Next
+            </a>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
+                </p>
+            </div>
+            <div class="flex gap-2">
+                {% if page > 1 %}
+                <a href="?page={{ page - 1 }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Previous
+                </a>
+                {% endif %}
+                {% if page < total_pages %}
+                <a href="?page={{ page + 1 }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900">No attendance records</h3>
+        <p class="mt-2 text-sm text-gray-500">
+            {% if date_from or date_to %}
+                No records found for the selected date range.
+            {% else %}
+                No attendance has been recorded for this student yet.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
