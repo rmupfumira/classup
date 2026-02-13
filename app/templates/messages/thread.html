@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}{{ original.subject or 'Message' }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/messages" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <div class="flex-1 min-w-0">
+            <h1 class="text-2xl font-bold text-gray-900 truncate">
+                {{ original.subject or 'No Subject' }}
+            </h1>
+            <p class="text-sm text-gray-500">
+                {% if original.message_type == 'ANNOUNCEMENT' %}School Announcement
+                {% elif original.message_type == 'CLASS_ANNOUNCEMENT' %}Class Announcement{% if original.school_class %} - {{ original.school_class.name }}{% endif %}
+                {% elif original.message_type == 'STUDENT_MESSAGE' %}About {{ original.student.first_name }} {{ original.student.last_name if original.student else 'Student' }}
+                {% else %}Message{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Message Thread -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <!-- Original Message -->
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-start gap-4">
+                <!-- Sender Avatar -->
+                <div class="flex-shrink-0">
+                    {% if original.sender.avatar_path %}
+                    <img class="h-12 w-12 rounded-full object-cover" src="{{ original.sender.avatar_path }}" alt="">
+                    {% else %}
+                    <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
+                        <span class="text-primary-700 font-medium">
+                            {{ original.sender.first_name[0] }}{{ original.sender.last_name[0] }}
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Message Content -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">
+                                {{ original.sender.first_name }} {{ original.sender.last_name }}
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                {{ original.created_at.strftime('%B %d, %Y at %H:%M') }}
+                            </p>
+                        </div>
+                        {% if original.message_type == 'ANNOUNCEMENT' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                            School-wide
+                        </span>
+                        {% elif original.message_type == 'CLASS_ANNOUNCEMENT' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            Class
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Message Body -->
+                    <div class="mt-4 prose prose-sm max-w-none text-gray-700">
+                        {{ original.body | replace('\n', '<br>') | safe }}
+                    </div>
+
+                    <!-- Attachments -->
+                    {% if original.attachments %}
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-sm font-medium text-gray-500 mb-2">Attachments</p>
+                        <div class="flex flex-wrap gap-2">
+                            {% for attachment in original.attachments %}
+                            <a href="/api/v1/files/{{ attachment.file_entity_id }}/url" target="_blank"
+                               class="inline-flex items-center px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                                <svg class="w-5 h-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="text-sm text-gray-700">{{ attachment.file_entity.original_name if attachment.file_entity else 'Attachment' }}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Replies -->
+        {% if replies %}
+        <div class="divide-y divide-gray-100">
+            {% for reply in replies %}
+            <div class="p-6 {% if reply.sender_id == user.id %}bg-primary-50{% endif %}">
+                <div class="flex items-start gap-4">
+                    <!-- Sender Avatar -->
+                    <div class="flex-shrink-0">
+                        {% if reply.sender.avatar_path %}
+                        <img class="h-10 w-10 rounded-full object-cover" src="{{ reply.sender.avatar_path }}" alt="">
+                        {% else %}
+                        <div class="h-10 w-10 rounded-full {% if reply.sender_id == user.id %}bg-primary-200{% else %}bg-gray-200{% endif %} flex items-center justify-center">
+                            <span class="{% if reply.sender_id == user.id %}text-primary-700{% else %}text-gray-600{% endif %} font-medium text-sm">
+                                {{ reply.sender.first_name[0] }}{{ reply.sender.last_name[0] }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Reply Content -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-medium text-gray-900">
+                                {{ reply.sender.first_name }} {{ reply.sender.last_name }}
+                                {% if reply.sender_id == user.id %}
+                                <span class="text-xs text-gray-500 font-normal">(You)</span>
+                                {% endif %}
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                {{ reply.created_at.strftime('%b %d, %H:%M') }}
+                            </p>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-700">
+                            {{ reply.body | replace('\n', '<br>') | safe }}
+                        </div>
+
+                        <!-- Reply Attachments -->
+                        {% if reply.attachments %}
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            {% for attachment in reply.attachments %}
+                            <a href="/api/v1/files/{{ attachment.file_entity_id }}/url" target="_blank"
+                               class="inline-flex items-center px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 text-xs">
+                                <svg class="w-4 h-4 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                </svg>
+                                {{ attachment.file_entity.original_name if attachment.file_entity else 'File' }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Reply Form -->
+        <div class="p-4 bg-gray-50 border-t border-gray-200">
+            <form id="reply-form" class="space-y-4">
+                <div>
+                    <label for="reply-body" class="sr-only">Reply</label>
+                    <textarea id="reply-body" name="body" rows="3"
+                              placeholder="Write your reply..."
+                              class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500 resize-none"></textarea>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button type="button" id="attach-btn"
+                            class="inline-flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                        </svg>
+                        Attach
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                        Send Reply
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('reply-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const body = document.getElementById('reply-body').value.trim();
+    if (!body) {
+        alert('Please enter a message');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/messages/{{ original.id }}/reply', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                body: body,
+                attachment_ids: []
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // Reload the page to show the new reply
+            window.location.reload();
+        } else {
+            alert(result.message || 'Failed to send reply');
+        }
+    } catch (error) {
+        console.error('Error sending reply:', error);
+        alert('Failed to send reply. Please try again.');
+    }
+});
+</script>
+{% endblock %}

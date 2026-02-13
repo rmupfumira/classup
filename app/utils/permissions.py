@@ -196,6 +196,24 @@ class PermissionChecker:
             Role.TEACHER.value,
         )
 
+    def can_create_message(self) -> bool:
+        """Check if user can create/compose new messages."""
+        return self.role in (
+            Role.SUPER_ADMIN.value,
+            Role.SCHOOL_ADMIN.value,
+            Role.TEACHER.value,
+        )
+
+    def can_reply_to_message(self) -> bool:
+        """Check if user can reply to messages."""
+        # All authenticated users can reply
+        return self.role in (
+            Role.SUPER_ADMIN.value,
+            Role.SCHOOL_ADMIN.value,
+            Role.TEACHER.value,
+            Role.PARENT.value,
+        )
+
 
 def get_permission_checker() -> PermissionChecker:
     """Get a PermissionChecker for the current user.
