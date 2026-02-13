@@ -1,0 +1,117 @@
+/* ClassUp v2 - Custom Styles */
+/* Most styling is handled by Tailwind CSS */
+
+/* Loading spinner animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Toast slide-in animation */
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast-enter {
+    animation: slide-in-right 0.3s ease-out;
+}
+
+/* Mobile menu slide animation */
+@keyframes slide-up {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.slide-up {
+    animation: slide-up 0.3s ease-out;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f3f4f6;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* Focus visible for accessibility */
+.focus-visible:focus {
+    outline: 2px solid #7c3aed;
+    outline-offset: 2px;
+}
+
+/* Form input focus ring override */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+/* Button active state */
+button:active {
+    transform: scale(0.98);
+}
+
+/* Smooth transitions for interactive elements */
+a, button {
+    transition: all 0.15s ease-in-out;
+}
+
+/* Card hover effect */
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Badge pulse animation */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.badge-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Print styles */
+@media print {
+    nav, aside, .no-print {
+        display: none !important;
+    }
+
+    main {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+}

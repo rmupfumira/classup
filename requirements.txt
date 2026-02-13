@@ -1,0 +1,85 @@
+# ClassUp v2 - Pinned Dependencies
+# Generated for Python 3.12+
+
+# Web Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+starlette==0.41.3
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+greenlet==3.1.1
+
+# Validation & Settings
+pydantic==2.10.4
+pydantic-settings==2.7.0
+pydantic-core==2.27.2
+
+# Authentication
+pyjwt==2.10.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+
+# Templates
+jinja2==3.1.5
+markupsafe==3.0.2
+
+# Task Queue
+arq==0.26.1
+
+# HTTP Client
+httpx==0.28.1
+httpcore==1.0.7
+h11==0.14.0
+
+# Email
+resend==2.6.0
+
+# File Storage (S3/R2)
+boto3==1.35.86
+botocore==1.35.86
+s3transfer==0.10.4
+
+# CSV Processing
+pandas==2.2.3
+numpy==2.2.1
+
+# Internationalization
+babel==2.16.0
+
+# UUID7 support
+uuid7==0.1.0
+
+# File type detection (Windows)
+python-magic-bin==0.4.14
+
+# Redis
+redis==5.2.1
+
+# Multipart form handling
+python-multipart==0.0.19
+
+# Async utilities
+aiofiles==24.1.0
+anyio==4.7.0
+
+# Development dependencies
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-cov==6.0.0
+factory-boy==3.3.1
+ruff==0.8.4
+mypy==1.14.1
+
+# Additional dependencies
+click==8.1.8
+typing-extensions==4.12.2
+annotated-types==0.7.0
+python-dateutil==2.9.0.post0
+pytz==2024.2
+sniffio==1.3.1
+certifi==2024.12.14
+idna==3.10
+urllib3==2.3.0

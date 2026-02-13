@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('nav.dashboard', current_language) }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Welcome Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                {{ t('dashboard.welcome', current_language, name=user.first_name) }}
+            </h1>
+            <p class="mt-1 text-sm text-gray-500">
+                {{ t('dashboard.todays_overview', current_language) }}
+            </p>
+        </div>
+        <div class="mt-4 sm:mt-0 flex space-x-3">
+            <a href="/attendance"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm
+                      text-sm font-medium text-gray-700 bg-white hover:bg-gray-50
+                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <svg class="-ml-1 mr-2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                {{ t('nav.attendance', current_language) }}
+            </a>
+            <a href="/reports/create"
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm
+                      text-sm font-medium text-white bg-primary-600 hover:bg-primary-700
+                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 4v16m8-8H4" />
+                </svg>
+                {{ t('reports.create_report', current_language) }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.total_students', current_language) }}</p>
+                    <p class="text-2xl font-bold text-gray-900">24</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.present_today', current_language) }}</p>
+                    <p class="text-2xl font-bold text-gray-900">22</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.absent_today', current_language) }}</p>
+                    <p class="text-2xl font-bold text-gray-900">2</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-amber-100 rounded-lg p-3">
+                    <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.pending_reports', current_language) }}</p>
+                    <p class="text-2xl font-bold text-gray-900">5</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Recent Activity -->
+    <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('dashboard.quick_actions', current_language) }}</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <a href="/attendance"
+                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
+                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
+                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
+                        {{ t('attendance.daily_attendance', current_language) }}
+                    </span>
+                </a>
+
+                <a href="/reports/create"
+                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
+                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
+                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
+                        {{ t('reports.create_report', current_language) }}
+                    </span>
+                </a>
+
+                <a href="/messages/compose"
+                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
+                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
+                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
+                        {{ t('messages.new_message', current_language) }}
+                    </span>
+                </a>
+
+                <a href="/photos/upload"
+                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
+                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
+                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
+                        Share Photos
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('dashboard.recent_activity', current_language) }}</h2>
+            <div class="space-y-4">
+                <p class="text-sm text-gray-500 text-center py-8">
+                    No recent activity to display.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

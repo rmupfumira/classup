@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="{{ current_language | default('en') }}" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif']
+                    },
+                    colors: {
+                        primary: {
+                            50: '#F5F3FF',
+                            100: '#EDE9FE',
+                            200: '#DDD6FE',
+                            300: '#C4B5FD',
+                            400: '#A78BFA',
+                            500: '#7C3AED',
+                            600: '#6D28D9',
+                            700: '#5B21B6',
+                            800: '#4C1D95',
+                            900: '#3B0764'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full font-sans text-gray-900 antialiased">
+    {% if user %}
+        <!-- Authenticated Layout -->
+        {% include 'components/_navbar.html' %}
+
+        <div class="flex h-[calc(100vh-4rem)]">
+            <!-- Sidebar (desktop only) -->
+            {% include 'components/_sidebar.html' %}
+
+            <!-- Main Content -->
+            <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                <!-- Toast Container -->
+                <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2"></div>
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+
+        <!-- Mobile Navigation -->
+        {% include 'components/_mobile_nav.html' %}
+    {% else %}
+        <!-- Unauthenticated Layout -->
+        <main class="min-h-screen">
+            {% block auth_content %}{% endblock %}
+        </main>
+    {% endif %}
+
+    <!-- Global Scripts -->
+    <script src="{{ url_for('static', path='js/app.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

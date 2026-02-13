@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Teachers - {{ school_class.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="/classes/{{ school_class.id }}" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Manage Teachers</h1>
+            <p class="text-sm text-gray-500">{{ school_class.name }}</p>
+        </div>
+    </div>
+
+    <!-- Assigned Teachers -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Assigned Teachers</h2>
+
+        {% if assigned_teachers %}
+        <ul class="divide-y divide-gray-200">
+            {% for teacher, tc in assigned_teachers %}
+            <li class="py-4 flex items-center justify-between" data-teacher-id="{{ teacher.id }}">
+                <div class="flex items-center gap-3">
+                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <span class="text-gray-600 font-medium text-sm">
+                            {{ teacher.first_name[0] }}{{ teacher.last_name[0] }}
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">
+                            {{ teacher.first_name }} {{ teacher.last_name }}
+                            {% if tc.is_primary %}
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700">
+                                Primary
+                            </span>
+                            {% endif %}
+                        </p>
+                        <p class="text-sm text-gray-500">{{ teacher.email }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    {% if not tc.is_primary %}
+                    <button type="button" onclick="setPrimary('{{ teacher.id }}')"
+                            class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                        Set Primary
+                    </button>
+                    {% endif %}
+                    <button type="button" onclick="removeTeacher('{{ teacher.id }}')"
+                            class="text-sm text-red-600 hover:text-red-700 font-medium">
+                        Remove
+                    </button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-500 text-sm">No teachers assigned to this class yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Add Teacher -->
+    {% if available_teachers %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Add Teacher</h2>
+
+        <form id="add-teacher-form" class="flex gap-4">
+            <div class="flex-1">
+                <label for="teacher_id" class="sr-only">Select Teacher</label>
+                <select id="teacher_id" name="teacher_id" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">Select a teacher...</option>
+                    {% for teacher in available_teachers %}
+                    <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }} ({{ teacher.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" id="is_primary" name="is_primary"
+                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    Primary
+                </label>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    Add
+                </button>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <div class="bg-gray-50 rounded-lg border border-gray-200 p-6 text-center">
+        <p class="text-gray-500 text-sm">All available teachers have been assigned to this class.</p>
+    </div>
+    {% endif %}
+
+    <!-- Back Button -->
+    <div class="flex justify-end">
+        <a href="/classes/{{ school_class.id }}"
+           class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Done
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const classId = '{{ school_class.id }}';
+
+async function removeTeacher(teacherId) {
+    if (!confirm('Are you sure you want to remove this teacher from the class?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/classes/${classId}/teachers/${teacherId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin'
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const result = await response.json();
+            alert(result.message || 'Failed to remove teacher');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function setPrimary(teacherId) {
+    try {
+        const response = await fetch(`/api/v1/classes/${classId}/teachers/${teacherId}/set-primary`, {
+            method: 'PUT',
+            credentials: 'same-origin'
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const result = await response.json();
+            alert(result.message || 'Failed to set primary teacher');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('add-teacher-form');
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const data = {
+                teacher_id: formData.get('teacher_id'),
+                is_primary: formData.get('is_primary') === 'on'
+            };
+
+            try {
+                const response = await fetch(`/api/v1/classes/${classId}/teachers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const result = await response.json();
+                    alert(result.message || 'Failed to add teacher');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ student.first_name }} {{ student.last_name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="/students/{{ student.id }}" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900">Edit Student</h1>
+    </div>
+
+    <!-- Form -->
+    <form id="student-form" class="space-y-6">
+        <!-- Basic Information -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">
+                        First Name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="first_name" name="first_name" required
+                           value="{{ student.first_name }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                    <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">
+                        Last Name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="last_name" name="last_name" required
+                           value="{{ student.last_name }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                    <label for="date_of_birth" class="block text-sm font-medium text-gray-700 mb-1">
+                        Date of Birth
+                    </label>
+                    <input type="date" id="date_of_birth" name="date_of_birth"
+                           value="{{ student.date_of_birth.strftime('%Y-%m-%d') if student.date_of_birth else '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                    <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">
+                        Gender
+                    </label>
+                    <select id="gender" name="gender"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select...</option>
+                        <option value="MALE" {% if student.gender == 'MALE' %}selected{% endif %}>Male</option>
+                        <option value="FEMALE" {% if student.gender == 'FEMALE' %}selected{% endif %}>Female</option>
+                        <option value="OTHER" {% if student.gender == 'OTHER' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Class Assignment -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Class Assignment</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">
+                        Class
+                    </label>
+                    <select id="class_id" name="class_id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">No class assigned</option>
+                        {% for cls in classes %}
+                        <option value="{{ cls.id }}" {% if student.class_id and (student.class_id|string) == (cls.id|string) %}selected{% endif %}>
+                            {{ cls.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="age_group" class="block text-sm font-medium text-gray-700 mb-1">
+                        Age Group
+                    </label>
+                    <select id="age_group" name="age_group"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select...</option>
+                        <option value="INFANT" {% if student.age_group == 'INFANT' %}selected{% endif %}>Infant</option>
+                        <option value="TODDLER" {% if student.age_group == 'TODDLER' %}selected{% endif %}>Toddler</option>
+                        <option value="PRESCHOOL" {% if student.age_group == 'PRESCHOOL' %}selected{% endif %}>Preschool</option>
+                        <option value="KINDERGARTEN" {% if student.age_group == 'KINDERGARTEN' %}selected{% endif %}>Kindergarten</option>
+                        <option value="GRADE_R" {% if student.age_group == 'GRADE_R' %}selected{% endif %}>Grade R</option>
+                        <option value="GRADE_1" {% if student.age_group == 'GRADE_1' %}selected{% endif %}>Grade 1</option>
+                        <option value="GRADE_2" {% if student.age_group == 'GRADE_2' %}selected{% endif %}>Grade 2</option>
+                        <option value="GRADE_3" {% if student.age_group == 'GRADE_3' %}selected{% endif %}>Grade 3</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="grade_level" class="block text-sm font-medium text-gray-700 mb-1">
+                        Grade Level (custom)
+                    </label>
+                    <input type="text" id="grade_level" name="grade_level" placeholder="e.g., Grade 3, Year 7"
+                           value="{{ student.grade_level or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                    <label for="is_active" class="block text-sm font-medium text-gray-700 mb-1">
+                        Status
+                    </label>
+                    <select id="is_active" name="is_active"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        <option value="true" {% if student.is_active %}selected{% endif %}>Active</option>
+                        <option value="false" {% if not student.is_active %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Medical Information -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Medical Information</h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="allergies" class="block text-sm font-medium text-gray-700 mb-1">
+                        Allergies
+                    </label>
+                    <textarea id="allergies" name="allergies" rows="2"
+                              placeholder="List any allergies..."
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">{{ student.allergies or '' }}</textarea>
+                </div>
+                <div>
+                    <label for="medical_info" class="block text-sm font-medium text-gray-700 mb-1">
+                        Medical Notes
+                    </label>
+                    <textarea id="medical_info" name="medical_info" rows="3"
+                              placeholder="Any medical conditions, medications, or special needs..."
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">{{ student.medical_info or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Contacts -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-900">Emergency Contacts</h2>
+                <button type="button" id="add-contact-btn"
+                        class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                    + Add Contact
+                </button>
+            </div>
+
+            <div id="contacts-container" class="space-y-4">
+                {% for contact in student.emergency_contacts or [] %}
+                <div class="contact-item border border-gray-200 rounded-lg p-4 relative">
+                    <button type="button" class="remove-contact absolute top-2 right-2 text-gray-400 hover:text-red-500">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <input type="text" name="emergency_contacts[][name]" required
+                                   value="{{ contact.name }}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                            <input type="tel" name="emergency_contacts[][phone]" required
+                                   value="{{ contact.phone }}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                            <input type="text" name="emergency_contacts[][relationship]"
+                                   value="{{ contact.relationship }}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Additional Notes</h2>
+
+            <textarea id="notes" name="notes" rows="3"
+                      placeholder="Any additional notes about the student..."
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">{{ student.notes or '' }}</textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between">
+            <button type="button" id="delete-btn"
+                    class="px-4 py-2 text-red-600 hover:text-red-700 font-medium">
+                Delete Student
+            </button>
+            <div class="flex gap-3">
+                <a href="/students/{{ student.id }}"
+                   class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Contact Template -->
+<template id="contact-template">
+    <div class="contact-item border border-gray-200 rounded-lg p-4 relative">
+        <button type="button" class="remove-contact absolute top-2 right-2 text-gray-400 hover:text-red-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" name="emergency_contacts[][name]" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input type="tel" name="emergency_contacts[][phone]" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                <input type="text" name="emergency_contacts[][relationship]" value="Parent"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('student-form');
+    const contactsContainer = document.getElementById('contacts-container');
+    const addContactBtn = document.getElementById('add-contact-btn');
+    const contactTemplate = document.getElementById('contact-template');
+    const deleteBtn = document.getElementById('delete-btn');
+    const studentId = '{{ student.id }}';
+
+    // Add contact
+    addContactBtn.addEventListener('click', function() {
+        const clone = contactTemplate.content.cloneNode(true);
+        contactsContainer.appendChild(clone);
+    });
+
+    // Remove contact
+    contactsContainer.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-contact')) {
+            e.target.closest('.contact-item').remove();
+        }
+    });
+
+    // Form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Gather form data
+        const formData = new FormData(form);
+        const data = {
+            first_name: formData.get('first_name'),
+            last_name: formData.get('last_name'),
+            date_of_birth: formData.get('date_of_birth') || null,
+            gender: formData.get('gender') || null,
+            age_group: formData.get('age_group') || null,
+            grade_level: formData.get('grade_level') || null,
+            class_id: formData.get('class_id') || null,
+            allergies: formData.get('allergies') || null,
+            medical_info: formData.get('medical_info') || null,
+            notes: formData.get('notes') || null,
+            is_active: formData.get('is_active') === 'true',
+            emergency_contacts: []
+        };
+
+        // Gather emergency contacts
+        const contactItems = contactsContainer.querySelectorAll('.contact-item');
+        contactItems.forEach(item => {
+            const name = item.querySelector('input[name="emergency_contacts[][name]"]').value;
+            const phone = item.querySelector('input[name="emergency_contacts[][phone]"]').value;
+            const relationship = item.querySelector('input[name="emergency_contacts[][relationship]"]').value;
+            if (name && phone) {
+                data.emergency_contacts.push({ name, phone, relationship });
+            }
+        });
+
+        try {
+            const response = await fetch('/api/v1/students/' + studentId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                window.location.href = '/students/' + studentId;
+            } else {
+                alert(result.message || 'Failed to update student');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        }
+    });
+
+    // Delete student
+    deleteBtn.addEventListener('click', async function() {
+        if (!confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/v1/students/' + studentId, {
+                method: 'DELETE',
+                credentials: 'same-origin'
+            });
+
+            if (response.ok) {
+                window.location.href = '/students';
+            } else {
+                const result = await response.json();
+                alert(result.message || 'Failed to delete student');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        }
+    });
+});
+</script>
+{% endblock %}

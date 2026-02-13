@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Students - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Students</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                {{ total }} student{{ 's' if total != 1 else '' }} total
+            </p>
+        </div>
+        {% if permissions.can_manage_students() %}
+        <a href="/students/new"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Student
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Filters -->
+    {% if permissions.can_manage_students() %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-4">
+            <!-- Search -->
+            <div class="flex-1">
+                <label for="search" class="sr-only">Search</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input type="text" name="search" id="search" value="{{ search or '' }}"
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                           placeholder="Search by name...">
+                </div>
+            </div>
+
+            <!-- Class Filter -->
+            {% if classes %}
+            <div class="sm:w-48">
+                <label for="class_id" class="sr-only">Class</label>
+                <select name="class_id" id="class_id"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Classes</option>
+                    {% for cls in classes %}
+                    <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
+                        {{ cls.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <!-- Age Group Filter -->
+            <div class="sm:w-40">
+                <label for="age_group" class="sr-only">Age Group</label>
+                <select name="age_group" id="age_group"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Ages</option>
+                    <option value="INFANT" {% if current_age_group == 'INFANT' %}selected{% endif %}>Infant</option>
+                    <option value="TODDLER" {% if current_age_group == 'TODDLER' %}selected{% endif %}>Toddler</option>
+                    <option value="PRESCHOOL" {% if current_age_group == 'PRESCHOOL' %}selected{% endif %}>Preschool</option>
+                    <option value="KINDERGARTEN" {% if current_age_group == 'KINDERGARTEN' %}selected{% endif %}>Kindergarten</option>
+                </select>
+            </div>
+
+            <button type="submit"
+                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                Filter
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Students List -->
+    {% if students %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Student
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Class
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Age Group
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for student in students %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    {% if student.photo_path %}
+                                    <img class="h-10 w-10 rounded-full object-cover"
+                                         src="{{ student.photo_path }}" alt="">
+                                    {% else %}
+                                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                                        <span class="text-primary-700 font-medium text-sm">
+                                            {{ student.first_name[0] }}{{ student.last_name[0] }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <a href="/students/{{ student.id }}"
+                                       class="text-sm font-medium text-gray-900 hover:text-primary-600">
+                                        {{ student.first_name }} {{ student.last_name }}
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if student.school_class %}
+                                {{ student.school_class.name }}
+                            {% else %}
+                                <span class="text-gray-400">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ student.age_group or '-' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if student.is_active %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Inactive
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="/students/{{ student.id }}"
+                               class="text-primary-600 hover:text-primary-900 mr-3">View</a>
+                            {% if permissions.can_manage_students() %}
+                            <a href="/students/{{ student.id }}/edit"
+                               class="text-gray-600 hover:text-gray-900">Edit</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div class="md:hidden divide-y divide-gray-200">
+            {% for student in students %}
+            <a href="/students/{{ student.id }}" class="block p-4 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-12 w-12">
+                        {% if student.photo_path %}
+                        <img class="h-12 w-12 rounded-full object-cover"
+                             src="{{ student.photo_path }}" alt="">
+                        {% else %}
+                        <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
+                            <span class="text-primary-700 font-medium">
+                                {{ student.first_name[0] }}{{ student.last_name[0] }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="ml-4 flex-1">
+                        <p class="text-sm font-medium text-gray-900">
+                            {{ student.first_name }} {{ student.last_name }}
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            {{ student.school_class.name if student.school_class else 'Unassigned' }}
+                        </p>
+                    </div>
+                    <div>
+                        {% if student.is_active %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            Inactive
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+        <div class="flex-1 flex justify-between sm:hidden">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Previous
+            </a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+               class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Next
+            </a>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
+                </p>
+            </div>
+            <div class="flex gap-2">
+                {% if page > 1 %}
+                <a href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Previous
+                </a>
+                {% endif %}
+                {% if page < total_pages %}
+                <a href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
+                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900">No students found</h3>
+        <p class="mt-2 text-sm text-gray-500">
+            {% if search %}
+                No students match your search criteria.
+            {% else %}
+                Get started by adding your first student.
+            {% endif %}
+        </p>
+        {% if permissions.can_manage_students() and not search %}
+        <div class="mt-6">
+            <a href="/students/new"
+               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Student
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

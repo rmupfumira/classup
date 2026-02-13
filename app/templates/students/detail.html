@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.first_name }} {{ student.last_name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Button & Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <a href="/students" class="text-gray-500 hover:text-gray-700 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">
+                    {{ student.first_name }} {{ student.last_name }}
+                </h1>
+                <p class="text-sm text-gray-500">
+                    {% if student.school_class %}{{ student.school_class.name }}{% else %}Unassigned{% endif %}
+                    {% if student.age_group %} &bull; {{ student.age_group }}{% endif %}
+                </p>
+            </div>
+        </div>
+        {% if permissions.can_manage_students() %}
+        <div class="flex gap-3">
+            <a href="/students/{{ student.id }}/edit"
+               class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Edit
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Info -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Profile Card -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-start gap-6">
+                    <div class="flex-shrink-0">
+                        {% if student.photo_path %}
+                        <img class="h-24 w-24 rounded-full object-cover"
+                             src="{{ student.photo_path }}" alt="">
+                        {% else %}
+                        <div class="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center">
+                            <span class="text-primary-700 font-bold text-2xl">
+                                {{ student.first_name[0] }}{{ student.last_name[0] }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-3 mb-4">
+                            <h2 class="text-xl font-semibold text-gray-900">
+                                {{ student.first_name }} {{ student.last_name }}
+                            </h2>
+                            {% if student.is_active %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Inactive
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <dt class="text-gray-500">Date of Birth</dt>
+                                <dd class="text-gray-900 font-medium">
+                                    {{ student.date_of_birth.strftime('%B %d, %Y') if student.date_of_birth else '-' }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Gender</dt>
+                                <dd class="text-gray-900 font-medium">{{ student.gender or '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Class</dt>
+                                <dd class="text-gray-900 font-medium">
+                                    {% if student.school_class %}
+                                        <a href="/classes/{{ student.school_class.id }}" class="text-primary-600 hover:underline">
+                                            {{ student.school_class.name }}
+                                        </a>
+                                    {% else %}
+                                        Unassigned
+                                    {% endif %}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Enrollment Date</dt>
+                                <dd class="text-gray-900 font-medium">
+                                    {{ student.enrollment_date.strftime('%B %d, %Y') if student.enrollment_date else '-' }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Age Group</dt>
+                                <dd class="text-gray-900 font-medium">{{ student.age_group or '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Grade Level</dt>
+                                <dd class="text-gray-900 font-medium">{{ student.grade_level or '-' }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Information -->
+            {% if student.medical_info or student.allergies %}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Medical Information</h3>
+
+                {% if student.allergies %}
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-red-600 mb-2">Allergies</h4>
+                    <p class="text-gray-700 bg-red-50 rounded-lg p-3 border border-red-100">
+                        {{ student.allergies }}
+                    </p>
+                </div>
+                {% endif %}
+
+                {% if student.medical_info %}
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">Medical Notes</h4>
+                    <p class="text-gray-700">{{ student.medical_info }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Notes -->
+            {% if student.notes %}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+                <p class="text-gray-700">{{ student.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Parents/Guardians -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Parents/Guardians</h3>
+                    {% if permissions.can_manage_students() %}
+                    <button type="button" class="text-primary-600 text-sm hover:text-primary-700">
+                        Add
+                    </button>
+                    {% endif %}
+                </div>
+
+                {% if student.parent_students %}
+                <ul class="space-y-4">
+                    {% for ps in student.parent_students %}
+                    {% if ps.parent %}
+                    <li class="flex items-start gap-3">
+                        <div class="flex-shrink-0">
+                            <div class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                <span class="text-gray-600 font-medium text-sm">
+                                    {{ ps.parent.first_name[0] }}{{ ps.parent.last_name[0] }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900">
+                                {{ ps.parent.first_name }} {{ ps.parent.last_name }}
+                                {% if ps.is_primary %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700">
+                                    Primary
+                                </span>
+                                {% endif %}
+                            </p>
+                            <p class="text-sm text-gray-500">{{ ps.relationship_type }}</p>
+                            {% if ps.parent.email %}
+                            <a href="mailto:{{ ps.parent.email }}" class="text-sm text-primary-600 hover:underline">
+                                {{ ps.parent.email }}
+                            </a>
+                            {% endif %}
+                            {% if ps.parent.phone %}
+                            <p class="text-sm text-gray-500">{{ ps.parent.phone }}</p>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-gray-500">No parents linked yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- Emergency Contacts -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Emergency Contacts</h3>
+
+                {% if student.emergency_contacts %}
+                <ul class="space-y-3">
+                    {% for contact in student.emergency_contacts %}
+                    <li class="border-l-4 border-red-400 pl-3 py-1">
+                        <p class="text-sm font-medium text-gray-900">{{ contact.name }}</p>
+                        <p class="text-sm text-gray-500">{{ contact.relationship }}</p>
+                        <p class="text-sm text-gray-700">{{ contact.phone }}</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-gray-500">No emergency contacts added.</p>
+                {% endif %}
+            </div>
+
+            <!-- Quick Actions -->
+            {% if permissions.can_manage_students() %}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                <div class="space-y-2">
+                    <a href="/reports/new?student_id={{ student.id }}"
+                       class="block w-full px-4 py-2 text-center text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        Create Report
+                    </a>
+                    <a href="/messages/compose?student_id={{ student.id }}"
+                       class="block w-full px-4 py-2 text-center text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        Message Parents
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
