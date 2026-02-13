@@ -1,0 +1,52 @@
+{% extends "base_email.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
+    {{ title }}
+</h2>
+
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Hi {{ admin_name }},
+</p>
+
+<div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td style="padding: 0 0 8px 0;">
+                <span style="display: inline-block; padding: 4px 12px; background-color: #E0E7FF; color: #4338CA; font-size: 12px; font-weight: 600; border-radius: 20px; text-transform: uppercase;">
+                    {{ notification_type | replace('_', ' ') }}
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding-top: 12px;">
+                <p style="margin: 0; font-size: 15px; color: #374151; line-height: 1.6;">
+                    {{ body }}
+                </p>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% if action_url %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #7C3AED;">
+            <a href="{{ action_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                View Details
+            </a>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<p style="margin: 24px 0 0 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    This notification was sent to you as an administrator of {{ tenant_name }}.
+</p>
+{% endblock %}
+
+{% block footer_text %}
+You're receiving this because you're an administrator on {{ app_name }}.
+{% endblock %}

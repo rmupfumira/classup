@@ -1,0 +1,58 @@
+{% extends "base_email.html" %}
+
+{% block title %}Attendance Alert for {{ student_name }}{% endblock %}
+
+{% block header_color %}{% if status == 'ABSENT' %}#EF4444{% elif status == 'LATE' %}#F59E0B{% else %}#10B981{% endif %}{% endblock %}
+
+{% block content %}
+<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
+    Attendance Update
+</h2>
+
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Hi {{ parent_name }},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    This is to inform you that <strong>{{ student_name }}</strong> was marked as <strong>{{ status }}</strong> today.
+</p>
+
+<div style="background-color: {% if status == 'ABSENT' %}#FEF2F2{% elif status == 'LATE' %}#FFFBEB{% else %}#F0FDF4{% endif %}; border-left: 4px solid {% if status == 'ABSENT' %}#EF4444{% elif status == 'LATE' %}#F59E0B{% else %}#10B981{% endif %}; border-radius: 4px; padding: 16px; margin: 0 0 24px 0;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td style="padding: 0 0 8px 0;">
+                <strong style="font-size: 14px; color: #6B7280;">Student:</strong>
+                <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ student_name }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 0 0 8px 0;">
+                <strong style="font-size: 14px; color: #6B7280;">Date:</strong>
+                <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ date }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <strong style="font-size: 14px; color: #6B7280;">Status:</strong>
+                <span style="font-size: 14px; color: {% if status == 'ABSENT' %}#EF4444{% elif status == 'LATE' %}#F59E0B{% else %}#10B981{% endif %}; font-weight: 600; margin-left: 8px;">{{ status }}</span>
+            </td>
+        </tr>
+        {% if notes %}
+        <tr>
+            <td style="padding-top: 12px;">
+                <strong style="font-size: 14px; color: #6B7280;">Notes:</strong><br>
+                <span style="font-size: 14px; color: #374151;">{{ notes }}</span>
+            </td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    If you have any questions or concerns, please contact {{ tenant_name }} directly.
+</p>
+{% endblock %}
+
+{% block footer_text %}
+This is an automated attendance notification from {{ tenant_name }}.
+{% endblock %}

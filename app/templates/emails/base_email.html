@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        /* Reset styles */
+        body, table, td, p, a, li, blockquote { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+        a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
+
+        /* Custom styles */
+        .button { background-color: #7C3AED; border-radius: 8px; color: #ffffff !important; display: inline-block; font-size: 16px; font-weight: 600; padding: 12px 24px; text-decoration: none; }
+        .button:hover { background-color: #6D28D9; }
+
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; max-width: 100% !important; }
+            .content-padding { padding: 20px !important; }
+        }
+    </style>
+</head>
+<body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F9FAFB; margin: 0; padding: 40px 20px;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 600px; margin: 0 auto;">
+        <tr>
+            <td>
+                <!-- Main Container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: {% block header_color %}#7C3AED{% endblock %}; padding: 24px; text-align: center;">
+                            {% block header %}
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">
+                                {% if tenant_name %}{{ tenant_name }}{% else %}{{ app_name }}{% endif %}
+                            </h1>
+                            {% endblock %}
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td class="content-padding" style="padding: 32px;">
+                            {% block content %}{% endblock %}
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 16px 32px; background-color: #F3F4F6; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; color: #6B7280;">
+                                {% if tenant_name %}{{ tenant_name }} &middot; {% endif %}Powered by {{ app_name }}
+                            </p>
+                            <p style="margin: 8px 0 0 0; font-size: 11px; color: #9CA3AF;">
+                                {% block footer_text %}
+                                This is an automated message. Please do not reply directly to this email.
+                                {% endblock %}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Unsubscribe text (outside main box) -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                    <tr>
+                        <td style="padding: 20px; text-align: center;">
+                            <p style="margin: 0; font-size: 11px; color: #9CA3AF;">
+                                {% block unsubscribe %}{% endblock %}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

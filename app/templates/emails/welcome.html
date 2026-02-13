@@ -1,0 +1,38 @@
+{% extends "base_email.html" %}
+
+{% block title %}Welcome to {{ tenant_name }}{% endblock %}
+
+{% block content %}
+<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
+    Welcome, {{ user_name }}!
+</h2>
+
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Your account has been created on <strong>{{ tenant_name }}</strong>. You can now log in to access all the features of {{ app_name }}.
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    With {{ app_name }}, you can:
+</p>
+
+<ul style="margin: 0 0 24px 0; padding-left: 20px; font-size: 15px; color: #374151; line-height: 1.8;">
+    <li>Track attendance and daily activities</li>
+    <li>View reports and progress updates</li>
+    <li>Communicate with teachers and staff</li>
+    <li>Access shared photos and documents</li>
+</ul>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #7C3AED;">
+            <a href="{{ login_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                Log In to Your Account
+            </a>
+        </td>
+    </tr>
+</table>
+
+<p style="margin: 32px 0 0 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    If you have any questions, please contact your school administrator.
+</p>
+{% endblock %}

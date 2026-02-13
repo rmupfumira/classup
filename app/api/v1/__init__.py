@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import attendance, auth, classes, files, messages, reports, students
+from app.api.v1 import attendance, auth, classes, files, messages, reports, students, websocket, whatsapp
 
 api_router = APIRouter(tags=["API v1"])
 
@@ -14,3 +14,5 @@ api_router.include_router(attendance.router, prefix="/attendance", tags=["Attend
 api_router.include_router(messages.router, prefix="/messages", tags=["Messages"])
 api_router.include_router(files.router, prefix="/files", tags=["Files"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
+api_router.include_router(websocket.router)
+api_router.include_router(whatsapp.router)

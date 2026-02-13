@@ -1,0 +1,54 @@
+{% extends "base_email.html" %}
+
+{% block title %}New Report for {{ student_name }}{% endblock %}
+
+{% block content %}
+<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
+    New Report Available
+</h2>
+
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Hi {{ parent_name }},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    A new <strong>{{ report_type }}</strong> has been prepared for <strong>{{ student_name }}</strong>.
+</p>
+
+<div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td style="padding: 0 0 12px 0;">
+                <strong style="font-size: 14px; color: #6B7280;">Student:</strong><br>
+                <span style="font-size: 15px; color: #111827;">{{ student_name }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 0 0 12px 0;">
+                <strong style="font-size: 14px; color: #6B7280;">Report Type:</strong><br>
+                <span style="font-size: 15px; color: #111827;">{{ report_type }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <strong style="font-size: 14px; color: #6B7280;">Date:</strong><br>
+                <span style="font-size: 15px; color: #111827;">{{ report_date }}</span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #7C3AED;">
+            <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                View Report
+            </a>
+        </td>
+    </tr>
+</table>
+
+<p style="margin: 24px 0 0 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    Log in to {{ app_name }} to view the full report and all of {{ student_name }}'s activities.
+</p>
+{% endblock %}
