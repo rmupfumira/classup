@@ -423,7 +423,7 @@ class MessageService:
             # All parents in the tenant
             query = select(User.id).where(
                 User.tenant_id == tenant_id,
-                User.role == Role.PARENT,
+                User.role == Role.PARENT.value,
                 User.deleted_at.is_(None),
                 User.is_active == True,
             )
@@ -478,7 +478,7 @@ class MessageService:
             # All parents in the tenant (same as ANNOUNCEMENT)
             query = select(User.id).where(
                 User.tenant_id == tenant_id,
-                User.role == Role.PARENT,
+                User.role == Role.PARENT.value,
                 User.deleted_at.is_(None),
                 User.is_active == True,
             )
