@@ -52,7 +52,7 @@ class AttendanceRecordResponse(BaseModel):
     tenant_id: uuid.UUID
     student_id: uuid.UUID
     class_id: uuid.UUID
-    date: date
+    date: date_type
     status: str
     check_in_time: datetime | None
     check_out_time: datetime | None
@@ -80,7 +80,7 @@ class BulkAttendanceCreate(BaseModel):
     """Schema for bulk attendance submission."""
 
     class_id: uuid.UUID
-    date: date = Field(default_factory=date.today)
+    date: date_type = Field(default_factory=date_type.today)
     records: list[BulkAttendanceRecord]
 
 
@@ -121,6 +121,6 @@ class ClassAttendanceForDate(BaseModel):
 
     class_id: uuid.UUID
     class_name: str
-    date: date
+    date: date_type
     students: list[dict]  # List of {student_id, student_name, status, check_in_time, notes}
     stats: AttendanceStatsResponse

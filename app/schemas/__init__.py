@@ -32,7 +32,6 @@ from app.schemas.school_class import (
     SchoolClassCreate,
     SchoolClassResponse,
     SchoolClassUpdate,
-    TeacherAssignment,
 )
 from app.schemas.student import (
     EmergencyContact,
@@ -73,7 +72,6 @@ __all__ = [
     "SchoolClassCreate",
     "SchoolClassResponse",
     "SchoolClassUpdate",
-    "TeacherAssignment",
     # Attendance
     "AttendanceStatus",
     "AttendanceRecordCreate",
