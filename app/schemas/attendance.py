@@ -1,7 +1,8 @@
 """Attendance-related Pydantic schemas."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date as date_type
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,7 +31,7 @@ class AttendanceRecordCreate(AttendanceRecordBase):
     """Schema for creating an attendance record."""
 
     class_id: uuid.UUID
-    date: date = Field(default_factory=date.today)
+    date: date_type = Field(default_factory=date_type.today)
 
 
 class AttendanceRecordUpdate(BaseModel):
