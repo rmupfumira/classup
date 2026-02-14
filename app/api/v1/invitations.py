@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db_session
+from app.database import get_db
 from app.schemas.common import APIResponse
 from app.schemas.invitation import (
     InvitationCreate,
@@ -31,7 +31,7 @@ async def list_invitations(
     student_id: UUID | None = None,
     page: int = 1,
     page_size: int = 20,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """List parent invitations."""
     service = get_invitation_service()
@@ -84,7 +84,7 @@ async def list_invitations(
 @require_role("SCHOOL_ADMIN", "TEACHER")
 async def create_invitation(
     data: InvitationCreate,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new parent invitation."""
     service = get_invitation_service()
@@ -140,7 +140,7 @@ async def create_invitation(
 @router.post("/verify", response_model=APIResponse)
 async def verify_invitation(
     data: InvitationVerify,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Verify an invitation code and email (public endpoint)."""
     service = get_invitation_service()
@@ -157,7 +157,7 @@ async def verify_invitation(
 @require_role("SCHOOL_ADMIN", "TEACHER")
 async def get_invitation(
     invitation_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get an invitation by ID."""
     service = get_invitation_service()
@@ -194,7 +194,7 @@ async def get_invitation(
 @require_role("SCHOOL_ADMIN")
 async def cancel_invitation(
     invitation_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Cancel an invitation."""
     service = get_invitation_service()
@@ -213,7 +213,7 @@ async def cancel_invitation(
 @require_role("SCHOOL_ADMIN", "TEACHER")
 async def resend_invitation(
     invitation_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Resend an invitation email with a new code."""
     service = get_invitation_service()

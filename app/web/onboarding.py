@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db_session
+from app.database import get_db
 from app.dependencies import get_current_user, get_templates
 from app.services.onboarding_service import get_onboarding_service
 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 @router.get("", response_class=HTMLResponse)
 async def onboarding_start(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -25,7 +25,7 @@ async def onboarding_start(
 @router.get("/step1", response_class=HTMLResponse)
 async def onboarding_step1(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -51,7 +51,7 @@ async def onboarding_step1_submit(
     address: str = Form(""),
     phone: str = Form(""),
     timezone: str = Form("Africa/Johannesburg"),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Submit step 1 and redirect to step 2."""
@@ -71,7 +71,7 @@ async def onboarding_step1_submit(
 @router.get("/step2", response_class=HTMLResponse)
 async def onboarding_step2(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -94,7 +94,7 @@ async def onboarding_step2(
 async def onboarding_step2_submit(
     request: Request,
     education_type: str = Form(...),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Submit step 2 and redirect to step 3."""
@@ -117,7 +117,7 @@ async def onboarding_step2_submit(
 @router.get("/step3", response_class=HTMLResponse)
 async def onboarding_step3(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -139,7 +139,7 @@ async def onboarding_step3(
 @router.post("/step3", response_class=HTMLResponse)
 async def onboarding_step3_submit(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Submit step 3 and redirect to step 4."""
@@ -171,7 +171,7 @@ async def onboarding_step3_submit(
 @router.get("/step4", response_class=HTMLResponse)
 async def onboarding_step4(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -193,7 +193,7 @@ async def onboarding_step4(
 @router.post("/step4", response_class=HTMLResponse)
 async def onboarding_step4_submit(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Submit step 4 and redirect to step 5."""
@@ -224,7 +224,7 @@ async def onboarding_step4_submit(
 @router.get("/step5", response_class=HTMLResponse)
 async def onboarding_step5(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -246,7 +246,7 @@ async def onboarding_step5(
 @router.post("/complete", response_class=HTMLResponse)
 async def onboarding_complete(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Mark onboarding as complete and redirect to dashboard."""
@@ -259,7 +259,7 @@ async def onboarding_complete(
 @router.get("/skip", response_class=HTMLResponse)
 async def onboarding_skip(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Skip onboarding and go to dashboard."""

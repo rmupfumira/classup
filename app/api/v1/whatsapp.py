@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database import get_db_session
+from app.database import get_db
 from app.services.whatsapp_service import get_whatsapp_service
 
 logger = logging.getLogger(__name__)

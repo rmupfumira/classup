@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db_session
+from app.database import get_db
 from app.schemas.common import APIResponse
 from app.schemas.import_job import (
     ImportFieldInfo,
@@ -49,7 +49,7 @@ async def get_import_fields():
 async def upload_csv(
     file: UploadFile = File(...),
     import_type: ImportType = Form(...),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Upload a CSV file for import."""
     service = get_import_service()
@@ -98,7 +98,7 @@ async def upload_csv(
 async def start_import(
     job_id: UUID,
     data: ImportJobStart,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Start processing an import job with column mapping."""
     service = get_import_service()
@@ -134,7 +134,7 @@ async def start_import(
 @require_role("SCHOOL_ADMIN")
 async def get_job(
     job_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get an import job by ID."""
     service = get_import_service()
@@ -171,7 +171,7 @@ async def get_job(
 @require_role("SCHOOL_ADMIN")
 async def get_job_errors(
     job_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get errors from an import job."""
     service = get_import_service()
@@ -191,7 +191,7 @@ async def get_job_errors(
 async def list_jobs(
     page: int = 1,
     page_size: int = 20,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """List import jobs."""
     service = get_import_service()

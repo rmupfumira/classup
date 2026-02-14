@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db_session
+from app.database import get_db
 from app.dependencies import get_current_user, get_templates
 from app.models import Tenant
 from app.utils.permissions import require_role
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 @require_role("SCHOOL_ADMIN")
 async def settings_index(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -29,7 +29,7 @@ async def settings_index(
 @require_role("SCHOOL_ADMIN")
 async def settings_general(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -58,7 +58,7 @@ async def settings_general_save(
     address: str = Form(""),
     timezone: str = Form("Africa/Johannesburg"),
     language: str = Form("en"),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Save general settings."""
@@ -85,7 +85,7 @@ async def settings_general_save(
 @require_role("SCHOOL_ADMIN")
 async def settings_features(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -111,7 +111,7 @@ async def settings_features(
 @require_role("SCHOOL_ADMIN")
 async def settings_features_save(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Save features settings."""
@@ -161,7 +161,7 @@ async def settings_features_save(
 @require_role("SCHOOL_ADMIN")
 async def settings_terminology(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -195,7 +195,7 @@ async def settings_terminology_save(
     classes: str = Form("classes"),
     parent: str = Form("parent"),
     parents: str = Form("parents"),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Save terminology settings."""
@@ -224,7 +224,7 @@ async def settings_terminology_save(
 @require_role("SCHOOL_ADMIN")
 async def settings_webhooks(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):

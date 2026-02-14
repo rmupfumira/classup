@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db_session
+from app.database import get_db
 from app.dependencies import get_current_user, get_templates
 from app.services.import_service import IMPORT_FIELDS, get_import_service
 from app.utils.permissions import require_role
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 @require_role("SCHOOL_ADMIN")
 async def imports_list(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -39,7 +39,7 @@ async def imports_list(
 @require_role("SCHOOL_ADMIN")
 async def imports_upload(
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -58,7 +58,7 @@ async def imports_upload(
 async def imports_detail(
     request: Request,
     job_id: str,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):
@@ -90,7 +90,7 @@ async def imports_detail(
 async def imports_mapping(
     request: Request,
     job_id: str,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     templates=Depends(get_templates),
 ):

@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db_session
+from app.database import get_db
 from app.schemas.common import APIResponse
 from app.schemas.webhook import (
     WebhookEndpointCreate,
@@ -27,7 +27,7 @@ router = APIRouter()
 @router.get("", response_model=APIResponse)
 @require_role("SCHOOL_ADMIN")
 async def list_endpoints(
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """List all webhook endpoints."""
     service = get_webhook_service()
@@ -55,7 +55,7 @@ async def list_endpoints(
 @require_role("SCHOOL_ADMIN")
 async def create_endpoint(
     data: WebhookEndpointCreate,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new webhook endpoint."""
     service = get_webhook_service()
@@ -86,7 +86,7 @@ async def create_endpoint(
 @require_role("SCHOOL_ADMIN")
 async def get_endpoint(
     endpoint_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a webhook endpoint."""
     service = get_webhook_service()
@@ -114,7 +114,7 @@ async def get_endpoint(
 async def update_endpoint(
     endpoint_id: UUID,
     data: WebhookEndpointUpdate,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a webhook endpoint."""
     service = get_webhook_service()
@@ -149,7 +149,7 @@ async def update_endpoint(
 @require_role("SCHOOL_ADMIN")
 async def delete_endpoint(
     endpoint_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a webhook endpoint."""
     service = get_webhook_service()
@@ -169,7 +169,7 @@ async def delete_endpoint(
 async def get_endpoint_events(
     endpoint_id: UUID,
     limit: int = 50,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get recent events for a webhook endpoint."""
     service = get_webhook_service()
@@ -201,7 +201,7 @@ async def get_endpoint_events(
 async def test_endpoint(
     endpoint_id: UUID,
     data: WebhookTestRequest,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Send a test event to a webhook endpoint."""
     service = get_webhook_service()
@@ -220,7 +220,7 @@ async def test_endpoint(
 async def retry_event(
     endpoint_id: UUID,
     event_id: UUID,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ):
     """Retry a failed webhook event."""
     service = get_webhook_service()
