@@ -6,13 +6,6 @@ from app.models.user import User, Role
 from app.models.student import Student, ParentStudent, Gender, AgeGroup
 from app.models.school_class import SchoolClass, TeacherClass
 from app.models.attendance import AttendanceRecord, AttendanceStatus
-from app.models.message import (
-    Message,
-    MessageRecipient,
-    MessageAttachment,
-    MessageType,
-    MessageStatus,
-)
 from app.models.report import (
     DailyReport,
     ReportTemplate,
@@ -32,6 +25,7 @@ from app.models.webhook import (
     generate_webhook_secret,
 )
 from app.models.import_job import BulkImportJob, ImportType, ImportStatus
+from app.models.academic import Subject, ClassSubject, GradingSystem
 
 __all__ = [
     # Base
@@ -58,12 +52,6 @@ __all__ = [
     # Attendance
     "AttendanceRecord",
     "AttendanceStatus",
-    # Message
-    "Message",
-    "MessageRecipient",
-    "MessageAttachment",
-    "MessageType",
-    "MessageStatus",
     # Report
     "DailyReport",
     "ReportTemplate",
@@ -91,4 +79,8 @@ __all__ = [
     "BulkImportJob",
     "ImportType",
     "ImportStatus",
+    # Academic
+    "Subject",
+    "ClassSubject",
+    "GradingSystem",
 ]

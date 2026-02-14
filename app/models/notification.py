@@ -7,7 +7,6 @@ from enum import Enum
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_extensions import uuid7
 
 from app.models.base import Base, TimestampMixin
 
@@ -22,10 +21,6 @@ class NotificationType(str, Enum):
     # Reports
     REPORT_FINALIZED = "REPORT_FINALIZED"
     REPORT_READY = "REPORT_READY"
-
-    # Messaging
-    MESSAGE_RECEIVED = "MESSAGE_RECEIVED"
-    ANNOUNCEMENT = "ANNOUNCEMENT"
 
     # Files
     PHOTO_SHARED = "PHOTO_SHARED"
@@ -59,7 +54,7 @@ class Notification(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -101,7 +96,6 @@ class Notification(Base, TimestampMixin):
             return None
 
         url_map = {
-            "message": f"/messages/{self.reference_id}",
             "report": f"/reports/{self.reference_id}",
             "attendance": f"/attendance/{self.reference_id}",
             "student": f"/students/{self.reference_id}",

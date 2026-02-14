@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Create Tenant - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/admin/tenants"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Create New Tenant</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Add a new school or organization to the platform
+            </p>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
+        <form id="create-tenant-form" class="space-y-6">
+            <!-- Basic Information -->
+            <div>
+                <h3 class="text-sm font-medium text-neutral-800 mb-4">Basic Information</h3>
+                <div class="space-y-4">
+                    <!-- Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Organization Name <span class="text-error-500">*</span>
+                        </label>
+                        <input type="text" id="name" name="name" required
+                               placeholder="e.g., Sunshine Daycare"
+                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+
+                    <!-- Slug -->
+                    <div>
+                        <label for="slug" class="block text-sm font-medium text-neutral-700 mb-1">
+                            URL Slug
+                        </label>
+                        <div class="flex items-center">
+                            <span class="px-3 py-2 text-sm text-neutral-500 bg-neutral-100 border border-r-0 border-neutral-300 rounded-l-md">
+                                classup.co.za/
+                            </span>
+                            <input type="text" id="slug" name="slug"
+                                   placeholder="sunshine-daycare"
+                                   pattern="^[a-z0-9-]+$"
+                                   class="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-r-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <p class="mt-1 text-xs text-neutral-500">Leave blank to auto-generate from name. Use lowercase letters, numbers, and hyphens only.</p>
+                    </div>
+
+                    <!-- Education Type -->
+                    <div>
+                        <label for="education_type" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Education Type <span class="text-error-500">*</span>
+                        </label>
+                        <select id="education_type" name="education_type" required
+                                class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="DAYCARE">Daycare / Early Childhood</option>
+                            <option value="PRIMARY_SCHOOL">Primary School</option>
+                            <option value="HIGH_SCHOOL">High School</option>
+                            <option value="K12">K-12 (Full Range)</option>
+                            <option value="COMBINED">Combined / Other</option>
+                        </select>
+                        <p class="mt-1 text-xs text-neutral-500">This determines default features and terminology.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-neutral-200"></div>
+
+            <!-- Contact Information -->
+            <div>
+                <h3 class="text-sm font-medium text-neutral-800 mb-4">Contact Information</h3>
+                <div class="space-y-4">
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Email Address <span class="text-error-500">*</span>
+                        </label>
+                        <input type="email" id="email" name="email" required
+                               placeholder="admin@school.com"
+                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Phone Number
+                        </label>
+                        <input type="tel" id="phone" name="phone"
+                               placeholder="+27 12 345 6789"
+                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label for="address" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Address
+                        </label>
+                        <textarea id="address" name="address" rows="3"
+                                  placeholder="123 Main Street, City, Province"
+                                  class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-neutral-200"></div>
+
+            <!-- Form Actions -->
+            <div class="flex items-center justify-end gap-3">
+                <a href="/admin/tenants"
+                   class="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" id="submit-btn"
+                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4 mr-1.5 hidden" id="submit-spinner" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Create Tenant
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Info Box -->
+    <div class="bg-primary-50 border border-primary-200 rounded-lg p-4">
+        <div class="flex gap-3">
+            <svg class="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="text-sm text-primary-800">
+                <p class="font-medium">What happens next?</p>
+                <p class="mt-1 text-primary-700">
+                    After creating the tenant, you'll need to create an admin user for them.
+                    The admin will complete the onboarding wizard to set up their school.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('create-tenant-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = document.getElementById('submit-spinner');
+
+    // Disable button and show spinner
+    submitBtn.disabled = true;
+    spinner.classList.remove('hidden');
+
+    const formData = new FormData(this);
+    const data = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        education_type: formData.get('education_type'),
+        phone: formData.get('phone') || null,
+        address: formData.get('address') || null,
+        slug: formData.get('slug') || null
+    };
+
+    try {
+        const response = await fetch('/api/v1/admin/tenants', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // Show success and redirect
+            if (window.ClassUp && window.ClassUp.toast) {
+                window.ClassUp.toast('Tenant created successfully', 'success');
+            }
+            window.location.href = '/admin/tenants/' + result.data.id;
+        } else {
+            // Show error
+            const message = result.message || 'Failed to create tenant';
+            if (window.ClassUp && window.ClassUp.toast) {
+                window.ClassUp.toast(message, 'error');
+            } else {
+                alert(message);
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        if (window.ClassUp && window.ClassUp.toast) {
+            window.ClassUp.toast('An error occurred. Please try again.', 'error');
+        } else {
+            alert('An error occurred. Please try again.');
+        }
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add('hidden');
+    }
+});
+
+// Auto-generate slug from name
+document.getElementById('name').addEventListener('input', function() {
+    const slugInput = document.getElementById('slug');
+    if (!slugInput.value) {
+        // Only auto-fill if slug is empty
+        const slug = this.value
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .substring(0, 100);
+        slugInput.placeholder = slug || 'sunshine-daycare';
+    }
+});
+</script>
+{% endblock %}

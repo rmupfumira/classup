@@ -51,8 +51,7 @@ numpy==2.2.1
 # Internationalization
 babel==2.16.0
 
-# UUID7 support
-uuid7==0.1.0
+# UUID support (using Python's built-in uuid module)
 
 # File type detection
 python-magic==0.4.27

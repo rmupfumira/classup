@@ -15,7 +15,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_extensions import uuid7
 
 from app.models.base import Base, TenantScopedModel, TimestampMixin
 
@@ -64,6 +63,12 @@ class SchoolClass(TenantScopedModel):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    class_subjects = relationship(
+        "ClassSubject",
+        back_populates="school_class",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     @property
     def student_count(self) -> int:
@@ -98,7 +103,7 @@ class TeacherClass(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

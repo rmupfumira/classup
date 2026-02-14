@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Subjects for {{ school_class.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="/classes/{{ school_class.id }}" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Manage Subjects</h1>
+            <p class="text-gray-500">{{ school_class.name }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Assigned Subjects -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="font-semibold text-gray-900">Assigned Subjects ({{ class_subjects | length }})</h2>
+                <p class="text-sm text-gray-500">Subjects included in report cards for this class</p>
+            </div>
+
+            {% if class_subjects %}
+            <div class="divide-y divide-gray-100" id="assigned-subjects">
+                {% for cs in class_subjects %}
+                <div class="p-4 flex items-center justify-between hover:bg-gray-50" data-subject-id="{{ cs.subject_id }}">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary-100 text-primary-700 font-bold text-sm">
+                            {{ cs.subject.code }}
+                        </span>
+                        <div>
+                            <p class="font-medium text-gray-900">{{ cs.subject.name }}</p>
+                            <p class="text-sm text-gray-500">
+                                {{ cs.effective_total_marks }} marks
+                                {% if not cs.is_compulsory %}
+                                <span class="ml-2 text-amber-600">(Optional)</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                onclick="editClassSubject('{{ cs.id }}', '{{ cs.subject_id }}', {{ cs.total_marks or 'null' }}, {{ cs.is_compulsory | lower }})"
+                                class="text-gray-400 hover:text-gray-600 p-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button type="button"
+                                onclick="removeSubject('{{ cs.subject_id }}', '{{ cs.subject.name }}')"
+                                class="text-gray-400 hover:text-red-600 p-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-8 text-center text-gray-500">
+                <p>No subjects assigned yet.</p>
+                <p class="text-sm">Add subjects from the available list.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Available Subjects -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="font-semibold text-gray-900">Available Subjects ({{ available_subjects | length }})</h2>
+                <p class="text-sm text-gray-500">Click to add subjects to this class</p>
+            </div>
+
+            {% if available_subjects %}
+            <div class="divide-y divide-gray-100" id="available-subjects">
+                {% for subject in available_subjects %}
+                <div class="p-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                     onclick="addSubject('{{ subject.id }}', '{{ subject.name }}')"
+                     data-subject-id="{{ subject.id }}">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-gray-600 font-bold text-sm">
+                            {{ subject.code }}
+                        </span>
+                        <div>
+                            <p class="font-medium text-gray-900">{{ subject.name }}</p>
+                            <p class="text-sm text-gray-500">
+                                {{ subject.default_total_marks }} marks
+                                {% if subject.category %}· {{ subject.category }}{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-8 text-center text-gray-500">
+                <p>All subjects have been assigned.</p>
+                <a href="/settings/academic/subjects/create" class="text-primary-600 hover:text-primary-700 text-sm">
+                    Create new subject
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+            <p class="text-sm text-gray-600">
+                Need to create new subjects?
+            </p>
+            <a href="/settings/academic/subjects"
+               class="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                Manage All Subjects
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<dialog id="edit-modal" class="rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+    <div class="p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Edit Subject Settings</h3>
+        <form id="edit-form" class="space-y-4">
+            <input type="hidden" id="edit-subject-id">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Total Marks</label>
+                <input type="number" id="edit-total-marks" min="1" max="1000"
+                       placeholder="Leave empty to use default"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                <p class="text-sm text-gray-500 mt-1">Override the default marks for this class</p>
+            </div>
+            <div>
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" id="edit-compulsory"
+                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm font-medium text-gray-700">Compulsory Subject</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" onclick="closeEditModal()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const classId = '{{ school_class.id }}';
+
+async function addSubject(subjectId, subjectName) {
+    try {
+        const response = await fetch(`/api/v1/academic/classes/${classId}/subjects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                subject_id: subjectId,
+                is_compulsory: true,
+            }),
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.detail || 'Failed to add subject');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred');
+    }
+}
+
+async function removeSubject(subjectId, subjectName) {
+    if (!confirm(`Remove "${subjectName}" from this class?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/academic/classes/${classId}/subjects/${subjectId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.detail || 'Failed to remove subject');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred');
+    }
+}
+
+function editClassSubject(classSubjectId, subjectId, totalMarks, isCompulsory) {
+    document.getElementById('edit-subject-id').value = subjectId;
+    document.getElementById('edit-total-marks').value = totalMarks || '';
+    document.getElementById('edit-compulsory').checked = isCompulsory;
+    document.getElementById('edit-modal').showModal();
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').close();
+}
+
+document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const subjectId = document.getElementById('edit-subject-id').value;
+    const totalMarks = document.getElementById('edit-total-marks').value;
+    const isCompulsory = document.getElementById('edit-compulsory').checked;
+
+    try {
+        const response = await fetch(`/api/v1/academic/classes/${classId}/subjects/${subjectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                total_marks: totalMarks ? parseInt(totalMarks) : null,
+                is_compulsory: isCompulsory,
+            }),
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.detail || 'Failed to update');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred');
+    }
+});
+</script>
+{% endblock %}

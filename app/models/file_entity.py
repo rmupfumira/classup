@@ -6,7 +6,6 @@ from enum import Enum
 from sqlalchemy import BigInteger, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_extensions import uuid7
 
 from app.models.base import TenantScopedModel
 

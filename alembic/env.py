@@ -19,9 +19,6 @@ from app.models import (
     SchoolClass,
     TeacherClass,
     AttendanceRecord,
-    Message,
-    MessageRecipient,
-    MessageAttachment,
     DailyReport,
     ReportTemplate,
     FileEntity,
@@ -30,6 +27,9 @@ from app.models import (
     WebhookEndpoint,
     WebhookEvent,
     BulkImportJob,
+    Subject,
+    ClassSubject,
+    GradingSystem,
 )
 
 # This is the Alembic Config object

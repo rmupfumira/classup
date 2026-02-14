@@ -9,7 +9,6 @@ from app.services.i18n_service import I18nService, get_i18n_service
 from app.services.import_service import ImportService, get_import_service
 from app.services.invitation_service import InvitationService, get_invitation_service
 from app.services.onboarding_service import OnboardingService, get_onboarding_service
-from app.services.message_service import MessageService, get_message_service
 from app.services.notification_service import NotificationService, get_notification_service
 from app.services.realtime_service import ConnectionManager, get_connection_manager
 from app.services.report_service import ReportService, get_report_service
@@ -29,8 +28,6 @@ __all__ = [
     "get_class_service",
     "AttendanceService",
     "get_attendance_service",
-    "MessageService",
-    "get_message_service",
     "FileService",
     "get_file_service",
     "ReportService",

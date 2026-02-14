@@ -17,7 +17,6 @@ class WebhookEventType(str, Enum):
     ATTENDANCE_BULK = "attendance.bulk"
     REPORT_CREATED = "report.created"
     REPORT_FINALIZED = "report.finalized"
-    MESSAGE_SENT = "message.sent"
     TEACHER_ADDED = "teacher.added"
     PARENT_REGISTERED = "parent.registered"
     CLASS_CREATED = "class.created"

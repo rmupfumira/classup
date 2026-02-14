@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Validation Error - {{ app_name }}{% endblock %}
+
+{% block auth_content %}
+<div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <div class="text-center max-w-md">
+        <p class="text-9xl font-bold text-amber-500">422</p>
+        <h1 class="mt-4 text-3xl font-bold text-gray-900">Validation Error</h1>
+        <p class="mt-2 text-gray-600">{{ message | default('The submitted data was invalid.') }}</p>
+        {% if errors %}
+        <ul class="mt-4 text-left bg-red-50 rounded-lg p-4 space-y-2">
+            {% for error in errors %}
+            <li class="text-red-700 text-sm">
+                {% if error.field and error.field != 'general' %}
+                <span class="font-medium">{{ error.field }}:</span>
+                {% endif %}
+                {{ error.message }}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <div class="mt-6">
+            <a href="javascript:history.back()"
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg
+                      text-sm font-medium text-white bg-primary-600 hover:bg-primary-700">
+                Go back
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

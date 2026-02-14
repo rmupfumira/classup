@@ -16,7 +16,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_extensions import uuid7
 
 from app.models.base import Base, TimestampMixin
 
@@ -43,7 +42,7 @@ class AttendanceRecord(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

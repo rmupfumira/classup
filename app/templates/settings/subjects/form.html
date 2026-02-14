@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}{% if subject %}Edit{% else %}Add{% endif %} Subject - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="/settings/academic/subjects" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900">
+            {% if subject %}Edit Subject{% else %}Add Subject{% endif %}
+        </h1>
+    </div>
+
+    <!-- Form -->
+    <form id="subject-form" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Name -->
+            <div class="md:col-span-2">
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                    Subject Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="name" name="name" required
+                       value="{{ subject.name if subject else '' }}"
+                       placeholder="e.g., Mathematics, English Language"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <!-- Code -->
+            <div>
+                <label for="code" class="block text-sm font-medium text-gray-700 mb-1">
+                    Subject Code <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="code" name="code" required maxlength="20"
+                       value="{{ subject.code if subject else '' }}"
+                       placeholder="e.g., MATH, ENG"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 uppercase">
+                <p class="text-sm text-gray-500 mt-1">Short code for the subject (max 20 characters)</p>
+            </div>
+
+            <!-- Default Total Marks -->
+            <div>
+                <label for="default_total_marks" class="block text-sm font-medium text-gray-700 mb-1">
+                    Default Total Marks
+                </label>
+                <input type="number" id="default_total_marks" name="default_total_marks"
+                       value="{{ subject.default_total_marks if subject else 100 }}"
+                       min="1" max="1000"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <!-- Category -->
+            <div>
+                <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                </label>
+                <input type="text" id="category" name="category" list="category-list"
+                       value="{{ subject.category if subject else '' }}"
+                       placeholder="e.g., Core, Elective, Language"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                <datalist id="category-list">
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <!-- Display Order -->
+            <div>
+                <label for="display_order" class="block text-sm font-medium text-gray-700 mb-1">
+                    Display Order
+                </label>
+                <input type="number" id="display_order" name="display_order"
+                       value="{{ subject.display_order if subject else 0 }}"
+                       min="0"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                <p class="text-sm text-gray-500 mt-1">Lower numbers appear first</p>
+            </div>
+
+            <!-- Description -->
+            <div class="md:col-span-2">
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                </label>
+                <textarea id="description" name="description" rows="3"
+                          placeholder="Optional description of the subject..."
+                          class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">{{ subject.description if subject else '' }}</textarea>
+            </div>
+
+            {% if subject %}
+            <!-- Status (only for edit) -->
+            <div class="md:col-span-2">
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" id="is_active" name="is_active"
+                           {% if subject.is_active %}checked{% endif %}
+                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm font-medium text-gray-700">Active</span>
+                </label>
+                <p class="text-sm text-gray-500 mt-1 ml-7">Inactive subjects won't appear in report cards</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <a href="/settings/academic/subjects"
+               class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+                {% if subject %}Save Changes{% else %}Add Subject{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('subject-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    const isEdit = {{ 'true' if subject else 'false' }};
+    const subjectId = '{{ subject.id if subject else "" }}';
+
+    const data = {
+        name: form.name.value,
+        code: form.code.value.toUpperCase(),
+        description: form.description.value || null,
+        default_total_marks: parseInt(form.default_total_marks.value) || 100,
+        category: form.category.value || null,
+        display_order: parseInt(form.display_order.value) || 0,
+    };
+
+    if (isEdit) {
+        data.is_active = form.is_active?.checked ?? true;
+    }
+
+    try {
+        const url = isEdit
+            ? `/api/v1/academic/subjects/${subjectId}`
+            : '/api/v1/academic/subjects';
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            window.location.href = '/settings/academic/subjects';
+        } else {
+            alert(result.detail || result.message || 'An error occurred');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while saving the subject');
+    }
+});
+
+// Auto-uppercase the code field
+document.getElementById('code').addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase();
+});
+</script>
+{% endblock %}

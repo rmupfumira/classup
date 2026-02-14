@@ -17,7 +17,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_extensions import uuid7
 
 from app.models.base import Base, TimestampMixin
 
@@ -37,9 +36,6 @@ class WebhookEventType(str, Enum):
     # Reports
     REPORT_CREATED = "report.created"
     REPORT_FINALIZED = "report.finalized"
-
-    # Messages
-    MESSAGE_SENT = "message.sent"
 
     # Users
     TEACHER_ADDED = "teacher.added"
@@ -80,7 +76,7 @@ class WebhookEndpoint(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -130,7 +126,7 @@ class WebhookEvent(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

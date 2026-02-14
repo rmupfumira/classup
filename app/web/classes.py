@@ -195,6 +195,17 @@ async def class_edit_form(
     )
 
 
+@router.get("/{class_id}/subjects")
+async def class_subjects_redirect(
+    class_id: uuid.UUID,
+):
+    """Redirect to the class subjects management page."""
+    return RedirectResponse(
+        url=f"/settings/academic/classes/{class_id}/subjects",
+        status_code=302,
+    )
+
+
 @router.get("/{class_id}/manage-teachers", response_class=HTMLResponse)
 async def manage_teachers(
     request: Request,

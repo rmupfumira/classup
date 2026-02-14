@@ -18,12 +18,17 @@ from app.exceptions import (
 )
 from app.templates_config import templates
 
-# Configure logging
+# Configure logging - force DEBUG level for development
+log_level = logging.DEBUG if settings.is_development else getattr(logging, settings.app_log_level)
 logging.basicConfig(
-    level=getattr(logging, settings.app_log_level),
+    level=log_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    force=True,  # Override any existing configuration
 )
+# Set all app loggers to DEBUG
+logging.getLogger("app").setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.info(f"Logging configured at level: {logging.getLevelName(log_level)}")
 
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent

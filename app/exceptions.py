@@ -1,8 +1,13 @@
 """Custom exception classes and global exception handlers."""
 
+import logging
+import traceback
+
 from fastapi import Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from starlette.templating import Jinja2Templates
+
+logger = logging.getLogger(__name__)
 
 
 class ClassUpException(Exception):
@@ -80,6 +85,8 @@ def create_exception_handlers(templates: Jinja2Templates):
 
     async def classup_exception_handler(request: Request, exc: ClassUpException):
         """Handle ClassUp custom exceptions."""
+        logger.warning(f"ClassUpException on {request.method} {request.url.path}: {exc.message} (status={exc.status_code})")
+
         if wants_json(request):
             content = {
                 "status": "error",
@@ -110,6 +117,8 @@ def create_exception_handlers(templates: Jinja2Templates):
 
     async def validation_exception_handler(request: Request, exc: ValidationException):
         """Handle validation exceptions with field-level errors."""
+        logger.warning(f"ValidationException on {request.method} {request.url.path}: {exc.errors}")
+
         if wants_json(request):
             return JSONResponse(
                 status_code=exc.status_code,
@@ -120,15 +129,34 @@ def create_exception_handlers(templates: Jinja2Templates):
                 },
             )
 
-        # For HTML, redirect back with error messages
-        return templates.TemplateResponse(
-            "errors/422.html",
-            {"request": request, "message": exc.message, "errors": exc.errors},
-            status_code=exc.status_code,
-        )
+        # For HTML, use generic error template with validation errors
+        try:
+            return templates.TemplateResponse(
+                "errors/422.html",
+                {"request": request, "message": exc.message, "errors": exc.errors},
+                status_code=exc.status_code,
+            )
+        except Exception:
+            # Fallback to generic error template
+            return templates.TemplateResponse(
+                "errors/generic.html",
+                {
+                    "request": request,
+                    "message": exc.message,
+                    "status_code": exc.status_code,
+                },
+                status_code=exc.status_code,
+            )
 
     async def generic_exception_handler(request: Request, exc: Exception):
         """Handle unexpected exceptions."""
+        # Log the full exception with traceback
+        logger.error(f"Unhandled exception on {request.method} {request.url.path}")
+        logger.error(f"Exception: {type(exc).__name__}: {exc}")
+        # Use format_exception to get traceback from the exception object
+        tb_lines = traceback.format_exception(type(exc), exc, exc.__traceback__)
+        logger.error("".join(tb_lines))
+
         if wants_json(request):
             return JSONResponse(
                 status_code=500,

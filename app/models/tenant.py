@@ -7,7 +7,6 @@ from enum import Enum
 from sqlalchemy import Boolean, DateTime, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_extensions import uuid7
 
 from app.models.base import Base, TimestampMixin, SoftDeleteMixin
 
@@ -33,7 +32,7 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -61,6 +60,8 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     users = relationship("User", back_populates="tenant", lazy="selectin")
     students = relationship("Student", back_populates="tenant", lazy="selectin")
     school_classes = relationship("SchoolClass", back_populates="tenant", lazy="selectin")
+    subjects = relationship("Subject", back_populates="tenant", lazy="selectin")
+    grading_systems = relationship("GradingSystem", back_populates="tenant", lazy="selectin")
 
     def get_setting(self, key: str, default: any = None) -> any:
         """Get a setting value by dot-notation key."""

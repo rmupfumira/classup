@@ -236,62 +236,6 @@ class NotificationService:
             reference_id=report_id,
         )
 
-    async def notify_message_received(
-        self,
-        db: AsyncSession,
-        recipient_ids: list[uuid.UUID],
-        sender_name: str,
-        message_preview: str,
-        message_id: uuid.UUID,
-    ) -> list[Notification]:
-        """Send message notification to recipients."""
-        return await self.create_bulk_notifications(
-            db=db,
-            user_ids=recipient_ids,
-            title=f"New Message from {sender_name}",
-            body=message_preview[:100] + ("..." if len(message_preview) > 100 else ""),
-            notification_type="MESSAGE_RECEIVED",
-            reference_type="message",
-            reference_id=message_id,
-        )
-
-    async def notify_announcement(
-        self,
-        db: AsyncSession,
-        recipient_ids: list[uuid.UUID],
-        title: str,
-        preview: str,
-        message_id: uuid.UUID,
-    ) -> list[Notification]:
-        """Send announcement notification."""
-        return await self.create_bulk_notifications(
-            db=db,
-            user_ids=recipient_ids,
-            title=title,
-            body=preview[:100] + ("..." if len(preview) > 100 else ""),
-            notification_type="ANNOUNCEMENT",
-            reference_type="message",
-            reference_id=message_id,
-        )
-
-    async def notify_photo_shared(
-        self,
-        db: AsyncSession,
-        recipient_ids: list[uuid.UUID],
-        sender_name: str,
-        context: str,  # "class" or student name
-        message_id: uuid.UUID,
-    ) -> list[Notification]:
-        """Send photo sharing notification."""
-        return await self.create_bulk_notifications(
-            db=db,
-            user_ids=recipient_ids,
-            title="New Photos Shared",
-            body=f"{sender_name} shared photos{' of ' + context if context else ''}.",
-            notification_type="PHOTO_SHARED",
-            reference_type="message",
-            reference_id=message_id,
-        )
 
 
 # Singleton instance

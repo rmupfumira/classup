@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}{{ report.student.first_name }}'s Report Card - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Back Button -->
+    <a href="/reports" class="inline-flex items-center text-gray-500 hover:text-gray-700 mb-4">
+        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Back
+    </a>
+
+    <!-- Report Card Container -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-0">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-6 print:bg-white print:text-black print:border-b-2 print:border-black">
+            <div class="flex items-center justify-between">
+                <div>
+                    {% if tenant and tenant.logo_path %}
+                    <img src="{{ tenant.logo_path }}" alt="{{ tenant.name }}" class="h-16 mb-2 print:h-12">
+                    {% endif %}
+                    <h1 class="text-2xl font-bold">{{ tenant.name if tenant else 'School' }}</h1>
+                    <p class="text-primary-100 print:text-gray-600">{{ report.template.name }}</p>
+                </div>
+                <div class="text-right">
+                    {% if permissions.is_staff %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        {% if report.status == 'FINALIZED' %}bg-green-500 bg-opacity-20 text-green-100
+                        {% else %}bg-amber-500 bg-opacity-20 text-amber-100{% endif %} print:hidden">
+                        {{ report.status }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Information -->
+        <div class="p-6 bg-gray-50 border-b border-gray-200">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider">Student Name</p>
+                    <p class="font-semibold text-gray-900">{{ report.student.first_name }} {{ report.student.last_name }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider">Class</p>
+                    <p class="font-semibold text-gray-900">{{ report.school_class.name if report.school_class else '-' }}</p>
+                </div>
+                {% set info_section = report.report_data.sections.get('student_info', {}) if report.report_data and report.report_data.sections else {} %}
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider">Term</p>
+                    <p class="font-semibold text-gray-900">{{ info_section.get('term', '-') }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider">Academic Year</p>
+                    <p class="font-semibold text-gray-900">{{ info_section.get('year', '-') }}</p>
+                </div>
+            </div>
+            {% if info_section.get('days_present') or info_section.get('days_absent') %}
+            <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider">Days Present</p>
+                    <p class="font-semibold text-green-600">{{ info_section.get('days_present', '-') }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider">Days Absent</p>
+                    <p class="font-semibold text-red-600">{{ info_section.get('days_absent', '-') }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider">Total Days</p>
+                    <p class="font-semibold text-gray-900">{{ info_section.get('total_days', '-') }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Academic Grades Section -->
+        {% for section in report.template.sections %}
+        {% if section.type == 'ACADEMIC_GRADES' %}
+        {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
+        {# Use class_subjects if available, otherwise fall back to template subjects #}
+        {% set subjects_list = class_subjects if class_subjects else section.subjects %}
+        {# Use grading_system from database if available, otherwise fall back to template grading #}
+        {% set grades_config = grading_system.grades if grading_system else section.grading_system %}
+        <div class="p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-4">{{ section.title }}</h2>
+
+            <!-- Grades Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full border border-gray-300">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">#</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Subject</th>
+                            <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Total Marks</th>
+                            <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Marks Obtained</th>
+                            <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Grade</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set total_marks = {'value': 0} %}
+                        {% set total_obtained = {'value': 0} %}
+                        {% for item in subjects_list %}
+                        {# Handle both ClassSubject objects and dict subjects from template #}
+                        {% if item.subject is defined %}
+                            {# ClassSubject object #}
+                            {% set subject_id = item.subject.id | string %}
+                            {% set subject_name = item.subject.name %}
+                            {% set total_for_subject = item.effective_total_marks %}
+                        {% else %}
+                            {# Dict from template #}
+                            {% set subject_id = item.id %}
+                            {% set subject_name = item.name %}
+                            {% set total_for_subject = item.total_marks %}
+                        {% endif %}
+                        {% set subject_data = section_data.get(subject_id, {}) %}
+                        {% set marks_obtained = subject_data.get('marks_obtained', '') %}
+
+                        {# Calculate grade using configured grading system #}
+                        {% set grade = '' %}
+                        {% if marks_obtained != '' and marks_obtained is not none %}
+                            {% set percentage = (marks_obtained | float / total_for_subject * 100) | round(0) | int %}
+                            {% for g in grades_config %}
+                                {% if percentage >= g.min and percentage <= g.max %}
+                                    {% set grade = g.grade %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if total_marks.update({'value': total_marks.value + total_for_subject}) %}{% endif %}
+                            {% if total_obtained.update({'value': total_obtained.value + (marks_obtained | float)}) %}{% endif %}
+                        {% endif %}
+
+                        <tr class="{% if loop.index is odd %}bg-white{% else %}bg-gray-50{% endif %}">
+                            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600">{{ loop.index }}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">{{ subject_name }}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600 text-center">{{ total_for_subject }}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-center font-semibold">{{ marks_obtained if marks_obtained != '' else '-' }}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-sm text-center font-bold
+                                {% if grade == 'A+' or grade == 'A' %}text-green-600
+                                {% elif grade == 'B+' or grade == 'B' %}text-blue-600
+                                {% elif grade == 'C' %}text-amber-600
+                                {% elif grade == 'D' or grade == 'E' %}text-orange-600
+                                {% elif grade == 'F' %}text-red-600
+                                {% else %}text-gray-600{% endif %}">
+                                {{ grade if grade else '-' }}
+                            </td>
+                            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600">{{ subject_data.get('remarks', '') }}</td>
+                        </tr>
+                        {% endfor %}
+
+                        <!-- Total Row -->
+                        <tr class="bg-gray-100 font-bold">
+                            <td colspan="2" class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">Total</td>
+                            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-center">{{ total_marks.value }}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-center">{{ total_obtained.value | round(0) | int }}</td>
+                            <td colspan="2" class="border border-gray-300 px-4 py-2"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Summary Row -->
+            {% set summary_data = report.report_data.sections.get('summary', {}) if report.report_data and report.report_data.sections else {} %}
+            {% set overall_percentage = (total_obtained.value / total_marks.value * 100) if total_marks.value > 0 else 0 %}
+            {% set overall_grade = '' %}
+            {% for g in grades_config %}
+                {% if overall_percentage >= g.min and overall_percentage <= g.max %}
+                    {% set overall_grade = g.grade %}
+                {% endif %}
+            {% endfor %}
+
+            <div class="mt-6 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
+                {% if summary_data.get('rank') %}
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-600">Rank:</span>
+                    <span class="font-bold text-gray-900">{{ summary_data.get('rank') }}</span>
+                    {% if summary_data.get('out_of') %}
+                    <span class="text-gray-500">/ {{ summary_data.get('out_of') }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-600">Grade:</span>
+                    <span class="font-bold text-lg
+                        {% if overall_grade in ['A+', 'A'] %}text-green-600
+                        {% elif overall_grade in ['B+', 'B'] %}text-blue-600
+                        {% elif overall_grade == 'C' %}text-amber-600
+                        {% else %}text-red-600{% endif %}">
+                        {{ overall_grade or summary_data.get('grade', '-') }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-600">Overall Percentage:</span>
+                    <span class="font-bold text-gray-900">{{ overall_percentage | round(2) }}%</span>
+                </div>
+            </div>
+
+            <!-- Grading System Legend -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">
+                    Grading System{% if grading_system %} - {{ grading_system.name }}{% endif %}
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="text-xs border border-gray-300">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                {% for g in grades_config %}
+                                <th class="border border-gray-300 px-3 py-1.5 text-center">{{ g.min }}% - {{ g.max }}%</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                {% for g in grades_config %}
+                                <td class="border border-gray-300 px-3 py-1.5 text-center font-bold">{{ g.grade }}</td>
+                                {% endfor %}
+                            </tr>
+                            <tr class="bg-gray-50">
+                                {% for g in grades_config %}
+                                <td class="border border-gray-300 px-3 py-1.5 text-center text-gray-600">{{ g.description }}</td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Conduct Section -->
+        {% if section.type == 'CHECKLIST' and section.id == 'conduct' %}
+        {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
+        <div class="p-6 border-t border-gray-200">
+            <h2 class="text-lg font-bold text-gray-900 mb-4">{{ section.title }}</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {% for field in section.fields %}
+                {% set value = section_data.get(field.id, '') %}
+                {% if value %}
+                <div class="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                    <span class="text-sm text-gray-600">{{ field.label }}</span>
+                    <span class="text-sm font-medium
+                        {% if value == 'Excellent' %}text-green-600
+                        {% elif value == 'Good' %}text-blue-600
+                        {% elif value == 'Satisfactory' %}text-amber-600
+                        {% else %}text-red-600{% endif %}">
+                        {{ value }}
+                    </span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Extra-Curricular Activities -->
+        {% if section.type == 'REPEATABLE_ENTRIES' and section.id == 'extra_curricular' %}
+        {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
+        {% set entries = section_data.get('entries', []) %}
+        {% if entries %}
+        <div class="p-6 border-t border-gray-200">
+            <h2 class="text-lg font-bold text-gray-900 mb-4">{{ section.title }}</h2>
+            <div class="space-y-2">
+                {% for entry in entries %}
+                <div class="flex items-center gap-4 bg-gray-50 rounded-lg p-3">
+                    <span class="text-sm font-medium text-gray-900">{{ entry.get('activity', '') }}</span>
+                    {% if entry.get('achievement') %}
+                    <span class="text-sm text-primary-600">{{ entry.get('achievement') }}</span>
+                    {% endif %}
+                    {% if entry.get('remarks') %}
+                    <span class="text-sm text-gray-500">{{ entry.get('remarks') }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- Teacher Comments -->
+        {% if section.type == 'NARRATIVE' and section.id == 'teacher_comments' %}
+        {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
+        <div class="p-6 border-t border-gray-200">
+            <h2 class="text-lg font-bold text-gray-900 mb-4">{{ section.title }}</h2>
+            <div class="space-y-4">
+                {% if section_data.get('strengths') %}
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-1">Strengths:</p>
+                    <p class="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">{{ section_data.get('strengths') }}</p>
+                </div>
+                {% endif %}
+                {% if section_data.get('areas_for_improvement') %}
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-1">Areas for Improvement:</p>
+                    <p class="text-sm text-gray-600 bg-amber-50 p-3 rounded-lg">{{ section_data.get('areas_for_improvement') }}</p>
+                </div>
+                {% endif %}
+                {% if section_data.get('general_comments') %}
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-1">General Comments:</p>
+                    <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{{ section_data.get('general_comments') }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Signatures -->
+        {% if section.type == 'SIGNATURES' %}
+        {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
+        <div class="p-6 border-t border-gray-200">
+            <div class="grid grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="h-12 border-b border-gray-400 mb-2"></div>
+                    <p class="text-sm text-gray-600">Class Teacher</p>
+                </div>
+                <div class="text-center">
+                    <div class="h-12 border-b border-gray-400 mb-2"></div>
+                    <p class="text-sm text-gray-600">Principal</p>
+                </div>
+                <div class="text-center">
+                    <div class="h-12 border-b border-gray-400 mb-2"></div>
+                    <p class="text-sm text-gray-600">Parent/Guardian</p>
+                </div>
+            </div>
+            {% if section_data.get('date') %}
+            <p class="text-sm text-gray-500 mt-4 text-right">Date: {{ section_data.get('date') }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <!-- Footer Actions -->
+        <div class="p-6 bg-gray-50 border-t border-gray-200 flex justify-between items-center print:hidden">
+            <p class="text-sm text-gray-500">
+                {% if report.finalized_at %}
+                Finalized on {{ report.finalized_at.strftime('%b %d, %Y at %H:%M') }}
+                {% else %}
+                Created by {{ report.created_by_user.first_name }} {{ report.created_by_user.last_name }}
+                {% endif %}
+            </p>
+            <div class="flex gap-3">
+                {% if permissions.is_staff and report.status == 'DRAFT' %}
+                <a href="/reports/{{ report.id }}/edit"
+                   class="inline-flex items-center px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700">
+                    Edit Report
+                </a>
+                <button type="button" onclick="finalizeReport()"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">
+                    Finalize & Send
+                </button>
+                {% endif %}
+                <button type="button" onclick="window.print()"
+                        class="inline-flex items-center px-4 py-2 text-gray-600 hover:text-gray-800">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function finalizeReport() {
+    if (!confirm('Are you sure you want to finalize this report card? This will notify parents and the report cannot be edited afterwards.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/reports/{{ report.id }}/finalize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ notify_parents: true })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert('Report card finalized and sent to parents!');
+            window.location.reload();
+        } else {
+            alert(result.message || 'Failed to finalize report');
+        }
+    } catch (error) {
+        console.error('Error finalizing report:', error);
+        alert('An error occurred while finalizing the report');
+    }
+}
+</script>
+
+<style>
+@media print {
+    nav, .no-print, button, a[href="/reports"] {
+        display: none !important;
+    }
+    body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    .bg-gray-100 {
+        background-color: #f3f4f6 !important;
+    }
+}
+</style>
+{% endblock %}

@@ -15,7 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.exceptions import ForbiddenException, NotFoundException, ValidationException
-from app.models import FileEntity, Message, MessageAttachment, Student, User
+from app.models import FileEntity, User
 from app.models.file_entity import FileCategory
 from app.utils.tenant_context import get_current_user_id, get_tenant_id
 
@@ -225,36 +225,24 @@ class FileService:
     async def get_photos(
         self,
         db: AsyncSession,
-        class_id: uuid.UUID | None = None,
-        student_id: uuid.UUID | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> tuple[list[dict], int]:
-        """Get photos, optionally filtered by class or student."""
+    ) -> tuple[list[FileEntity], int]:
+        """Get photos."""
         tenant_id = get_tenant_id()
 
-        # Get photos from message attachments
         query = (
-            select(FileEntity, Message)
-            .join(MessageAttachment, MessageAttachment.file_entity_id == FileEntity.id)
-            .join(Message, Message.id == MessageAttachment.message_id)
+            select(FileEntity)
             .where(
                 FileEntity.tenant_id == tenant_id,
                 FileEntity.deleted_at.is_(None),
                 FileEntity.file_category == FileCategory.PHOTO.value,
-                Message.deleted_at.is_(None),
             )
             .options(selectinload(FileEntity.uploader))
         )
 
-        if class_id:
-            query = query.where(Message.class_id == class_id)
-        if student_id:
-            query = query.where(Message.student_id == student_id)
-
         # Count query
-        count_subquery = query.subquery()
-        count_query = select(func.count()).select_from(count_subquery)
+        count_query = select(func.count()).select_from(query.subquery())
         total = (await db.execute(count_query)).scalar() or 0
 
         # Apply pagination
@@ -262,48 +250,31 @@ class FileService:
         query = query.offset((page - 1) * page_size).limit(page_size)
 
         result = await db.execute(query)
-        rows = result.all()
-
-        photos = []
-        for file_entity, message in rows:
-            photos.append({
-                "file": file_entity,
-                "message": message,
-                "class_name": message.school_class.name if message.school_class else None,
-                "student_name": f"{message.student.first_name} {message.student.last_name}" if message.student else None,
-            })
+        photos = list(result.scalars().all())
 
         return photos, total
 
     async def get_documents(
         self,
         db: AsyncSession,
-        class_id: uuid.UUID | None = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> tuple[list[dict], int]:
-        """Get documents, optionally filtered by class."""
+    ) -> tuple[list[FileEntity], int]:
+        """Get documents."""
         tenant_id = get_tenant_id()
 
         query = (
-            select(FileEntity, Message)
-            .join(MessageAttachment, MessageAttachment.file_entity_id == FileEntity.id)
-            .join(Message, Message.id == MessageAttachment.message_id)
+            select(FileEntity)
             .where(
                 FileEntity.tenant_id == tenant_id,
                 FileEntity.deleted_at.is_(None),
                 FileEntity.file_category == FileCategory.DOCUMENT.value,
-                Message.deleted_at.is_(None),
             )
             .options(selectinload(FileEntity.uploader))
         )
 
-        if class_id:
-            query = query.where(Message.class_id == class_id)
-
         # Count query
-        count_subquery = query.subquery()
-        count_query = select(func.count()).select_from(count_subquery)
+        count_query = select(func.count()).select_from(query.subquery())
         total = (await db.execute(count_query)).scalar() or 0
 
         # Apply pagination
@@ -311,16 +282,7 @@ class FileService:
         query = query.offset((page - 1) * page_size).limit(page_size)
 
         result = await db.execute(query)
-        rows = result.all()
-
-        documents = []
-        for file_entity, message in rows:
-            documents.append({
-                "file": file_entity,
-                "message": message,
-                "class_name": message.school_class.name if message.school_class else None,
-                "category": self._get_document_category(message),
-            })
+        documents = list(result.scalars().all())
 
         return documents, total
 
@@ -425,17 +387,6 @@ class FileService:
         """
         entity_part = str(entity_id) if entity_id else "general"
         return f"{tenant_id}/{category.value}/{entity_part}/{file_uuid}{file_ext}"
-
-    def _get_document_category(self, message: Message) -> str:
-        """Get document category based on message type."""
-        if message.message_type == "SCHOOL_DOCUMENT":
-            return "School-wide"
-        elif message.message_type == "CLASS_DOCUMENT":
-            return "Class"
-        elif message.message_type == "STUDENT_DOCUMENT":
-            return "Student"
-        return "Other"
-
 
 def get_file_service() -> FileService:
     """Get file service instance."""

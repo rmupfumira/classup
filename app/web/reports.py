@@ -197,12 +197,45 @@ async def reports_view(
 
     # TODO: Check parent access (only own children's reports)
 
+    # Get tenant for branding on report cards
+    from app.models import Tenant
+    from app.utils.tenant_context import get_tenant_id
+    tenant_id = get_tenant_id()
+    tenant = await db.get(Tenant, tenant_id)
+
+    # Use report card template for REPORT_CARD type reports
+    template_name = "reports/view.html"
+    grading_system = None
+    class_subjects = []
+
+    if report.template and report.template.report_type == "REPORT_CARD":
+        template_name = "reports/view_report_card.html"
+
+        # Get grading system for report cards
+        from app.services.academic_service import get_academic_service
+        academic_service = get_academic_service()
+
+        # Use template's grading system or default
+        if report.template.grading_system_id:
+            grading_system = await academic_service.get_grading_system(
+                db, report.template.grading_system_id
+            )
+        if not grading_system:
+            grading_system = await academic_service.get_default_grading_system(db)
+
+        # Get class subjects for this class
+        if report.class_id:
+            class_subjects = await academic_service.get_class_subjects(db, report.class_id)
+
     return templates.TemplateResponse(
-        "reports/view.html",
+        template_name,
         {
             "request": request,
             "user": user,
             "report": report,
+            "tenant": tenant,
+            "grading_system": grading_system,
+            "class_subjects": class_subjects,
             "current_language": get_current_language(),
             "permissions": permissions,
         },

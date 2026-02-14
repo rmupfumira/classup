@@ -382,46 +382,11 @@ async function uploadDocument() {
             throw new Error(uploadResult.message || 'Failed to upload file');
         }
 
-        progressBar.style.width = '50%';
-        progressText.textContent = '50%';
-
-        // Determine message type
-        let messageType;
-        if (category === 'School-wide') {
-            messageType = 'SCHOOL_DOCUMENT';
-        } else if (category === 'Class') {
-            messageType = 'CLASS_DOCUMENT';
-        } else {
-            messageType = 'STUDENT_DOCUMENT';
-        }
-
-        // Create message with document
-        const payload = {
-            message_type: messageType,
-            subject: title || selectedFile.name,
-            body: description || `Document shared: ${selectedFile.name}`,
-            class_id: classId || null,
-            student_id: studentId || null,
-            attachment_ids: [uploadResult.data.id]
-        };
-
-        const messageResponse = await fetch('/api/v1/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify(payload)
-        });
-
         progressBar.style.width = '100%';
         progressText.textContent = '100%';
 
-        if (messageResponse.ok) {
-            alert('Document uploaded and shared successfully!');
-            window.location.href = '/documents';
-        } else {
-            const result = await messageResponse.json();
-            alert(result.message || 'Failed to share document');
-        }
+        alert('Document uploaded successfully!');
+        window.location.href = '/documents';
     } catch (error) {
         console.error('Error uploading document:', error);
         alert(error.message || 'Failed to upload document. Please try again.');

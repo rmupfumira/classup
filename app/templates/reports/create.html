@@ -317,9 +317,14 @@ function renderFormSections() {
         sectionEl.className = 'border-t border-gray-200 pt-6' + (index === 0 ? ' border-t-0 pt-0' : '');
         sectionEl.dataset.sectionId = section.id;
 
+        // Get section color class
+        const colorClass = getSectionColorClass(section.color || 'gray');
+
         let fieldsHtml = '';
 
-        if (section.type === 'CHECKLIST' || section.type === 'NARRATIVE') {
+        if (section.type === 'MEALS') {
+            fieldsHtml = renderMealsSection(section);
+        } else if (section.type === 'CHECKLIST' || section.type === 'NARRATIVE') {
             fieldsHtml = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
             section.fields.forEach(field => {
                 fieldsHtml += renderField(section.id, field);
@@ -330,12 +335,50 @@ function renderFormSections() {
         }
 
         sectionEl.innerHTML = `
-            <h3 class="text-md font-medium text-gray-900 mb-4">${section.title}</h3>
+            <h3 class="text-lg font-semibold mb-4 ${colorClass}">${section.title}</h3>
             ${fieldsHtml}
         `;
 
         container.appendChild(sectionEl);
     });
+}
+
+function getSectionColorClass(color) {
+    const colors = {
+        'purple': 'text-violet-600',
+        'violet': 'text-violet-600',
+        'green': 'text-green-600',
+        'orange': 'text-orange-500',
+        'blue': 'text-blue-600',
+        'red': 'text-red-600',
+        'gray': 'text-gray-700'
+    };
+    return colors[color] || 'text-gray-900';
+}
+
+function renderMealsSection(section) {
+    const mealOptions = section.meal_options || ['All', 'Most', 'Some', 'None', 'N/A'];
+    let html = '<div class="space-y-4">';
+
+    section.fields.forEach(field => {
+        if (field.type === 'MEAL_ENTRY') {
+            html += `
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label class="w-32 text-sm font-medium text-gray-700">${field.label}</label>
+                <select name="sections.${section.id}.${field.id}_amount"
+                        class="w-32 rounded-lg border-gray-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">-</option>
+                    ${mealOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                </select>
+                <input type="text" name="sections.${section.id}.${field.id}_desc"
+                       placeholder="Description (optional)"
+                       class="flex-1 rounded-lg border-gray-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+            </div>`;
+        }
+    });
+
+    html += '</div>';
+    return html;
 }
 
 function renderField(sectionId, field) {
@@ -363,6 +406,13 @@ function renderField(sectionId, field) {
                 `).join('')}
             </div>`;
             break;
+        case 'CHECKBOX':
+            return `<div class="flex items-center">
+                <label class="inline-flex items-center">
+                    <input type="checkbox" name="${fieldName}" value="true" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    <span class="ml-2 text-sm text-gray-700">${field.label}</span>
+                </label>
+            </div>`;
         case 'TIME':
             inputHtml = `<input type="time" name="${fieldName}" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>`;
             break;
@@ -474,6 +524,18 @@ function collectFormData() {
                 });
             }
             reportData.sections[section.id] = { entries };
+        } else if (section.type === 'MEALS') {
+            // Collect meal entries with amount and description
+            const sectionData = {};
+            section.fields.forEach(field => {
+                if (field.type === 'MEAL_ENTRY') {
+                    const amountInput = document.querySelector(`[name="sections.${section.id}.${field.id}_amount"]`);
+                    const descInput = document.querySelector(`[name="sections.${section.id}.${field.id}_desc"]`);
+                    if (amountInput) sectionData[`${field.id}_amount`] = amountInput.value;
+                    if (descInput) sectionData[`${field.id}_desc`] = descInput.value;
+                }
+            });
+            reportData.sections[section.id] = sectionData;
         } else {
             // Collect regular fields
             const sectionData = {};
@@ -482,6 +544,11 @@ function collectFormData() {
                     // Collect all checked checkboxes
                     const checkboxes = document.querySelectorAll(`[name="sections.${section.id}.${field.id}"]:checked`);
                     sectionData[field.id] = Array.from(checkboxes).map(cb => cb.value);
+                } else if (field.type === 'CHECKBOX') {
+                    const checkbox = document.querySelector(`[name="sections.${section.id}.${field.id}"]`);
+                    if (checkbox) {
+                        sectionData[field.id] = checkbox.checked;
+                    }
                 } else {
                     const input = document.querySelector(`[name="sections.${section.id}.${field.id}"]`);
                     if (input) {

@@ -7,9 +7,14 @@
     <!-- Welcome Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">
-                {{ t('dashboard.welcome', current_language, name=user.first_name) }}
-            </h1>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-gray-900">
+                    {{ t('dashboard.welcome', current_language, name=user.first_name) }}
+                </h1>
+                <span class="inline-flex items-center rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-700">
+                    {{ user.role | replace('_', ' ') | title }}
+                </span>
+            </div>
             <p class="mt-1 text-sm text-gray-500">
                 {{ t('dashboard.todays_overview', current_language) }}
             </p>
@@ -128,18 +133,6 @@
                     </svg>
                     <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
                         {{ t('reports.create_report', current_language) }}
-                    </span>
-                </a>
-
-                <a href="/messages/compose"
-                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
-                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
-                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
-                        {{ t('messages.new_message', current_language) }}
                     </span>
                 </a>
 

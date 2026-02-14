@@ -23,7 +23,7 @@ from app.schemas.report import (
 from app.services.report_service import get_report_service
 from app.utils.permissions import require_role
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter()
 
 
 # ============== Helper Functions ==============

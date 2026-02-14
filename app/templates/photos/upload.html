@@ -332,37 +332,11 @@ async function uploadPhotos() {
         progressText.textContent = `${progress}%`;
     }
 
-    // Create message with photos
     if (uploadedIds.length > 0) {
-        const messageType = shareType === 'CLASS' ? 'CLASS_PHOTO' : 'STUDENT_PHOTO';
-        const payload = {
-            message_type: messageType,
-            subject: caption || null,
-            body: caption || 'Photos shared',
-            class_id: classId || null,
-            student_id: studentId || null,
-            attachment_ids: uploadedIds
-        };
-
-        try {
-            const response = await fetch('/api/v1/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                alert(`${uploadedIds.length} photo(s) uploaded and shared successfully!`);
-                window.location.href = '/photos';
-            } else {
-                const result = await response.json();
-                alert(result.message || 'Failed to share photos');
-            }
-        } catch (error) {
-            console.error('Error creating message:', error);
-            alert('Photos uploaded but failed to share. Please try again.');
-        }
+        alert(`${uploadedIds.length} photo(s) uploaded successfully!`);
+        window.location.href = '/photos';
+    } else {
+        alert('Failed to upload photos. Please try again.');
     }
 
     uploadProgress.classList.add('hidden');

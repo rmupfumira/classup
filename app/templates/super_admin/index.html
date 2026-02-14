@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Platform Overview - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Platform Overview</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Monitor and manage all tenants across the platform
+            </p>
+        </div>
+        <a href="/admin/tenants/create"
+           class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 transition-colors shadow-sm">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Tenant
+        </a>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Tenants -->
+        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-neutral-500">Total Tenants</p>
+                    <p class="mt-2 text-3xl font-semibold text-neutral-900">{{ stats.total_tenants }}</p>
+                </div>
+                <div class="flex-shrink-0 w-12 h-12 bg-primary-50 rounded-lg flex items-center justify-center">
+                    <svg class="h-6 w-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-success-600 font-medium">{{ stats.active_tenants }}</span>
+                <span class="text-neutral-500 ml-1">active</span>
+                {% if stats.total_tenants > stats.active_tenants %}
+                <span class="mx-2 text-neutral-300">|</span>
+                <span class="text-neutral-500">{{ stats.total_tenants - stats.active_tenants }} inactive</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Total Users -->
+        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-neutral-500">Total Users</p>
+                    <p class="mt-2 text-3xl font-semibold text-neutral-900">{{ stats.total_users }}</p>
+                </div>
+                <div class="flex-shrink-0 w-12 h-12 bg-success-50 rounded-lg flex items-center justify-center">
+                    <svg class="h-6 w-6 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <p class="mt-4 text-sm text-neutral-500">
+                Across all tenants
+            </p>
+        </div>
+
+        <!-- Total Students -->
+        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-neutral-500">Total Students</p>
+                    <p class="mt-2 text-3xl font-semibold text-neutral-900">{{ stats.total_students }}</p>
+                </div>
+                <div class="flex-shrink-0 w-12 h-12 bg-warning-50 rounded-lg flex items-center justify-center">
+                    <svg class="h-6 w-6 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342"></path>
+                    </svg>
+                </div>
+            </div>
+            <p class="mt-4 text-sm text-neutral-500">
+                Enrolled across platform
+            </p>
+        </div>
+
+        <!-- Platform Health -->
+        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-neutral-500">Platform Status</p>
+                    <p class="mt-2 text-xl font-semibold text-success-600 flex items-center">
+                        <span class="w-2.5 h-2.5 bg-success-500 rounded-full mr-2 animate-pulse"></span>
+                        Operational
+                    </p>
+                </div>
+                <div class="flex-shrink-0 w-12 h-12 bg-success-50 rounded-lg flex items-center justify-center">
+                    <svg class="h-6 w-6 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"></path>
+                    </svg>
+                </div>
+            </div>
+            <p class="mt-4 text-sm text-neutral-500">
+                All systems running normally
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid lg:grid-cols-3 gap-6">
+        <!-- Recent Tenants (2/3 width) -->
+        <div class="lg:col-span-2 bg-white rounded-lg border border-neutral-200">
+            <div class="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
+                <h2 class="text-base font-semibold text-neutral-800">Recent Tenants</h2>
+                <a href="/admin/tenants" class="text-sm text-primary-500 hover:text-primary-600 font-medium">
+                    View all
+                </a>
+            </div>
+            {% if stats.recent_tenants %}
+            <div class="divide-y divide-neutral-100">
+                {% for tenant in stats.recent_tenants %}
+                <a href="/admin/tenants/{{ tenant.id }}"
+                   class="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors">
+                    <div class="flex items-center gap-4">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-sm">
+                            {{ tenant.name[:2] | upper }}
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-neutral-800">{{ tenant.name }}</p>
+                            <p class="text-xs text-neutral-500 flex items-center gap-2">
+                                <span>{{ tenant.education_type | replace('_', ' ') | title }}</span>
+                                <span class="text-neutral-300">•</span>
+                                <span>{{ tenant.created_at.strftime('%b %d, %Y') }}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        {% if not tenant.onboarding_completed %}
+                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-warning-50 text-warning-700">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Setup Pending
+                        </span>
+                        {% elif tenant.is_active %}
+                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-success-50 text-success-700">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                            Inactive
+                        </span>
+                        {% endif %}
+                        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center py-12 text-center">
+                <div class="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="h-8 w-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"></path>
+                    </svg>
+                </div>
+                <p class="text-neutral-600 font-medium">No tenants yet</p>
+                <p class="text-sm text-neutral-500 mt-1">Create your first tenant to get started</p>
+                <a href="/admin/tenants/create"
+                   class="mt-4 inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Add First Tenant
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+            <!-- Tenants by Type -->
+            {% if stats.tenants_by_type %}
+            <div class="bg-white rounded-lg border border-neutral-200">
+                <div class="px-5 py-4 border-b border-neutral-200">
+                    <h2 class="text-base font-semibold text-neutral-800">Distribution by Type</h2>
+                </div>
+                <div class="p-5 space-y-4">
+                    {% set type_colors = {
+                        'DAYCARE': {'bg': 'bg-purple-100', 'text': 'text-purple-600', 'bar': 'bg-purple-500'},
+                        'PRIMARY_SCHOOL': {'bg': 'bg-blue-100', 'text': 'text-blue-600', 'bar': 'bg-blue-500'},
+                        'HIGH_SCHOOL': {'bg': 'bg-green-100', 'text': 'text-green-600', 'bar': 'bg-green-500'},
+                        'K12': {'bg': 'bg-orange-100', 'text': 'text-orange-600', 'bar': 'bg-orange-500'},
+                        'COMBINED': {'bg': 'bg-pink-100', 'text': 'text-pink-600', 'bar': 'bg-pink-500'}
+                    } %}
+                    {% for edu_type, count in stats.tenants_by_type.items() %}
+                    {% set colors = type_colors.get(edu_type, {'bg': 'bg-neutral-100', 'text': 'text-neutral-600', 'bar': 'bg-neutral-500'}) %}
+                    {% set percentage = (count / stats.total_tenants * 100) if stats.total_tenants > 0 else 0 %}
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-sm font-medium text-neutral-700">{{ edu_type | replace('_', ' ') | title }}</span>
+                            <span class="text-sm text-neutral-500">{{ count }}</span>
+                        </div>
+                        <div class="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
+                            <div class="{{ colors.bar }} h-full rounded-full transition-all duration-500"
+                                 style="width: {{ percentage }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-lg border border-neutral-200">
+                <div class="px-5 py-4 border-b border-neutral-200">
+                    <h2 class="text-base font-semibold text-neutral-800">Quick Actions</h2>
+                </div>
+                <div class="p-3">
+                    <a href="/admin/tenants/create"
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
+                        <div class="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+                            <svg class="h-5 w-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-neutral-800">Create New Tenant</p>
+                            <p class="text-xs text-neutral-500">Add a new school or organization</p>
+                        </div>
+                    </a>
+                    <a href="/admin/tenants"
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
+                        <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
+                            <svg class="h-5 w-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-neutral-800">Manage Tenants</p>
+                            <p class="text-xs text-neutral-500">View, edit, or deactivate tenants</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-lg p-5 text-white">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">{{ app_name }}</p>
+                        <p class="text-xs text-neutral-400">Multi-tenant Platform</p>
+                    </div>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-neutral-400">Environment</span>
+                        <span class="font-medium">Production</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-neutral-400">Version</span>
+                        <span class="font-medium">2.0.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

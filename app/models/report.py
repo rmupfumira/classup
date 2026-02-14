@@ -18,7 +18,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_extensions import uuid7
 
 from app.models.base import Base, TenantScopedModel, TimestampMixin
 
@@ -78,8 +77,14 @@ class ReportTemplate(TenantScopedModel):
     )
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    grading_system_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grading_systems.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
+    grading_system = relationship("GradingSystem", lazy="selectin")
     daily_reports = relationship(
         "DailyReport",
         back_populates="template",
@@ -97,9 +102,13 @@ class ReportTemplate(TenantScopedModel):
             for level in self.applies_to_grade_level.split(",")
         ]
 
-        if age_group and age_group.upper() in applicable:
+        # Handle enum values - get the value if it's an enum
+        age_group_str = age_group.value if hasattr(age_group, 'value') else age_group
+        grade_level_str = grade_level.value if hasattr(grade_level, 'value') else grade_level
+
+        if age_group_str and age_group_str.upper() in applicable:
             return True
-        if grade_level and grade_level.upper() in applicable:
+        if grade_level_str and grade_level_str.upper() in applicable:
             return True
 
         return False

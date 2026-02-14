@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ tenant.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/admin/tenants/{{ tenant.id }}"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Edit Tenant</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                {{ tenant.name }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
+        <form id="edit-tenant-form" class="space-y-6">
+            <!-- Basic Information -->
+            <div>
+                <h3 class="text-sm font-medium text-neutral-800 mb-4">Basic Information</h3>
+                <div class="space-y-4">
+                    <!-- Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Organization Name <span class="text-error-500">*</span>
+                        </label>
+                        <input type="text" id="name" name="name" required
+                               value="{{ tenant.name }}"
+                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+
+                    <!-- Slug (read-only) -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-700 mb-1">
+                            URL Slug
+                        </label>
+                        <div class="flex items-center">
+                            <span class="px-3 py-2 text-sm text-neutral-500 bg-neutral-100 border border-r-0 border-neutral-300 rounded-l-md">
+                                classup.co.za/
+                            </span>
+                            <input type="text" value="{{ tenant.slug }}" disabled
+                                   class="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-r-md bg-neutral-50 text-neutral-500">
+                        </div>
+                        <p class="mt-1 text-xs text-neutral-500">Slug cannot be changed after creation.</p>
+                    </div>
+
+                    <!-- Education Type (read-only) -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-700 mb-1">
+                            Education Type
+                        </label>
+                        <input type="text" value="{{ tenant.education_type.value | replace('_', ' ') | title }}" disabled
+                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md bg-neutral-50 text-neutral-500">
+                        <p class="mt-1 text-xs text-neutral-500">Education type cannot be changed after creation.</p>
+                    </div>
+
+                    <!-- Status -->
+                    <div>
+                        <label for="is_active" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Status
+                        </label>
+                        <select id="is_active" name="is_active"
+                                class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <option value="true" {% if tenant.is_active %}selected{% endif %}>Active</option>
+                            <option value="false" {% if not tenant.is_active %}selected{% endif %}>Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-neutral-200"></div>
+
+            <!-- Contact Information -->
+            <div>
+                <h3 class="text-sm font-medium text-neutral-800 mb-4">Contact Information</h3>
+                <div class="space-y-4">
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Email Address <span class="text-error-500">*</span>
+                        </label>
+                        <input type="email" id="email" name="email" required
+                               value="{{ tenant.email }}"
+                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Phone Number
+                        </label>
+                        <input type="tel" id="phone" name="phone"
+                               value="{{ tenant.phone or '' }}"
+                               placeholder="+27 12 345 6789"
+                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label for="address" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Address
+                        </label>
+                        <textarea id="address" name="address" rows="3"
+                                  placeholder="123 Main Street, City, Province"
+                                  class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">{{ tenant.address or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-neutral-200"></div>
+
+            <!-- Form Actions -->
+            <div class="flex items-center justify-end gap-3">
+                <a href="/admin/tenants/{{ tenant.id }}"
+                   class="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" id="submit-btn"
+                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4 mr-1.5 hidden animate-spin" id="submit-spinner" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Settings Card -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium text-neutral-800">Features & Settings</h3>
+            <span class="text-xs text-neutral-500">Coming soon</span>
+        </div>
+        <p class="text-sm text-neutral-500">
+            Feature toggles and advanced settings can be configured from the tenant's own settings page
+            once they complete onboarding.
+        </p>
+    </div>
+</div>
+
+<script>
+document.getElementById('edit-tenant-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = document.getElementById('submit-spinner');
+
+    // Disable button and show spinner
+    submitBtn.disabled = true;
+    spinner.classList.remove('hidden');
+
+    const formData = new FormData(this);
+    const data = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone') || null,
+        address: formData.get('address') || null,
+        is_active: formData.get('is_active') === 'true'
+    };
+
+    try {
+        const response = await fetch('/api/v1/admin/tenants/{{ tenant.id }}', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // Show success and redirect
+            if (window.ClassUp && window.ClassUp.toast) {
+                window.ClassUp.toast('Tenant updated successfully', 'success');
+            }
+            window.location.href = '/admin/tenants/{{ tenant.id }}';
+        } else {
+            // Show error
+            const message = result.message || 'Failed to update tenant';
+            if (window.ClassUp && window.ClassUp.toast) {
+                window.ClassUp.toast(message, 'error');
+            } else {
+                alert(message);
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        if (window.ClassUp && window.ClassUp.toast) {
+            window.ClassUp.toast('An error occurred. Please try again.', 'error');
+        } else {
+            alert('An error occurred. Please try again.');
+        }
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

@@ -6,7 +6,6 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from uuid_extensions import uuid7
 
 
 class Base(DeclarativeBase):
@@ -54,7 +53,7 @@ class BaseModel(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
 
 
@@ -70,7 +69,7 @@ class TenantScopedModel(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid7,
+        default=uuid.uuid4,
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

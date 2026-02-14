@@ -3,20 +3,20 @@
 {% block title %}Students - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-5">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Students</h1>
-            <p class="mt-1 text-sm text-gray-500">
+            <h1 class="text-xl font-semibold text-neutral-800">Students</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
                 {{ total }} student{{ 's' if total != 1 else '' }} total
             </p>
         </div>
         {% if permissions.can_manage_students() %}
         <a href="/students/new"
-           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+           class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
             </svg>
             Add Student
         </a>
@@ -25,30 +25,30 @@
 
     <!-- Filters -->
     {% if permissions.can_manage_students() %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <form method="get" class="flex flex-col sm:flex-row gap-4">
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-3">
             <!-- Search -->
             <div class="flex-1">
-                <label for="search" class="sr-only">Search</label>
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
                     <input type="text" name="search" id="search" value="{{ search or '' }}"
-                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                           class="block w-full h-8 pl-8 pr-3 text-sm border border-neutral-300 rounded bg-white
+                                  focus:border-primary-500 focus:ring-0 placeholder-neutral-400"
                            placeholder="Search by name...">
                 </div>
             </div>
 
             <!-- Class Filter -->
             {% if classes %}
-            <div class="sm:w-48">
-                <label for="class_id" class="sr-only">Class</label>
+            <div class="sm:w-44">
                 <select name="class_id" id="class_id"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        class="block w-full h-8 px-2.5 text-sm border border-neutral-300 rounded bg-white
+                               focus:border-primary-500 focus:ring-0">
                     <option value="">All Classes</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
@@ -60,10 +60,10 @@
             {% endif %}
 
             <!-- Age Group Filter -->
-            <div class="sm:w-40">
-                <label for="age_group" class="sr-only">Age Group</label>
+            <div class="sm:w-36">
                 <select name="age_group" id="age_group"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        class="block w-full h-8 px-2.5 text-sm border border-neutral-300 rounded bg-white
+                               focus:border-primary-500 focus:ring-0">
                     <option value="">All Ages</option>
                     <option value="INFANT" {% if current_age_group == 'INFANT' %}selected{% endif %}>Infant</option>
                     <option value="TODDLER" {% if current_age_group == 'TODDLER' %}selected{% endif %}>Toddler</option>
@@ -73,7 +73,7 @@
             </div>
 
             <button type="submit"
-                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    class="h-8 px-3 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors">
                 Filter
             </button>
         </form>
@@ -82,81 +82,81 @@
 
     <!-- Students List -->
     {% if students %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
         <!-- Desktop Table -->
         <div class="hidden md:block overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-neutral-50 border-b border-neutral-200">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Student
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Class
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Age Group
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Status
                         </th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Actions
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="divide-y divide-neutral-100">
                     {% for student in students %}
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap">
+                    <tr class="hover:bg-neutral-50 transition-colors">
+                        <td class="px-4 py-3 whitespace-nowrap">
                             <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
+                                <div class="flex-shrink-0 h-9 w-9">
                                     {% if student.photo_path %}
-                                    <img class="h-10 w-10 rounded-full object-cover"
+                                    <img class="h-9 w-9 rounded-full object-cover"
                                          src="{{ student.photo_path }}" alt="">
                                     {% else %}
-                                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                                        <span class="text-primary-700 font-medium text-sm">
+                                    <div class="h-9 w-9 rounded-full bg-primary-50 flex items-center justify-center">
+                                        <span class="text-primary-600 font-medium text-xs">
                                             {{ student.first_name[0] }}{{ student.last_name[0] }}
                                         </span>
                                     </div>
                                     {% endif %}
                                 </div>
-                                <div class="ml-4">
+                                <div class="ml-3">
                                     <a href="/students/{{ student.id }}"
-                                       class="text-sm font-medium text-gray-900 hover:text-primary-600">
+                                       class="text-sm font-medium text-neutral-800 hover:text-primary-600">
                                         {{ student.first_name }} {{ student.last_name }}
                                     </a>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                             {% if student.school_class %}
                                 {{ student.school_class.name }}
                             {% else %}
-                                <span class="text-gray-400">Unassigned</span>
+                                <span class="text-neutral-400">Unassigned</span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                             {{ student.age_group or '-' }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
+                        <td class="px-4 py-3 whitespace-nowrap">
                             {% if student.is_active %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
                                 Active
                             </span>
                             {% else %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
                                 Inactive
                             </span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
                             <a href="/students/{{ student.id }}"
-                               class="text-primary-600 hover:text-primary-900 mr-3">View</a>
+                               class="text-primary-500 hover:text-primary-600 mr-3">View</a>
                             {% if permissions.can_manage_students() %}
                             <a href="/students/{{ student.id }}/edit"
-                               class="text-gray-600 hover:text-gray-900">Edit</a>
+                               class="text-neutral-500 hover:text-neutral-700">Edit</a>
                             {% endif %}
                         </td>
                     </tr>
@@ -166,41 +166,42 @@
         </div>
 
         <!-- Mobile Cards -->
-        <div class="md:hidden divide-y divide-gray-200">
+        <div class="md:hidden divide-y divide-neutral-100">
             {% for student in students %}
-            <a href="/students/{{ student.id }}" class="block p-4 hover:bg-gray-50 transition-colors">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 h-12 w-12">
-                        {% if student.photo_path %}
-                        <img class="h-12 w-12 rounded-full object-cover"
-                             src="{{ student.photo_path }}" alt="">
-                        {% else %}
-                        <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
-                            <span class="text-primary-700 font-medium">
-                                {{ student.first_name[0] }}{{ student.last_name[0] }}
-                            </span>
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="ml-4 flex-1">
-                        <p class="text-sm font-medium text-gray-900">
-                            {{ student.first_name }} {{ student.last_name }}
-                        </p>
-                        <p class="text-sm text-gray-500">
-                            {{ student.school_class.name if student.school_class else 'Unassigned' }}
-                        </p>
-                    </div>
-                    <div>
-                        {% if student.is_active %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
+            <a href="/students/{{ student.id }}" class="flex items-center p-4 hover:bg-neutral-50 transition-colors">
+                <div class="flex-shrink-0 h-10 w-10">
+                    {% if student.photo_path %}
+                    <img class="h-10 w-10 rounded-full object-cover"
+                         src="{{ student.photo_path }}" alt="">
+                    {% else %}
+                    <div class="h-10 w-10 rounded-full bg-primary-50 flex items-center justify-center">
+                        <span class="text-primary-600 font-medium text-sm">
+                            {{ student.first_name[0] }}{{ student.last_name[0] }}
                         </span>
-                        {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            Inactive
-                        </span>
-                        {% endif %}
                     </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 flex-1 min-w-0">
+                    <p class="text-sm font-medium text-neutral-800">
+                        {{ student.first_name }} {{ student.last_name }}
+                    </p>
+                    <p class="text-xs text-neutral-500">
+                        {{ student.school_class.name if student.school_class else 'Unassigned' }}
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    {% if student.is_active %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
+                        Active
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                        Inactive
+                    </span>
+                    {% endif %}
+                    <svg class="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7" />
+                    </svg>
                 </div>
             </a>
             {% endfor %}
@@ -209,37 +210,37 @@
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
-    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-card border border-neutral-200">
         <div class="flex-1 flex justify-between sm:hidden">
             {% if page > 1 %}
             <a href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
                 Previous
             </a>
             {% endif %}
             {% if page < total_pages %}
             <a href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-               class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="ml-auto px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
                 Next
             </a>
             {% endif %}
         </div>
         <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
             <div>
-                <p class="text-sm text-gray-700">
+                <p class="text-sm text-neutral-600">
                     Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
                 </p>
             </div>
             <div class="flex gap-2">
                 {% if page > 1 %}
                 <a href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                   class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
                     Previous
                 </a>
                 {% endif %}
                 {% if page < total_pages %}
                 <a href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                   class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
                     Next
                 </a>
                 {% endif %}
@@ -250,13 +251,15 @@
 
     {% else %}
     <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">No students found</h3>
-        <p class="mt-2 text-sm text-gray-500">
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
+        <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+        </div>
+        <h3 class="text-base font-semibold text-neutral-800">No students found</h3>
+        <p class="mt-1 text-sm text-neutral-500">
             {% if search %}
                 No students match your search criteria.
             {% else %}
@@ -264,11 +267,11 @@
             {% endif %}
         </p>
         {% if permissions.can_manage_students() and not search %}
-        <div class="mt-6">
+        <div class="mt-5">
             <a href="/students/new"
-               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+               class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
                 </svg>
                 Add Student
             </a>
