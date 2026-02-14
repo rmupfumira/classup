@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.services.realtime_service import get_connection_manager
-from app.utils.security import decode_jwt
+from app.utils.security import decode_token
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     WebSocket connections don't support headers in all browsers.
     """
     # Validate the JWT token
-    payload = decode_jwt(token)
+    payload = decode_token(token)
     if not payload:
         await websocket.close(code=4001, reason="Invalid or expired token")
         return
