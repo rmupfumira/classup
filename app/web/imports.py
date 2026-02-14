@@ -1,26 +1,37 @@
 """Bulk import web routes."""
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, get_templates
+from app.services.auth_service import get_auth_service
 from app.services.import_service import IMPORT_FIELDS, get_import_service
-from app.utils.permissions import require_role
+from app.templates_config import templates
+from app.utils.tenant_context import get_current_user_id_or_none, get_current_user_role
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 
 
 @router.get("", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def imports_list(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """List import jobs and upload new imports."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
     service = get_import_service()
     jobs, total = await service.list_jobs(db, page=1, page_size=20)
 
@@ -36,14 +47,22 @@ async def imports_list(
 
 
 @router.get("/upload", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def imports_upload(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """Upload page for bulk imports."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
     return templates.TemplateResponse(
         "imports/upload.html",
         {
@@ -54,16 +73,22 @@ async def imports_upload(
 
 
 @router.get("/{job_id}", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def imports_detail(
     request: Request,
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """View import job details and results."""
-    from uuid import UUID
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
 
     service = get_import_service()
     job = await service.get_job(db, UUID(job_id))
@@ -86,16 +111,22 @@ async def imports_detail(
 
 
 @router.get("/{job_id}/mapping", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def imports_mapping(
     request: Request,
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """Column mapping page for import job."""
-    from uuid import UUID
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
 
     service = get_import_service()
     job = await service.get_job(db, UUID(job_id))

@@ -5,35 +5,52 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, get_templates
 from app.models import Tenant
-from app.utils.permissions import require_role
-from app.utils.tenant_context import get_tenant_id
+from app.services.auth_service import get_auth_service
+from app.templates_config import templates
+from app.utils.tenant_context import (
+    get_current_user_id_or_none,
+    get_current_user_role,
+    get_tenant_id,
+)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
 @router.get("", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_index(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """Settings overview - redirects to general settings."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
     return RedirectResponse(url="/settings/general", status_code=302)
 
 
 @router.get("/general", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_general(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """General settings page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id)
 
@@ -49,7 +66,6 @@ async def settings_general(
 
 
 @router.post("/general", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_general_save(
     request: Request,
     name: str = Form(...),
@@ -59,9 +75,16 @@ async def settings_general_save(
     timezone: str = Form("Africa/Johannesburg"),
     language: str = Form("en"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Save general settings."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id)
 
@@ -82,14 +105,22 @@ async def settings_general_save(
 
 
 @router.get("/features", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_features(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """Features settings page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id)
 
@@ -108,13 +139,19 @@ async def settings_features(
 
 
 @router.post("/features", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_features_save(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Save features settings."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id)
 
@@ -158,14 +195,22 @@ async def settings_features_save(
 
 
 @router.get("/terminology", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_terminology(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """Terminology settings page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id)
 
@@ -184,7 +229,6 @@ async def settings_terminology(
 
 
 @router.post("/terminology", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_terminology_save(
     request: Request,
     student: str = Form("student"),
@@ -196,9 +240,16 @@ async def settings_terminology_save(
     parent: str = Form("parent"),
     parents: str = Form("parents"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Save terminology settings."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id)
 
@@ -221,14 +272,22 @@ async def settings_terminology_save(
 
 
 @router.get("/webhooks", response_class=HTMLResponse)
-@require_role("SCHOOL_ADMIN")
 async def settings_webhooks(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-    templates=Depends(get_templates),
 ):
     """Webhooks settings page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
     from app.services.webhook_service import get_webhook_service
 
     service = get_webhook_service()
