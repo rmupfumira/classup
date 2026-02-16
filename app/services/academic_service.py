@@ -386,6 +386,127 @@ class AcademicService:
         if current_default:
             current_default.is_default = False
 
+    # ==================== SETUP STATUS ====================
+
+    async def get_setup_status(self, db: AsyncSession) -> dict:
+        """Get the setup completion status for the current tenant."""
+        tenant_id = get_tenant_id()
+
+        # Count classes
+        class_count_query = select(func.count()).select_from(
+            select(SchoolClass).where(
+                SchoolClass.tenant_id == tenant_id,
+                SchoolClass.deleted_at.is_(None),
+            ).subquery()
+        )
+        class_count = (await db.execute(class_count_query)).scalar() or 0
+
+        # Count subjects
+        subject_count_query = select(func.count()).select_from(
+            select(Subject).where(
+                Subject.tenant_id == tenant_id,
+                Subject.deleted_at.is_(None),
+            ).subquery()
+        )
+        subject_count = (await db.execute(subject_count_query)).scalar() or 0
+
+        # Count grading systems
+        grading_count_query = select(func.count()).select_from(
+            select(GradingSystem).where(
+                GradingSystem.tenant_id == tenant_id,
+                GradingSystem.deleted_at.is_(None),
+            ).subquery()
+        )
+        grading_count = (await db.execute(grading_count_query)).scalar() or 0
+
+        # Count teachers
+        from app.models.user import User, Role
+        teacher_count_query = select(func.count()).select_from(
+            select(User).where(
+                User.tenant_id == tenant_id,
+                User.role == Role.TEACHER.value,
+                User.deleted_at.is_(None),
+            ).subquery()
+        )
+        teacher_count = (await db.execute(teacher_count_query)).scalar() or 0
+
+        # Count students
+        from app.models.student import Student
+        student_count_query = select(func.count()).select_from(
+            select(Student).where(
+                Student.tenant_id == tenant_id,
+                Student.deleted_at.is_(None),
+            ).subquery()
+        )
+        student_count = (await db.execute(student_count_query)).scalar() or 0
+
+        # Define setup items and their completion status
+        setup_items = [
+            {
+                "key": "classes",
+                "label": "Classes",
+                "description": "Create at least one class",
+                "completed": class_count > 0,
+                "count": class_count,
+                "link": "/classes",
+                "action_label": "Add Class",
+                "action_link": "/classes/create",
+            },
+            {
+                "key": "subjects",
+                "label": "Subjects",
+                "description": "Set up subjects for your school",
+                "completed": subject_count > 0,
+                "count": subject_count,
+                "link": "/settings/subjects",
+                "action_label": "Add Subject",
+                "action_link": "/settings/subjects/create",
+            },
+            {
+                "key": "grading",
+                "label": "Grading System",
+                "description": "Configure your grading scale",
+                "completed": grading_count > 0,
+                "count": grading_count,
+                "link": "/settings/grading",
+                "action_label": "Add Grading System",
+                "action_link": "/settings/grading/create",
+            },
+            {
+                "key": "teachers",
+                "label": "Teachers",
+                "description": "Add teachers to your school",
+                "completed": teacher_count > 0,
+                "count": teacher_count,
+                "link": "/users?role=teacher",
+                "action_label": "Add Teacher",
+                "action_link": "/users/create?role=teacher",
+            },
+            {
+                "key": "students",
+                "label": "Students",
+                "description": "Enroll students in your school",
+                "completed": student_count > 0,
+                "count": student_count,
+                "link": "/students",
+                "action_label": "Add Student",
+                "action_link": "/students/create",
+            },
+        ]
+
+        # Calculate completion percentage
+        completed_count = sum(1 for item in setup_items if item["completed"])
+        total_items = len(setup_items)
+        percentage = int((completed_count / total_items) * 100) if total_items > 0 else 0
+
+        return {
+            "items": setup_items,
+            "completed_count": completed_count,
+            "total_items": total_items,
+            "percentage": percentage,
+            "is_complete": completed_count == total_items,
+        }
+
     # ==================== DEFAULT SETUP ====================
 
     async def setup_default_subjects(self, db: AsyncSession, education_type: str) -> List[Subject]:

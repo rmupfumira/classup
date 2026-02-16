@@ -11,6 +11,7 @@ from app.services.auth_service import get_auth_service
 from app.services.student_service import get_student_service
 from app.services.attendance_service import get_attendance_service
 from app.services.report_service import get_report_service
+from app.services.academic_service import get_academic_service
 from app.templates_config import templates
 from app.utils.tenant_context import (
     get_current_language,
@@ -139,8 +140,14 @@ async def dashboard(
         "timedelta": timedelta,  # Make timedelta available in templates
     }
 
+    # Add school admin-specific data (setup status)
+    if role == "SCHOOL_ADMIN":
+        academic_service = get_academic_service()
+        setup_status = await academic_service.get_setup_status(db)
+        context["setup_status"] = setup_status
+
     # Add parent-specific data
-    if role == "PARENT":
+    elif role == "PARENT":
         parent_data = await _get_parent_dashboard_data(db, user_id)
         context.update(parent_data)
 
