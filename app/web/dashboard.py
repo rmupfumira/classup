@@ -118,9 +118,12 @@ async def dashboard(
 
     role = get_current_user_role()
 
+    # Redirect super admin to their dedicated dashboard
+    if role == "SUPER_ADMIN":
+        return RedirectResponse(url="/admin", status_code=302)
+
     # Select template based on role
     template_map = {
-        "SUPER_ADMIN": "dashboard/super_admin.html",
         "SCHOOL_ADMIN": "dashboard/school_admin.html",
         "TEACHER": "dashboard/teacher.html",
         "PARENT": "dashboard/parent.html",
