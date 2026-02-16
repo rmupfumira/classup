@@ -12,92 +12,105 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif']
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif']
                     },
                     colors: {
-                        // Ant Design Primary - Daybreak Blue
+                        // Primary - Blue (muted)
                         primary: {
-                            50: '#e6f4ff',
-                            100: '#bae0ff',
-                            200: '#91caff',
-                            300: '#69b1ff',
-                            400: '#4096ff',
-                            500: '#1677ff',
-                            600: '#0958d9',
-                            700: '#003eb3',
-                            800: '#002c8c',
-                            900: '#001d66'
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a'
                         },
-                        // Functional colors
+                        // Success - Emerald (softer than green)
                         success: {
-                            50: '#f6ffed',
-                            100: '#d9f7be',
-                            400: '#73d13d',
-                            500: '#52c41a',
-                            600: '#389e0d',
-                            700: '#237804'
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46'
                         },
+                        // Warning - Amber (softer than yellow)
                         warning: {
-                            50: '#fffbe6',
-                            100: '#fff1b8',
-                            400: '#ffc53d',
-                            500: '#faad14',
-                            600: '#d48806',
-                            700: '#ad6800'
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            200: '#fde68a',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#92400e'
                         },
+                        // Error - Rose (softer than red)
                         error: {
-                            50: '#fff2f0',
-                            100: '#ffccc7',
-                            400: '#ff7875',
-                            500: '#ff4d4f',
-                            600: '#f5222d',
-                            700: '#cf1322'
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            400: '#fb7185',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            700: '#be123c',
+                            800: '#9f1239'
                         },
-                        // Neutral palette
+                        // Info - Sky
+                        info: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            800: '#075985'
+                        },
+                        // Neutral - Slate
                         neutral: {
-                            50: '#fafafa',
-                            100: '#f5f5f5',
-                            200: '#f0f0f0',
-                            300: '#d9d9d9',
-                            400: '#bfbfbf',
-                            500: '#8c8c8c',
-                            600: '#595959',
-                            700: '#434343',
-                            800: '#262626',
-                            900: '#1f1f1f',
-                            950: '#141414'
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a'
                         }
                     },
-                    fontSize: {
-                        'xs': ['12px', { lineHeight: '20px' }],
-                        'sm': ['14px', { lineHeight: '22px' }],
-                        'base': ['14px', { lineHeight: '22px' }],
-                        'lg': ['16px', { lineHeight: '24px' }],
-                        'xl': ['20px', { lineHeight: '28px' }],
-                        '2xl': ['24px', { lineHeight: '32px' }],
-                        '3xl': ['30px', { lineHeight: '38px' }],
-                        '4xl': ['38px', { lineHeight: '46px' }]
-                    },
                     boxShadow: {
-                        'card': '0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
-                        'card-hover': '0 1px 2px -2px rgba(0, 0, 0, 0.16), 0 3px 6px 0 rgba(0, 0, 0, 0.12), 0 5px 12px 4px rgba(0, 0, 0, 0.09)',
-                        'dropdown': '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
-                        'modal': '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)'
+                        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        'DEFAULT': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                     },
                     borderRadius: {
                         'sm': '4px',
                         'DEFAULT': '6px',
                         'md': '8px',
-                        'lg': '8px'
+                        'lg': '12px',
+                        'xl': '16px'
                     }
                 }
             }
         }
     </script>
 
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Custom Styles -->
     <style>
-        /* Ant Design inspired base styles */
+        /* Clean, modern base styles */
         * {
             font-variant-numeric: tabular-nums;
         }
@@ -111,33 +124,28 @@
             background: transparent;
         }
         ::-webkit-scrollbar-thumb {
-            background: #d9d9d9;
+            background: #cbd5e1;
             border-radius: 3px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #bfbfbf;
+            background: #94a3b8;
         }
 
-        /* Form element focus states */
+        /* Form element focus states - blue focus ring */
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: #1677ff;
-            box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
         }
 
-        /* Button transitions */
+        /* Smooth transitions */
         button, a {
-            transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+            transition: all 0.15s ease;
         }
 
         /* Table row hover */
-        .ant-table-row:hover {
-            background-color: #fafafa;
-        }
-
-        /* Card hover effect */
-        .ant-card:hover {
-            box-shadow: 0 1px 2px -2px rgba(0, 0, 0, 0.16), 0 3px 6px 0 rgba(0, 0, 0, 0.12), 0 5px 12px 4px rgba(0, 0, 0, 0.09);
+        tbody tr:hover {
+            background-color: #f8fafc;
         }
     </style>
 
@@ -145,7 +153,7 @@
 
     {% block head %}{% endblock %}
 </head>
-<body class="h-full bg-neutral-100 text-neutral-800 antialiased text-sm">
+<body class="h-full bg-neutral-50 text-neutral-800 antialiased text-sm">
     {% if user %}
         <!-- Authenticated Layout -->
         {% include 'components/_navbar.html' %}
@@ -169,7 +177,7 @@
         {% include 'components/_mobile_nav.html' %}
     {% else %}
         <!-- Unauthenticated Layout -->
-        <main class="min-h-screen bg-neutral-100">
+        <main class="min-h-screen bg-neutral-50">
             {% block auth_content %}{% endblock %}
         </main>
     {% endif %}

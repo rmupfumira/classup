@@ -24,7 +24,7 @@
     <!-- Key Metrics -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Total Tenants -->
-        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+        <div class="bg-white rounded-xl border border-neutral-200 p-5 hover:shadow-card transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-neutral-500">Total Tenants</p>
@@ -48,7 +48,7 @@
         </div>
 
         <!-- Total Users -->
-        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+        <div class="bg-white rounded-xl border border-neutral-200 p-5 hover:shadow-card transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-neutral-500">Total Users</p>
@@ -67,7 +67,7 @@
         </div>
 
         <!-- Total Students -->
-        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+        <div class="bg-white rounded-xl border border-neutral-200 p-5 hover:shadow-card transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-neutral-500">Total Students</p>
@@ -86,7 +86,7 @@
         </div>
 
         <!-- Platform Health -->
-        <div class="bg-white rounded-lg border border-neutral-200 p-5 hover:shadow-card transition-shadow">
+        <div class="bg-white rounded-xl border border-neutral-200 p-5 hover:shadow-card transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-neutral-500">Platform Status</p>
@@ -111,7 +111,7 @@
     <!-- Main Content Grid -->
     <div class="grid lg:grid-cols-3 gap-6">
         <!-- Recent Tenants (2/3 width) -->
-        <div class="lg:col-span-2 bg-white rounded-lg border border-neutral-200">
+        <div class="lg:col-span-2 bg-white rounded-xl border border-neutral-200">
             <div class="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
                 <h2 class="text-base font-semibold text-neutral-800">Recent Tenants</h2>
                 <a href="/admin/tenants" class="text-sm text-primary-500 hover:text-primary-600 font-medium">
@@ -185,7 +185,7 @@
         <div class="space-y-6">
             <!-- Tenants by Type -->
             {% if stats.tenants_by_type %}
-            <div class="bg-white rounded-lg border border-neutral-200">
+            <div class="bg-white rounded-xl border border-neutral-200">
                 <div class="px-5 py-4 border-b border-neutral-200">
                     <h2 class="text-base font-semibold text-neutral-800">Distribution by Type</h2>
                 </div>
@@ -216,13 +216,13 @@
             {% endif %}
 
             <!-- Quick Actions -->
-            <div class="bg-white rounded-lg border border-neutral-200">
+            <div class="bg-white rounded-xl border border-neutral-200">
                 <div class="px-5 py-4 border-b border-neutral-200">
                     <h2 class="text-base font-semibold text-neutral-800">Quick Actions</h2>
                 </div>
                 <div class="p-3">
                     <a href="/admin/tenants/create"
-                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
+                       class="group flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors">
                         <div class="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center group-hover:bg-primary-100 transition-colors">
                             <svg class="h-5 w-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
@@ -234,7 +234,7 @@
                         </div>
                     </a>
                     <a href="/admin/tenants"
-                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
+                       class="group flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors">
                         <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
                             <svg class="h-5 w-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -250,7 +250,7 @@
             </div>
 
             <!-- System Info -->
-            <div class="bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-lg p-5 text-white">
+            <div class="bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-xl p-5 text-white">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                         <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
