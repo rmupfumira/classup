@@ -36,7 +36,7 @@
 
         <!-- Setup Items Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {% for item in setup_status.items %}
+            {% for item in setup_status['items'] %}
             <div class="bg-neutral-50 rounded-lg p-3 {% if item.completed %}border border-success-200{% else %}border border-neutral-200{% endif %}">
                 <div class="flex items-center gap-2 mb-2">
                     {% if item.completed %}
