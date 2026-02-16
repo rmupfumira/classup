@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -12,14 +13,108 @@ from app.services.student_service import get_student_service
 from app.services.attendance_service import get_attendance_service
 from app.services.report_service import get_report_service
 from app.services.academic_service import get_academic_service
+from app.services.class_service import get_class_service
 from app.templates_config import templates
 from app.utils.tenant_context import (
     get_current_language,
     get_current_user_id_or_none,
     get_current_user_role,
+    get_tenant_id,
 )
 
 router = APIRouter()
+
+
+async def _get_school_admin_dashboard_data(db: AsyncSession):
+    """Fetch all data needed for school admin dashboard."""
+    from app.models.student import Student
+    from app.models.attendance import AttendanceRecord
+    from app.models.school_class import SchoolClass
+
+    tenant_id = get_tenant_id()
+    today = date.today()
+
+    # Get total students count
+    student_count_query = select(func.count()).select_from(
+        select(Student).where(
+            Student.tenant_id == tenant_id,
+            Student.deleted_at.is_(None),
+            Student.is_active == True,
+        ).subquery()
+    )
+    total_students = (await db.execute(student_count_query)).scalar() or 0
+
+    # Get today's attendance stats
+    present_today = 0
+    absent_today = 0
+
+    if total_students > 0:
+        # Count present (PRESENT or LATE)
+        present_query = select(func.count()).select_from(
+            select(AttendanceRecord).where(
+                AttendanceRecord.tenant_id == tenant_id,
+                AttendanceRecord.date == today,
+                AttendanceRecord.status.in_(["PRESENT", "LATE"]),
+            ).subquery()
+        )
+        present_today = (await db.execute(present_query)).scalar() or 0
+
+        # Count absent
+        absent_query = select(func.count()).select_from(
+            select(AttendanceRecord).where(
+                AttendanceRecord.tenant_id == tenant_id,
+                AttendanceRecord.date == today,
+                AttendanceRecord.status == "ABSENT",
+            ).subquery()
+        )
+        absent_today = (await db.execute(absent_query)).scalar() or 0
+
+    # Get classes with their attendance for today
+    class_service = get_class_service()
+    classes, _ = await class_service.get_classes(db, page=1, page_size=100)
+
+    class_attendance = []
+    for school_class in classes:
+        # Get student count in this class
+        class_student_count = await db.execute(
+            select(func.count()).select_from(
+                select(Student).where(
+                    Student.tenant_id == tenant_id,
+                    Student.class_id == school_class.id,
+                    Student.deleted_at.is_(None),
+                    Student.is_active == True,
+                ).subquery()
+            )
+        )
+        class_student_count = class_student_count.scalar() or 0
+
+        # Get present count for this class today
+        class_present_count = await db.execute(
+            select(func.count()).select_from(
+                select(AttendanceRecord).where(
+                    AttendanceRecord.tenant_id == tenant_id,
+                    AttendanceRecord.class_id == school_class.id,
+                    AttendanceRecord.date == today,
+                    AttendanceRecord.status.in_(["PRESENT", "LATE"]),
+                ).subquery()
+            )
+        )
+        class_present_count = class_present_count.scalar() or 0
+
+        class_attendance.append({
+            "name": school_class.name,
+            "age_group": school_class.age_group or school_class.grade_level or "",
+            "present": class_present_count,
+            "total": class_student_count,
+        })
+
+    return {
+        "total_students": total_students,
+        "present_today": present_today,
+        "absent_today": absent_today,
+        "pending_reports": 0,  # TODO: implement pending reports count
+        "class_attendance": class_attendance,
+    }
 
 
 async def _get_parent_dashboard_data(db: AsyncSession, user_id):
@@ -140,11 +235,15 @@ async def dashboard(
         "timedelta": timedelta,  # Make timedelta available in templates
     }
 
-    # Add school admin-specific data (setup status)
+    # Add school admin-specific data (setup status + stats)
     if role == "SCHOOL_ADMIN":
         academic_service = get_academic_service()
         setup_status = await academic_service.get_setup_status(db)
         context["setup_status"] = setup_status
+
+        # Add dashboard stats (real data from database)
+        stats = await _get_school_admin_dashboard_data(db)
+        context["stats"] = stats
 
     # Add parent-specific data
     elif role == "PARENT":

@@ -130,7 +130,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500">{{ t('dashboard.total_students', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">24</p>
+                    <p class="text-2xl font-bold text-neutral-800">{{ stats.total_students }}</p>
                 </div>
             </div>
         </div>
@@ -146,7 +146,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500">{{ t('dashboard.present_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">22</p>
+                    <p class="text-2xl font-bold text-neutral-800">{{ stats.present_today }}</p>
                 </div>
             </div>
         </div>
@@ -162,7 +162,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500">{{ t('dashboard.absent_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">2</p>
+                    <p class="text-2xl font-bold text-neutral-800">{{ stats.absent_today }}</p>
                 </div>
             </div>
         </div>
@@ -178,7 +178,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500">{{ t('dashboard.pending_reports', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">5</p>
+                    <p class="text-2xl font-bold text-neutral-800">{{ stats.pending_reports }}</p>
                 </div>
             </div>
         </div>
@@ -235,7 +235,7 @@
                         </span>
                     </a>
 
-                    <a href="/students/create"
+                    <a href="/students/new"
                        class="flex flex-col items-center p-4 rounded-xl border border-neutral-200 bg-neutral-50
                               hover:border-primary-200 hover:bg-primary-50 transition-all group">
                         <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2 group-hover:shadow">
@@ -279,39 +279,44 @@
             <a href="/attendance" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">View details</a>
         </div>
         <div class="p-6">
+            {% if stats.class_attendance %}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Sample class cards - these would be dynamically generated -->
+                {% for class_data in stats.class_attendance %}
                 <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
                     <div>
-                        <p class="font-medium text-neutral-800">Butterfly Class</p>
-                        <p class="text-sm text-neutral-500">Toddlers</p>
+                        <p class="font-medium text-neutral-800">{{ class_data.name }}</p>
+                        {% if class_data.age_group %}
+                        <p class="text-sm text-neutral-500">{{ class_data.age_group }}</p>
+                        {% endif %}
                     </div>
                     <div class="text-right">
-                        <p class="text-xl font-bold text-success-600">8/10</p>
+                        {% if class_data.total > 0 %}
+                        <p class="text-xl font-bold {% if class_data.present == class_data.total %}text-success-600{% elif class_data.present >= class_data.total * 0.5 %}text-warning-600{% else %}text-error-600{% endif %}">{{ class_data.present }}/{{ class_data.total }}</p>
+                        {% else %}
+                        <p class="text-xl font-bold text-neutral-400">0/0</p>
+                        {% endif %}
                         <p class="text-xs text-neutral-400">present</p>
                     </div>
                 </div>
-                <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
-                    <div>
-                        <p class="font-medium text-neutral-800">Rainbow Class</p>
-                        <p class="text-sm text-neutral-500">Pre-K</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xl font-bold text-success-600">12/12</p>
-                        <p class="text-xs text-neutral-400">present</p>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
-                    <div>
-                        <p class="font-medium text-neutral-800">Sunshine Class</p>
-                        <p class="text-sm text-neutral-500">Infants</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xl font-bold text-warning-600">2/4</p>
-                        <p class="text-xs text-neutral-400">present</p>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
+            {% else %}
+            <!-- Empty state -->
+            <div class="text-center py-8">
+                <svg class="w-16 h-16 text-neutral-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <h3 class="text-lg font-medium text-neutral-800 mb-1">No classes yet</h3>
+                <p class="text-neutral-500 mb-4">Create classes to track attendance.</p>
+                <a href="/classes/new" class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create Class
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
