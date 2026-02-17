@@ -61,7 +61,7 @@ async def settings_general(
         "settings/general.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "tenant": tenant,
             "active_tab": "general",
         },
@@ -133,7 +133,7 @@ async def settings_features(
         "settings/features.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "tenant": tenant,
             "features": features,
             "active_tab": "features",
@@ -223,7 +223,7 @@ async def settings_terminology(
         "settings/terminology.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "tenant": tenant,
             "terminology": terminology,
             "active_tab": "terminology",
@@ -300,7 +300,7 @@ async def settings_webhooks(
         "settings/webhooks.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "endpoints": endpoints,
             "active_tab": "webhooks",
         },
