@@ -334,7 +334,7 @@ async def settings_grade_levels(
         "settings/grade_levels/list.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "grade_levels": grade_levels,
             "active_tab": "grade_levels",
         },
@@ -362,7 +362,7 @@ async def settings_grade_level_create(
         "settings/grade_levels/form.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "grade_level": None,
         },
     )
@@ -396,7 +396,7 @@ async def settings_grade_level_edit(
         "settings/grade_levels/form.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "grade_level": grade_level,
         },
     )
