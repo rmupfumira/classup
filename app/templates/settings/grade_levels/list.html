@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Grade Levels - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+        <p class="mt-1 text-sm text-gray-500">Manage your school settings and preferences.</p>
+    </div>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-6 rounded-lg bg-green-50 p-4">
+        <div class="flex">
+            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <p class="ml-3 text-sm text-green-700">Grade level saved successfully.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get('deleted') %}
+    <div class="mb-6 rounded-lg bg-green-50 p-4">
+        <div class="flex">
+            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <p class="ml-3 text-sm text-green-700">Grade level deleted successfully.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8 overflow-x-auto">
+            <a href="/settings/general"
+               class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                General
+            </a>
+            <a href="/settings/features"
+               class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Features
+            </a>
+            <a href="/settings/grade-levels"
+               class="border-primary-500 text-primary-600 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Grade Levels
+            </a>
+            <a href="/settings/terminology"
+               class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Terminology
+            </a>
+            <a href="/settings/webhooks"
+               class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Webhooks
+            </a>
+        </nav>
+    </div>
+
+    <!-- Header with Add Button -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">Grade Levels</h2>
+            <p class="text-sm text-gray-500">Configure the grade levels for your school.</p>
+        </div>
+        <a href="/settings/grade-levels/create"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Grade Level
+        </a>
+    </div>
+
+    <!-- Grade Levels Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {% if grade_levels %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for gl in grade_levels %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ gl.display_order }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="font-medium text-gray-900">{{ gl.name }}</div>
+                            {% if gl.description %}
+                            <div class="text-sm text-gray-500 truncate max-w-xs">{{ gl.description }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-gray-100 text-gray-800">
+                                {{ gl.code }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if gl.is_active %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Inactive
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                            <a href="/settings/grade-levels/{{ gl.id }}/edit"
+                               class="text-primary-600 hover:text-primary-900 font-medium">Edit</a>
+                            <button type="button"
+                                    onclick="deleteGradeLevel('{{ gl.id }}', '{{ gl.name }}')"
+                                    class="ml-4 text-red-600 hover:text-red-900 font-medium">Delete</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="p-12 text-center">
+            <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No grade levels yet</h3>
+            <p class="text-gray-500 mb-6">Get started by adding your first grade level.</p>
+            <a href="/settings/grade-levels/create"
+               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
+                Add Grade Level
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Help Text -->
+    <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+        <div class="flex">
+            <svg class="h-5 w-5 text-blue-400 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <div class="text-sm text-blue-700">
+                <p class="font-medium mb-1">About Grade Levels</p>
+                <p>Grade levels are used to categorize classes and determine which report templates apply. Each class can be assigned a grade level, and students inherit the grade level from their class.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function deleteGradeLevel(gradeLevelId, gradeLevelName) {
+    if (!confirm(`Are you sure you want to delete "${gradeLevelName}"? This cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/grade-levels/${gradeLevelId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+
+        if (response.ok) {
+            window.location.href = '/settings/grade-levels?deleted=1';
+        } else {
+            const data = await response.json();
+            alert(data.detail || data.message || 'Failed to delete grade level');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the grade level');
+    }
+}
+</script>
+{% endblock %}

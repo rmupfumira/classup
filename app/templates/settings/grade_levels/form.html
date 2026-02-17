@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}{% if grade_level %}Edit{% else %}Add{% endif %} Grade Level - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="/settings/grade-levels" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <h1 class="text-2xl font-bold text-gray-900">
+            {% if grade_level %}Edit Grade Level{% else %}Add Grade Level{% endif %}
+        </h1>
+    </div>
+
+    <!-- Form -->
+    <form id="grade-level-form" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Name -->
+            <div class="md:col-span-2">
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                    Grade Level Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="name" name="name" required
+                       value="{{ grade_level.name if grade_level else '' }}"
+                       placeholder="e.g., Grade 1, Kindergarten, Year 7"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <!-- Code -->
+            <div>
+                <label for="code" class="block text-sm font-medium text-gray-700 mb-1">
+                    Code <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="code" name="code" required maxlength="30"
+                       value="{{ grade_level.code if grade_level else '' }}"
+                       placeholder="e.g., GRADE_1, KINDERGARTEN"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 uppercase">
+                <p class="text-sm text-gray-500 mt-1">Unique identifier (max 30 characters)</p>
+            </div>
+
+            <!-- Display Order -->
+            <div>
+                <label for="display_order" class="block text-sm font-medium text-gray-700 mb-1">
+                    Display Order
+                </label>
+                <input type="number" id="display_order" name="display_order"
+                       value="{{ grade_level.display_order if grade_level else 0 }}"
+                       min="0"
+                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                <p class="text-sm text-gray-500 mt-1">Lower numbers appear first</p>
+            </div>
+
+            <!-- Description -->
+            <div class="md:col-span-2">
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                </label>
+                <textarea id="description" name="description" rows="3"
+                          placeholder="Optional description of this grade level..."
+                          class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">{{ grade_level.description if grade_level else '' }}</textarea>
+            </div>
+
+            {% if grade_level %}
+            <!-- Status (only for edit) -->
+            <div class="md:col-span-2">
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" id="is_active" name="is_active"
+                           {% if grade_level.is_active %}checked{% endif %}
+                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm font-medium text-gray-700">Active</span>
+                </label>
+                <p class="text-sm text-gray-500 mt-1 ml-7">Inactive grade levels won't appear in selection dropdowns</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <a href="/settings/grade-levels"
+               class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+                {% if grade_level %}Save Changes{% else %}Add Grade Level{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('grade-level-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    const isEdit = {{ 'true' if grade_level else 'false' }};
+    const gradeLevelId = '{{ grade_level.id if grade_level else "" }}';
+
+    const data = {
+        name: form.name.value,
+        code: form.code.value.toUpperCase(),
+        description: form.description.value || null,
+        display_order: parseInt(form.display_order.value) || 0,
+    };
+
+    if (isEdit) {
+        data.is_active = form.is_active?.checked ?? true;
+    }
+
+    try {
+        const url = isEdit
+            ? `/api/v1/grade-levels/${gradeLevelId}`
+            : '/api/v1/grade-levels';
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            window.location.href = '/settings/grade-levels?saved=1';
+        } else {
+            alert(result.detail || result.message || 'An error occurred');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while saving the grade level');
+    }
+});
+
+// Auto-uppercase the code field
+document.getElementById('code').addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+});
+
+// Auto-generate code from name if code is empty
+document.getElementById('name').addEventListener('blur', (e) => {
+    const codeField = document.getElementById('code');
+    if (!codeField.value && e.target.value) {
+        codeField.value = e.target.value
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .substring(0, 30);
+    }
+});
+</script>
+{% endblock %}

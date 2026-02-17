@@ -11,7 +11,7 @@
 
     <!-- Tabs -->
     <div class="border-b border-gray-200 mb-6">
-        <nav class="-mb-px flex space-x-8">
+        <nav class="-mb-px flex space-x-8 overflow-x-auto">
             <a href="/settings/general"
                class="{% if active_tab == 'general' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 General
@@ -19,6 +19,10 @@
             <a href="/settings/features"
                class="{% if active_tab == 'features' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Features
+            </a>
+            <a href="/settings/grade-levels"
+               class="{% if active_tab == 'grade_levels' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Grade Levels
             </a>
             <a href="/settings/terminology"
                class="{% if active_tab == 'terminology' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">

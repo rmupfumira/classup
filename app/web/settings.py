@@ -1,5 +1,7 @@
 """Settings web routes."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Tenant
 from app.services.auth_service import get_auth_service
+from app.services.grade_level_service import get_grade_level_service
 from app.templates_config import templates
 from app.utils.tenant_context import (
     get_current_user_id_or_none,
@@ -300,5 +303,100 @@ async def settings_webhooks(
             "current_user": current_user,
             "endpoints": endpoints,
             "active_tab": "webhooks",
+        },
+    )
+
+
+# === Grade Levels ===
+
+
+@router.get("/grade-levels", response_class=HTMLResponse)
+async def settings_grade_levels(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Grade levels settings page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
+    grade_level_service = get_grade_level_service()
+    grade_levels = await grade_level_service.get_grade_levels(db, include_inactive=True)
+
+    return templates.TemplateResponse(
+        "settings/grade_levels/list.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "grade_levels": grade_levels,
+            "active_tab": "grade_levels",
+        },
+    )
+
+
+@router.get("/grade-levels/create", response_class=HTMLResponse)
+async def settings_grade_level_create(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Grade level create form."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
+    return templates.TemplateResponse(
+        "settings/grade_levels/form.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "grade_level": None,
+        },
+    )
+
+
+@router.get("/grade-levels/{grade_level_id}/edit", response_class=HTMLResponse)
+async def settings_grade_level_edit(
+    request: Request,
+    grade_level_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Grade level edit form."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
+    grade_level_service = get_grade_level_service()
+    grade_level = await grade_level_service.get_grade_level(db, grade_level_id)
+
+    if not grade_level:
+        return RedirectResponse(url="/settings/grade-levels", status_code=302)
+
+    return templates.TemplateResponse(
+        "settings/grade_levels/form.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "grade_level": grade_level,
         },
     )
