@@ -328,7 +328,7 @@ async def settings_grade_levels(
     current_user = await auth_service.get_current_user(db, user_id)
 
     grade_level_service = get_grade_level_service()
-    grade_levels = await grade_level_service.get_grade_levels(db, include_inactive=True)
+    grade_levels, _ = await grade_level_service.get_grade_levels(db, is_active=None)
 
     return templates.TemplateResponse(
         "settings/grade_levels/list.html",
