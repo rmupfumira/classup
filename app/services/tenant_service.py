@@ -159,6 +159,15 @@ class TenantService:
         )
 
         db.add(tenant)
+        await db.flush()  # Flush to get tenant.id
+
+        # Seed default grade levels for the tenant based on education type
+        from app.services.grade_level_service import get_grade_level_service
+        grade_level_service = get_grade_level_service()
+        await grade_level_service.seed_grade_levels_for_tenant(
+            db, tenant.id, education_type.value
+        )
+
         await db.commit()
         await db.refresh(tenant)
 

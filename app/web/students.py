@@ -50,7 +50,7 @@ def _require_auth(request: Request):
 async def students_list(
     request: Request,
     class_id: uuid.UUID | None = None,
-    age_group: str | None = None,
+    grade_level_id: uuid.UUID | None = None,
     search: str | None = None,
     page: int = Query(1, ge=1),
     db: AsyncSession = Depends(get_db),
@@ -81,7 +81,7 @@ async def students_list(
         students, total = await student_service.get_students(
             db,
             class_id=class_id,
-            age_group=age_group,
+            grade_level_id=grade_level_id,
             search=search,
             page=page,
             page_size=20,
@@ -99,7 +99,7 @@ async def students_list(
             "students": students,
             "classes": classes,
             "current_class_id": class_id,
-            "current_age_group": age_group,
+            "current_grade_level_id": str(grade_level_id) if grade_level_id else None,
             "search": search,
             "page": page,
             "total_pages": total_pages,

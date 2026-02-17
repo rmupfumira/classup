@@ -25,8 +25,9 @@ class ClassService:
         self,
         db: AsyncSession,
         is_active: bool | None = True,
-        age_group: str | None = None,
-        grade_level: str | None = None,
+        age_group: str | None = None,  # DEPRECATED: Use grade_level_id
+        grade_level: str | None = None,  # DEPRECATED: Use grade_level_id
+        grade_level_id: uuid.UUID | None = None,
         search: str | None = None,
         page: int = 1,
         page_size: int = 20,
@@ -42,6 +43,7 @@ class ClassService:
             .options(
                 selectinload(SchoolClass.students),
                 selectinload(SchoolClass.teacher_classes).selectinload(TeacherClass.teacher),
+                selectinload(SchoolClass.grade_level_rel),
             )
         )
 
@@ -52,6 +54,9 @@ class ClassService:
         # Apply filters
         if is_active is not None:
             query = query.where(SchoolClass.is_active == is_active)
+        if grade_level_id:
+            query = query.where(SchoolClass.grade_level_id == grade_level_id)
+        # DEPRECATED: Keep for backward compatibility
         if age_group:
             query = query.where(SchoolClass.age_group == age_group)
         if grade_level:
@@ -94,6 +99,7 @@ class ClassService:
             .options(
                 selectinload(SchoolClass.students),
                 selectinload(SchoolClass.teacher_classes).selectinload(TeacherClass.teacher),
+                selectinload(SchoolClass.grade_level_rel),
             )
         )
 
@@ -117,8 +123,9 @@ class ClassService:
             tenant_id=tenant_id,
             name=data.name,
             description=data.description,
-            age_group=data.age_group,
-            grade_level=data.grade_level,
+            age_group=data.age_group,  # DEPRECATED
+            grade_level=data.grade_level,  # DEPRECATED
+            grade_level_id=data.grade_level_id,
             capacity=data.capacity,
             is_active=True,
         )
@@ -326,7 +333,10 @@ class ClassService:
                 SchoolClass.tenant_id == tenant_id,
                 SchoolClass.deleted_at.is_(None),
             )
-            .options(selectinload(SchoolClass.students))
+            .options(
+                selectinload(SchoolClass.students),
+                selectinload(SchoolClass.grade_level_rel),
+            )
         )
 
         result = await db.execute(query)

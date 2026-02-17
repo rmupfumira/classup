@@ -25,7 +25,8 @@ class StudentService:
         self,
         db: AsyncSession,
         class_id: uuid.UUID | None = None,
-        age_group: str | None = None,
+        grade_level_id: uuid.UUID | None = None,
+        age_group: str | None = None,  # DEPRECATED: Use grade_level_id
         is_active: bool | None = True,
         search: str | None = None,
         page: int = 1,
@@ -37,14 +38,25 @@ class StudentService:
         query = (
             select(Student)
             .where(Student.tenant_id == tenant_id, Student.deleted_at.is_(None))
-            .options(selectinload(Student.school_class))
+            .options(
+                selectinload(Student.school_class).selectinload(SchoolClass.grade_level_rel)
+            )
         )
 
         # Apply filters
         if class_id:
             query = query.where(Student.class_id == class_id)
+
+        # Filter by grade_level_id (via class relationship)
+        if grade_level_id:
+            query = query.join(SchoolClass, Student.class_id == SchoolClass.id).where(
+                SchoolClass.grade_level_id == grade_level_id
+            )
+
+        # DEPRECATED: Keep for backward compatibility
         if age_group:
             query = query.where(Student.age_group == age_group)
+
         if is_active is not None:
             query = query.where(Student.is_active == is_active)
         if search:
@@ -63,7 +75,7 @@ class StudentService:
         query = query.offset((page - 1) * page_size).limit(page_size)
 
         result = await db.execute(query)
-        students = list(result.scalars().all())
+        students = list(result.scalars().unique().all())
 
         return students, total
 
@@ -83,7 +95,7 @@ class StudentService:
                 Student.deleted_at.is_(None),
             )
             .options(
-                selectinload(Student.school_class),
+                selectinload(Student.school_class).selectinload(SchoolClass.grade_level_rel),
                 selectinload(Student.parent_students).selectinload(ParentStudent.parent),
             )
         )
@@ -279,7 +291,9 @@ class StudentService:
                 ParentStudent.parent_id == parent_id,
                 Student.deleted_at.is_(None),
             )
-            .options(selectinload(Student.school_class))
+            .options(
+                selectinload(Student.school_class).selectinload(SchoolClass.grade_level_rel)
+            )
         )
 
         result = await db.execute(query)

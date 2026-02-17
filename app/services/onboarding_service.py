@@ -107,6 +107,7 @@ class OnboardingService:
         if not tenant:
             raise ValueError("Tenant not found")
 
+        old_education_type = tenant.education_type
         tenant.education_type = education_type
 
         settings = tenant.settings or {}
@@ -125,6 +126,15 @@ class OnboardingService:
         settings["terminology"] = self._get_default_terminology(education_type)
 
         tenant.settings = settings
+
+        # If education type changed, seed new grade levels
+        if old_education_type != education_type:
+            from app.services.grade_level_service import get_grade_level_service
+            grade_level_service = get_grade_level_service()
+            await grade_level_service.seed_grade_levels_for_tenant(
+                db, tenant_id, education_type
+            )
+
         await db.commit()
         await db.refresh(tenant)
 
@@ -221,8 +231,9 @@ class OnboardingService:
                 tenant_id=tenant_id,
                 name=class_data["name"],
                 description=class_data.get("description"),
-                age_group=class_data.get("age_group"),
-                grade_level=class_data.get("grade_level"),
+                grade_level_id=class_data.get("grade_level_id"),  # New FK-based grade level
+                age_group=class_data.get("age_group"),  # DEPRECATED
+                grade_level=class_data.get("grade_level"),  # DEPRECATED
                 capacity=class_data.get("capacity"),
             )
             db.add(school_class)

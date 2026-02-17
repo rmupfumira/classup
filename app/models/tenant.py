@@ -62,6 +62,7 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     school_classes = relationship("SchoolClass", back_populates="tenant", lazy="selectin")
     subjects = relationship("Subject", back_populates="tenant", lazy="selectin")
     grading_systems = relationship("GradingSystem", back_populates="tenant", lazy="selectin")
+    grade_levels = relationship("GradeLevel", back_populates="tenant", lazy="selectin")
 
     def get_setting(self, key: str, default: any = None) -> any:
         """Get a setting value by dot-notation key."""

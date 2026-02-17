@@ -67,7 +67,8 @@ class ReportTemplateCreate(BaseModel):
     description: str | None = None
     report_type: ReportType
     frequency: ReportFrequency = ReportFrequency.DAILY
-    applies_to_grade_level: str | None = None  # Comma-separated
+    applies_to_grade_level: str | None = None  # DEPRECATED: Use grade_level_ids
+    grade_level_ids: list[uuid.UUID] | None = None  # New FK-based grade levels
     sections: list[TemplateSection] = []
     display_order: int = 0
     is_active: bool = True
@@ -80,10 +81,21 @@ class ReportTemplateUpdate(BaseModel):
     description: str | None = None
     report_type: ReportType | None = None
     frequency: ReportFrequency | None = None
-    applies_to_grade_level: str | None = None
+    applies_to_grade_level: str | None = None  # DEPRECATED: Use grade_level_ids
+    grade_level_ids: list[uuid.UUID] | None = None  # New FK-based grade levels
     sections: list[TemplateSection] | None = None
     display_order: int | None = None
     is_active: bool | None = None
+
+
+class GradeLevelBasicInfo(BaseModel):
+    """Basic grade level info for report template response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    code: str
 
 
 class ReportTemplateResponse(BaseModel):
@@ -97,7 +109,8 @@ class ReportTemplateResponse(BaseModel):
     description: str | None
     report_type: str
     frequency: str
-    applies_to_grade_level: str | None
+    applies_to_grade_level: str | None  # DEPRECATED
+    grade_levels: list[GradeLevelBasicInfo] = Field(default_factory=list)
     sections: list[dict]
     display_order: int
     is_active: bool
@@ -115,7 +128,8 @@ class ReportTemplateListResponse(BaseModel):
     description: str | None
     report_type: str
     frequency: str
-    applies_to_grade_level: str | None
+    applies_to_grade_level: str | None  # DEPRECATED
+    grade_levels: list[GradeLevelBasicInfo] = Field(default_factory=list)
     is_active: bool
     section_count: int = 0
 

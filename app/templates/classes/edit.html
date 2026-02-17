@@ -46,30 +46,18 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label for="age_group" class="block text-sm font-medium text-gray-700 mb-1">
-                        Age Group
+                    <label for="grade_level_id" class="block text-sm font-medium text-gray-700 mb-1">
+                        Grade Level
                     </label>
-                    <select id="age_group" name="age_group"
+                    <select id="grade_level_id" name="grade_level_id"
+                            data-current="{{ school_class.grade_level_id or '' }}"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Select...</option>
-                        <option value="INFANT" {% if school_class.age_group == 'INFANT' %}selected{% endif %}>Infant (0-12 months)</option>
-                        <option value="TODDLER" {% if school_class.age_group == 'TODDLER' %}selected{% endif %}>Toddler (1-2 years)</option>
-                        <option value="PRESCHOOL" {% if school_class.age_group == 'PRESCHOOL' %}selected{% endif %}>Preschool (3-4 years)</option>
-                        <option value="KINDERGARTEN" {% if school_class.age_group == 'KINDERGARTEN' %}selected{% endif %}>Kindergarten (5-6 years)</option>
-                        <option value="GRADE_R" {% if school_class.age_group == 'GRADE_R' %}selected{% endif %}>Grade R</option>
-                        <option value="GRADE_1" {% if school_class.age_group == 'GRADE_1' %}selected{% endif %}>Grade 1</option>
-                        <option value="GRADE_2" {% if school_class.age_group == 'GRADE_2' %}selected{% endif %}>Grade 2</option>
-                        <option value="GRADE_3" {% if school_class.age_group == 'GRADE_3' %}selected{% endif %}>Grade 3</option>
+                        <option value="">Select grade level...</option>
+                        <!-- Options loaded dynamically via JS -->
                     </select>
-                </div>
-
-                <div>
-                    <label for="grade_level" class="block text-sm font-medium text-gray-700 mb-1">
-                        Grade Level (custom)
-                    </label>
-                    <input type="text" id="grade_level" name="grade_level"
-                           value="{{ school_class.grade_level or '' }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <p class="mt-1 text-xs text-gray-500">
+                        Grade levels can be configured in <a href="/settings/grade-levels" class="text-primary-600 hover:underline">Settings</a>
+                    </p>
                 </div>
 
                 <div>
@@ -117,10 +105,37 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const form = document.getElementById('class-form');
     const deleteBtn = document.getElementById('delete-btn');
     const classId = '{{ school_class.id }}';
+    const gradeLevelSelect = document.getElementById('grade_level_id');
+    const currentGradeLevelId = gradeLevelSelect.dataset.current;
+
+    // Load grade levels from API
+    async function loadGradeLevels() {
+        try {
+            const response = await fetch('/api/v1/grade-levels', {
+                credentials: 'same-origin'
+            });
+            const result = await response.json();
+            if (response.ok && result.data) {
+                result.data.forEach(gl => {
+                    const option = document.createElement('option');
+                    option.value = gl.id;
+                    option.textContent = gl.name;
+                    if (gl.id === currentGradeLevelId) {
+                        option.selected = true;
+                    }
+                    gradeLevelSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load grade levels:', error);
+        }
+    }
+
+    await loadGradeLevels();
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -129,8 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = {
             name: formData.get('name'),
             description: formData.get('description') || null,
-            age_group: formData.get('age_group') || null,
-            grade_level: formData.get('grade_level') || null,
+            grade_level_id: formData.get('grade_level_id') || null,
             capacity: formData.get('capacity') ? parseInt(formData.get('capacity')) : null,
             is_active: formData.get('is_active') === 'true'
         };

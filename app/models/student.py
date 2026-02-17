@@ -27,8 +27,13 @@ class Gender(str, Enum):
     OTHER = "OTHER"
 
 
+# DEPRECATED: Use GradeLevel model instead
 class AgeGroup(str, Enum):
-    """Age groups for daycare/early childhood."""
+    """Age groups for daycare/early childhood.
+
+    DEPRECATED: This enum is deprecated. Use the GradeLevel model instead.
+    Grade levels are now managed as tenant-scoped entities and inherited from class.
+    """
 
     INFANT = "INFANT"
     TODDLER = "TODDLER"
@@ -72,7 +77,9 @@ class Student(TenantScopedModel):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # DEPRECATED: Use grade level from class instead
     age_group: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # DEPRECATED: Use grade level from class instead
     grade_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
     class_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -141,6 +148,39 @@ class Student(TenantScopedModel):
             if ps.is_primary:
                 return ps
         return self.parent_students[0] if self.parent_students else None
+
+    @property
+    def effective_grade_level_id(self) -> uuid.UUID | None:
+        """Get the grade level ID from the student's class.
+
+        Students inherit their grade level from the class they are assigned to.
+        Returns None if the student has no class or the class has no grade level.
+        """
+        if self.school_class and self.school_class.grade_level_id:
+            return self.school_class.grade_level_id
+        return None
+
+    @property
+    def effective_grade_level(self) -> "GradeLevel | None":
+        """Get the grade level object from the student's class.
+
+        Students inherit their grade level from the class they are assigned to.
+        Returns None if the student has no class or the class has no grade level.
+        """
+        if self.school_class and hasattr(self.school_class, 'grade_level_rel'):
+            return self.school_class.grade_level_rel
+        return None
+
+    @property
+    def effective_grade_level_name(self) -> str | None:
+        """Get the grade level name from the student's class."""
+        grade_level = self.effective_grade_level
+        return grade_level.name if grade_level else None
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if the student is soft deleted."""
+        return self.deleted_at is not None
 
 
 class ParentStudent(Base, TimestampMixin):

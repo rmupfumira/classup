@@ -22,6 +22,38 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TenantScopedModel, TimestampMixin
 
 
+class ReportTemplateGradeLevel(Base, TimestampMixin):
+    """Join table linking report templates to applicable grade levels."""
+
+    __tablename__ = "report_template_grade_levels"
+    __table_args__ = (
+        Index("idx_template_grade_levels_template", "template_id"),
+        Index("idx_template_grade_levels_grade_level", "grade_level_id"),
+        Index(
+            "idx_template_grade_levels_unique",
+            "template_id",
+            "grade_level_id",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    template_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("report_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    grade_level_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grade_levels.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+
 class ReportType(str, Enum):
     """Types of reports."""
 
@@ -88,6 +120,12 @@ class ReportTemplate(TenantScopedModel):
     daily_reports = relationship(
         "DailyReport",
         back_populates="template",
+        lazy="selectin",
+    )
+    grade_levels = relationship(
+        "GradeLevel",
+        secondary="report_template_grade_levels",
+        back_populates="report_templates",
         lazy="selectin",
     )
 

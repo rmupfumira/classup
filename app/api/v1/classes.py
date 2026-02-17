@@ -39,12 +39,19 @@ def _build_class_list_response(school_class) -> SchoolClassListResponse:
         if tc.teacher:
             primary_teacher_name = f"{tc.teacher.first_name} {tc.teacher.last_name}"
 
+    # Get grade level name from relationship
+    grade_level_name = None
+    if school_class.grade_level_rel:
+        grade_level_name = school_class.grade_level_rel.name
+
     return SchoolClassListResponse(
         id=school_class.id,
         name=school_class.name,
         description=school_class.description,
-        age_group=school_class.age_group,
-        grade_level=school_class.grade_level,
+        age_group=school_class.age_group,  # DEPRECATED
+        grade_level=school_class.grade_level,  # DEPRECATED
+        grade_level_id=school_class.grade_level_id,
+        grade_level_name=grade_level_name,
         capacity=school_class.capacity,
         is_active=school_class.is_active,
         student_count=student_count,
@@ -58,13 +65,20 @@ def _build_class_response(school_class) -> SchoolClassResponse:
     student_count = len([s for s in school_class.students if s.deleted_at is None and s.is_active])
     teacher_count = len(school_class.teacher_classes)
 
+    # Get grade level name from relationship
+    grade_level_name = None
+    if school_class.grade_level_rel:
+        grade_level_name = school_class.grade_level_rel.name
+
     return SchoolClassResponse(
         id=school_class.id,
         tenant_id=school_class.tenant_id,
         name=school_class.name,
         description=school_class.description,
-        age_group=school_class.age_group,
-        grade_level=school_class.grade_level,
+        age_group=school_class.age_group,  # DEPRECATED
+        grade_level=school_class.grade_level,  # DEPRECATED
+        grade_level_id=school_class.grade_level_id,
+        grade_level_name=grade_level_name,
         capacity=school_class.capacity,
         is_active=school_class.is_active,
         created_at=school_class.created_at,
@@ -113,8 +127,9 @@ def _build_class_detail_response(school_class) -> SchoolClassDetailResponse:
 @require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
 async def list_classes(
     is_active: bool | None = Query(True, description="Filter by active status"),
-    age_group: str | None = Query(None, description="Filter by age group"),
-    grade_level: str | None = Query(None, description="Filter by grade level"),
+    grade_level_id: uuid.UUID | None = Query(None, description="Filter by grade level ID"),
+    age_group: str | None = Query(None, description="DEPRECATED: Filter by age group"),
+    grade_level: str | None = Query(None, description="DEPRECATED: Filter by grade level string"),
     search: str | None = Query(None, description="Search by name"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -129,8 +144,9 @@ async def list_classes(
     classes, total = await service.get_classes(
         db,
         is_active=is_active,
-        age_group=age_group,
-        grade_level=grade_level,
+        grade_level_id=grade_level_id,
+        age_group=age_group,  # DEPRECATED
+        grade_level=grade_level,  # DEPRECATED
         search=search,
         page=page,
         page_size=page_size,

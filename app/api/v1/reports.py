@@ -69,6 +69,14 @@ def _build_report_response(report) -> dict:
 
 def _build_template_response(template) -> dict:
     """Build a template response dict from a ReportTemplate model."""
+    # Build grade_levels list from relationship
+    grade_levels = []
+    if hasattr(template, 'grade_levels') and template.grade_levels:
+        grade_levels = [
+            {"id": gl.id, "name": gl.name, "code": gl.code}
+            for gl in template.grade_levels
+        ]
+
     return {
         "id": template.id,
         "tenant_id": template.tenant_id,
@@ -76,12 +84,35 @@ def _build_template_response(template) -> dict:
         "description": template.description,
         "report_type": template.report_type,
         "frequency": template.frequency,
-        "applies_to_grade_level": template.applies_to_grade_level,
+        "applies_to_grade_level": template.applies_to_grade_level,  # DEPRECATED
+        "grade_levels": grade_levels,
         "sections": template.sections,
         "display_order": template.display_order,
         "is_active": template.is_active,
         "created_at": template.created_at,
         "updated_at": template.updated_at,
+    }
+
+
+def _build_template_list_item(template) -> dict:
+    """Build a template list item response from a ReportTemplate model."""
+    grade_levels = []
+    if hasattr(template, 'grade_levels') and template.grade_levels:
+        grade_levels = [
+            {"id": gl.id, "name": gl.name, "code": gl.code}
+            for gl in template.grade_levels
+        ]
+
+    return {
+        "id": template.id,
+        "name": template.name,
+        "description": template.description,
+        "report_type": template.report_type,
+        "frequency": template.frequency,
+        "applies_to_grade_level": template.applies_to_grade_level,  # DEPRECATED
+        "grade_levels": grade_levels,
+        "is_active": template.is_active,
+        "section_count": len(template.sections) if template.sections else 0,
     }
 
 
@@ -93,6 +124,7 @@ def _build_template_response(template) -> dict:
 async def list_templates(
     is_active: bool | None = None,
     report_type: str | None = None,
+    grade_level_id: uuid.UUID | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -103,25 +135,14 @@ async def list_templates(
         db,
         is_active=is_active,
         report_type=report_type,
+        grade_level_id=grade_level_id,
         page=page,
         page_size=page_size,
     )
 
     return {
         "status": "success",
-        "data": [
-            {
-                "id": t.id,
-                "name": t.name,
-                "description": t.description,
-                "report_type": t.report_type,
-                "frequency": t.frequency,
-                "applies_to_grade_level": t.applies_to_grade_level,
-                "is_active": t.is_active,
-                "section_count": len(t.sections) if t.sections else 0,
-            }
-            for t in templates
-        ],
+        "data": [_build_template_list_item(t) for t in templates],
         "pagination": PaginationMeta(
             page=page,
             page_size=page_size,
@@ -162,19 +183,7 @@ async def get_templates_for_student(
 
     return {
         "status": "success",
-        "data": [
-            {
-                "id": t.id,
-                "name": t.name,
-                "description": t.description,
-                "report_type": t.report_type,
-                "frequency": t.frequency,
-                "applies_to_grade_level": t.applies_to_grade_level,
-                "is_active": t.is_active,
-                "section_count": len(t.sections) if t.sections else 0,
-            }
-            for t in templates
-        ],
+        "data": [_build_template_list_item(t) for t in templates],
     }
 
 

@@ -18,7 +18,9 @@
                 </h1>
                 <p class="text-sm text-gray-500">
                     {% if student.school_class %}{{ student.school_class.name }}{% else %}Unassigned{% endif %}
-                    {% if student.age_group %} &bull; {{ student.age_group }}{% endif %}
+                    {% if student.school_class and student.school_class.grade_level_rel %}
+                        &bull; {{ student.school_class.grade_level_rel.name }}
+                    {% endif %}
                 </p>
             </div>
         </div>
@@ -100,12 +102,14 @@
                                 </dd>
                             </div>
                             <div>
-                                <dt class="text-gray-500">Age Group</dt>
-                                <dd class="text-gray-900 font-medium">{{ student.age_group or '-' }}</dd>
-                            </div>
-                            <div>
                                 <dt class="text-gray-500">Grade Level</dt>
-                                <dd class="text-gray-900 font-medium">{{ student.grade_level or '-' }}</dd>
+                                <dd class="text-gray-900 font-medium">
+                                    {% if student.school_class and student.school_class.grade_level_rel %}
+                                        {{ student.school_class.grade_level_rel.name }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </dd>
                             </div>
                         </dl>
                     </div>

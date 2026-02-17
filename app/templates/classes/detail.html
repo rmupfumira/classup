@@ -84,12 +84,16 @@
 
                         <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                             <div>
-                                <dt class="text-neutral-500">Age Group</dt>
-                                <dd class="text-neutral-800 font-medium">{{ school_class.age_group or '-' }}</dd>
-                            </div>
-                            <div>
                                 <dt class="text-neutral-500">Grade Level</dt>
-                                <dd class="text-neutral-800 font-medium">{{ school_class.grade_level or '-' }}</dd>
+                                <dd class="text-neutral-800 font-medium">
+                                    {% if school_class.grade_level_rel %}
+                                        {{ school_class.grade_level_rel.name }}
+                                    {% elif school_class.age_group or school_class.grade_level %}
+                                        {{ school_class.age_group or school_class.grade_level or '-' }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </dd>
                             </div>
                             <div>
                                 <dt class="text-neutral-500">Capacity</dt>
@@ -131,7 +135,6 @@
                                 <p class="text-sm font-medium text-neutral-800">
                                     {{ student.first_name }} {{ student.last_name }}
                                 </p>
-                                <p class="text-xs text-neutral-500">{{ student.age_group or '' }}</p>
                             </div>
                             {% if student.is_active %}
                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">

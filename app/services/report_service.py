@@ -7,7 +7,8 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.report import DailyReport, ReportStatus, ReportTemplate
+from app.models.grade_level import GradeLevel
+from app.models.report import DailyReport, ReportStatus, ReportTemplate, ReportTemplateGradeLevel
 from app.models.student import Student
 from app.schemas.report import (
     ReportCreate,
@@ -28,16 +29,21 @@ class ReportService:
         db: AsyncSession,
         is_active: bool | None = None,
         report_type: str | None = None,
+        grade_level_id: uuid.UUID | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[ReportTemplate], int]:
         """Get all report templates for the current tenant."""
         tenant_id = get_tenant_id()
 
-        # Build query
-        query = select(ReportTemplate).where(
-            ReportTemplate.tenant_id == tenant_id,
-            ReportTemplate.deleted_at.is_(None),
+        # Build query with grade_levels relationship loaded
+        query = (
+            select(ReportTemplate)
+            .options(selectinload(ReportTemplate.grade_levels))
+            .where(
+                ReportTemplate.tenant_id == tenant_id,
+                ReportTemplate.deleted_at.is_(None),
+            )
         )
 
         if is_active is not None:
@@ -45,6 +51,12 @@ class ReportService:
 
         if report_type:
             query = query.where(ReportTemplate.report_type == report_type)
+
+        # Filter by grade_level_id if provided
+        if grade_level_id:
+            query = query.join(ReportTemplateGradeLevel).where(
+                ReportTemplateGradeLevel.grade_level_id == grade_level_id
+            )
 
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
@@ -70,10 +82,14 @@ class ReportService:
         """Get a specific report template."""
         tenant_id = get_tenant_id()
 
-        query = select(ReportTemplate).where(
-            ReportTemplate.id == template_id,
-            ReportTemplate.tenant_id == tenant_id,
-            ReportTemplate.deleted_at.is_(None),
+        query = (
+            select(ReportTemplate)
+            .options(selectinload(ReportTemplate.grade_levels))
+            .where(
+                ReportTemplate.id == template_id,
+                ReportTemplate.tenant_id == tenant_id,
+                ReportTemplate.deleted_at.is_(None),
+            )
         )
 
         result = await db.execute(query)
@@ -84,14 +100,22 @@ class ReportService:
         db: AsyncSession,
         student_id: uuid.UUID,
     ) -> list[ReportTemplate]:
-        """Get all applicable templates for a specific student."""
+        """Get all applicable templates for a specific student.
+
+        Uses the FK-based grade_level_id from the student's class if available,
+        falls back to legacy string-based matching for backward compatibility.
+        """
         tenant_id = get_tenant_id()
 
-        # Get student
-        student_query = select(Student).where(
-            Student.id == student_id,
-            Student.tenant_id == tenant_id,
-            Student.deleted_at.is_(None),
+        # Get student with class relationship
+        student_query = (
+            select(Student)
+            .options(selectinload(Student.school_class))
+            .where(
+                Student.id == student_id,
+                Student.tenant_id == tenant_id,
+                Student.deleted_at.is_(None),
+            )
         )
         student_result = await db.execute(student_query)
         student = student_result.scalar_one_or_none()
@@ -99,21 +123,43 @@ class ReportService:
         if not student:
             return []
 
-        # Get all active templates
-        query = select(ReportTemplate).where(
-            ReportTemplate.tenant_id == tenant_id,
-            ReportTemplate.is_active == True,
-            ReportTemplate.deleted_at.is_(None),
-        ).order_by(ReportTemplate.display_order)
+        # Get all active templates with grade_levels loaded
+        query = (
+            select(ReportTemplate)
+            .options(selectinload(ReportTemplate.grade_levels))
+            .where(
+                ReportTemplate.tenant_id == tenant_id,
+                ReportTemplate.is_active == True,
+                ReportTemplate.deleted_at.is_(None),
+            )
+            .order_by(ReportTemplate.display_order)
+        )
 
         result = await db.execute(query)
         all_templates = list(result.scalars().all())
 
+        # Get grade_level_id from student's class
+        student_grade_level_id = None
+        if student.school_class and student.school_class.grade_level_id:
+            student_grade_level_id = student.school_class.grade_level_id
+
         # Filter to applicable templates
         applicable = []
         for template in all_templates:
-            if template.applies_to_student(student.age_group, student.grade_level):
+            # If template has FK-based grade_levels, use that
+            if template.grade_levels:
+                # Universal template if no grade levels specified (empty list won't reach here)
+                grade_level_ids = [gl.id for gl in template.grade_levels]
+                if student_grade_level_id and student_grade_level_id in grade_level_ids:
+                    applicable.append(template)
+                # If no student grade level but template requires one, skip
+            elif not template.applies_to_grade_level:
+                # Universal template (no FK grade levels AND no legacy string)
                 applicable.append(template)
+            else:
+                # Fall back to legacy string-based matching
+                if template.applies_to_student(student.age_group, student.grade_level):
+                    applicable.append(template)
 
         return applicable
 
@@ -131,17 +177,24 @@ class ReportService:
             description=data.description,
             report_type=data.report_type.value,
             frequency=data.frequency.value,
-            applies_to_grade_level=data.applies_to_grade_level,
+            applies_to_grade_level=data.applies_to_grade_level,  # DEPRECATED
             sections=[section.model_dump() for section in data.sections],
             display_order=data.display_order,
             is_active=data.is_active,
         )
 
         db.add(template)
+        await db.flush()
+
+        # Handle grade_level_ids if provided
+        if data.grade_level_ids:
+            await self._set_template_grade_levels(db, template.id, data.grade_level_ids, tenant_id)
+
         await db.commit()
         await db.refresh(template)
 
-        return template
+        # Reload with grade_levels relationship
+        return await self.get_template(db, template.id)
 
     async def update_template(
         self,
@@ -150,6 +203,7 @@ class ReportService:
         data: ReportTemplateUpdate,
     ) -> ReportTemplate | None:
         """Update a report template."""
+        tenant_id = get_tenant_id()
         template = await self.get_template(db, template_id)
         if not template:
             return None
@@ -171,10 +225,14 @@ class ReportService:
         if data.is_active is not None:
             template.is_active = data.is_active
 
-        await db.commit()
-        await db.refresh(template)
+        # Handle grade_level_ids if provided
+        if data.grade_level_ids is not None:
+            await self._set_template_grade_levels(db, template_id, data.grade_level_ids, tenant_id)
 
-        return template
+        await db.commit()
+
+        # Reload with grade_levels relationship
+        return await self.get_template(db, template_id)
 
     async def delete_template(
         self,
@@ -191,6 +249,42 @@ class ReportService:
         await db.commit()
 
         return True
+
+    async def _set_template_grade_levels(
+        self,
+        db: AsyncSession,
+        template_id: uuid.UUID,
+        grade_level_ids: list[uuid.UUID],
+        tenant_id: uuid.UUID,
+    ) -> None:
+        """Set the grade levels for a template (replaces existing)."""
+        # Delete existing grade level associations
+        delete_query = select(ReportTemplateGradeLevel).where(
+            ReportTemplateGradeLevel.template_id == template_id
+        )
+        result = await db.execute(delete_query)
+        for existing in result.scalars():
+            await db.delete(existing)
+
+        # Verify grade levels belong to tenant and create new associations
+        for grade_level_id in grade_level_ids:
+            # Verify grade level exists and belongs to tenant
+            gl_query = select(GradeLevel).where(
+                GradeLevel.id == grade_level_id,
+                GradeLevel.tenant_id == tenant_id,
+                GradeLevel.deleted_at.is_(None),
+            )
+            gl_result = await db.execute(gl_query)
+            grade_level = gl_result.scalar_one_or_none()
+
+            if grade_level:
+                association = ReportTemplateGradeLevel(
+                    template_id=template_id,
+                    grade_level_id=grade_level_id,
+                )
+                db.add(association)
+
+        await db.flush()
 
     # ============== Report Methods ==============
 

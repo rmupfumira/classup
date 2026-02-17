@@ -74,35 +74,13 @@
                         <option value="">No class assigned</option>
                         {% for cls in classes %}
                         <option value="{{ cls.id }}" {% if student.class_id and (student.class_id|string) == (cls.id|string) %}selected{% endif %}>
-                            {{ cls.name }}
+                            {{ cls.name }}{% if cls.grade_level_rel %} ({{ cls.grade_level_rel.name }}){% endif %}
                         </option>
                         {% endfor %}
                     </select>
-                </div>
-                <div>
-                    <label for="age_group" class="block text-sm font-medium text-gray-700 mb-1">
-                        Age Group
-                    </label>
-                    <select id="age_group" name="age_group"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Select...</option>
-                        <option value="INFANT" {% if student.age_group == 'INFANT' %}selected{% endif %}>Infant</option>
-                        <option value="TODDLER" {% if student.age_group == 'TODDLER' %}selected{% endif %}>Toddler</option>
-                        <option value="PRESCHOOL" {% if student.age_group == 'PRESCHOOL' %}selected{% endif %}>Preschool</option>
-                        <option value="KINDERGARTEN" {% if student.age_group == 'KINDERGARTEN' %}selected{% endif %}>Kindergarten</option>
-                        <option value="GRADE_R" {% if student.age_group == 'GRADE_R' %}selected{% endif %}>Grade R</option>
-                        <option value="GRADE_1" {% if student.age_group == 'GRADE_1' %}selected{% endif %}>Grade 1</option>
-                        <option value="GRADE_2" {% if student.age_group == 'GRADE_2' %}selected{% endif %}>Grade 2</option>
-                        <option value="GRADE_3" {% if student.age_group == 'GRADE_3' %}selected{% endif %}>Grade 3</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="grade_level" class="block text-sm font-medium text-gray-700 mb-1">
-                        Grade Level (custom)
-                    </label>
-                    <input type="text" id="grade_level" name="grade_level" placeholder="e.g., Grade 3, Year 7"
-                           value="{{ student.grade_level or '' }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <p class="mt-1 text-xs text-gray-500">
+                        The student's grade level is determined by their assigned class.
+                    </p>
                 </div>
                 <div>
                     <label for="is_active" class="block text-sm font-medium text-gray-700 mb-1">
@@ -276,8 +254,6 @@ document.addEventListener('DOMContentLoaded', function() {
             last_name: formData.get('last_name'),
             date_of_birth: formData.get('date_of_birth') || null,
             gender: formData.get('gender') || null,
-            age_group: formData.get('age_group') || null,
-            grade_level: formData.get('grade_level') || null,
             class_id: formData.get('class_id') || null,
             allergies: formData.get('allergies') || null,
             medical_info: formData.get('medical_info') || null,

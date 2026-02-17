@@ -23,8 +23,8 @@ class StudentBase(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=100)
     date_of_birth: date | None = None
     gender: str | None = None
-    age_group: str | None = None
-    grade_level: str | None = None
+    age_group: str | None = None  # DEPRECATED: Grade level is inherited from class
+    grade_level: str | None = None  # DEPRECATED: Grade level is inherited from class
     class_id: uuid.UUID | None = None
     medical_info: str | None = None
     allergies: str | None = None
@@ -71,6 +71,9 @@ class StudentResponse(StudentBase):
     full_name: str | None = None
     age: int | None = None
     class_name: str | None = None
+    # Grade level inherited from class
+    effective_grade_level_id: uuid.UUID | None = None
+    effective_grade_level_name: str | None = None
 
 
 class StudentListResponse(BaseModel):
@@ -81,8 +84,8 @@ class StudentListResponse(BaseModel):
     id: uuid.UUID
     first_name: str
     last_name: str
-    age_group: str | None
-    grade_level: str | None
+    age_group: str | None  # DEPRECATED
+    grade_level: str | None  # DEPRECATED
     class_id: uuid.UUID | None
     is_active: bool
     photo_path: str | None
@@ -90,6 +93,9 @@ class StudentListResponse(BaseModel):
     # Computed/joined fields
     full_name: str | None = None
     class_name: str | None = None
+    # Grade level inherited from class
+    effective_grade_level_id: uuid.UUID | None = None
+    effective_grade_level_name: str | None = None
 
 
 class StudentDetailResponse(StudentResponse):

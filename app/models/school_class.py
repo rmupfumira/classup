@@ -33,13 +33,19 @@ class SchoolClass(TenantScopedModel):
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    age_group: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    grade_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    age_group: Mapped[str | None] = mapped_column(String(30), nullable=True)  # DEPRECATED: Use grade_level_id
+    grade_level: Mapped[str | None] = mapped_column(String(50), nullable=True)  # DEPRECATED: Use grade_level_id
+    grade_level_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grade_levels.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Relationships
     tenant = relationship("Tenant", back_populates="school_classes", lazy="selectin")
+    grade_level_rel = relationship("GradeLevel", back_populates="school_classes", lazy="selectin")
     students = relationship(
         "Student",
         back_populates="school_class",

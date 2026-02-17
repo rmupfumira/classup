@@ -9,11 +9,13 @@ from app.models.attendance import AttendanceRecord, AttendanceStatus
 from app.models.report import (
     DailyReport,
     ReportTemplate,
+    ReportTemplateGradeLevel,
     ReportType,
     ReportFrequency,
     ReportStatus,
     get_default_daycare_template_sections,
 )
+from app.models.grade_level import GradeLevel
 from app.models.file_entity import FileEntity, FileCategory
 from app.models.invitation import ParentInvitation, InvitationStatus, generate_invitation_code
 from app.models.notification import Notification, NotificationType
@@ -55,10 +57,13 @@ __all__ = [
     # Report
     "DailyReport",
     "ReportTemplate",
+    "ReportTemplateGradeLevel",
     "ReportType",
     "ReportFrequency",
     "ReportStatus",
     "get_default_daycare_template_sections",
+    # Grade Level
+    "GradeLevel",
     # File
     "FileEntity",
     "FileCategory",

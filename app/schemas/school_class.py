@@ -11,8 +11,9 @@ class SchoolClassBase(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
-    age_group: str | None = None
-    grade_level: str | None = None
+    age_group: str | None = None  # DEPRECATED: Use grade_level_id
+    grade_level: str | None = None  # DEPRECATED: Use grade_level_id
+    grade_level_id: uuid.UUID | None = None
     capacity: int | None = Field(None, ge=1)
 
 
@@ -27,8 +28,9 @@ class SchoolClassUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
-    age_group: str | None = None
-    grade_level: str | None = None
+    age_group: str | None = None  # DEPRECATED: Use grade_level_id
+    grade_level: str | None = None  # DEPRECATED: Use grade_level_id
+    grade_level_id: uuid.UUID | None = None
     capacity: int | None = Field(None, ge=1)
     is_active: bool | None = None
 
@@ -47,6 +49,7 @@ class SchoolClassResponse(SchoolClassBase):
     # Computed fields
     student_count: int | None = None
     teacher_count: int | None = None
+    grade_level_name: str | None = None  # Computed from grade_level_rel
 
 
 class SchoolClassListResponse(BaseModel):
@@ -57,8 +60,10 @@ class SchoolClassListResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
-    age_group: str | None
-    grade_level: str | None
+    age_group: str | None  # DEPRECATED
+    grade_level: str | None  # DEPRECATED
+    grade_level_id: uuid.UUID | None
+    grade_level_name: str | None = None  # Computed from grade_level_rel
     capacity: int | None
     is_active: bool
 

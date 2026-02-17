@@ -27,17 +27,27 @@ router = APIRouter()
 
 def _build_student_list_response(student) -> StudentListResponse:
     """Build student list response with computed fields."""
+    # Get effective grade level from class
+    effective_grade_level_id = None
+    effective_grade_level_name = None
+    if student.school_class and student.school_class.grade_level_id:
+        effective_grade_level_id = student.school_class.grade_level_id
+        if hasattr(student.school_class, 'grade_level_rel') and student.school_class.grade_level_rel:
+            effective_grade_level_name = student.school_class.grade_level_rel.name
+
     return StudentListResponse(
         id=student.id,
         first_name=student.first_name,
         last_name=student.last_name,
-        age_group=student.age_group,
-        grade_level=student.grade_level,
+        age_group=student.age_group,  # DEPRECATED
+        grade_level=student.grade_level,  # DEPRECATED
         class_id=student.class_id,
         is_active=student.is_active,
         photo_path=student.photo_path,
         full_name=f"{student.first_name} {student.last_name}",
         class_name=student.school_class.name if student.school_class else None,
+        effective_grade_level_id=effective_grade_level_id,
+        effective_grade_level_name=effective_grade_level_name,
     )
 
 
@@ -50,6 +60,14 @@ def _build_student_response(student) -> StudentResponse:
         if (today.month, today.day) < (student.date_of_birth.month, student.date_of_birth.day):
             age -= 1
 
+    # Get effective grade level from class
+    effective_grade_level_id = None
+    effective_grade_level_name = None
+    if student.school_class and student.school_class.grade_level_id:
+        effective_grade_level_id = student.school_class.grade_level_id
+        if hasattr(student.school_class, 'grade_level_rel') and student.school_class.grade_level_rel:
+            effective_grade_level_name = student.school_class.grade_level_rel.name
+
     return StudentResponse(
         id=student.id,
         tenant_id=student.tenant_id,
@@ -57,8 +75,8 @@ def _build_student_response(student) -> StudentResponse:
         last_name=student.last_name,
         date_of_birth=student.date_of_birth,
         gender=student.gender,
-        age_group=student.age_group,
-        grade_level=student.grade_level,
+        age_group=student.age_group,  # DEPRECATED
+        grade_level=student.grade_level,  # DEPRECATED
         class_id=student.class_id,
         medical_info=student.medical_info,
         allergies=student.allergies,
@@ -71,6 +89,8 @@ def _build_student_response(student) -> StudentResponse:
         full_name=f"{student.first_name} {student.last_name}",
         age=age,
         class_name=student.school_class.name if student.school_class else None,
+        effective_grade_level_id=effective_grade_level_id,
+        effective_grade_level_name=effective_grade_level_name,
     )
 
 
@@ -101,7 +121,8 @@ def _build_student_detail_response(student) -> StudentDetailResponse:
 @require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
 async def list_students(
     class_id: uuid.UUID | None = Query(None, description="Filter by class ID"),
-    age_group: str | None = Query(None, description="Filter by age group"),
+    grade_level_id: uuid.UUID | None = Query(None, description="Filter by grade level ID (via class)"),
+    age_group: str | None = Query(None, description="DEPRECATED: Filter by age group"),
     is_active: bool | None = Query(True, description="Filter by active status"),
     search: str | None = Query(None, description="Search by name"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -117,7 +138,8 @@ async def list_students(
     students, total = await service.get_students(
         db,
         class_id=class_id,
-        age_group=age_group,
+        grade_level_id=grade_level_id,
+        age_group=age_group,  # DEPRECATED
         is_active=is_active,
         search=search,
         page=page,

@@ -59,16 +59,14 @@
             </div>
             {% endif %}
 
-            <!-- Age Group Filter -->
-            <div class="sm:w-36">
-                <select name="age_group" id="age_group"
+            <!-- Grade Level Filter -->
+            <div class="sm:w-40">
+                <select name="grade_level_id" id="grade_level_id"
+                        data-current="{{ current_grade_level_id or '' }}"
                         class="block w-full h-8 px-2.5 text-sm border border-neutral-300 rounded bg-white
                                focus:border-primary-500 focus:ring-0">
-                    <option value="">All Ages</option>
-                    <option value="INFANT" {% if current_age_group == 'INFANT' %}selected{% endif %}>Infant</option>
-                    <option value="TODDLER" {% if current_age_group == 'TODDLER' %}selected{% endif %}>Toddler</option>
-                    <option value="PRESCHOOL" {% if current_age_group == 'PRESCHOOL' %}selected{% endif %}>Preschool</option>
-                    <option value="KINDERGARTEN" {% if current_age_group == 'KINDERGARTEN' %}selected{% endif %}>Kindergarten</option>
+                    <option value="">All Grade Levels</option>
+                    <!-- Options loaded dynamically via JS -->
                 </select>
             </div>
 
@@ -95,7 +93,7 @@
                             Class
                         </th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                            Age Group
+                            Grade Level
                         </th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Status
@@ -138,7 +136,13 @@
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
-                            {{ student.age_group or '-' }}
+                            {% if student.school_class and student.school_class.grade_level_rel %}
+                                {{ student.school_class.grade_level_rel.name }}
+                            {% elif student.age_group %}
+                                {{ student.age_group }}
+                            {% else %}
+                                -
+                            {% endif %}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             {% if student.is_active %}
@@ -280,4 +284,35 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const gradeLevelSelect = document.getElementById('grade_level_id');
+    if (!gradeLevelSelect) return;
+
+    const currentValue = gradeLevelSelect.dataset.current;
+
+    try {
+        const response = await fetch('/api/v1/grade-levels', {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (response.ok && result.data) {
+            result.data.forEach(gl => {
+                const option = document.createElement('option');
+                option.value = gl.id;
+                option.textContent = gl.name;
+                if (gl.id === currentValue) {
+                    option.selected = true;
+                }
+                gradeLevelSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load grade levels:', error);
+    }
+});
+</script>
 {% endblock %}

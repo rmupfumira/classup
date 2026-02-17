@@ -182,10 +182,10 @@ async def onboarding_step3_submit(
     while f"class_name_{i}" in form_data:
         name = form_data.get(f"class_name_{i}")
         if name:
+            grade_level_id = form_data.get(f"class_grade_level_id_{i}")
             classes.append({
                 "name": name,
-                "age_group": form_data.get(f"class_age_group_{i}"),
-                "grade_level": form_data.get(f"class_grade_level_{i}"),
+                "grade_level_id": grade_level_id if grade_level_id else None,
                 "capacity": int(form_data.get(f"class_capacity_{i}") or 0) or None,
             })
         i += 1
