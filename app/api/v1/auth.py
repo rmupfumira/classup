@@ -14,6 +14,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     UpdateProfileRequest,
     UserProfile,
     VerifyInvitationRequest,
@@ -21,6 +22,9 @@ from app.schemas.auth import (
 )
 from app.schemas.common import APIResponse
 from app.services.auth_service import get_auth_service
+from app.services.email_service import get_email_service
+from app.services.user_service import get_user_service
+from app.utils.security import create_password_reset_token, decode_password_reset_token, hash_password
 from app.utils.tenant_context import get_current_user_id_or_none
 
 router = APIRouter()
@@ -124,12 +128,69 @@ async def forgot_password(
 
     Always returns success to prevent email enumeration attacks.
     """
-    # TODO: Implement email sending
-    # For now, just return success message
+    import logging
+    from sqlalchemy import select
+    from app.models import User
+
+    logger = logging.getLogger(__name__)
+
+    # Look up user by email (don't reveal if not found)
+    stmt = select(User).where(
+        User.email == request.email,
+        User.deleted_at.is_(None),
+        User.is_active == True,
+    )
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user:
+        reset_token = create_password_reset_token(user.id)
+        reset_url = f"{settings.app_base_url}/reset-password?token={reset_token}"
+
+        email_service = get_email_service()
+        try:
+            await email_service.send_password_reset(
+                to=user.email,
+                user_name=user.first_name,
+                reset_url=reset_url,
+                expires_in_hours=24,
+            )
+        except Exception:
+            logger.exception("Failed to send password reset email")
+
     return APIResponse(
         data=ForgotPasswordResponse(),
         message="If your email is registered, you will receive password reset instructions",
     )
+
+
+@router.post("/reset-password", response_model=APIResponse[None])
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset password using a valid reset token."""
+    import uuid as uuid_mod
+    from sqlalchemy import select
+    from app.models import User
+
+    payload = decode_password_reset_token(request.token)
+    if not payload:
+        raise UnauthorizedException("Invalid or expired reset token")
+
+    user_id = uuid_mod.UUID(payload["sub"])
+
+    stmt = select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise UnauthorizedException("Invalid or expired reset token")
+
+    user.password_hash = hash_password(request.password)
+    await db.commit()
+
+    return APIResponse(message="Password reset successfully. You can now log in.")
 
 
 @router.get("/me", response_model=APIResponse[UserProfile])

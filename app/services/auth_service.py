@@ -14,6 +14,7 @@ from app.exceptions import (
     ValidationException,
 )
 from app.models import ParentInvitation, ParentStudent, User, Role, InvitationStatus
+from app.models.teacher_invitation import TeacherInvitation
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -149,6 +150,72 @@ class AuthService:
             is_primary=True,  # First registered parent is primary
         )
         db.add(parent_student)
+
+        # Mark invitation as accepted
+        invitation.mark_accepted()
+
+        await db.commit()
+
+        return RegisterResponse(
+            user_id=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+        )
+
+    async def register_teacher(
+        self, db: AsyncSession, request: RegisterRequest
+    ) -> RegisterResponse:
+        """Register a new teacher user via invitation code.
+
+        Args:
+            db: Database session
+            request: Registration request
+
+        Returns:
+            RegisterResponse with user details
+
+        Raises:
+            ValidationException: If invitation is invalid or expired
+            ConflictException: If email already exists
+        """
+        # Find and validate teacher invitation
+        stmt = select(TeacherInvitation).where(
+            TeacherInvitation.invitation_code == request.invitation_code.upper(),
+            TeacherInvitation.email == request.email,
+            TeacherInvitation.status == "PENDING",
+        )
+        result = await db.execute(stmt)
+        invitation = result.scalar_one_or_none()
+
+        if not invitation:
+            raise ValidationException("Invalid invitation code or email")
+
+        if invitation.is_expired:
+            invitation.mark_expired()
+            await db.commit()
+            raise ValidationException("This invitation has expired")
+
+        # Check if email already exists for this tenant
+        existing_user = await self._get_user_by_email(
+            db, request.email, invitation.tenant_id
+        )
+        if existing_user:
+            raise ConflictException("An account with this email already exists")
+
+        # Create teacher user
+        user = User(
+            tenant_id=invitation.tenant_id,
+            email=request.email,
+            password_hash=hash_password(request.password),
+            first_name=request.first_name,
+            last_name=request.last_name,
+            phone=request.phone,
+            role=Role.TEACHER.value,
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
 
         # Mark invitation as accepted
         invitation.mark_accepted()

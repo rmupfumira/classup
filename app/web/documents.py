@@ -13,6 +13,7 @@ from app.services.class_service import get_class_service
 from app.services.file_service import get_file_service
 from app.templates_config import templates
 from app.utils.permissions import PermissionChecker
+from app.web.helpers import get_teacher_class_context
 from app.utils.tenant_context import (
     get_current_language,
     get_current_user_id_or_none,
@@ -85,21 +86,21 @@ async def documents_list(
     for doc in documents:
         doc["download_url"] = file_service.generate_presigned_url(doc["file"], expires_in=3600)
 
-    return templates.TemplateResponse(
-        "documents/list.html",
-        {
-            "request": request,
-            "user": user,
-            "documents": documents,
-            "classes": classes,
-            "current_class_id": class_id,
-            "page": page,
-            "total_pages": total_pages,
-            "total": total,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "documents": documents,
+        "classes": classes,
+        "current_class_id": class_id,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("documents/list.html", context)
 
 
 @router.get("/upload", response_class=HTMLResponse)
@@ -131,14 +132,14 @@ async def documents_upload(
     else:
         classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
-    return templates.TemplateResponse(
-        "documents/upload.html",
-        {
-            "request": request,
-            "user": user,
-            "classes": classes,
-            "selected_class_id": class_id,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "classes": classes,
+        "selected_class_id": class_id,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("documents/upload.html", context)

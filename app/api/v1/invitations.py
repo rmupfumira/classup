@@ -4,8 +4,10 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.schemas.common import APIResponse
 from app.schemas.invitation import (
@@ -20,6 +22,7 @@ from app.services.invitation_service import get_invitation_service
 from app.utils.permissions import require_role
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter()
 
@@ -91,6 +94,76 @@ async def create_invitation(
     email_service = get_email_service()
 
     try:
+        # Check if a parent with this email already exists in the tenant
+        from app.models import ParentStudent, Student, Tenant, User
+        from app.utils.tenant_context import get_tenant_id
+
+        tenant_id = get_tenant_id()
+        existing_parent_result = await db.execute(
+            select(User).where(
+                and_(
+                    User.email == data.email.lower(),
+                    User.tenant_id == tenant_id,
+                    User.role == "PARENT",
+                    User.deleted_at.is_(None),
+                )
+            )
+        )
+        existing_parent = existing_parent_result.scalar_one_or_none()
+
+        if existing_parent:
+            # Check if already linked to this student
+            existing_link = await db.execute(
+                select(ParentStudent).where(
+                    and_(
+                        ParentStudent.parent_id == existing_parent.id,
+                        ParentStudent.student_id == data.student_id,
+                    )
+                )
+            )
+            if existing_link.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=400,
+                    detail="This parent is already linked to this student",
+                )
+
+            # Auto-link the existing parent to the student
+            parent_student = ParentStudent(
+                parent_id=existing_parent.id,
+                student_id=data.student_id,
+                relationship="PARENT",
+                is_primary=False,
+            )
+            db.add(parent_student)
+            await db.commit()
+
+            # Send "child linked" notification email
+            student = await db.get(Student, data.student_id)
+            tenant = await db.get(Tenant, tenant_id)
+            if student and tenant:
+                try:
+                    await email_service.send(
+                        to=existing_parent.email,
+                        subject=f"A new child has been linked to your {tenant.name} account",
+                        template_name="parent_link_child.html",
+                        context={
+                            "parent_name": existing_parent.first_name,
+                            "student_name": f"{student.first_name} {student.last_name}",
+                            "tenant_name": tenant.name,
+                            "login_url": f"{settings.app_base_url}/login",
+                            "app_name": settings.app_name,
+                        },
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send child-linked email: {e}")
+
+            return APIResponse(
+                status="success",
+                data=None,
+                message=f"Parent {existing_parent.first_name} {existing_parent.last_name} has been linked to {student.first_name} {student.last_name} automatically (existing account)",
+            )
+
+        # No existing parent — create invitation as normal
         invitation = await service.create_invitation(
             db,
             student_id=data.student_id,
@@ -98,21 +171,19 @@ async def create_invitation(
         )
 
         # Get student and tenant info for email
-        from app.models import Student, Tenant
-
         student = await db.get(Student, invitation.student_id)
         tenant = await db.get(Tenant, invitation.tenant_id)
 
         # Send invitation email
         if student and tenant:
+            register_url = f"{settings.app_base_url}/register"
             try:
                 await email_service.send_parent_invitation(
-                    to_email=invitation.email,
-                    parent_name="Parent",
-                    school_name=tenant.name,
+                    to=invitation.email,
+                    tenant_name=tenant.name,
                     student_name=f"{student.first_name} {student.last_name}",
                     invitation_code=invitation.invitation_code,
-                    registration_url=f"/register?code={invitation.invitation_code}",
+                    register_url=register_url,
                 )
             except Exception as e:
                 logger.error(f"Failed to send invitation email: {e}")
@@ -232,14 +303,14 @@ async def resend_invitation(
 
         # Send invitation email
         if student and tenant:
+            register_url = f"{settings.app_base_url}/register"
             try:
                 await email_service.send_parent_invitation(
-                    to_email=invitation.email,
-                    parent_name="Parent",
-                    school_name=tenant.name,
+                    to=invitation.email,
+                    tenant_name=tenant.name,
                     student_name=f"{student.first_name} {student.last_name}",
                     invitation_code=invitation.invitation_code,
-                    registration_url=f"/register?code={invitation.invitation_code}",
+                    register_url=register_url,
                 )
             except Exception as e:
                 logger.error(f"Failed to send invitation email: {e}")

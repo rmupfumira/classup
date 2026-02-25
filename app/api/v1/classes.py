@@ -3,6 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -341,3 +342,40 @@ async def set_primary_teacher(
         data={"is_primary": assignment.is_primary},
         message="Primary teacher updated",
     )
+
+
+@router.post("/{class_id}/select", response_model=APIResponse[dict])
+@require_role(Role.TEACHER)
+async def select_class(
+    class_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Set the active class for the current teacher.
+
+    Stores the selected class ID in a cookie for session persistence.
+    The teacher must be assigned to the class.
+    """
+    service = get_class_service()
+    # get_my_classes returns only classes assigned to the current teacher
+    my_classes = await service.get_my_classes(db)
+    assigned_ids = {c.id for c in my_classes}
+
+    if class_id not in assigned_ids:
+        from app.exceptions import ForbiddenException
+        raise ForbiddenException("You are not assigned to this class")
+
+    response = JSONResponse(
+        content={
+            "status": "success",
+            "data": {"selected_class_id": str(class_id)},
+            "message": "Class selected",
+        }
+    )
+    response.set_cookie(
+        key="selected_class_id",
+        value=str(class_id),
+        httponly=False,  # JS needs to read this for UI updates
+        samesite="lax",
+        max_age=60 * 60 * 24 * 365,  # 1 year
+    )
+    return response

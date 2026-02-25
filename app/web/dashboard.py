@@ -14,13 +14,16 @@ from app.services.attendance_service import get_attendance_service
 from app.services.report_service import get_report_service
 from app.services.academic_service import get_academic_service
 from app.services.class_service import get_class_service
+from app.services.notification_service import get_notification_service
 from app.templates_config import templates
 from app.utils.tenant_context import (
     get_current_language,
+    get_current_user_id,
     get_current_user_id_or_none,
     get_current_user_role,
     get_tenant_id,
 )
+from app.web.helpers import get_teacher_class_context
 
 router = APIRouter()
 
@@ -195,6 +198,104 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id):
     }
 
 
+async def _get_teacher_dashboard_data(db: AsyncSession, user_id, selected_class=None):
+    """Fetch all data needed for teacher dashboard.
+
+    If selected_class is provided, shows data for that class only.
+    """
+    attendance_service = get_attendance_service()
+    report_service = get_report_service()
+    notification_service = get_notification_service()
+
+    today = date.today()
+
+    # Build class info for the selected class
+    class_info = None
+    total_students = 0
+    total_present = 0
+    total_absent = 0
+    attendance_taken = False
+
+    if selected_class:
+        class_info = {
+            "id": str(selected_class.id),
+            "name": selected_class.name,
+            "grade_level": selected_class.grade_level or selected_class.age_group or "",
+            "student_count": 0,
+            "present": 0,
+            "absent": 0,
+            "late": 0,
+            "excused": 0,
+            "attendance_taken": False,
+            "attendance_rate": 0,
+        }
+
+        try:
+            att_data = await attendance_service.get_class_attendance_for_date(
+                db, selected_class.id, today,
+            )
+            stats = att_data.get("stats", {})
+            class_info["student_count"] = stats.get("total_students", 0)
+            class_info["present"] = stats.get("present_count", 0)
+            class_info["absent"] = stats.get("absent_count", 0)
+            class_info["late"] = stats.get("late_count", 0)
+            class_info["excused"] = stats.get("excused_count", 0)
+            class_info["attendance_rate"] = stats.get("attendance_rate", 0)
+            recorded = class_info["present"] + class_info["absent"] + class_info["late"] + class_info["excused"]
+            class_info["attendance_taken"] = recorded > 0
+
+            total_students = class_info["student_count"]
+            total_present = class_info["present"]
+            total_absent = class_info["absent"]
+            attendance_taken = class_info["attendance_taken"]
+        except Exception:
+            pass
+
+    # Get draft reports for the selected class only
+    draft_reports = []
+    total_drafts = 0
+    if selected_class:
+        try:
+            reports, count = await report_service.get_reports(
+                db, class_id=selected_class.id, status="DRAFT", page=1, page_size=5,
+            )
+            total_drafts = count
+            draft_reports = list(reports)
+        except Exception:
+            pass
+
+    # Get unread notification count
+    unread_count = 0
+    try:
+        unread_count = await notification_service.get_unread_count(db, user_id)
+    except Exception:
+        pass
+
+    # Time-of-day greeting
+    from datetime import datetime
+    hour = datetime.now().hour
+    if hour < 12:
+        greeting = "Good morning"
+    elif hour < 17:
+        greeting = "Good afternoon"
+    else:
+        greeting = "Good evening"
+
+    return {
+        "greeting": greeting,
+        "today": today,
+        "current_class": class_info,
+        "total_students": total_students,
+        "total_present": total_present,
+        "total_absent": total_absent,
+        "attendance_taken": attendance_taken,
+        "draft_reports": draft_reports,
+        "total_drafts": total_drafts,
+        "unread_notifications": unread_count,
+        "has_classes": selected_class is not None,
+    }
+
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(
     request: Request,
@@ -244,6 +345,14 @@ async def dashboard(
         # Add dashboard stats (real data from database)
         stats = await _get_school_admin_dashboard_data(db)
         context["stats"] = stats
+
+    # Add teacher-specific data
+    elif role == "TEACHER":
+        class_ctx = await get_teacher_class_context(request, db)
+        context.update(class_ctx)
+        selected_class = class_ctx.get("selected_class")
+        teacher_data = await _get_teacher_dashboard_data(db, user_id, selected_class)
+        context.update(teacher_data)
 
     # Add parent-specific data
     elif role == "PARENT":

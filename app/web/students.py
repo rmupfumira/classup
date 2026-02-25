@@ -11,6 +11,7 @@ from app.exceptions import ForbiddenException, NotFoundException
 from app.models.user import Role, User
 from app.services.auth_service import get_auth_service
 from app.services.class_service import get_class_service
+from app.services.invitation_service import get_invitation_service
 from app.services.student_service import get_student_service
 from app.templates_config import templates
 from app.utils.permissions import PermissionChecker
@@ -20,6 +21,7 @@ from app.utils.tenant_context import (
     get_current_user_id_or_none,
     get_current_user_role,
 )
+from app.web.helpers import get_teacher_class_context
 
 router = APIRouter(prefix="/students")
 
@@ -91,23 +93,24 @@ async def students_list(
 
     total_pages = (total + 19) // 20
 
-    return templates.TemplateResponse(
-        "students/list.html",
-        {
-            "request": request,
-            "user": user,
-            "students": students,
-            "classes": classes,
-            "current_class_id": class_id,
-            "current_grade_level_id": str(grade_level_id) if grade_level_id else None,
-            "search": search,
-            "page": page,
-            "total_pages": total_pages,
-            "total": total,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "students": students,
+        "classes": classes,
+        "current_class_id": class_id,
+        "current_grade_level_id": str(grade_level_id) if grade_level_id else None,
+        "search": search,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    # Inject teacher class context for navbar class selector
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("students/list.html", context)
 
 
 @router.get("/new", response_class=HTMLResponse)
@@ -132,16 +135,16 @@ async def student_create_form(
     class_service = get_class_service()
     classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
-    return templates.TemplateResponse(
-        "students/create.html",
-        {
-            "request": request,
-            "user": user,
-            "classes": classes,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "classes": classes,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("students/create.html", context)
 
 
 @router.get("/{student_id}", response_class=HTMLResponse)
@@ -170,16 +173,26 @@ async def student_detail(
         if user.id not in parent_ids:
             raise ForbiddenException("You can only view your own children")
 
-    return templates.TemplateResponse(
-        "students/detail.html",
-        {
-            "request": request,
-            "user": user,
-            "student": student,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    # Fetch pending invitations for this student (for staff)
+    pending_invitations = []
+    if permissions.can_invite_parents():
+        invitation_service = get_invitation_service()
+        invitations, _ = await invitation_service.list_invitations(
+            db, status="PENDING", student_id=student_id, page_size=50,
+        )
+        pending_invitations = invitations
+
+    context = {
+        "request": request,
+        "user": user,
+        "student": student,
+        "pending_invitations": pending_invitations,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("students/detail.html", context)
 
 
 @router.get("/{student_id}/edit", response_class=HTMLResponse)
@@ -208,14 +221,14 @@ async def student_edit_form(
     student = await student_service.get_student(db, student_id)
     classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
-    return templates.TemplateResponse(
-        "students/edit.html",
-        {
-            "request": request,
-            "user": user,
-            "student": student,
-            "classes": classes,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "student": student,
+        "classes": classes,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("students/edit.html", context)

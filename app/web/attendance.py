@@ -20,6 +20,7 @@ from app.utils.tenant_context import (
     get_current_language,
     get_current_user_id_or_none,
 )
+from app.web.helpers import get_teacher_class_context
 
 router = APIRouter(prefix="/attendance")
 
@@ -84,9 +85,17 @@ async def attendance_daily(
     if not target_date:
         target_date = date.today()
 
-    # If no class selected and teacher has classes, default to first one
-    if not class_id and classes:
-        class_id = classes[0].id
+    # Get teacher class context for navbar
+    class_ctx = {}
+    if user.role == Role.TEACHER.value:
+        class_ctx = await get_teacher_class_context(request, db)
+
+    # If no class selected, default to selected class from cookie (for teachers) or first class
+    if not class_id:
+        if class_ctx.get("selected_class"):
+            class_id = class_ctx["selected_class"].id
+        elif classes:
+            class_id = classes[0].id
 
     # Get attendance data for the selected class and date
     attendance_data = None
@@ -95,19 +104,18 @@ async def attendance_daily(
             db, class_id, target_date
         )
 
-    return templates.TemplateResponse(
-        "attendance/daily.html",
-        {
-            "request": request,
-            "user": user,
-            "classes": classes,
-            "current_class_id": class_id,
-            "target_date": target_date,
-            "attendance_data": attendance_data,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "classes": classes,
+        "current_class_id": class_id,
+        "target_date": target_date,
+        "attendance_data": attendance_data,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    context.update(class_ctx)
+    return templates.TemplateResponse("attendance/daily.html", context)
 
 
 @router.get("/history", response_class=HTMLResponse)
@@ -165,24 +173,24 @@ async def attendance_history(
         date_to=date_to,
     )
 
-    return templates.TemplateResponse(
-        "attendance/history.html",
-        {
-            "request": request,
-            "user": user,
-            "classes": classes,
-            "records": records,
-            "stats": stats,
-            "current_class_id": class_id,
-            "date_from": date_from,
-            "date_to": date_to,
-            "page": page,
-            "total_pages": total_pages,
-            "total": total,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "classes": classes,
+        "records": records,
+        "stats": stats,
+        "current_class_id": class_id,
+        "date_from": date_from,
+        "date_to": date_to,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("attendance/history.html", context)
 
 
 @router.get("/student/{student_id}", response_class=HTMLResponse)
@@ -235,20 +243,20 @@ async def student_attendance_history(
 
     total_pages = (total + 29) // 30
 
-    return templates.TemplateResponse(
-        "attendance/student_history.html",
-        {
-            "request": request,
-            "user": user,
-            "student": student,
-            "records": records,
-            "summary": summary,
-            "date_from": date_from,
-            "date_to": date_to,
-            "page": page,
-            "total_pages": total_pages,
-            "total": total,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "student": student,
+        "records": records,
+        "summary": summary,
+        "date_from": date_from,
+        "date_to": date_to,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("attendance/student_history.html", context)

@@ -191,6 +191,55 @@ def get_user_id_from_token(token: str) -> uuid.UUID | None:
     return None
 
 
+def create_password_reset_token(
+    user_id: uuid.UUID,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """Create a JWT token for password reset.
+
+    Args:
+        user_id: User's UUID
+        expires_delta: Custom expiration time (default 24 hours)
+
+    Returns:
+        Encoded JWT token string
+    """
+    if expires_delta is None:
+        expires_delta = timedelta(hours=24)
+
+    now = datetime.utcnow()
+    expire = now + expires_delta
+
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "iat": now,
+        "jti": str(uuid.uuid4()),
+        "type": "password_reset",
+    }
+
+    return jwt.encode(
+        payload,
+        settings.effective_jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
+
+
+def decode_password_reset_token(token: str) -> dict[str, Any] | None:
+    """Decode a password reset token and verify its type.
+
+    Args:
+        token: JWT token string to decode
+
+    Returns:
+        Token payload dictionary if valid password reset token, None otherwise
+    """
+    payload = decode_token(token)
+    if payload and payload.get("type") == "password_reset":
+        return payload
+    return None
+
+
 def get_tenant_id_from_token(token: str) -> uuid.UUID | None:
     """Extract tenant ID from a token.
 

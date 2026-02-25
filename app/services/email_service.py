@@ -1,27 +1,51 @@
-"""Email service using Resend for transactional emails."""
+"""Email service supporting SMTP and Resend providers.
+
+Email configuration is stored in the system_settings DB table (key='email_config')
+and can be managed at runtime via the super admin UI.
+"""
 
 import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 
+import aiosmtplib
 import resend
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from sqlalchemy import select
 
 from app.config import get_settings
+from app.database import get_db_context
+from app.models.system_settings import SystemSettings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+EMAIL_CONFIG_KEY = "email_config"
+
+
+async def _load_email_config() -> dict[str, Any] | None:
+    """Load email configuration from the system_settings table."""
+    try:
+        async with get_db_context() as db:
+            result = await db.execute(
+                select(SystemSettings).where(SystemSettings.key == EMAIL_CONFIG_KEY)
+            )
+            row = result.scalar_one_or_none()
+            if row and row.value and row.value.get("enabled"):
+                return row.value
+            return None
+    except Exception as e:
+        logger.error(f"Failed to load email config from DB: {e}")
+        return None
+
 
 class EmailService:
-    """Service for sending transactional emails via Resend."""
+    """Service for sending transactional emails via SMTP or Resend."""
 
     def __init__(self):
         """Initialize the email service."""
-        resend.api_key = settings.resend_api_key
-        self.from_address = f"{settings.email_from_name} <{settings.email_from_address}>"
-
-        # Set up Jinja2 environment for email templates
         templates_path = Path(__file__).parent.parent / "templates" / "emails"
         self.jinja_env = Environment(
             loader=FileSystemLoader(str(templates_path)),
@@ -33,6 +57,89 @@ class EmailService:
         template = self.jinja_env.get_template(template_name)
         return template.render(**context)
 
+    async def _send_via_smtp(
+        self,
+        config: dict[str, Any],
+        from_address: str,
+        recipients: list[str],
+        subject: str,
+        html_body: str,
+        reply_to: str | None,
+        cc: list[str] | None,
+        bcc: list[str] | None,
+    ) -> str:
+        """Send email via SMTP."""
+        msg = MIMEMultipart("alternative")
+        msg["From"] = from_address
+        msg["To"] = ", ".join(recipients)
+        msg["Subject"] = subject
+
+        if reply_to:
+            msg["Reply-To"] = reply_to
+        if cc:
+            msg["Cc"] = ", ".join(cc)
+
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        all_recipients = list(recipients)
+        if cc:
+            all_recipients.extend(cc)
+        if bcc:
+            all_recipients.extend(bcc)
+
+        port = config.get("smtp_port", 587)
+        use_starttls = config.get("smtp_use_tls", True)
+
+        # Port 465 = implicit SSL, port 587 = STARTTLS
+        if port == 465:
+            tls_kwargs = {"use_tls": True, "start_tls": False}
+        else:
+            tls_kwargs = {"use_tls": False, "start_tls": use_starttls}
+
+        await aiosmtplib.send(
+            msg,
+            hostname=config["smtp_host"],
+            port=port,
+            username=config.get("smtp_username") or None,
+            password=config.get("smtp_password") or None,
+            recipients=all_recipients,
+            timeout=30,
+            **tls_kwargs,
+        )
+
+        return f"smtp-{id(msg)}"
+
+    async def _send_via_resend(
+        self,
+        config: dict[str, Any],
+        from_address: str,
+        recipients: list[str],
+        subject: str,
+        html_body: str,
+        reply_to: str | None,
+        cc: list[str] | None,
+        bcc: list[str] | None,
+    ) -> str:
+        """Send email via Resend."""
+        resend.api_key = config["resend_api_key"]
+
+        params: dict[str, Any] = {
+            "from": from_address,
+            "to": recipients,
+            "subject": subject,
+            "html": html_body,
+        }
+
+        if reply_to:
+            params["reply_to"] = reply_to
+        if cc:
+            params["cc"] = cc
+        if bcc:
+            params["bcc"] = bcc
+
+        result = resend.Emails.send(params)
+        return result.get("id", "resend-ok")
+
     async def send(
         self,
         to: str | list[str],
@@ -42,49 +149,48 @@ class EmailService:
         reply_to: str | None = None,
         cc: list[str] | None = None,
         bcc: list[str] | None = None,
+        from_name: str | None = None,
     ) -> str | None:
-        """
-        Send an email using a Jinja2 template.
+        """Send an email using a Jinja2 template.
 
         Args:
-            to: Recipient email address(es)
-            subject: Email subject line
-            template_name: Name of the template file (e.g., "welcome.html")
-            context: Template context variables
-            reply_to: Optional reply-to address
-            cc: Optional CC recipients
-            bcc: Optional BCC recipients
+            from_name: Override the sender display name (e.g. tenant name).
+                       Falls back to the configured from_name, then the app default.
 
-        Returns:
-            Email ID if successful, None if failed
+        Returns a message ID string if successful, None if failed or not configured.
         """
+        config = await _load_email_config()
+        if not config:
+            logger.warning("Email not configured or disabled — skipping send")
+            return None
+
+        provider = config.get("provider", "smtp")
+
         try:
-            # Render the HTML template
             html_body = self._render_template(template_name, context)
 
-            # Prepare email params
-            params: dict[str, Any] = {
-                "from": self.from_address,
-                "to": to if isinstance(to, list) else [to],
-                "subject": subject,
-                "html": html_body,
-            }
+            sender_name = from_name or config.get("from_name") or settings.email_from_name
+            from_email = config.get("from_email") or settings.email_from_address
+            from_address = f"{sender_name} <{from_email}>"
 
-            if reply_to:
-                params["reply_to"] = reply_to
-            if cc:
-                params["cc"] = cc
-            if bcc:
-                params["bcc"] = bcc
+            recipients = to if isinstance(to, list) else [to]
 
-            # Send via Resend
-            result = resend.Emails.send(params)
+            if provider == "resend":
+                result_id = await self._send_via_resend(
+                    config, from_address, recipients, subject, html_body,
+                    reply_to, cc, bcc,
+                )
+            else:
+                result_id = await self._send_via_smtp(
+                    config, from_address, recipients, subject, html_body,
+                    reply_to, cc, bcc,
+                )
 
-            logger.info(f"Email sent successfully: {result.get('id')}")
-            return result.get("id")
+            logger.info(f"Email sent via {provider} to {recipients}: {result_id}")
+            return result_id
 
         except Exception as e:
-            logger.error(f"Failed to send email to {to}: {str(e)}")
+            logger.error(f"Failed to send email via {provider} to {to}: {e}")
             return None
 
     async def send_welcome_email(
@@ -105,6 +211,7 @@ class EmailService:
                 "login_url": login_url,
                 "app_name": settings.app_name,
             },
+            from_name=tenant_name,
         )
 
     async def send_parent_invitation(
@@ -129,6 +236,32 @@ class EmailService:
                 "expires_in_days": expires_in_days,
                 "app_name": settings.app_name,
             },
+            from_name=tenant_name,
+        )
+
+    async def send_teacher_invitation(
+        self,
+        to: str,
+        tenant_name: str,
+        teacher_name: str,
+        invitation_code: str,
+        register_url: str,
+        expires_in_days: int = 7,
+    ) -> str | None:
+        """Send an invitation email to a teacher."""
+        return await self.send(
+            to=to,
+            subject=f"You're invited to join {tenant_name} on ClassUp",
+            template_name="teacher_invite.html",
+            context={
+                "tenant_name": tenant_name,
+                "teacher_name": teacher_name,
+                "invitation_code": invitation_code,
+                "register_url": register_url,
+                "expires_in_days": expires_in_days,
+                "app_name": settings.app_name,
+            },
+            from_name=tenant_name,
         )
 
     async def send_password_reset(
@@ -175,6 +308,7 @@ class EmailService:
                 "tenant_name": tenant_name,
                 "app_name": settings.app_name,
             },
+            from_name=tenant_name,
         )
 
     async def send_attendance_alert(
@@ -201,6 +335,7 @@ class EmailService:
                 "tenant_name": tenant_name,
                 "app_name": settings.app_name,
             },
+            from_name=tenant_name,
         )
 
     async def send_admin_notification(
@@ -227,6 +362,7 @@ class EmailService:
                 "tenant_name": tenant_name,
                 "app_name": settings.app_name,
             },
+            from_name=tenant_name,
         )
 
 

@@ -30,6 +30,7 @@ from app.models import (
     Subject,
     ClassSubject,
     GradingSystem,
+    SystemSettings,
 )
 
 # This is the Alembic Config object

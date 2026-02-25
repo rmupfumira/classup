@@ -37,6 +37,21 @@
 
         {% elif user.role in ['SCHOOL_ADMIN', 'TEACHER'] %}
         <!-- SCHOOL ADMIN / TEACHER MOBILE NAVIGATION -->
+
+        {% if user.role == 'TEACHER' and teacher_classes is defined and teacher_classes|length > 1 %}
+        <!-- Class Switcher (Teacher with multiple classes) -->
+        <button onclick="toggleMobileClassSwitcher()"
+                class="flex flex-col items-center justify-center flex-1 h-full text-primary-500">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
+            </svg>
+            <span class="text-xs mt-0.5 max-w-[60px] truncate">
+                {% if selected_class is defined and selected_class %}{{ selected_class.name }}{% else %}Class{% endif %}
+            </span>
+        </button>
+        {% endif %}
+
         <!-- Home -->
         <a href="/dashboard"
            class="flex flex-col items-center justify-center flex-1 h-full
@@ -312,6 +327,48 @@
     </div>
 </div>
 
+<!-- Mobile Class Switcher Sheet -->
+{% if user.role == 'TEACHER' and teacher_classes is defined and teacher_classes|length > 1 %}
+<div id="mobile-class-overlay"
+     class="hidden fixed inset-0 bg-black/40 z-50 transition-opacity"
+     onclick="toggleMobileClassSwitcher()">
+</div>
+<div id="mobile-class-switcher"
+     class="hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 safe-area-bottom shadow-lg">
+    <div class="p-4">
+        <div class="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-4"></div>
+        <p class="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Switch Class</p>
+        <div class="space-y-1">
+            {% for tc in teacher_classes %}
+            <button onclick="switchClass('{{ tc.id }}')"
+                    class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors
+                           {% if selected_class is defined and selected_class and selected_class.id == tc.id %}bg-primary-50{% else %}hover:bg-neutral-50{% endif %}">
+                <div class="flex-shrink-0 w-10 h-10 rounded-lg
+                            {% if selected_class is defined and selected_class and selected_class.id == tc.id %}bg-primary-100{% else %}bg-neutral-100{% endif %}
+                            flex items-center justify-center">
+                    <span class="text-sm font-semibold
+                                 {% if selected_class is defined and selected_class and selected_class.id == tc.id %}text-primary-600{% else %}text-neutral-500{% endif %}">
+                        {{ tc.name[:2] | upper }}
+                    </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium {% if selected_class is defined and selected_class and selected_class.id == tc.id %}text-primary-700{% else %}text-neutral-700{% endif %}">
+                        {{ tc.name }}
+                    </p>
+                    <p class="text-xs text-neutral-500">{{ tc.grade_level or tc.age_group or '' }}</p>
+                </div>
+                {% if selected_class is defined and selected_class and selected_class.id == tc.id %}
+                <svg class="w-5 h-5 text-primary-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                {% endif %}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
 function toggleMobileMenu() {
     const menu = document.getElementById('mobile-menu');
@@ -319,6 +376,15 @@ function toggleMobileMenu() {
 
     menu.classList.toggle('hidden');
     overlay.classList.toggle('hidden');
+}
+
+function toggleMobileClassSwitcher() {
+    const sheet = document.getElementById('mobile-class-switcher');
+    const overlay = document.getElementById('mobile-class-overlay');
+    if (sheet) {
+        sheet.classList.toggle('hidden');
+        overlay.classList.toggle('hidden');
+    }
 }
 </script>
 

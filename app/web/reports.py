@@ -19,6 +19,7 @@ from app.utils.tenant_context import (
     get_current_language,
     get_current_user_id_or_none,
 )
+from app.web.helpers import get_teacher_class_context
 
 router = APIRouter(prefix="/reports")
 
@@ -89,24 +90,24 @@ async def reports_list(
 
     total_pages = (total + 19) // 20
 
-    return templates.TemplateResponse(
-        "reports/list.html",
-        {
-            "request": request,
-            "user": user,
-            "reports": reports,
-            "classes": classes,
-            "current_class_id": class_id,
-            "current_student_id": student_id,
-            "current_date": report_date,
-            "current_status": status,
-            "page": page,
-            "total_pages": total_pages,
-            "total": total,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "reports": reports,
+        "classes": classes,
+        "current_class_id": class_id,
+        "current_student_id": student_id,
+        "current_date": report_date,
+        "current_status": status,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("reports/list.html", context)
 
 
 @router.get("/create", response_class=HTMLResponse)
@@ -156,20 +157,20 @@ async def reports_create(
     if template_id:
         selected_template = await report_service.get_template(db, template_id)
 
-    return templates.TemplateResponse(
-        "reports/create.html",
-        {
-            "request": request,
-            "user": user,
-            "classes": classes,
-            "templates": templates_list,
-            "selected_student": selected_student,
-            "selected_template": selected_template,
-            "report_date": report_date or date.today(),
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "classes": classes,
+        "templates": templates_list,
+        "selected_student": selected_student,
+        "selected_template": selected_template,
+        "report_date": report_date or date.today(),
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("reports/create.html", context)
 
 
 @router.get("/{report_id}", response_class=HTMLResponse)
@@ -227,19 +228,19 @@ async def reports_view(
         if report.class_id:
             class_subjects = await academic_service.get_class_subjects(db, report.class_id)
 
-    return templates.TemplateResponse(
-        template_name,
-        {
-            "request": request,
-            "user": user,
-            "report": report,
-            "tenant": tenant,
-            "grading_system": grading_system,
-            "class_subjects": class_subjects,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "report": report,
+        "tenant": tenant,
+        "grading_system": grading_system,
+        "class_subjects": class_subjects,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse(template_name, context)
 
 
 @router.get("/{report_id}/edit", response_class=HTMLResponse)
@@ -273,16 +274,16 @@ async def reports_edit(
     if report.is_finalized:
         return RedirectResponse(url=f"/reports/{report_id}", status_code=302)
 
-    return templates.TemplateResponse(
-        "reports/edit.html",
-        {
-            "request": request,
-            "user": user,
-            "report": report,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "report": report,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("reports/edit.html", context)
 
 
 # ============== Template Management Routes ==============
@@ -319,19 +320,19 @@ async def templates_manage(
 
     total_pages = (total + 19) // 20
 
-    return templates.TemplateResponse(
-        "reports/templates/manage.html",
-        {
-            "request": request,
-            "user": user,
-            "templates": templates_list,
-            "page": page,
-            "total_pages": total_pages,
-            "total": total,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "templates": templates_list,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("reports/templates/manage.html", context)
 
 
 @router.get("/templates/create", response_class=HTMLResponse)
@@ -354,16 +355,16 @@ async def templates_create(
 
     permissions = PermissionChecker(user.role)
 
-    return templates.TemplateResponse(
-        "reports/templates/editor.html",
-        {
-            "request": request,
-            "user": user,
-            "template": None,  # Creating new template
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "template": None,  # Creating new template
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("reports/templates/editor.html", context)
 
 
 @router.get("/templates/{template_id}/edit", response_class=HTMLResponse)
@@ -393,13 +394,13 @@ async def templates_edit(
     if not template:
         return RedirectResponse(url="/reports/templates/manage", status_code=302)
 
-    return templates.TemplateResponse(
-        "reports/templates/editor.html",
-        {
-            "request": request,
-            "user": user,
-            "template": template,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "template": template,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("reports/templates/editor.html", context)

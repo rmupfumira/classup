@@ -77,7 +77,7 @@ ClassUp v2 is a multi-tenant SaaS platform for managing schools, daycare centers
 | Templates | Jinja2 | 3.1+ | Server-side HTML rendering |
 | Task Queue | arq | 0.26+ | Background task processing (Redis-backed) |
 | WebSockets | FastAPI WebSocket | Built-in | Real-time communication |
-| Email | resend-python | Latest | Transactional email |
+| Email | aiosmtplib + resend | Latest | Transactional email (SMTP or Resend, configurable via super admin UI) |
 | File Storage | boto3 | Latest | Cloudflare R2 (S3-compatible) |
 | WhatsApp | httpx | Latest | Meta Cloud API HTTP client |
 | CSV Parsing | pandas | Latest | Bulk import processing |
@@ -104,7 +104,7 @@ ClassUp v2 is a multi-tenant SaaS platform for managing schools, daycare centers
 | Database | PostgreSQL 16 | Primary datastore |
 | Cache / Pub-Sub | Redis 7 | Caching, task queue, WebSocket pub-sub |
 | File Storage | Cloudflare R2 | Photos, documents (S3-compatible) |
-| Email | Resend | Transactional email delivery |
+| Email | SMTP or Resend | Transactional email delivery (provider chosen at runtime via super admin UI) |
 | WhatsApp | Meta Cloud API | Two-way WhatsApp messaging |
 | DNS | Cloudflare | DNS management |
 
@@ -172,7 +172,7 @@ classup/
 │   │   ├── file_service.py           # R2 upload/download/presigned URLs
 │   │   ├── invitation_service.py
 │   │   ├── notification_service.py
-│   │   ├── email_service.py          # Resend integration
+│   │   ├── email_service.py          # Email integration (SMTP / Resend, config from DB)
 │   │   ├── whatsapp_service.py       # Meta Cloud API integration
 │   │   ├── webhook_service.py
 │   │   ├── import_service.py         # CSV bulk import
@@ -389,8 +389,10 @@ R2_SECRET_ACCESS_KEY=<secret-key>
 R2_BUCKET_NAME=classup-files
 R2_PUBLIC_URL=https://files.classup.co.za  # Optional: custom domain for public files
 
-# === Resend (Email) ===
-RESEND_API_KEY=re_xxxxxxxxxxxx
+# === Email ===
+# Email provider (SMTP or Resend) is configured at runtime via the super admin UI.
+# Settings are stored in the `system_settings` DB table (key='email_config').
+# Fallback defaults only:
 EMAIL_FROM_ADDRESS=notifications@classup.co.za
 EMAIL_FROM_NAME=ClassUp
 
@@ -441,7 +443,8 @@ class Settings(BaseSettings):
     r2_bucket_name: str = "classup-files"
     r2_public_url: str | None = None
 
-    resend_api_key: str
+    # Email provider config is stored in DB (system_settings table), not env vars.
+    # These are fallback defaults only.
     email_from_address: str = "notifications@classup.co.za"
     email_from_name: str = "ClassUp"
 
@@ -2181,33 +2184,49 @@ Parents must explicitly opt in to WhatsApp notifications. This is managed via:
 
 ## 15. Email System
 
-### Resend Integration
+### Provider Architecture
+
+Email delivery supports **two providers**, switchable at runtime via the super admin UI at `/admin/email-settings`:
+
+- **SMTP** — connects to any SMTP server (e.g. `mail.classup.co.za:465`). Uses `aiosmtplib`. Port 465 = implicit SSL, port 587 = STARTTLS.
+- **Resend** — managed email API via `resend-python`. Requires an API key from resend.com.
+
+Configuration is stored in the `system_settings` DB table (key=`email_config`, JSONB), **not** in environment variables. The `SystemSettings` model (`app/models/system_settings.py`) is a simple key-value store.
+
+**Config shape** stored in `system_settings.value`:
+
+```json
+{
+  "provider": "smtp",          // "smtp" or "resend"
+  "enabled": true,
+  "from_email": "notifications@classup.co.za",
+  "from_name": "ClassUp",
+  "smtp_host": "mail.classup.co.za",
+  "smtp_port": 465,
+  "smtp_username": "user@classup.co.za",
+  "smtp_password": "secret",
+  "smtp_use_tls": true,
+  "resend_api_key": "re_xxxxxxxxxxxx"
+}
+```
+
+The `from_name` is a fallback — tenant-scoped emails (invitations, reports, attendance alerts) automatically use the tenant's name as the sender display name.
+
+### API Endpoints (Super Admin only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/admin/email-settings` | Get current config (secrets masked) |
+| PUT | `/api/v1/admin/email-settings` | Save/update config |
+| POST | `/api/v1/admin/email-settings/test` | Send test email (optional `{"to": "..."}`) |
+
+### Service Pattern
 
 ```python
 # app/services/email_service.py
-import resend
-
-class EmailService:
-    def __init__(self, settings: Settings):
-        resend.api_key = settings.resend_api_key
-        self.from_address = f"{settings.email_from_name} <{settings.email_from_address}>"
-        self.jinja_env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader("app/templates/emails")
-        )
-
-    async def send(self, to: str, subject: str, template_name: str,
-                   context: dict, tenant: Tenant | None = None) -> str:
-        """Send an email using a Jinja2 template."""
-        template = self.jinja_env.get_template(template_name)
-        html_body = template.render(**context, tenant=tenant)
-
-        result = resend.Emails.send({
-            "from": self.from_address,
-            "to": to,
-            "subject": subject,
-            "html": html_body
-        })
-        return result["id"]
+# Loads config from DB on every send. If not configured or enabled=false, skips silently.
+# All convenience methods (send_parent_invitation, send_password_reset, etc.) delegate to send().
+# send() accepts an optional from_name kwarg used for tenant-scoped emails.
 ```
 
 ### Email Triggers
@@ -3013,7 +3032,7 @@ Since ClassUp v1 uses the same PostgreSQL database schema concepts (UUIDs, tenan
 | Migrations | Liquibase (YAML) | Alembic (Python) |
 | Auth | Spring Security + JWT | Custom JWT + passlib |
 | File Storage | Same R2 setup | Same R2 setup (compatible) |
-| Email | Spring Events + JavaMailSender | arq tasks + Resend |
+| Email | Spring Events + JavaMailSender | SMTP / Resend (DB-configured, super admin UI) |
 | Frontend | Flutter (mobile/web) | Jinja2 + Tailwind (web) |
 | Real-time | None (polling) | WebSocket + Redis Pub/Sub |
 | WhatsApp | Not implemented | Meta Cloud API |
@@ -3096,7 +3115,7 @@ Phase 7: Reports
   37. Report finalization + notification
 
 Phase 8: Communication
-  38. Email service (Resend)
+  38. Email service (SMTP + Resend, DB-configured via super admin UI)
   39. Email templates
   40. Notification model + service
   41. WebSocket setup (connection manager, Redis pub/sub)

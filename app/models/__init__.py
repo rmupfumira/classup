@@ -18,6 +18,7 @@ from app.models.report import (
 from app.models.grade_level import GradeLevel
 from app.models.file_entity import FileEntity, FileCategory
 from app.models.invitation import ParentInvitation, InvitationStatus, generate_invitation_code
+from app.models.teacher_invitation import TeacherInvitation
 from app.models.notification import Notification, NotificationType
 from app.models.webhook import (
     WebhookEndpoint,
@@ -28,6 +29,7 @@ from app.models.webhook import (
 )
 from app.models.import_job import BulkImportJob, ImportType, ImportStatus
 from app.models.academic import Subject, ClassSubject, GradingSystem
+from app.models.system_settings import SystemSettings
 
 __all__ = [
     # Base
@@ -71,6 +73,7 @@ __all__ = [
     "ParentInvitation",
     "InvitationStatus",
     "generate_invitation_code",
+    "TeacherInvitation",
     # Notification
     "Notification",
     "NotificationType",
@@ -88,4 +91,6 @@ __all__ = [
     "Subject",
     "ClassSubject",
     "GradingSystem",
+    # System Settings
+    "SystemSettings",
 ]

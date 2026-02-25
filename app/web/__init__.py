@@ -10,12 +10,14 @@ from app.web import (
     dashboard,
     documents,
     imports,
+    invitations,
     onboarding,
     photos,
     reports,
     settings,
     students,
     super_admin,
+    teachers,
 )
 
 web_router = APIRouter(include_in_schema=False)
@@ -33,4 +35,6 @@ web_router.include_router(onboarding.router)
 web_router.include_router(settings.router)
 web_router.include_router(academic.router)
 web_router.include_router(imports.router)
+web_router.include_router(invitations.router)
+web_router.include_router(teachers.router)
 web_router.include_router(super_admin.router)

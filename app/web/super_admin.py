@@ -1,15 +1,18 @@
-"""Super Admin web routes for tenant management."""
+"""Super Admin web routes for tenant management and platform settings."""
 
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.exceptions import ForbiddenException
+from app.models.system_settings import SystemSettings
 from app.models.user import Role
 from app.services.auth_service import get_auth_service
+from app.services.email_service import EMAIL_CONFIG_KEY
 from app.services.tenant_service import get_tenant_service
 from app.templates_config import templates
 from app.utils.permissions import PermissionChecker
@@ -211,6 +214,46 @@ async def tenant_edit_form(
             "request": request,
             "user": user,
             "tenant": tenant,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
+@router.get("/email-settings", response_class=HTMLResponse)
+async def email_settings(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Render the email settings page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    _require_super_admin()
+
+    result = await db.execute(
+        select(SystemSettings).where(SystemSettings.key == EMAIL_CONFIG_KEY)
+    )
+    row = result.scalar_one_or_none()
+    email_config = dict(row.value) if row else {}
+
+    # Mask secrets for display
+    if email_config.get("smtp_password"):
+        email_config["smtp_password"] = "********"
+    if email_config.get("resend_api_key"):
+        email_config["resend_api_key"] = "********"
+
+    return templates.TemplateResponse(
+        "super_admin/email_settings.html",
+        {
+            "request": request,
+            "user": user,
+            "email_config": email_config,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(user.role),
         },

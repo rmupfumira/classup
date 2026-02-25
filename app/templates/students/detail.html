@@ -154,9 +154,10 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-900">Parents/Guardians</h3>
-                    {% if permissions.can_manage_students() %}
-                    <button type="button" class="text-primary-600 text-sm hover:text-primary-700">
-                        Add
+                    {% if permissions.can_invite_parents() %}
+                    <button type="button" onclick="document.getElementById('invite-parent-dialog').showModal()"
+                            class="text-primary-600 text-sm hover:text-primary-700 font-medium">
+                        Invite Parent
                     </button>
                     {% endif %}
                 </div>
@@ -199,6 +200,39 @@
                 {% else %}
                 <p class="text-sm text-gray-500">No parents linked yet.</p>
                 {% endif %}
+
+                <!-- Pending Invitations -->
+                {% if pending_invitations %}
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h4 class="text-sm font-medium text-amber-700 mb-3">Pending Invitations</h4>
+                    <ul class="space-y-3">
+                        {% for inv in pending_invitations %}
+                        <li class="flex items-center justify-between bg-amber-50 rounded-lg px-3 py-2" id="inv-{{ inv.id }}">
+                            <div class="flex items-center gap-2">
+                                <svg class="h-4 w-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                          d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"></path>
+                                </svg>
+                                <div>
+                                    <p class="text-sm text-amber-800">{{ inv.email }}</p>
+                                    <p class="text-xs text-amber-600">Expires {{ inv.expires_at.strftime('%b %d, %Y') }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="resendInvitation('{{ inv.id }}')"
+                                        class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                    Resend
+                                </button>
+                                <button type="button" onclick="cancelInvitation('{{ inv.id }}')"
+                                        class="text-xs text-red-600 hover:text-red-700 font-medium">
+                                    Cancel
+                                </button>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Emergency Contacts -->
@@ -229,10 +263,161 @@
                        class="block w-full px-4 py-2 text-center text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
                         Create Report
                     </a>
+                    {% if permissions.can_invite_parents() %}
+                    <button type="button" onclick="document.getElementById('invite-parent-dialog').showModal()"
+                            class="block w-full px-4 py-2 text-center text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        Invite Parent
+                    </button>
+                    <a href="/invitations?student_id={{ student.id }}"
+                       class="block w-full px-4 py-2 text-center text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        View All Invitations
+                    </a>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+{% if permissions.can_invite_parents() %}
+<!-- Invite Parent Dialog -->
+<dialog id="invite-parent-dialog" class="rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-neutral-800">Invite Parent</h2>
+            <button type="button" onclick="document.getElementById('invite-parent-dialog').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="invite-parent-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Student</label>
+                <p class="text-sm text-neutral-800 font-medium bg-neutral-50 rounded-md px-3 py-2 border border-neutral-200">
+                    {{ student.first_name }} {{ student.last_name }}
+                </p>
+            </div>
+            <div>
+                <label for="inv-email" class="block text-sm font-medium text-neutral-700 mb-1">Parent Email</label>
+                <input type="email" id="inv-email" name="email" required
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                              focus:border-primary-500 focus:ring-0"
+                       placeholder="parent@example.com">
+            </div>
+            <p class="text-xs text-neutral-500">
+                If this parent already has an account, they'll be linked automatically. Otherwise, an invitation email will be sent.
+            </p>
+            <div id="inv-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+            <div id="inv-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('invite-parent-dialog').close()"
+                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                    Cancel
+                </button>
+                <button type="submit" id="inv-submit-btn"
+                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                    Send Invitation
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if permissions.can_invite_parents() %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('invite-parent-form');
+    if (!form) return;
+
+    const errorDiv = document.getElementById('inv-error');
+    const successDiv = document.getElementById('inv-success');
+    const submitBtn = document.getElementById('inv-submit-btn');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        errorDiv.classList.add('hidden');
+        successDiv.classList.add('hidden');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        const data = {
+            student_id: '{{ student.id }}',
+            email: document.getElementById('inv-email').value,
+        };
+
+        try {
+            const response = await fetch('/api/v1/invitations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                successDiv.textContent = result.message || 'Invitation sent successfully!';
+                successDiv.classList.remove('hidden');
+                form.reset();
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                errorDiv.textContent = result.detail || result.message || 'Failed to send invitation';
+                errorDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            errorDiv.textContent = 'An error occurred. Please try again.';
+            errorDiv.classList.remove('hidden');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Send Invitation';
+        }
+    });
+});
+
+async function resendInvitation(invitationId) {
+    if (!confirm('Resend invitation email with a new code?')) return;
+
+    try {
+        const response = await fetch(`/api/v1/invitations/${invitationId}/resend`, {
+            method: 'POST',
+            credentials: 'same-origin',
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            alert('Invitation resent successfully');
+        } else {
+            alert(result.detail || result.message || 'Failed to resend invitation');
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function cancelInvitation(invitationId) {
+    if (!confirm('Cancel this invitation?')) return;
+
+    try {
+        const response = await fetch(`/api/v1/invitations/${invitationId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            const el = document.getElementById('inv-' + invitationId);
+            if (el) el.remove();
+        } else {
+            alert(result.detail || result.message || 'Failed to cancel invitation');
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+    }
+}
+</script>
+{% endif %}
 {% endblock %}

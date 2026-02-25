@@ -1,164 +1,400 @@
 {% extends "base.html" %}
 
-{% block title %}{{ t('nav.dashboard', current_language) }} - {{ app_name }}{% endblock %}
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Welcome Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-bold text-gray-900">
-                    {{ t('dashboard.welcome', current_language, name=user.first_name) }}
-                </h1>
-                <span class="inline-flex items-center rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-700">
-                    {{ user.role | replace('_', ' ') | title }}
-                </span>
+
+    <!-- Greeting Banner -->
+    <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">{{ greeting }}, {{ user.first_name }}!</h1>
+                <p class="mt-1 text-primary-100 text-sm">
+                    {{ today.strftime('%A, %d %B %Y') }}
+                    {% if selected_class %}
+                    &middot; {{ selected_class.name }}
+                    {% endif %}
+                </p>
             </div>
-            <p class="mt-1 text-sm text-gray-500">
-                {{ t('dashboard.todays_overview', current_language) }}
-            </p>
-        </div>
-        <div class="mt-4 sm:mt-0 flex space-x-3">
-            <a href="/attendance"
-               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm
-                      text-sm font-medium text-gray-700 bg-white hover:bg-gray-50
-                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                <svg class="-ml-1 mr-2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                {{ t('nav.attendance', current_language) }}
-            </a>
-            <a href="/reports/create"
-               class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm
-                      text-sm font-medium text-white bg-primary-600 hover:bg-primary-700
-                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M12 4v16m8-8H4" />
-                </svg>
-                {{ t('reports.create_report', current_language) }}
-            </a>
+            {% if has_classes %}
+            <div class="flex flex-wrap gap-2">
+                <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
+                   class="inline-flex items-center px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm
+                          rounded-lg text-sm font-medium text-white transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    Take Attendance
+                </a>
+                <a href="/reports/create"
+                   class="inline-flex items-center px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm
+                          rounded-lg text-sm font-medium text-white transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 4v16m8-8H4" />
+                    </svg>
+                    New Report
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Stats Cards -->
+    {% if not has_classes %}
+    <!-- No Classes State -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
+        <div class="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900">No classes assigned yet</h3>
+        <p class="mt-2 text-sm text-gray-500 max-w-md mx-auto">
+            Your school admin hasn't assigned you to any classes yet. Once you're assigned, you'll see your students, attendance, and reports here.
+        </p>
+    </div>
+
+    {% else %}
+
+    <!-- Today's Snapshot for Selected Class -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Students in Class -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Students</p>
+                    <p class="mt-1 text-2xl font-bold text-gray-900">{{ total_students }}</p>
+                </div>
+                <div class="flex-shrink-0 bg-blue-50 rounded-lg p-3">
                     <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                              d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                     </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.total_students', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">24</p>
                 </div>
             </div>
         </div>
 
+        <!-- Present Today -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Present Today</p>
+                    <p class="mt-1 text-2xl font-bold text-green-600">{{ total_present }}</p>
+                </div>
+                <div class="flex-shrink-0 bg-green-50 rounded-lg p-3">
                     <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.present_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">22</p>
+            </div>
+        </div>
+
+        <!-- Absent Today -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Absent Today</p>
+                    <p class="mt-1 text-2xl font-bold {% if total_absent > 0 %}text-red-600{% else %}text-gray-900{% endif %}">{{ total_absent }}</p>
+                </div>
+                <div class="flex-shrink-0 bg-red-50 rounded-lg p-3">
+                    <svg class="h-6 w-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
                 </div>
             </div>
         </div>
 
+        <!-- Attendance Rate -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
-                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Attendance Rate</p>
+                    {% if current_class and current_class.attendance_taken %}
+                    <p class="mt-1 text-2xl font-bold text-primary-600">{{ current_class.attendance_rate }}%</p>
+                    {% else %}
+                    <p class="mt-1 text-2xl font-bold text-gray-400">&mdash;</p>
+                    {% endif %}
+                </div>
+                <div class="flex-shrink-0 bg-primary-50 rounded-lg p-3">
+                    <svg class="h-6 w-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                     </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.absent_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">2</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-amber-100 rounded-lg p-3">
-                    <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.pending_reports', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">5</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Actions & Recent Activity -->
-    <div class="grid lg:grid-cols-2 gap-6">
-        <!-- Quick Actions -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('dashboard.quick_actions', current_language) }}</h2>
-            <div class="grid grid-cols-2 gap-4">
-                <a href="/attendance"
-                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
-                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
-                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
-                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
-                        {{ t('attendance.daily_attendance', current_language) }}
-                    </span>
-                </a>
+    <div class="grid lg:grid-cols-3 gap-6">
+        <!-- Left column: Attendance + Reports -->
+        <div class="lg:col-span-2 space-y-6">
 
-                <a href="/reports/create"
-                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
-                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
-                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <!-- Attendance Not Taken Alert -->
+            {% if not attendance_taken %}
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                <div class="flex-shrink-0 mt-0.5">
+                    <svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
                     </svg>
-                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
-                        {{ t('reports.create_report', current_language) }}
-                    </span>
-                </a>
-
-                <a href="/photos/upload"
-                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
-                          hover:border-primary-300 hover:bg-primary-50 transition-colors group">
-                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
-                        Share Photos
-                    </span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-amber-800">Attendance not taken yet today</p>
+                    <p class="text-xs text-amber-600 mt-0.5">Mark attendance for {{ selected_class.name }} to keep parents informed.</p>
+                </div>
+                <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
+                   class="flex-shrink-0 inline-flex items-center px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-medium rounded-lg transition-colors">
+                    Take Attendance
                 </a>
             </div>
+            {% endif %}
+
+            <!-- Today's Attendance Breakdown -->
+            {% if current_class and current_class.attendance_taken %}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900">Today's Attendance</h2>
+                    <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
+                       class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                        View Details
+                    </a>
+                </div>
+                <div class="p-6">
+                    <div class="flex items-center gap-6 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                            <span class="text-sm text-gray-600">Present</span>
+                            <span class="text-sm font-bold text-gray-900">{{ current_class.present }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            <span class="text-sm text-gray-600">Absent</span>
+                            <span class="text-sm font-bold text-gray-900">{{ current_class.absent }}</span>
+                        </div>
+                        {% if current_class.late > 0 %}
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                            <span class="text-sm text-gray-600">Late</span>
+                            <span class="text-sm font-bold text-gray-900">{{ current_class.late }}</span>
+                        </div>
+                        {% endif %}
+                        {% if current_class.excused > 0 %}
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+                            <span class="text-sm text-gray-600">Excused</span>
+                            <span class="text-sm font-bold text-gray-900">{{ current_class.excused }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Attendance bar -->
+                    <div class="mt-4">
+                        <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
+                            {% if current_class.student_count > 0 %}
+                            <div class="bg-green-500 h-full" style="width: {{ (current_class.present / current_class.student_count * 100) | round(0) }}%"></div>
+                            <div class="bg-amber-500 h-full" style="width: {{ (current_class.late / current_class.student_count * 100) | round(0) }}%"></div>
+                            <div class="bg-red-500 h-full" style="width: {{ (current_class.absent / current_class.student_count * 100) | round(0) }}%"></div>
+                            {% endif %}
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            {{ current_class.attendance_rate }}% attendance rate &middot;
+                            {{ current_class.student_count }} total students
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Draft Reports -->
+            {% if draft_reports %}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-semibold text-gray-900">Draft Reports</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ total_drafts }} report{{ 's' if total_drafts != 1 else '' }} waiting to be finalized</p>
+                    </div>
+                    <a href="/reports?status=DRAFT{% if selected_class %}&class_id={{ selected_class.id }}{% endif %}" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                        View All
+                    </a>
+                </div>
+                <div class="divide-y divide-gray-100">
+                    {% for report in draft_reports %}
+                    <a href="/reports/{{ report.id }}"
+                       class="block px-6 py-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{ report.student_name }}</p>
+                                    <p class="text-xs text-gray-500">{{ report.template_name }} &middot; {{ report.report_date }}</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
+                                Draft
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
-        <!-- Recent Activity -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('dashboard.recent_activity', current_language) }}</h2>
-            <div class="space-y-4">
-                <p class="text-sm text-gray-500 text-center py-8">
-                    No recent activity to display.
+        <!-- Right column: Quick Actions + Info -->
+        <div class="space-y-6">
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 class="text-base font-semibold text-gray-900 mb-4">Quick Actions</h2>
+                <div class="space-y-2">
+                    <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Take Attendance</p>
+                            <p class="text-xs text-gray-500">Record daily attendance</p>
+                        </div>
+                    </a>
+
+                    <a href="/reports/create"
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+                            <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Create Report</p>
+                            <p class="text-xs text-gray-500">Write a student report</p>
+                        </div>
+                    </a>
+
+                    <a href="/students{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">View Students</p>
+                            <p class="text-xs text-gray-500">See your student roster</p>
+                        </div>
+                    </a>
+
+                    <a href="/messages"
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Messages</p>
+                                <p class="text-xs text-gray-500">Communicate with parents</p>
+                            </div>
+                            {% if unread_notifications > 0 %}
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold">
+                                {{ unread_notifications if unread_notifications < 10 else '9+' }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </a>
+
+                    <a href="/photos/upload"
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Share Photos</p>
+                            <p class="text-xs text-gray-500">Share class moments</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Multi-class info -->
+            {% if teacher_classes is defined and teacher_classes|length > 1 %}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 class="text-base font-semibold text-gray-900 mb-3">My Classes</h2>
+                <p class="text-xs text-gray-500 mb-3">
+                    Switch classes using the selector in the top navigation bar.
                 </p>
+                <div class="space-y-2">
+                    {% for tc in teacher_classes %}
+                    <button onclick="switchClass('{{ tc.id }}')"
+                            class="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors
+                                   {% if selected_class and selected_class.id == tc.id %}bg-primary-50 border border-primary-200{% else %}hover:bg-gray-50{% endif %}">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-md
+                                    {% if selected_class and selected_class.id == tc.id %}bg-primary-100{% else %}bg-gray-100{% endif %}
+                                    flex items-center justify-center">
+                            <span class="text-xs font-semibold
+                                         {% if selected_class and selected_class.id == tc.id %}text-primary-600{% else %}text-gray-500{% endif %}">
+                                {{ tc.name[:2] | upper }}
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium {% if selected_class and selected_class.id == tc.id %}text-primary-700{% else %}text-gray-700{% endif %} truncate">
+                                {{ tc.name }}
+                            </p>
+                        </div>
+                        {% if selected_class and selected_class.id == tc.id %}
+                        <svg class="w-4 h-4 text-primary-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        {% endif %}
+                    </button>
+                    {% endfor %}
+                </div>
             </div>
+            {% endif %}
+
+            <!-- Getting Started Tip -->
+            {% if not attendance_taken and not draft_reports %}
+            <div class="bg-gradient-to-br from-primary-50 to-blue-50 rounded-xl border border-primary-100 p-6">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-primary-900">Getting Started</p>
+                        <p class="text-xs text-primary-700 mt-1 leading-relaxed">
+                            Start your day by taking attendance, then create reports for your students. Parents will be notified automatically when you finalize reports.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}

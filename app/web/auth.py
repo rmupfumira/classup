@@ -172,6 +172,83 @@ async def register_submit(
         )
 
 
+@router.get("/register/teacher", response_class=HTMLResponse)
+async def teacher_register_page(
+    request: Request,
+    code: str | None = None,
+    error: str | None = None,
+):
+    """Render the teacher registration page."""
+    from app.utils.security import decode_access_token
+
+    token = request.cookies.get("access_token")
+    if token:
+        payload = decode_access_token(token)
+        if payload:
+            return RedirectResponse(url="/dashboard", status_code=302)
+        response = RedirectResponse(url="/register/teacher", status_code=302)
+        response.delete_cookie("access_token")
+        return response
+
+    return templates.TemplateResponse(
+        "auth/register_teacher.html",
+        {
+            "request": request,
+            "code": code,
+            "error": error,
+            "current_language": get_current_language(),
+        },
+    )
+
+
+@router.post("/register/teacher", response_class=HTMLResponse)
+async def teacher_register_submit(
+    request: Request,
+    invitation_code: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    phone: str = Form(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Handle teacher registration form submission."""
+    try:
+        auth_service = get_auth_service()
+        register_request = RegisterRequest(
+            invitation_code=invitation_code,
+            email=email,
+            password=password,
+            confirm_password=confirm_password,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+        )
+        await auth_service.register_teacher(db, register_request)
+
+        return RedirectResponse(
+            url="/login?registered=true",
+            status_code=302,
+        )
+
+    except Exception as e:
+        return templates.TemplateResponse(
+            "auth/register_teacher.html",
+            {
+                "request": request,
+                "error": str(e.message) if hasattr(e, "message") else "Registration failed",
+                "code": invitation_code,
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "phone": phone,
+                "current_language": get_current_language(),
+            },
+            status_code=400,
+        )
+
+
 @router.get("/logout")
 async def logout(response: Response):
     """Log out the current user."""

@@ -1,0 +1,31 @@
+{% extends "base_email.html" %}
+
+{% block title %}New Child Linked to Your Account{% endblock %}
+
+{% block content %}
+<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
+    Hello {{ parent_name }},
+</h2>
+
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Great news! <strong>{{ student_name }}</strong> has been linked to your {{ app_name }} account at <strong>{{ tenant_name }}</strong>.
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    You can now view their activity reports, photos, attendance, and communicate with their teachers — all from your existing account.
+</p>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #7C3AED;">
+            <a href="{{ login_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                Log In to Your Account
+            </a>
+        </td>
+    </tr>
+</table>
+{% endblock %}
+
+{% block footer_text %}
+If you didn't expect this notification, please contact your school administrator.
+{% endblock %}

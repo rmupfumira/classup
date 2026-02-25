@@ -18,6 +18,7 @@ from app.utils.tenant_context import (
     get_current_language,
     get_current_user_id_or_none,
 )
+from app.web.helpers import get_teacher_class_context
 
 router = APIRouter(prefix="/classes")
 
@@ -75,20 +76,20 @@ async def classes_list(
 
     total_pages = (total + 19) // 20
 
-    return templates.TemplateResponse(
-        "classes/list.html",
-        {
-            "request": request,
-            "user": user,
-            "classes": classes,
-            "search": search,
-            "page": page,
-            "total_pages": total_pages,
-            "total": total,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "classes": classes,
+        "search": search,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("classes/list.html", context)
 
 
 @router.get("/new", response_class=HTMLResponse)
@@ -110,15 +111,15 @@ async def class_create_form(
     if not permissions.can_manage_classes():
         raise ForbiddenException("You don't have permission to create classes")
 
-    return templates.TemplateResponse(
-        "classes/create.html",
-        {
-            "request": request,
-            "user": user,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("classes/create.html", context)
 
 
 @router.get("/{class_id}", response_class=HTMLResponse)
@@ -146,18 +147,18 @@ async def class_detail(
     students = await class_service.get_class_students(db, class_id)
     teachers_data = await class_service.get_class_teachers(db, class_id)
 
-    return templates.TemplateResponse(
-        "classes/detail.html",
-        {
-            "request": request,
-            "user": user,
-            "school_class": school_class,
-            "students": students,
-            "teachers": [(u, tc) for u, tc in teachers_data],
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "school_class": school_class,
+        "students": students,
+        "teachers": [(u, tc) for u, tc in teachers_data],
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("classes/detail.html", context)
 
 
 @router.get("/{class_id}/edit", response_class=HTMLResponse)
@@ -183,16 +184,16 @@ async def class_edit_form(
     class_service = get_class_service()
     school_class = await class_service.get_class(db, class_id)
 
-    return templates.TemplateResponse(
-        "classes/edit.html",
-        {
-            "request": request,
-            "user": user,
-            "school_class": school_class,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "school_class": school_class,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("classes/edit.html", context)
 
 
 @router.get("/{class_id}/subjects")
@@ -239,15 +240,16 @@ async def manage_teachers(
     assigned_teacher_ids = {u.id for u, _ in teachers_data}
     available_teachers = [t for t in all_teachers if t.id not in assigned_teacher_ids]
 
-    return templates.TemplateResponse(
-        "classes/manage_teachers.html",
-        {
-            "request": request,
-            "user": user,
-            "school_class": school_class,
-            "assigned_teachers": [(u, tc) for u, tc in teachers_data],
-            "available_teachers": available_teachers,
-            "current_language": get_current_language(),
-            "permissions": permissions,
-        },
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "school_class": school_class,
+        "assigned_teachers": [(u, tc) for u, tc in teachers_data],
+        "available_teachers": available_teachers,
+        "total_teachers": len(all_teachers),
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    if user.role == Role.TEACHER.value:
+        context.update(await get_teacher_class_context(request, db))
+    return templates.TemplateResponse("classes/manage_teachers.html", context)

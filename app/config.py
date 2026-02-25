@@ -45,8 +45,7 @@ class Settings(BaseSettings):
     r2_bucket_name: str = "classup-files"
     r2_public_url: str | None = None
 
-    # Email (Resend)
-    resend_api_key: str = ""
+    # Email (fallback defaults, SMTP config is stored in DB)
     email_from_address: str = "notifications@classup.co.za"
     email_from_name: str = "ClassUp"
 

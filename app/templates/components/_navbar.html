@@ -15,6 +15,67 @@
                 </a>
             </div>
 
+            {% if user.role == 'TEACHER' and teacher_classes is defined and teacher_classes|length > 0 %}
+            <!-- Class Selector (Teacher only) -->
+            <div class="flex items-center ml-4">
+                <div class="relative">
+                    <button onclick="toggleClassSelector()"
+                            class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border
+                                   {% if selected_class %}
+                                   border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100
+                                   {% else %}
+                                   border-neutral-300 bg-neutral-50 text-neutral-700 hover:bg-neutral-100
+                                   {% endif %}
+                                   transition-colors">
+                        <svg class="w-4 h-4 {% if selected_class %}text-primary-500{% else %}text-neutral-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
+                        </svg>
+                        <span class="hidden sm:inline max-w-[140px] truncate">
+                            {% if selected_class %}{{ selected_class.name }}{% else %}Select Class{% endif %}
+                        </span>
+                        <svg class="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <!-- Class Dropdown -->
+                    <div id="class-selector-menu"
+                         class="hidden absolute left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-50">
+                        <div class="px-3 py-2 border-b border-neutral-100">
+                            <p class="text-xs font-medium text-neutral-400 uppercase tracking-wider">My Classes</p>
+                        </div>
+                        {% for tc in teacher_classes %}
+                        <button onclick="switchClass('{{ tc.id }}')"
+                                class="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left hover:bg-neutral-50 transition-colors
+                                       {% if selected_class and selected_class.id == tc.id %}bg-primary-50 text-primary-700{% else %}text-neutral-700{% endif %}">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-md
+                                        {% if selected_class and selected_class.id == tc.id %}bg-primary-100{% else %}bg-neutral-100{% endif %}
+                                        flex items-center justify-center">
+                                <span class="text-xs font-semibold
+                                             {% if selected_class and selected_class.id == tc.id %}text-primary-600{% else %}text-neutral-500{% endif %}">
+                                    {{ tc.name[:2] | upper }}
+                                </span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-medium truncate">{{ tc.name }}</p>
+                                <p class="text-xs text-neutral-500">
+                                    {{ tc.grade_level or tc.age_group or '' }}
+                                    {% if tc.students %}{{ tc.students|selectattr('is_active')|selectattr('deleted_at', 'none')|list|length }} students{% endif %}
+                                </p>
+                            </div>
+                            {% if selected_class and selected_class.id == tc.id %}
+                            <svg class="w-4 h-4 text-primary-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            {% endif %}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Search Bar (Desktop) -->
             <div class="hidden md:flex flex-1 max-w-sm mx-6">
                 <div class="relative w-full">
@@ -118,16 +179,45 @@
 function toggleUserMenu() {
     const menu = document.getElementById('user-menu');
     menu.classList.toggle('hidden');
+    // Close class selector if open
+    document.getElementById('class-selector-menu')?.classList.add('hidden');
 }
 
-// Close menu when clicking outside
-document.addEventListener('click', function(event) {
-    const menu = document.getElementById('user-menu');
-    const button = event.target.closest('button');
-    if (!button || !button.onclick?.toString().includes('toggleUserMenu')) {
-        if (!event.target.closest('#user-menu')) {
-            menu?.classList.add('hidden');
+function toggleClassSelector() {
+    const menu = document.getElementById('class-selector-menu');
+    menu?.classList.toggle('hidden');
+    // Close user menu if open
+    document.getElementById('user-menu')?.classList.add('hidden');
+}
+
+async function switchClass(classId) {
+    try {
+        const response = await fetch(`/api/v1/classes/${classId}/select`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+        });
+        if (response.ok) {
+            // Reload the current page to reflect the new class context
+            window.location.reload();
         }
+    } catch (error) {
+        console.error('Failed to switch class:', error);
+    }
+}
+
+// Close menus when clicking outside
+document.addEventListener('click', function(event) {
+    const userMenu = document.getElementById('user-menu');
+    const classMenu = document.getElementById('class-selector-menu');
+
+    // Close user menu
+    if (!event.target.closest('[onclick*="toggleUserMenu"]') && !event.target.closest('#user-menu')) {
+        userMenu?.classList.add('hidden');
+    }
+    // Close class selector
+    if (!event.target.closest('[onclick*="toggleClassSelector"]') && !event.target.closest('#class-selector-menu')) {
+        classMenu?.classList.add('hidden');
     }
 });
 </script>
