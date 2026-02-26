@@ -277,8 +277,8 @@ function createSectionElement(section, index) {
         icon.classList.toggle('rotate-180');
     });
 
-    sectionEl.querySelector('.remove-section').addEventListener('click', function() {
-        if (confirm('Remove this section?')) {
+    sectionEl.querySelector('.remove-section').addEventListener('click', async function() {
+        if (await ClassUp.confirm('Remove this section?', { danger: true, confirmText: 'Remove' })) {
             sections.splice(index, 1);
             renderSections();
         }
@@ -406,7 +406,7 @@ async function saveTemplate() {
     const isActive = document.getElementById('is_active').checked;
 
     if (!name) {
-        alert('Please enter a template name');
+        ClassUp.toast('Please enter a template name', 'warning');
         return;
     }
 
@@ -448,14 +448,14 @@ async function saveTemplate() {
         const result = await response.json();
 
         if (response.ok) {
-            alert('Template saved successfully!');
+            ClassUp.toast('Template saved successfully!', 'success');
             window.location.href = '/reports/templates/manage';
         } else {
-            alert(result.message || 'Failed to save template');
+            ClassUp.toast(result.message || 'Failed to save template', 'error');
         }
     } catch (error) {
         console.error('Error saving template:', error);
-        alert('An error occurred while saving the template');
+        ClassUp.toast('An error occurred while saving the template', 'error');
     }
 }
 </script>

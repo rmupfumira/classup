@@ -162,16 +162,16 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (response.ok) {
                 window.location.href = '/classes/' + classId;
             } else {
-                alert(result.message || 'Failed to update class');
+                ClassUp.toast(result.message || 'Failed to update class', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            ClassUp.toast('An error occurred. Please try again.', 'error');
         }
     });
 
     deleteBtn.addEventListener('click', async function() {
-        if (!confirm('Are you sure you want to delete this class? This action cannot be undone.')) {
+        if (!(await ClassUp.confirm('Are you sure you want to delete this class? This action cannot be undone.', { danger: true, confirmText: 'Delete' }))) {
             return;
         }
 
@@ -185,11 +185,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 window.location.href = '/classes';
             } else {
                 const result = await response.json();
-                alert(result.message || 'Failed to delete class');
+                ClassUp.toast(result.message || 'Failed to delete class', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            ClassUp.toast('An error occurred. Please try again.', 'error');
         }
     });
 });

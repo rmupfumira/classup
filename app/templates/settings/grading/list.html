@@ -136,16 +136,16 @@ async function setAsDefault(gradingSystemId) {
             window.location.reload();
         } else {
             const data = await response.json();
-            alert(data.detail || 'Failed to set as default');
+            ClassUp.toast(data.detail || 'Failed to set as default', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred');
+        ClassUp.toast('An error occurred', 'error');
     }
 }
 
 async function deleteGradingSystem(gradingSystemId, name) {
-    if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) {
+    if (!(await ClassUp.confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`, { danger: true, confirmText: 'Delete' }))) {
         return;
     }
 
@@ -159,11 +159,11 @@ async function deleteGradingSystem(gradingSystemId, name) {
             window.location.reload();
         } else {
             const data = await response.json();
-            alert(data.detail || 'Failed to delete grading system');
+            ClassUp.toast(data.detail || 'Failed to delete grading system', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while deleting');
+        ClassUp.toast('An error occurred while deleting', 'error');
     }
 }
 </script>

@@ -160,11 +160,11 @@ document.getElementById('subject-form').addEventListener('submit', async (e) => 
         if (response.ok) {
             window.location.href = '/settings/academic/subjects';
         } else {
-            alert(result.detail || result.message || 'An error occurred');
+            ClassUp.toast(result.detail || result.message || 'An error occurred', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while saving the subject');
+        ClassUp.toast('An error occurred while saving the subject', 'error');
     }
 });
 

@@ -570,7 +570,7 @@ async function saveReport(finalize = false) {
     const classId = document.getElementById('class_id').value;
 
     if (!studentId || !templateId || !reportDate || !classId) {
-        alert('Please fill in all required fields');
+        ClassUp.toast('Please fill in all required fields', 'warning');
         return;
     }
 
@@ -594,7 +594,7 @@ async function saveReport(finalize = false) {
         const createResult = await createResponse.json();
 
         if (!createResponse.ok) {
-            alert(createResult.message || 'Failed to create report');
+            ClassUp.toast(createResult.message || 'Failed to create report', 'error');
             return;
         }
 
@@ -611,20 +611,20 @@ async function saveReport(finalize = false) {
 
             if (!finalizeResponse.ok) {
                 const finalizeResult = await finalizeResponse.json();
-                alert(finalizeResult.message || 'Report created but failed to finalize');
+                ClassUp.toast(finalizeResult.message || 'Report created but failed to finalize', 'error');
                 window.location.href = `/reports/${reportId}`;
                 return;
             }
 
-            alert('Report created and finalized successfully!');
+            ClassUp.toast('Report created and finalized successfully!', 'success');
         } else {
-            alert('Report saved as draft');
+            ClassUp.toast('Report saved as draft', 'success');
         }
 
         window.location.href = `/reports/${reportId}`;
     } catch (error) {
         console.error('Error saving report:', error);
-        alert('An error occurred while saving the report');
+        ClassUp.toast('An error occurred while saving the report', 'error');
     }
 }
 

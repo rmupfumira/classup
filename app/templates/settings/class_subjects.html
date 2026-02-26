@@ -181,16 +181,16 @@ async function addSubject(subjectId, subjectName) {
             window.location.reload();
         } else {
             const data = await response.json();
-            alert(data.detail || 'Failed to add subject');
+            ClassUp.toast(data.detail || 'Failed to add subject', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred');
+        ClassUp.toast('An error occurred', 'error');
     }
 }
 
 async function removeSubject(subjectId, subjectName) {
-    if (!confirm(`Remove "${subjectName}" from this class?`)) {
+    if (!(await ClassUp.confirm(`Remove "${subjectName}" from this class?`, { danger: true, confirmText: 'Remove' }))) {
         return;
     }
 
@@ -204,11 +204,11 @@ async function removeSubject(subjectId, subjectName) {
             window.location.reload();
         } else {
             const data = await response.json();
-            alert(data.detail || 'Failed to remove subject');
+            ClassUp.toast(data.detail || 'Failed to remove subject', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred');
+        ClassUp.toast('An error occurred', 'error');
     }
 }
 
@@ -245,11 +245,11 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
             window.location.reload();
         } else {
             const data = await response.json();
-            alert(data.detail || 'Failed to update');
+            ClassUp.toast(data.detail || 'Failed to update', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred');
+        ClassUp.toast('An error occurred', 'error');
     }
 });
 </script>

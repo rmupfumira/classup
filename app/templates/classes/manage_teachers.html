@@ -129,7 +129,7 @@
 const classId = '{{ school_class.id }}';
 
 async function removeTeacher(teacherId) {
-    if (!confirm('Are you sure you want to remove this teacher from the class?')) {
+    if (!(await ClassUp.confirm('Are you sure you want to remove this teacher from the class?', { danger: true, confirmText: 'Remove' }))) {
         return;
     }
 
@@ -143,11 +143,11 @@ async function removeTeacher(teacherId) {
             window.location.reload();
         } else {
             const result = await response.json();
-            alert(result.message || 'Failed to remove teacher');
+            ClassUp.toast(result.message || 'Failed to remove teacher', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
 
@@ -162,11 +162,11 @@ async function setPrimary(teacherId) {
             window.location.reload();
         } else {
             const result = await response.json();
-            alert(result.message || 'Failed to set primary teacher');
+            ClassUp.toast(result.message || 'Failed to set primary teacher', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
 
@@ -194,11 +194,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.reload();
                 } else {
                     const result = await response.json();
-                    alert(result.message || 'Failed to add teacher');
+                    ClassUp.toast(result.message || 'Failed to add teacher', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('An error occurred. Please try again.');
+                ClassUp.toast('An error occurred. Please try again.', 'error');
             }
         });
     }

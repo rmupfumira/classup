@@ -216,7 +216,7 @@ uploadArea.addEventListener('drop', function(e) {
 function addFiles(files) {
     files.forEach(file => {
         if (file.size > 10 * 1024 * 1024) {
-            alert(`File ${file.name} is too large (max 10MB)`);
+            ClassUp.toast(`File ${file.name} is too large (max 10MB)`, 'warning');
             return;
         }
 
@@ -281,17 +281,17 @@ async function uploadPhotos() {
     const caption = document.getElementById('caption').value;
 
     if (!classId && shareType === 'CLASS') {
-        alert('Please select a class');
+        ClassUp.toast('Please select a class', 'warning');
         return;
     }
 
     if (shareType === 'STUDENT' && !studentId) {
-        alert('Please select a student');
+        ClassUp.toast('Please select a student', 'warning');
         return;
     }
 
     if (selectedFiles.length === 0) {
-        alert('Please select at least one photo');
+        ClassUp.toast('Please select at least one photo', 'warning');
         return;
     }
 
@@ -333,10 +333,10 @@ async function uploadPhotos() {
     }
 
     if (uploadedIds.length > 0) {
-        alert(`${uploadedIds.length} photo(s) uploaded successfully!`);
+        ClassUp.toast(`${uploadedIds.length} photo(s) uploaded successfully!`, 'success');
         window.location.href = '/photos';
     } else {
-        alert('Failed to upload photos. Please try again.');
+        ClassUp.toast('Failed to upload photos. Please try again.', 'error');
     }
 
     uploadProgress.classList.add('hidden');

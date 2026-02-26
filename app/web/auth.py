@@ -95,9 +95,15 @@ async def login_submit(
 async def register_page(
     request: Request,
     code: str | None = None,
+    email: str | None = None,
     error: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
-    """Render the registration page."""
+    """Render the registration page.
+
+    When code and email are provided (from invitation link), looks up the
+    invitation to pre-fill the parent's name so they only need to set a password.
+    """
     from app.utils.security import decode_access_token
 
     # Check if already authenticated with a valid token
@@ -111,11 +117,31 @@ async def register_page(
         response.delete_cookie("access_token")
         return response
 
+    # Pre-fill from invitation if code + email provided
+    first_name = ""
+    last_name = ""
+    student_name = ""
+    school_name = ""
+    if code and email:
+        from app.services.invitation_service import get_invitation_service
+        inv_service = get_invitation_service()
+        result = await inv_service.verify_invitation(db, code=code, email=email)
+        if result.get("valid"):
+            first_name = result.get("first_name", "")
+            last_name = result.get("last_name", "")
+            student_name = result.get("student_name", "")
+            school_name = result.get("school_name", "")
+
     return templates.TemplateResponse(
         "auth/register.html",
         {
             "request": request,
-            "code": code,
+            "code": code or "",
+            "email": email or "",
+            "first_name": first_name,
+            "last_name": last_name,
+            "student_name": student_name,
+            "school_name": school_name,
             "error": error,
             "current_language": get_current_language(),
         },

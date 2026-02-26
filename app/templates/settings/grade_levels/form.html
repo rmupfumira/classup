@@ -131,11 +131,11 @@ document.getElementById('grade-level-form').addEventListener('submit', async (e)
         if (response.ok) {
             window.location.href = '/settings/grade-levels?saved=1';
         } else {
-            alert(result.detail || result.message || 'An error occurred');
+            ClassUp.toast(result.detail || result.message || 'An error occurred', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while saving the grade level');
+        ClassUp.toast('An error occurred while saving the grade level', 'error');
     }
 });
 

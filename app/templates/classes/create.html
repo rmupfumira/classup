@@ -138,11 +138,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (response.ok) {
                 window.location.href = '/classes/' + result.data.id;
             } else {
-                alert(result.message || 'Failed to create class');
+                ClassUp.toast(result.message || 'Failed to create class', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            ClassUp.toast('An error occurred. Please try again.', 'error');
         }
     });
 });

@@ -286,17 +286,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 window.location.href = '/students/' + studentId;
             } else {
-                alert(result.message || 'Failed to update student');
+                ClassUp.toast(result.message || 'Failed to update student', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            ClassUp.toast('An error occurred. Please try again.', 'error');
         }
     });
 
     // Delete student
     deleteBtn.addEventListener('click', async function() {
-        if (!confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
+        if (!(await ClassUp.confirm('Are you sure you want to delete this student? This action cannot be undone.', { danger: true, confirmText: 'Delete' }))) {
             return;
         }
 
@@ -310,11 +310,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = '/students';
             } else {
                 const result = await response.json();
-                alert(result.message || 'Failed to delete student');
+                ClassUp.toast(result.message || 'Failed to delete student', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            ClassUp.toast('An error occurred. Please try again.', 'error');
         }
     });
 });

@@ -154,7 +154,7 @@
 <script>
 async function toggleTemplate(templateId, activate) {
     const action = activate ? 'activate' : 'deactivate';
-    if (!confirm(`Are you sure you want to ${action} this template?`)) {
+    if (!(await ClassUp.confirm(`Are you sure you want to ${action} this template?`, { confirmText: activate ? 'Activate' : 'Deactivate' }))) {
         return;
     }
 
@@ -170,16 +170,16 @@ async function toggleTemplate(templateId, activate) {
             window.location.reload();
         } else {
             const result = await response.json();
-            alert(result.message || `Failed to ${action} template`);
+            ClassUp.toast(result.message || `Failed to ${action} template`, 'error');
         }
     } catch (error) {
         console.error(`Error ${action} template:`, error);
-        alert(`An error occurred while trying to ${action} the template`);
+        ClassUp.toast(`An error occurred while trying to ${action} the template`, 'error');
     }
 }
 
 async function deleteTemplate(templateId) {
-    if (!confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
+    if (!(await ClassUp.confirm('Are you sure you want to delete this template? This action cannot be undone.', { danger: true, confirmText: 'Delete' }))) {
         return;
     }
 
@@ -193,11 +193,11 @@ async function deleteTemplate(templateId) {
             window.location.reload();
         } else {
             const result = await response.json();
-            alert(result.message || 'Failed to delete template');
+            ClassUp.toast(result.message || 'Failed to delete template', 'error');
         }
     } catch (error) {
         console.error('Error deleting template:', error);
-        alert('An error occurred while deleting the template');
+        ClassUp.toast('An error occurred while deleting the template', 'error');
     }
 }
 </script>

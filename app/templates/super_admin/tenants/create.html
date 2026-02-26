@@ -185,26 +185,16 @@ document.getElementById('create-tenant-form').addEventListener('submit', async f
 
         if (response.ok) {
             // Show success and redirect
-            if (window.ClassUp && window.ClassUp.toast) {
-                window.ClassUp.toast('Tenant created successfully', 'success');
-            }
+            ClassUp.toast('Tenant created successfully', 'success');
             window.location.href = '/admin/tenants/' + result.data.id;
         } else {
             // Show error
             const message = result.message || 'Failed to create tenant';
-            if (window.ClassUp && window.ClassUp.toast) {
-                window.ClassUp.toast(message, 'error');
-            } else {
-                alert(message);
-            }
+            ClassUp.toast(message, 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        if (window.ClassUp && window.ClassUp.toast) {
-            window.ClassUp.toast('An error occurred. Please try again.', 'error');
-        } else {
-            alert('An error occurred. Please try again.');
-        }
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     } finally {
         submitBtn.disabled = false;
         spinner.classList.add('hidden');

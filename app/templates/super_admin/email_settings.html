@@ -286,26 +286,14 @@ document.getElementById('email-form').addEventListener('submit', async function(
         const result = await response.json();
 
         if (response.ok) {
-            if (window.ClassUp && window.ClassUp.toast) {
-                window.ClassUp.toast(result.message || 'Settings saved', 'success');
-            } else {
-                alert('Settings saved successfully');
-            }
+            ClassUp.toast(result.message || 'Settings saved', 'success');
         } else {
             const message = result.message || 'Failed to save settings';
-            if (window.ClassUp && window.ClassUp.toast) {
-                window.ClassUp.toast(message, 'error');
-            } else {
-                alert(message);
-            }
+            ClassUp.toast(message, 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        if (window.ClassUp && window.ClassUp.toast) {
-            window.ClassUp.toast('An error occurred. Please try again.', 'error');
-        } else {
-            alert('An error occurred. Please try again.');
-        }
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     } finally {
         submitBtn.disabled = false;
         spinner.classList.add('hidden');
@@ -345,27 +333,15 @@ document.getElementById('test-btn').addEventListener('click', async function() {
         const result = await response.json();
 
         if (response.ok && result.status === 'success') {
-            if (window.ClassUp && window.ClassUp.toast) {
-                window.ClassUp.toast(result.message || 'Test email sent!', 'success');
-            } else {
-                alert(result.message || 'Test email sent!');
-            }
+            ClassUp.toast(result.message || 'Test email sent!', 'success');
         } else {
             const message = result.message || 'Failed to send test email';
-            if (window.ClassUp && window.ClassUp.toast) {
-                window.ClassUp.toast(message, 'error');
-            } else {
-                alert(message);
-            }
+            ClassUp.toast(message, 'error');
         }
     } catch (error) {
         console.error('Error:', error);
         const message = error.message || 'An error occurred';
-        if (window.ClassUp && window.ClassUp.toast) {
-            window.ClassUp.toast(message, 'error');
-        } else {
-            alert(message);
-        }
+        ClassUp.toast(message, 'error');
     } finally {
         testBtn.disabled = false;
         testBtn.innerHTML = origHTML;

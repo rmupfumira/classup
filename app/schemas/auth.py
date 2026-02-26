@@ -152,4 +152,6 @@ class VerifyInvitationResponse(BaseModel):
     valid: bool
     student_name: str | None = None
     school_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     message: str | None = None

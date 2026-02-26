@@ -261,12 +261,12 @@ function selectFile(file) {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-        alert('Invalid file type. Please upload PDF, DOC, DOCX, XLS, or XLSX files.');
+        ClassUp.toast('Invalid file type. Please upload PDF, DOC, DOCX, XLS, or XLSX files.', 'warning');
         return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-        alert('File is too large (max 10MB)');
+        ClassUp.toast('File is too large (max 10MB)', 'warning');
         return;
     }
 
@@ -331,17 +331,17 @@ async function uploadDocument() {
     const description = document.getElementById('description').value;
 
     if (category === 'Class' && !classId) {
-        alert('Please select a class');
+        ClassUp.toast('Please select a class', 'warning');
         return;
     }
 
     if (category === 'Student' && (!classId || !studentId)) {
-        alert('Please select a class and student');
+        ClassUp.toast('Please select a class and student', 'warning');
         return;
     }
 
     if (!selectedFile) {
-        alert('Please select a document to upload');
+        ClassUp.toast('Please select a document to upload', 'warning');
         return;
     }
 
@@ -385,11 +385,11 @@ async function uploadDocument() {
         progressBar.style.width = '100%';
         progressText.textContent = '100%';
 
-        alert('Document uploaded successfully!');
+        ClassUp.toast('Document uploaded successfully!', 'success');
         window.location.href = '/documents';
     } catch (error) {
         console.error('Error uploading document:', error);
-        alert(error.message || 'Failed to upload document. Please try again.');
+        ClassUp.toast(error.message || 'Failed to upload document. Please try again.', 'error');
     }
 
     uploadProgress.classList.add('hidden');

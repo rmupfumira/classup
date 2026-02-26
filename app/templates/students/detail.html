@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function resendInvitation(invitationId) {
-    if (!confirm('Resend invitation email with a new code?')) return;
+    if (!(await ClassUp.confirm('Resend invitation email with a new code?', { title: 'Confirm', confirmText: 'Resend' }))) return;
 
     try {
         const response = await fetch(`/api/v1/invitations/${invitationId}/resend`, {
@@ -390,17 +390,17 @@ async function resendInvitation(invitationId) {
         });
         const result = await response.json();
         if (result.status === 'success') {
-            alert('Invitation resent successfully');
+            ClassUp.toast('Invitation resent successfully', 'success');
         } else {
-            alert(result.detail || result.message || 'Failed to resend invitation');
+            ClassUp.toast(result.detail || result.message || 'Failed to resend invitation', 'error');
         }
     } catch (error) {
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
 
 async function cancelInvitation(invitationId) {
-    if (!confirm('Cancel this invitation?')) return;
+    if (!(await ClassUp.confirm('Cancel this invitation?', { danger: true, confirmText: 'Cancel Invitation' }))) return;
 
     try {
         const response = await fetch(`/api/v1/invitations/${invitationId}`, {
@@ -412,10 +412,10 @@ async function cancelInvitation(invitationId) {
             const el = document.getElementById('inv-' + invitationId);
             if (el) el.remove();
         } else {
-            alert(result.detail || result.message || 'Failed to cancel invitation');
+            ClassUp.toast(result.detail || result.message || 'Failed to cancel invitation', 'error');
         }
     } catch (error) {
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
 </script>

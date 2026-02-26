@@ -252,7 +252,7 @@ async function saveAttendance() {
     const date = '{{ target_date.isoformat() }}';
 
     if (!classId) {
-        alert('Please select a class first');
+        ClassUp.toast('Please select a class first', 'warning');
         return;
     }
 
@@ -274,7 +274,7 @@ async function saveAttendance() {
     });
 
     if (records.length === 0) {
-        alert('Please mark attendance for at least one student');
+        ClassUp.toast('Please mark attendance for at least one student', 'warning');
         return;
     }
 
@@ -296,15 +296,15 @@ async function saveAttendance() {
 
         if (response.ok) {
             // Show success message
-            alert(`Attendance saved! ${result.data.success_count} records saved.`);
+            ClassUp.toast(`Attendance saved! ${result.data.success_count} records saved.`, 'success');
             // Reload to show updated stats
             window.location.reload();
         } else {
-            alert(result.message || 'Failed to save attendance');
+            ClassUp.toast(result.message || 'Failed to save attendance', 'error');
         }
     } catch (error) {
         console.error('Error saving attendance:', error);
-        alert('Failed to save attendance. Please try again.');
+        ClassUp.toast('Failed to save attendance. Please try again.', 'error');
     }
 }
 </script>

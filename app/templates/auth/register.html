@@ -14,7 +14,14 @@
                 </svg>
             </div>
             <h2 class="text-2xl font-bold text-gray-900">{{ t('auth.create_account', current_language) }}</h2>
+            {% if school_name and student_name %}
+            <p class="mt-2 text-gray-600">
+                Welcome to <span class="font-semibold text-gray-800">{{ school_name }}</span>!
+                Set a password to access <span class="font-semibold text-gray-800">{{ student_name }}</span>'s updates.
+            </p>
+            {% else %}
             <p class="mt-2 text-gray-600">{{ t('auth.enter_code', current_language) }}</p>
+            {% endif %}
         </div>
 
         <!-- Card -->
@@ -30,7 +37,32 @@
             </div>
             {% endif %}
 
+            {% set prefilled = first_name and last_name and code and email %}
+
             <form method="POST" action="/register" class="space-y-5">
+                {% if prefilled %}
+                <!-- Pre-filled info summary (read-only fields sent as hidden) -->
+                <input type="hidden" name="invitation_code" value="{{ code }}">
+                <input type="hidden" name="email" value="{{ email }}">
+                <input type="hidden" name="first_name" value="{{ first_name }}">
+                <input type="hidden" name="last_name" value="{{ last_name }}">
+
+                <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">Name</span>
+                        <span class="text-sm font-medium text-gray-900">{{ first_name }} {{ last_name }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">Email</span>
+                        <span class="text-sm font-medium text-gray-900">{{ email }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">Invitation Code</span>
+                        <span class="text-sm font-mono font-medium text-gray-900 tracking-wider">{{ code }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Manual entry mode (no pre-fill) -->
                 <!-- Invitation Code -->
                 <div>
                     <label for="invitation_code" class="block text-sm font-medium text-gray-700">
@@ -93,8 +125,9 @@
                                       placeholder-gray-400 text-gray-900">
                     </div>
                 </div>
+                {% endif %}
 
-                <!-- Phone -->
+                <!-- Phone (always shown) -->
                 <div>
                     <label for="phone" class="block text-sm font-medium text-gray-700">
                         {{ t('auth.phone', current_language) }}
@@ -147,7 +180,11 @@
                                shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700
                                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500
                                transition-colors duration-200">
-                    {{ t('auth.register', current_language) }}
+                    {% if prefilled %}
+                        Set Password & Create Account
+                    {% else %}
+                        {{ t('auth.register', current_language) }}
+                    {% endif %}
                 </button>
             </form>
         </div>

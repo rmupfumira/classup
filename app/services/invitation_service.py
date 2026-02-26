@@ -32,6 +32,8 @@ class InvitationService:
         db: AsyncSession,
         student_id: UUID,
         email: str,
+        first_name: str = "",
+        last_name: str = "",
     ) -> ParentInvitation:
         """Create a new parent invitation."""
         tenant_id = get_tenant_id()
@@ -74,6 +76,8 @@ class InvitationService:
             tenant_id=tenant_id,
             student_id=student_id,
             email=email.lower(),
+            first_name=first_name,
+            last_name=last_name,
             invitation_code=code,
             status="PENDING",
             created_by=user_id,
@@ -151,6 +155,8 @@ class InvitationService:
             "student_name": f"{student.first_name} {student.last_name}" if student else None,
             "school_name": tenant.name if tenant else None,
             "email": invitation.email,
+            "first_name": invitation.first_name,
+            "last_name": invitation.last_name,
         }
 
     async def accept_invitation(

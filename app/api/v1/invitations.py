@@ -168,6 +168,8 @@ async def create_invitation(
             db,
             student_id=data.student_id,
             email=data.email,
+            first_name=data.first_name,
+            last_name=data.last_name,
         )
 
         # Get student and tenant info for email
@@ -176,7 +178,12 @@ async def create_invitation(
 
         # Send invitation email
         if student and tenant:
-            register_url = f"{settings.app_base_url}/register"
+            from urllib.parse import urlencode
+            params = urlencode({
+                "code": invitation.invitation_code,
+                "email": invitation.email,
+            })
+            register_url = f"{settings.app_base_url}/register?{params}"
             try:
                 await email_service.send_parent_invitation(
                     to=invitation.email,
@@ -303,7 +310,12 @@ async def resend_invitation(
 
         # Send invitation email
         if student and tenant:
-            register_url = f"{settings.app_base_url}/register"
+            from urllib.parse import urlencode
+            params = urlencode({
+                "code": invitation.invitation_code,
+                "email": invitation.email,
+            })
+            register_url = f"{settings.app_base_url}/register?{params}"
             try:
                 await email_service.send_parent_invitation(
                     to=invitation.email,

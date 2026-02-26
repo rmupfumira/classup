@@ -60,6 +60,8 @@ class ParentInvitation(Base, TimestampMixin):
         nullable=False,
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     invitation_code: Mapped[str] = mapped_column(
         String(8),
         unique=True,

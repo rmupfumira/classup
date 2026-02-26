@@ -270,5 +270,7 @@ async def verify_invitation(
             valid=True,
             student_name=student_name,
             school_name=school_name,
+            first_name=invitation.first_name if invitation.first_name else None,
+            last_name=invitation.last_name if invitation.last_name else None,
         )
     )

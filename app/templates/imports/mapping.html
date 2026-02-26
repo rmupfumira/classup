@@ -141,13 +141,13 @@ form.addEventListener('submit', async (e) => {
         if (data.status === 'success') {
             window.location.href = `/imports/{{ job.id }}`;
         } else {
-            alert(data.message || 'Import failed');
+            ClassUp.toast(data.message || 'Import failed', 'error');
             startBtn.disabled = false;
             btnText.textContent = 'Start Import';
             btnSpinner.classList.add('hidden');
         }
     } catch (err) {
-        alert('Import failed: ' + err.message);
+        ClassUp.toast('Import failed: ' + err.message, 'error');
         startBtn.disabled = false;
         btnText.textContent = 'Start Import';
         btnSpinner.classList.add('hidden');

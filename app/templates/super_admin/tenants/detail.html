@@ -418,15 +418,11 @@ document.getElementById('create-admin-form').addEventListener('submit', async fu
             window.location.reload();
         } else {
             const message = result.message || 'Failed to create admin user';
-            if (window.ClassUp && window.ClassUp.toast) {
-                window.ClassUp.toast(message, 'error');
-            } else {
-                alert(message);
-            }
+            ClassUp.toast(message, 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     } finally {
         submitBtn.disabled = false;
         spinner.classList.add('hidden');
@@ -438,7 +434,7 @@ document.getElementById('toggle-status-btn').addEventListener('click', async fun
     const isActive = {{ 'true' if tenant.is_active else 'false' }};
     const action = isActive ? 'deactivate' : 'activate';
 
-    if (!confirm(`Are you sure you want to ${action} this tenant?`)) {
+    if (!(await ClassUp.confirm(`Are you sure you want to ${action} this tenant?`, { danger: isActive, confirmText: isActive ? 'Deactivate' : 'Activate' }))) {
         return;
     }
 
@@ -454,11 +450,11 @@ document.getElementById('toggle-status-btn').addEventListener('click', async fun
             window.location.reload();
         } else {
             const result = await response.json();
-            alert(result.message || 'Failed to update tenant status');
+            ClassUp.toast(result.message || 'Failed to update tenant status', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 });
 
@@ -466,14 +462,7 @@ document.getElementById('toggle-status-btn').addEventListener('click', async fun
 document.getElementById('delete-tenant-btn').addEventListener('click', async function() {
     const tenantName = '{{ tenant.name }}';
 
-    if (!confirm(`Are you sure you want to delete "${tenantName}"? This action cannot be undone.`)) {
-        return;
-    }
-
-    // Double confirmation for delete
-    const confirmInput = prompt(`To confirm, please type the tenant name: "${tenantName}"`);
-    if (confirmInput !== tenantName) {
-        alert('Tenant name did not match. Deletion cancelled.');
+    if (!(await ClassUp.confirm(`Are you sure you want to delete "${tenantName}"? This action cannot be undone. All associated data will be permanently removed.`, { danger: true, confirmText: 'Delete Tenant' }))) {
         return;
     }
 
@@ -487,11 +476,11 @@ document.getElementById('delete-tenant-btn').addEventListener('click', async fun
             window.location.href = '/admin/tenants';
         } else {
             const result = await response.json();
-            alert(result.message || 'Failed to delete tenant');
+            ClassUp.toast(result.message || 'Failed to delete tenant', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 });
 </script>

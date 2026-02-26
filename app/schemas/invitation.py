@@ -20,6 +20,8 @@ class InvitationCreate(BaseModel):
 
     student_id: UUID
     email: EmailStr
+    first_name: str = ""
+    last_name: str = ""
 
 
 class InvitationVerify(BaseModel):
@@ -44,6 +46,8 @@ class InvitationResponse(BaseModel):
     tenant_id: UUID
     student_id: UUID
     email: str
+    first_name: str = ""
+    last_name: str = ""
     invitation_code: str
     status: InvitationStatus
     created_by: UUID
@@ -64,6 +68,8 @@ class InvitationVerifyResponse(BaseModel):
     student_name: str | None = None
     school_name: str | None = None
     email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class InvitationListResponse(BaseModel):

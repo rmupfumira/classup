@@ -234,11 +234,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 window.location.href = '/students/' + result.data.id;
             } else {
-                alert(result.message || 'Failed to create student');
+                ClassUp.toast(result.message || 'Failed to create student', 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            ClassUp.toast('An error occurred. Please try again.', 'error');
         }
     });
 });

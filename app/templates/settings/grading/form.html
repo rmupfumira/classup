@@ -196,7 +196,7 @@ document.getElementById('grading-form').addEventListener('submit', async (e) => 
 
     // Validate grades
     if (grades.length === 0) {
-        alert('Please add at least one grade level');
+        ClassUp.toast('Please add at least one grade level', 'warning');
         return;
     }
 
@@ -206,7 +206,7 @@ document.getElementById('grading-form').addEventListener('submit', async (e) => 
     // Check for overlaps
     for (let i = 0; i < grades.length - 1; i++) {
         if (grades[i].min <= grades[i + 1].max) {
-            alert('Grade ranges must not overlap. Please check your ranges.');
+            ClassUp.toast('Grade ranges must not overlap. Please check your ranges.', 'warning');
             return;
         }
     }
@@ -236,11 +236,11 @@ document.getElementById('grading-form').addEventListener('submit', async (e) => 
         if (response.ok) {
             window.location.href = '/settings/academic/grading';
         } else {
-            alert(result.detail || result.message || 'An error occurred');
+            ClassUp.toast(result.detail || result.message || 'An error occurred', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while saving');
+        ClassUp.toast('An error occurred while saving', 'error');
     }
 });
 </script>

@@ -300,14 +300,14 @@ async function saveReport(finalize = false) {
         const updateResult = await updateResponse.json();
 
         if (!updateResponse.ok) {
-            alert(updateResult.message || 'Failed to update report');
+            ClassUp.toast(updateResult.message || 'Failed to update report', 'error');
             return;
         }
 
         // Finalize if requested
         if (finalize) {
-            if (!confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.')) {
-                alert('Report saved as draft');
+            if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { danger: true, confirmText: 'Finalize' }))) {
+                ClassUp.toast('Report saved as draft', 'success');
                 window.location.href = '/reports/{{ report.id }}';
                 return;
             }
@@ -321,20 +321,20 @@ async function saveReport(finalize = false) {
 
             if (!finalizeResponse.ok) {
                 const finalizeResult = await finalizeResponse.json();
-                alert(finalizeResult.message || 'Report saved but failed to finalize');
+                ClassUp.toast(finalizeResult.message || 'Report saved but failed to finalize', 'error');
                 window.location.href = '/reports/{{ report.id }}';
                 return;
             }
 
-            alert('Report saved and finalized successfully!');
+            ClassUp.toast('Report saved and finalized successfully!', 'success');
         } else {
-            alert('Report saved');
+            ClassUp.toast('Report saved', 'success');
         }
 
         window.location.href = '/reports/{{ report.id }}';
     } catch (error) {
         console.error('Error saving report:', error);
-        alert('An error occurred while saving the report');
+        ClassUp.toast('An error occurred while saving the report', 'error');
     }
 }
 </script>

@@ -162,7 +162,7 @@
 {% block scripts %}
 <script>
 async function deleteGradeLevel(gradeLevelId, gradeLevelName) {
-    if (!confirm(`Are you sure you want to delete "${gradeLevelName}"? This cannot be undone.`)) {
+    if (!(await ClassUp.confirm(`Are you sure you want to delete "${gradeLevelName}"? This cannot be undone.`, { danger: true, confirmText: 'Delete' }))) {
         return;
     }
 
@@ -176,11 +176,11 @@ async function deleteGradeLevel(gradeLevelId, gradeLevelName) {
             window.location.href = '/settings/grade-levels?deleted=1';
         } else {
             const data = await response.json();
-            alert(data.detail || data.message || 'Failed to delete grade level');
+            ClassUp.toast(data.detail || data.message || 'Failed to delete grade level', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while deleting the grade level');
+        ClassUp.toast('An error occurred while deleting the grade level', 'error');
     }
 }
 </script>

@@ -141,7 +141,7 @@
 {% block scripts %}
 <script>
 async function deleteSubject(subjectId, subjectName) {
-    if (!confirm(`Are you sure you want to delete "${subjectName}"? This cannot be undone.`)) {
+    if (!(await ClassUp.confirm(`Are you sure you want to delete "${subjectName}"? This cannot be undone.`, { danger: true, confirmText: 'Delete' }))) {
         return;
     }
 
@@ -155,11 +155,11 @@ async function deleteSubject(subjectId, subjectName) {
             window.location.reload();
         } else {
             const data = await response.json();
-            alert(data.detail || 'Failed to delete subject');
+            ClassUp.toast(data.detail || 'Failed to delete subject', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while deleting the subject');
+        ClassUp.toast('An error occurred while deleting the subject', 'error');
     }
 }
 </script>

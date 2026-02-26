@@ -142,11 +142,11 @@
 
 <script>
 function openAddModal() {
-    alert('Webhook creation UI coming soon. Use the API to create webhooks.');
+    ClassUp.toast('Webhook creation UI coming soon. Use the API to create webhooks.', 'info');
 }
 
 async function testWebhook(endpointId) {
-    if (!confirm('Send a test event to this webhook?')) return;
+    if (!(await ClassUp.confirm('Send a test event to this webhook?', { confirmText: 'Send' }))) return;
 
     try {
         const response = await fetch(`/api/v1/webhooks/${endpointId}/test`, {
@@ -156,17 +156,17 @@ async function testWebhook(endpointId) {
         });
         const data = await response.json();
         if (data.data?.success) {
-            alert('Test webhook sent successfully!');
+            ClassUp.toast('Test webhook sent successfully!', 'success');
         } else {
-            alert('Test failed: ' + (data.data?.error || 'Unknown error'));
+            ClassUp.toast('Test failed: ' + (data.data?.error || 'Unknown error'), 'error');
         }
     } catch (e) {
-        alert('Error: ' + e.message);
+        ClassUp.toast('Error: ' + e.message, 'error');
     }
 }
 
 async function deleteWebhook(endpointId) {
-    if (!confirm('Delete this webhook endpoint?')) return;
+    if (!(await ClassUp.confirm('Delete this webhook endpoint?', { danger: true, confirmText: 'Delete' }))) return;
 
     try {
         const response = await fetch(`/api/v1/webhooks/${endpointId}`, {
@@ -175,10 +175,10 @@ async function deleteWebhook(endpointId) {
         if (response.ok) {
             location.reload();
         } else {
-            alert('Failed to delete webhook');
+            ClassUp.toast('Failed to delete webhook', 'error');
         }
     } catch (e) {
-        alert('Error: ' + e.message);
+        ClassUp.toast('Error: ' + e.message, 'error');
     }
 }
 </script>

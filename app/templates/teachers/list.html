@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function resendInvitation(invitationId) {
-    if (!confirm('Resend invitation email?')) return;
+    if (!(await ClassUp.confirm('Resend invitation email?', { title: 'Confirm', confirmText: 'Resend' }))) return;
 
     try {
         const response = await fetch(`/api/v1/users/teachers/invitations/${invitationId}/resend`, {
@@ -457,17 +457,17 @@ async function resendInvitation(invitationId) {
         });
         const result = await response.json();
         if (result.status === 'success') {
-            alert('Invitation resent successfully');
+            ClassUp.toast('Invitation resent successfully', 'success');
         } else {
-            alert(result.message || 'Failed to resend invitation');
+            ClassUp.toast(result.message || 'Failed to resend invitation', 'error');
         }
     } catch (error) {
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
 
 async function cancelInvitation(invitationId) {
-    if (!confirm('Cancel this invitation? The teacher will no longer be able to use it to register.')) return;
+    if (!(await ClassUp.confirm('Cancel this invitation? The teacher will no longer be able to use it to register.', { danger: true, confirmText: 'Cancel Invitation' }))) return;
 
     try {
         const response = await fetch(`/api/v1/users/teachers/invitations/${invitationId}`, {
@@ -478,10 +478,10 @@ async function cancelInvitation(invitationId) {
         if (result.status === 'success') {
             window.location.reload();
         } else {
-            alert(result.message || 'Failed to cancel invitation');
+            ClassUp.toast(result.message || 'Failed to cancel invitation', 'error');
         }
     } catch (error) {
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
 
@@ -569,7 +569,7 @@ document.getElementById('set-password-form').addEventListener('submit', async fu
 // Send Reset Email
 async function sendResetEmail(teacherId, teacherEmail) {
     document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
-    if (!confirm(`Send a password reset email to ${teacherEmail}?`)) return;
+    if (!(await ClassUp.confirm(`Send a password reset email to ${teacherEmail}?`, { title: 'Confirm', confirmText: 'Send' }))) return;
 
     try {
         const response = await fetch(`/api/v1/users/teachers/${teacherId}/reset-password`, {
@@ -579,12 +579,12 @@ async function sendResetEmail(teacherId, teacherEmail) {
         const result = await response.json();
 
         if (result.status === 'success') {
-            alert(result.message);
+            ClassUp.toast(result.message, 'success');
         } else {
-            alert(result.message || 'Failed to send reset email.');
+            ClassUp.toast(result.message || 'Failed to send reset email.', 'error');
         }
     } catch (error) {
-        alert('An error occurred. Please try again.');
+        ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
 </script>
