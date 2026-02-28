@@ -321,9 +321,11 @@ DAYCARE_DAILY_REPORT_TEMPLATE = {
             "display_order": 3,
             "fields": [
                 {"id": "time", "label": "Time", "type": "TIME", "required": True},
-                {"id": "amount", "label": "Amount (mL)", "type": "NUMBER", "required": True},
+                {"id": "amount", "label": "Amount", "type": "SELECT", "required": False,
+                 "options": ["None", "Some", "Half", "Most", "All"]},
                 {"id": "type", "label": "Type", "type": "SELECT", "required": True,
-                 "options": ["Water", "Milk", "Juice", "Formula", "Other"]}
+                 "options": ["Water", "Milk", "Juice", "Formula", "Other"]},
+                {"id": "notes", "label": "Notes", "type": "TEXT", "required": False}
             ]
         },
         {
