@@ -616,12 +616,10 @@ async function saveReport(finalize = false) {
                 return;
             }
 
-            ClassUp.toast('Report created and finalized successfully!', 'success');
+            window.location.href = `/reports?saved=finalized`;
         } else {
-            ClassUp.toast('Report saved as draft', 'success');
+            window.location.href = `/reports?saved=draft`;
         }
-
-        window.location.href = `/reports/${reportId}`;
     } catch (error) {
         console.error('Error saving report:', error);
         ClassUp.toast('An error occurred while saving the report', 'error');
