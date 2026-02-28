@@ -261,7 +261,7 @@ DAYCARE_DAILY_REPORT = {
             "fields": [
                 {"id": "start_time", "label": "Start Time", "type": "TIME", "required": True},
                 {"id": "end_time", "label": "End Time", "type": "TIME", "required": True},
-                {"id": "duration", "label": "Duration", "type": "TEXT", "required": False}
+                {"id": "duration", "label": "Duration", "type": "CALCULATED", "required": False}
             ]
         },
         {
