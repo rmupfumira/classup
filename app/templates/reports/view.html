@@ -115,13 +115,13 @@
 
             {% elif section.type == 'CHECKLIST' %}
                 <div class="space-y-2">
-                    {% set has_any = false %}
+                    {% set ns = namespace(has_any=false) %}
                     {% for field in section.fields %}
                     {% set field_value = section_data.get(field.id, '') %}
                     {% set field_desc = section_data.get(field.id ~ '_desc', section_data.get(field.id ~ '_notes', '')) %}
                     {% if field.type == 'CHECKBOX' %}
                         {% if field_value == true or field_value == 'true' %}
-                        {% set has_any = true %}
+                        {% set ns.has_any = true %}
                         <p class="text-gray-800 flex items-center">
                             <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -129,8 +129,15 @@
                             {{ field.label }}
                         </p>
                         {% endif %}
+                    {% elif field.type == 'TEXTAREA' %}
+                        {% if field_value %}
+                        {% set ns.has_any = true %}
+                        <p class="text-gray-800 whitespace-pre-wrap">
+                            <span class="font-semibold">{{ field.label }}:</span> {{ field_value }}
+                        </p>
+                        {% endif %}
                     {% elif field_value or field_desc %}
-                    {% set has_any = true %}
+                    {% set ns.has_any = true %}
                     <p class="text-gray-800">
                         <span class="font-semibold">{{ field.label }}</span>
                         {% if field_value %} - {{ field_value }}{% endif %}
@@ -138,7 +145,7 @@
                     </p>
                     {% endif %}
                     {% endfor %}
-                    {% if not has_any %}
+                    {% if not ns.has_any %}
                     <p class="text-gray-400 italic">No activities recorded</p>
                     {% endif %}
                 </div>
@@ -217,8 +224,7 @@ async function finalizeReport() {
         const result = await response.json();
 
         if (response.ok) {
-            ClassUp.toast('Report finalized and sent to parents!', 'success');
-            window.location.reload();
+            window.location.href = '/reports?saved=finalized';
         } else {
             ClassUp.toast(result.message || 'Failed to finalize report', 'error');
         }

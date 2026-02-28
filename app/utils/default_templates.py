@@ -320,7 +320,8 @@ DAYCARE_DAILY_REPORT = {
                 {"id": "music", "label": "Music & Movement", "type": "CHECKBOX", "required": False},
                 {"id": "story_time", "label": "Story Time", "type": "CHECKBOX", "required": False},
                 {"id": "free_play", "label": "Free Play", "type": "CHECKBOX", "required": False},
-                {"id": "sensory_play", "label": "Sensory Play", "type": "CHECKBOX", "required": False}
+                {"id": "sensory_play", "label": "Sensory Play", "type": "CHECKBOX", "required": False},
+                {"id": "other_activities", "label": "Other Activities", "type": "TEXTAREA", "required": False}
             ]
         },
         {

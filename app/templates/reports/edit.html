@@ -185,6 +185,14 @@
                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                                {% if field.required %}required{% endif %}>
 
+                        {% elif field.type == 'CHECKBOX' %}
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" name="sections.{{ section.id }}.{{ field.id }}" value="true"
+                                   {% if field_value == true or field_value == 'true' %}checked{% endif %}
+                                   class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-700">{{ field.label }}</span>
+                        </label>
+
                         {% elif field.type == 'TEXTAREA' %}
                         <textarea name="sections.{{ section.id }}.{{ field.id }}" rows="3"
                                   class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
@@ -343,6 +351,11 @@ function collectFormData() {
                 if (field.type === 'MULTISELECT') {
                     const checkboxes = document.querySelectorAll(`[name="sections.${section.id}.${field.id}"]:checked`);
                     sectionData[field.id] = Array.from(checkboxes).map(cb => cb.value);
+                } else if (field.type === 'CHECKBOX') {
+                    const checkbox = document.querySelector(`[name="sections.${section.id}.${field.id}"]`);
+                    if (checkbox) {
+                        sectionData[field.id] = checkbox.checked;
+                    }
                 } else {
                     const input = document.querySelector(`[name="sections.${section.id}.${field.id}"]`);
                     if (input) {

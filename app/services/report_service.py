@@ -536,9 +536,9 @@ class ReportService:
 
         report.report_data = data.report_data
         await db.commit()
-        await db.refresh(report)
 
-        return report
+        # Re-fetch with all relationships loaded (db.refresh doesn't reload selectin relationships)
+        return await self.get_report(db, report_id)
 
     async def finalize_report(
         self,
@@ -557,12 +557,12 @@ class ReportService:
         report.status = ReportStatus.FINALIZED.value
         report.finalized_at = datetime.now(timezone.utc)
         await db.commit()
-        await db.refresh(report)
 
         # TODO: Send notifications to parents if notify_parents is True
         # This will be implemented in Phase 8 with email/WhatsApp integration
 
-        return report
+        # Re-fetch with all relationships loaded (db.refresh doesn't reload selectin relationships)
+        return await self.get_report(db, report_id)
 
     async def delete_report(
         self,
