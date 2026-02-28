@@ -30,6 +30,13 @@ class InviteTeacherRequest(BaseModel):
     email: EmailStr
 
 
+class UpdateTeacherRequest(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+
+
 class SetPasswordRequest(BaseModel):
     password: str = Field(..., min_length=8)
 
@@ -143,6 +150,87 @@ async def resend_teacher_invitation(
     return APIResponse(
         status="success",
         message=f"Invitation resent to {invitation.email}",
+    )
+
+
+@router.put("/teachers/{teacher_id}")
+@require_role("SCHOOL_ADMIN")
+async def update_teacher(
+    teacher_id: uuid.UUID,
+    data: UpdateTeacherRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a teacher's details."""
+    user_service = get_user_service()
+    try:
+        teacher = await user_service.update_teacher(
+            db,
+            teacher_id,
+            first_name=data.first_name,
+            last_name=data.last_name,
+            email=data.email,
+            phone=data.phone if data.phone is not None else ...,
+        )
+    except Exception as e:
+        return APIResponse(
+            status="error",
+            message=str(e.message) if hasattr(e, "message") else str(e),
+        )
+
+    return APIResponse(
+        status="success",
+        message=f"Teacher {teacher.first_name} {teacher.last_name} updated",
+        data={
+            "id": str(teacher.id),
+            "first_name": teacher.first_name,
+            "last_name": teacher.last_name,
+            "email": teacher.email,
+            "phone": teacher.phone,
+        },
+    )
+
+
+@router.post("/teachers/{teacher_id}/deactivate")
+@require_role("SCHOOL_ADMIN")
+async def deactivate_teacher(
+    teacher_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Deactivate a teacher account."""
+    user_service = get_user_service()
+    try:
+        teacher = await user_service.deactivate_teacher(db, teacher_id)
+    except Exception as e:
+        return APIResponse(
+            status="error",
+            message=str(e.message) if hasattr(e, "message") else str(e),
+        )
+
+    return APIResponse(
+        status="success",
+        message=f"{teacher.first_name} {teacher.last_name} has been deactivated",
+    )
+
+
+@router.post("/teachers/{teacher_id}/activate")
+@require_role("SCHOOL_ADMIN")
+async def activate_teacher(
+    teacher_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Activate a teacher account."""
+    user_service = get_user_service()
+    try:
+        teacher = await user_service.activate_teacher(db, teacher_id)
+    except Exception as e:
+        return APIResponse(
+            status="error",
+            message=str(e.message) if hasattr(e, "message") else str(e),
+        )
+
+    return APIResponse(
+        status="success",
+        message=f"{teacher.first_name} {teacher.last_name} has been activated",
     )
 
 

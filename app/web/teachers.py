@@ -78,17 +78,66 @@ async def teachers_list(
         db, status="PENDING",
     )
 
+    # Also get expired invitations so admin sees all non-accepted ones
+    expired_invitations, _ = await invitation_service.list_invitations(
+        db, status="EXPIRED",
+    )
+
+    all_invitations = list(pending_invitations) + list(expired_invitations)
+
     return templates.TemplateResponse(
         "teachers/list.html",
         {
             "request": request,
             "user": user,
             "teachers": teachers,
-            "pending_invitations": pending_invitations,
+            "pending_invitations": all_invitations,
             "search": search,
             "page": page,
             "total_pages": total_pages,
             "total": total,
+            "current_language": get_current_language(),
+            "permissions": permissions,
+        },
+    )
+
+
+@router.get("/{teacher_id}/edit", response_class=HTMLResponse)
+async def teacher_edit(
+    request: Request,
+    teacher_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Render the teacher edit page."""
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    permissions = PermissionChecker(user.role)
+
+    if not permissions.can_manage_classes():
+        raise ForbiddenException("You don't have permission to manage teachers")
+
+    user_service = get_user_service()
+    try:
+        teacher = await user_service.get_user(db, teacher_id)
+    except Exception:
+        return RedirectResponse(url="/teachers", status_code=302)
+
+    from app.models.user import Role
+    if teacher.role != Role.TEACHER.value:
+        return RedirectResponse(url="/teachers", status_code=302)
+
+    return templates.TemplateResponse(
+        "teachers/edit.html",
+        {
+            "request": request,
+            "user": user,
+            "teacher": teacher,
             "current_language": get_current_language(),
             "permissions": permissions,
         },

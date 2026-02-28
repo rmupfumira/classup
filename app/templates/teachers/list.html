@@ -51,7 +51,7 @@
     <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
         <div class="px-4 py-3 bg-amber-50 border-b border-amber-200">
             <h2 class="text-sm font-medium text-amber-800">
-                Pending Invitations ({{ pending_invitations|length }})
+                Invitations ({{ pending_invitations|length }})
             </h2>
         </div>
         <div class="divide-y divide-neutral-100">
@@ -72,9 +72,19 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
-                        Invited
+                    <span class="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs font-medium bg-neutral-100 text-neutral-700 select-all"
+                          title="Invitation code">
+                        {{ inv.invitation_code }}
                     </span>
+                    {% if inv.status == 'EXPIRED' %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700">
+                        Expired
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
+                        Pending
+                    </span>
+                    {% endif %}
                     <button type="button" onclick="resendInvitation('{{ inv.id }}')"
                             class="text-xs text-primary-600 hover:text-primary-700 font-medium">
                         Resend
@@ -173,6 +183,14 @@
                                     </svg>
                                 </button>
                                 <div class="dropdown-menu hidden absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-neutral-200 z-10">
+                                    <a href="/teachers/{{ teacher.id }}/edit"
+                                       class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path>
+                                        </svg>
+                                        Edit Details
+                                    </a>
                                     <button type="button"
                                             onclick="openSetPasswordDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
                                             class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
@@ -191,6 +209,28 @@
                                         </svg>
                                         Send Reset Email
                                     </button>
+                                    <div class="border-t border-neutral-100 my-1"></div>
+                                    {% if teacher.is_active %}
+                                    <button type="button"
+                                            onclick="deactivateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                        </svg>
+                                        Deactivate
+                                    </button>
+                                    {% else %}
+                                    <button type="button"
+                                            onclick="activateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                                            class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        Activate
+                                    </button>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
@@ -222,7 +262,11 @@
                     </span>
                     {% endif %}
                 </div>
-                <div class="mt-2 ml-13 flex gap-3">
+                <div class="mt-2 ml-13 flex flex-wrap gap-3">
+                    <a href="/teachers/{{ teacher.id }}/edit"
+                       class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                        Edit
+                    </a>
                     <button type="button"
                             onclick="openSetPasswordDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
                             class="text-xs text-primary-600 hover:text-primary-700 font-medium">
@@ -231,8 +275,21 @@
                     <button type="button"
                             onclick="sendResetEmail('{{ teacher.id }}', '{{ teacher.email }}')"
                             class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        Send Reset Email
+                        Reset Email
                     </button>
+                    {% if teacher.is_active %}
+                    <button type="button"
+                            onclick="deactivateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                            class="text-xs text-red-600 hover:text-red-700 font-medium">
+                        Deactivate
+                    </button>
+                    {% else %}
+                    <button type="button"
+                            onclick="activateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                            class="text-xs text-green-600 hover:text-green-700 font-medium">
+                        Activate
+                    </button>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -566,6 +623,52 @@ document.getElementById('set-password-form').addEventListener('submit', async fu
         btn.textContent = 'Set Password';
     }
 });
+
+// Deactivate teacher
+async function deactivateTeacher(teacherId, teacherName) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+    if (!(await ClassUp.confirm(`Deactivate ${teacherName}? They will no longer be able to log in.`, { danger: true, confirmText: 'Deactivate' }))) return;
+
+    try {
+        const response = await fetch(`/api/v1/users/teachers/${teacherId}/deactivate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            ClassUp.toast(result.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            ClassUp.toast(result.message || 'Failed to deactivate teacher.', 'error');
+        }
+    } catch (error) {
+        ClassUp.toast('An error occurred. Please try again.', 'error');
+    }
+}
+
+// Activate teacher
+async function activateTeacher(teacherId, teacherName) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+    if (!(await ClassUp.confirm(`Activate ${teacherName}? They will be able to log in again.`, { confirmText: 'Activate' }))) return;
+
+    try {
+        const response = await fetch(`/api/v1/users/teachers/${teacherId}/activate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            ClassUp.toast(result.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            ClassUp.toast(result.message || 'Failed to activate teacher.', 'error');
+        }
+    } catch (error) {
+        ClassUp.toast('An error occurred. Please try again.', 'error');
+    }
+}
 
 // Send Reset Email
 async function sendResetEmail(teacherId, teacherEmail) {

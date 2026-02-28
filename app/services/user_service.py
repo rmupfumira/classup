@@ -157,6 +157,74 @@ class UserService:
 
         return user
 
+    async def update_teacher(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        email: str | None = None,
+        phone: str | None = ...,
+    ) -> User:
+        """Update a teacher's details."""
+        teacher = await self.get_user(db, teacher_id)
+        if teacher.role != Role.TEACHER.value:
+            raise NotFoundException("Teacher")
+
+        if first_name is not None:
+            teacher.first_name = first_name.strip()
+        if last_name is not None:
+            teacher.last_name = last_name.strip()
+        if email is not None:
+            email = email.lower().strip()
+            if email != teacher.email:
+                tenant_id = get_tenant_id()
+                existing = await db.execute(
+                    select(User).where(
+                        User.tenant_id == tenant_id,
+                        User.email == email,
+                        User.deleted_at.is_(None),
+                        User.id != teacher_id,
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    raise ConflictException("A user with this email already exists")
+                teacher.email = email
+        if phone is not ...:
+            teacher.phone = phone.strip() if phone else None
+
+        await db.commit()
+        await db.refresh(teacher)
+        return teacher
+
+    async def deactivate_teacher(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+    ) -> User:
+        """Deactivate a teacher account."""
+        teacher = await self.get_user(db, teacher_id)
+        if teacher.role != Role.TEACHER.value:
+            raise NotFoundException("Teacher")
+        teacher.is_active = False
+        await db.commit()
+        await db.refresh(teacher)
+        return teacher
+
+    async def activate_teacher(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+    ) -> User:
+        """Activate a teacher account."""
+        teacher = await self.get_user(db, teacher_id)
+        if teacher.role != Role.TEACHER.value:
+            raise NotFoundException("Teacher")
+        teacher.is_active = True
+        await db.commit()
+        await db.refresh(teacher)
+        return teacher
+
     async def admin_set_password(
         self,
         db: AsyncSession,
