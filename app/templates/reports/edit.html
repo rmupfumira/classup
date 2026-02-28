@@ -82,7 +82,7 @@
                         <thead>
                             <tr class="text-left text-sm text-gray-500">
                                 {% for field in section.fields %}
-                                <th class="pr-2 pb-2 font-medium">{{ field.label }}</th>
+                                <th class="pr-2 pb-2 font-medium {% if field.type == 'CALCULATED' %}text-gray-400{% endif %}">{{ field.label }}</th>
                                 {% endfor %}
                                 <th class="w-10"></th>
                             </tr>
@@ -104,11 +104,15 @@
                                     {% elif field.type == 'TIME' %}
                                     <input type="time" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
                                            value="{{ entry.get(field.id, '') }}"
+                                           onchange="calculateDuration(this.closest('tr'))"
                                            class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                                     {% elif field.type == 'NUMBER' %}
                                     <input type="number" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
                                            value="{{ entry.get(field.id, '') }}"
                                            class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                    {% elif field.type == 'CALCULATED' %}
+                                    <span class="duration-display text-sm font-medium text-gray-700">{{ entry.get(field.id, '') }}</span>
+                                    <input type="hidden" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}" value="{{ entry.get(field.id, '') }}">
                                     {% else %}
                                     <input type="text" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
                                            value="{{ entry.get(field.id, '') }}"
@@ -223,6 +227,34 @@
 <script>
 const templateSections = {{ report.template.sections | tojson | safe }};
 
+function calculateDuration(row) {
+    const startInput = row.querySelector('[name*="start_time"]');
+    const endInput = row.querySelector('[name*="end_time"]');
+    const durationSpan = row.querySelector('.duration-display');
+    const durationInput = row.querySelector('[name*="duration"]');
+
+    if (!startInput || !endInput || !startInput.value || !endInput.value) {
+        if (durationSpan) durationSpan.textContent = '';
+        if (durationInput) durationInput.value = '';
+        return;
+    }
+
+    const [sh, sm] = startInput.value.split(':').map(Number);
+    const [eh, em] = endInput.value.split(':').map(Number);
+    let diffMin = (eh * 60 + em) - (sh * 60 + sm);
+    if (diffMin < 0) diffMin += 24 * 60;
+
+    const hours = Math.floor(diffMin / 60);
+    const mins = diffMin % 60;
+    let text = '';
+    if (hours > 0 && mins > 0) text = `${hours}h ${mins}m`;
+    else if (hours > 0) text = `${hours}h`;
+    else text = `${mins}m`;
+
+    if (durationSpan) durationSpan.textContent = text;
+    if (durationInput) durationInput.value = text;
+}
+
 function addRepeatableEntry(sectionId) {
     const section = templateSections.find(s => s.id === sectionId);
     if (!section) return;
@@ -244,10 +276,15 @@ function addRepeatableEntry(sectionId) {
                 </select>`;
                 break;
             case 'TIME':
-                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"
+                         onchange="calculateDuration(this.closest('tr'))">`;
                 break;
             case 'NUMBER':
                 input = `<input type="number" name="${fieldName}" class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                break;
+            case 'CALCULATED':
+                input = `<span class="duration-display text-sm font-medium text-gray-700"></span>
+                         <input type="hidden" name="${fieldName}">`;
                 break;
             default:
                 input = `<input type="text" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;

@@ -433,7 +433,10 @@ function renderField(sectionId, field) {
 }
 
 function renderRepeatableSection(section) {
-    const headers = section.fields.map(f => `<th class="pr-2 pb-2 font-medium">${f.label}</th>`).join('');
+    const headers = section.fields.map(f => {
+        if (f.type === 'CALCULATED') return `<th class="pr-2 pb-2 font-medium text-gray-400">${f.label}</th>`;
+        return `<th class="pr-2 pb-2 font-medium">${f.label}</th>`;
+    }).join('');
 
     return `<div class="space-y-3">
         <table class="w-full" id="table-${section.id}">
@@ -454,6 +457,34 @@ function renderRepeatableSection(section) {
             Add Entry
         </button>
     </div>`;
+}
+
+function calculateDuration(row) {
+    const startInput = row.querySelector('[name*="start_time"]');
+    const endInput = row.querySelector('[name*="end_time"]');
+    const durationSpan = row.querySelector('.duration-display');
+    const durationInput = row.querySelector('[name*="duration"]');
+
+    if (!startInput || !endInput || !startInput.value || !endInput.value) {
+        if (durationSpan) durationSpan.textContent = '';
+        if (durationInput) durationInput.value = '';
+        return;
+    }
+
+    const [sh, sm] = startInput.value.split(':').map(Number);
+    const [eh, em] = endInput.value.split(':').map(Number);
+    let diffMin = (eh * 60 + em) - (sh * 60 + sm);
+    if (diffMin < 0) diffMin += 24 * 60; // handle overnight
+
+    const hours = Math.floor(diffMin / 60);
+    const mins = diffMin % 60;
+    let text = '';
+    if (hours > 0 && mins > 0) text = `${hours}h ${mins}m`;
+    else if (hours > 0) text = `${hours}h`;
+    else text = `${mins}m`;
+
+    if (durationSpan) durationSpan.textContent = text;
+    if (durationInput) durationInput.value = text;
 }
 
 function addRepeatableEntry(sectionId) {
@@ -477,10 +508,15 @@ function addRepeatableEntry(sectionId) {
                 </select>`;
                 break;
             case 'TIME':
-                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"
+                         onchange="calculateDuration(this.closest('tr'))">`;
                 break;
             case 'NUMBER':
                 input = `<input type="number" name="${fieldName}" class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                break;
+            case 'CALCULATED':
+                input = `<span class="duration-display text-sm font-medium text-gray-700"></span>
+                         <input type="hidden" name="${fieldName}">`;
                 break;
             default:
                 input = `<input type="text" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
