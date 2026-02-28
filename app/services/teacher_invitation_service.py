@@ -244,8 +244,11 @@ class TeacherInvitationService:
         if not invitation:
             return None
 
-        if invitation.status != "PENDING":
-            raise ValueError("Can only resend pending invitations")
+        if invitation.status == "ACCEPTED":
+            raise ValueError("Cannot resend an already accepted invitation")
+
+        # Reset status to PENDING if it was expired
+        invitation.status = "PENDING"
 
         invitation.invitation_code = self._generate_code()
         invitation.expires_at = datetime.now(timezone.utc) + timedelta(

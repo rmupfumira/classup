@@ -453,6 +453,7 @@ async function resendInvitation(invitationId) {
     try {
         const response = await fetch(`/api/v1/users/teachers/invitations/${invitationId}/resend`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
         });
         const result = await response.json();

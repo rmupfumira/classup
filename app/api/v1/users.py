@@ -91,16 +91,12 @@ async def invite_teacher(
 @router.delete("/teachers/invitations/{invitation_id}")
 @require_role("SCHOOL_ADMIN")
 async def cancel_teacher_invitation(
-    invitation_id: str,
+    invitation_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Cancel a pending teacher invitation."""
-    import uuid
-
     invitation_service = get_teacher_invitation_service()
-    success = await invitation_service.cancel_invitation(
-        db, uuid.UUID(invitation_id)
-    )
+    success = await invitation_service.cancel_invitation(db, invitation_id)
     if not success:
         return APIResponse(status="error", message="Invitation not found")
 
@@ -110,18 +106,14 @@ async def cancel_teacher_invitation(
 @router.post("/teachers/invitations/{invitation_id}/resend")
 @require_role("SCHOOL_ADMIN")
 async def resend_teacher_invitation(
-    invitation_id: str,
+    invitation_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Resend a teacher invitation with a new code."""
-    import uuid
-
     invitation_service = get_teacher_invitation_service()
 
     try:
-        invitation = await invitation_service.resend_invitation(
-            db, uuid.UUID(invitation_id)
-        )
+        invitation = await invitation_service.resend_invitation(db, invitation_id)
     except ValueError as e:
         return APIResponse(status="error", message=str(e))
 
