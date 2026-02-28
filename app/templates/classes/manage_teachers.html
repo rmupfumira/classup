@@ -129,24 +129,25 @@
 const classId = '{{ school_class.id }}';
 
 async function removeTeacher(teacherId) {
-    if (!(await ClassUp.confirm('Are you sure you want to remove this teacher from the class?', { danger: true, confirmText: 'Remove' }))) {
-        return;
-    }
-
     try {
+        if (!(await ClassUp.confirm('Are you sure you want to remove this teacher from the class?', { danger: true, confirmText: 'Remove' }))) {
+            return;
+        }
+
         const response = await fetch(`/api/v1/classes/${classId}/teachers/${teacherId}`, {
             method: 'DELETE',
             credentials: 'same-origin'
         });
 
         if (response.ok) {
+            ClassUp.toast('Teacher removed successfully', 'success');
             window.location.reload();
         } else {
             const result = await response.json();
             ClassUp.toast(result.message || 'Failed to remove teacher', 'error');
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error removing teacher:', error);
         ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }

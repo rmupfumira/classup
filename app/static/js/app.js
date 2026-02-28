@@ -154,7 +154,7 @@ const ClassUp = {
         return new Promise((resolve) => {
             // Create modal backdrop
             const backdrop = document.createElement('div');
-            backdrop.className = 'fixed inset-0 z-50 overflow-y-auto';
+            backdrop.className = 'fixed inset-0 z-[9999] overflow-y-auto';
             backdrop.innerHTML = `
                 <div class="flex min-h-screen items-center justify-center p-4">
                     <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" id="confirm-backdrop"></div>

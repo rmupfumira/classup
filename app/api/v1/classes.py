@@ -1,5 +1,6 @@
 """School class API endpoints."""
 
+import asyncio
 import logging
 import uuid
 
@@ -312,20 +313,46 @@ async def assign_teacher(
     assignment = await service.assign_teacher(db, class_id, data)
     await db.commit()
 
-    # Send notifications
+    # Fetch info needed for notifications before returning
+    from app.models import User
+    from sqlalchemy import select
+
+    school_class = await service.get_class(db, class_id)
+    teacher_result = await db.execute(
+        select(User).where(User.id == data.teacher_id)
+    )
+    teacher = teacher_result.scalar_one_or_none()
+
+    # Send notifications in background (don't block the HTTP response)
+    if teacher and school_class:
+        asyncio.create_task(_notify_teacher_assignment(
+            tenant_id=get_tenant_id(),
+            teacher_email=teacher.email,
+            teacher_first_name=teacher.first_name,
+            teacher_name=f"{teacher.first_name} {teacher.last_name}",
+            class_name=school_class.name,
+            class_id=class_id,
+        ))
+
+    return APIResponse(
+        data={"id": str(assignment.id), "assigned": True},
+        message="Teacher assigned successfully",
+    )
+
+
+async def _notify_teacher_assignment(
+    tenant_id: uuid.UUID,
+    teacher_email: str,
+    teacher_first_name: str,
+    teacher_name: str,
+    class_name: str,
+    class_id: uuid.UUID,
+):
+    """Background task to send teacher assignment notifications."""
     try:
-        from app.models import User
-        from sqlalchemy import select
+        from app.database import get_db_context
 
-        school_class = await service.get_class(db, class_id)
-        teacher_result = await db.execute(
-            select(User).where(User.id == data.teacher_id)
-        )
-        teacher = teacher_result.scalar_one_or_none()
-
-        if teacher and school_class:
-            teacher_name = f"{teacher.first_name} {teacher.last_name}"
-            tenant_id = get_tenant_id()
+        async with get_db_context() as db:
             email_service = get_email_service()
 
             # Notify admins
@@ -333,10 +360,8 @@ async def assign_teacher(
                 db=db,
                 tenant_id=tenant_id,
                 notification_type="TEACHER_ASSIGNED",
-                title=f"Teacher Assigned to {school_class.name}",
-                body=(
-                    f"{teacher_name} has been assigned to {school_class.name}."
-                ),
+                title=f"Teacher Assigned to {class_name}",
+                body=f"{teacher_name} has been assigned to {class_name}.",
                 action_url=f"{settings.app_base_url}/classes/{class_id}",
             )
 
@@ -346,12 +371,12 @@ async def assign_teacher(
             tenant = await db.get(Tenant, tenant_id)
             tenant_name = tenant.name if tenant else "Your School"
             await email_service.send_teacher_notification(
-                to=teacher.email,
-                teacher_name=teacher.first_name,
+                to=teacher_email,
+                teacher_name=teacher_first_name,
                 notification_type="CLASS_ASSIGNED",
-                title=f"You've been assigned to {school_class.name}",
+                title=f"You've been assigned to {class_name}",
                 body=(
-                    f"You have been assigned to the class \"{school_class.name}\" "
+                    f"You have been assigned to the class \"{class_name}\" "
                     f"at {tenant_name}. You can now manage attendance, reports, "
                     f"and communication for this class."
                 ),
@@ -360,11 +385,6 @@ async def assign_teacher(
             )
     except Exception:
         logger.exception("Failed to send notifications for teacher assignment")
-
-    return APIResponse(
-        data={"id": str(assignment.id), "assigned": True},
-        message="Teacher assigned successfully",
-    )
 
 
 @router.delete("/{class_id}/teachers/{teacher_id}", response_model=APIResponse[None])
@@ -390,11 +410,33 @@ async def remove_teacher(
     await service.remove_teacher(db, class_id, teacher_id)
     await db.commit()
 
-    # Send notifications
+    # Send notifications in background (don't block the HTTP response)
+    if teacher and school_class:
+        asyncio.create_task(_notify_teacher_removal(
+            tenant_id=get_tenant_id(),
+            teacher_email=teacher.email,
+            teacher_first_name=teacher.first_name,
+            teacher_name=f"{teacher.first_name} {teacher.last_name}",
+            class_name=school_class.name,
+            class_id=class_id,
+        ))
+
+    return APIResponse(message="Teacher removed from class")
+
+
+async def _notify_teacher_removal(
+    tenant_id: uuid.UUID,
+    teacher_email: str,
+    teacher_first_name: str,
+    teacher_name: str,
+    class_name: str,
+    class_id: uuid.UUID,
+):
+    """Background task to send teacher removal notifications."""
     try:
-        if teacher and school_class:
-            teacher_name = f"{teacher.first_name} {teacher.last_name}"
-            tenant_id = get_tenant_id()
+        from app.database import get_db_context
+
+        async with get_db_context() as db:
             email_service = get_email_service()
 
             # Notify admins
@@ -402,10 +444,8 @@ async def remove_teacher(
                 db=db,
                 tenant_id=tenant_id,
                 notification_type="TEACHER_UNASSIGNED",
-                title=f"Teacher Removed from {school_class.name}",
-                body=(
-                    f"{teacher_name} has been removed from {school_class.name}."
-                ),
+                title=f"Teacher Removed from {class_name}",
+                body=f"{teacher_name} has been removed from {class_name}.",
                 action_url=f"{settings.app_base_url}/classes/{class_id}",
             )
 
@@ -415,12 +455,12 @@ async def remove_teacher(
             tenant = await db.get(Tenant, tenant_id)
             tenant_name = tenant.name if tenant else "Your School"
             await email_service.send_teacher_notification(
-                to=teacher.email,
-                teacher_name=teacher.first_name,
+                to=teacher_email,
+                teacher_name=teacher_first_name,
                 notification_type="CLASS_REMOVED",
-                title=f"You've been removed from {school_class.name}",
+                title=f"You've been removed from {class_name}",
                 body=(
-                    f"You have been removed from the class \"{school_class.name}\" "
+                    f"You have been removed from the class \"{class_name}\" "
                     f"at {tenant_name}. If you believe this is an error, please "
                     f"contact your school administrator."
                 ),
@@ -429,8 +469,6 @@ async def remove_teacher(
             )
     except Exception:
         logger.exception("Failed to send notifications for teacher removal")
-
-    return APIResponse(message="Teacher removed from class")
 
 
 @router.put("/{class_id}/teachers/{teacher_id}/set-primary", response_model=APIResponse[dict])
