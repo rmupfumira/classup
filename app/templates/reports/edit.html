@@ -52,7 +52,31 @@
             <div class="p-4">
                 {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
 
-                {% if section.type == 'REPEATABLE_ENTRIES' %}
+                {% if section.type == 'MEALS' or (section.type == 'CHECKLIST' and section.id == 'meals') %}
+                <!-- Meals section with amount + description per meal -->
+                <div class="space-y-4">
+                    {% set meal_options = section.get('meal_options', ['All', 'Most', 'Some', 'None', 'N/A']) %}
+                    {% for field in section.fields %}
+                    {% if field.type == 'MEAL_ENTRY' %}
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <label class="w-32 text-sm font-medium text-gray-700">{{ field.label }}</label>
+                        <select name="sections.{{ section.id }}.{{ field.id }}_amount"
+                                class="w-32 rounded-lg border-gray-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                            <option value="">-</option>
+                            {% for opt in meal_options %}
+                            <option value="{{ opt }}" {% if section_data.get(field.id ~ '_amount') == opt %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" name="sections.{{ section.id }}.{{ field.id }}_desc"
+                               value="{{ section_data.get(field.id ~ '_desc', '') }}"
+                               placeholder="Description (optional)"
+                               class="flex-1 rounded-lg border-gray-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                {% elif section.type == 'REPEATABLE_ENTRIES' %}
                 <div class="space-y-3">
                     <table class="w-full" id="table-{{ section.id }}">
                         <thead>
@@ -265,6 +289,17 @@ function collectFormData() {
                 });
             }
             reportData.sections[section.id] = { entries };
+        } else if (section.type === 'MEALS') {
+            const sectionData = {};
+            section.fields.forEach(field => {
+                if (field.type === 'MEAL_ENTRY') {
+                    const amountInput = document.querySelector(`[name="sections.${section.id}.${field.id}_amount"]`);
+                    const descInput = document.querySelector(`[name="sections.${section.id}.${field.id}_desc"]`);
+                    if (amountInput) sectionData[`${field.id}_amount`] = amountInput.value;
+                    if (descInput) sectionData[`${field.id}_desc`] = descInput.value;
+                }
+            });
+            reportData.sections[section.id] = sectionData;
         } else {
             const sectionData = {};
             section.fields.forEach(field => {

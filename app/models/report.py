@@ -319,14 +319,21 @@ def get_default_daycare_template_sections() -> list[dict]:
             "display_order": 3,
             "fields": [
                 {"id": "time", "label": "Time", "type": "TIME", "required": True},
-                {"id": "amount", "label": "Amount (ml)", "type": "NUMBER", "required": True},
+                {
+                    "id": "amount",
+                    "label": "Amount",
+                    "type": "SELECT",
+                    "options": ["None", "Some", "Half", "Most", "All"],
+                    "required": False,
+                },
                 {
                     "id": "type",
                     "label": "Type",
                     "type": "SELECT",
-                    "options": ["Water", "Milk", "Juice", "Formula"],
+                    "options": ["Water", "Milk", "Juice", "Formula", "Other"],
                     "required": True,
                 },
+                {"id": "notes", "label": "Notes", "type": "TEXT", "required": False},
             ],
         },
         {

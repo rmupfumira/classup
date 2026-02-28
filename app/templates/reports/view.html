@@ -69,8 +69,11 @@
                             <span class="text-gray-500">({{ entry.get('duration') }})</span>
                             {% endif %}
                         {% elif section.id == 'fluids' %}
-                            <!-- Fluid entry format: time - amount mL - type -->
-                            {{ entry.get('time', '') }} - {{ entry.get('amount', '') }} mL - {{ entry.get('type', '') }}
+                            <!-- Fluid entry format: time - amount - type -->
+                            {{ entry.get('time', '') }} - {{ entry.get('amount', 'none') | lower }} - {{ entry.get('type', '') }}
+                            {% if entry.get('notes') %}
+                            <br><em class="text-gray-500">{{ entry.get('notes') }}</em>
+                            {% endif %}
                         {% elif section.id == 'bathroom' %}
                             <!-- Bathroom entry format: time - type - condition, notes -->
                             {{ entry.get('time', '') }} - {{ entry.get('type', 'Diaper') }} - {{ entry.get('condition', '') }}{% if entry.get('notes') %}, {{ entry.get('notes') }}{% endif %}
