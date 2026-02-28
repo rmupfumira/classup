@@ -1,11 +1,13 @@
 """School class API endpoints."""
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models.user import Role
 from app.schemas.common import APIResponse, PaginationMeta
@@ -20,7 +22,12 @@ from app.schemas.school_class import (
     TeacherInfo,
 )
 from app.services.class_service import get_class_service
+from app.services.email_service import get_email_service
 from app.utils.permissions import require_role
+from app.utils.tenant_context import get_tenant_id
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter()
 
@@ -305,6 +312,33 @@ async def assign_teacher(
     assignment = await service.assign_teacher(db, class_id, data)
     await db.commit()
 
+    # Send admin notification
+    try:
+        from app.models import User
+        from sqlalchemy import select
+
+        school_class = await service.get_class(db, class_id)
+        teacher_result = await db.execute(
+            select(User).where(User.id == data.teacher_id)
+        )
+        teacher = teacher_result.scalar_one_or_none()
+
+        if teacher and school_class:
+            teacher_name = f"{teacher.first_name} {teacher.last_name}"
+            email_service = get_email_service()
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=get_tenant_id(),
+                notification_type="TEACHER_ASSIGNED",
+                title=f"Teacher Assigned to {school_class.name}",
+                body=(
+                    f"{teacher_name} has been assigned to {school_class.name}."
+                ),
+                action_url=f"{settings.app_base_url}/classes/{class_id}",
+            )
+    except Exception:
+        logger.exception("Failed to send admin notification for teacher assignment")
+
     return APIResponse(
         data={"id": str(assignment.id), "assigned": True},
         message="Teacher assigned successfully",
@@ -320,8 +354,37 @@ async def remove_teacher(
 ):
     """Remove a teacher from a class (school admin only)."""
     service = get_class_service()
+
+    # Fetch teacher and class info before removal for the notification
+    from app.models import User
+    from sqlalchemy import select
+
+    school_class = await service.get_class(db, class_id)
+    teacher_result = await db.execute(
+        select(User).where(User.id == teacher_id)
+    )
+    teacher = teacher_result.scalar_one_or_none()
+
     await service.remove_teacher(db, class_id, teacher_id)
     await db.commit()
+
+    # Send admin notification
+    try:
+        if teacher and school_class:
+            teacher_name = f"{teacher.first_name} {teacher.last_name}"
+            email_service = get_email_service()
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=get_tenant_id(),
+                notification_type="TEACHER_UNASSIGNED",
+                title=f"Teacher Removed from {school_class.name}",
+                body=(
+                    f"{teacher_name} has been removed from {school_class.name}."
+                ),
+                action_url=f"{settings.app_base_url}/classes/{class_id}",
+            )
+    except Exception:
+        logger.exception("Failed to send admin notification for teacher removal")
 
     return APIResponse(message="Teacher removed from class")
 

@@ -222,6 +222,29 @@ class AuthService:
 
         await db.commit()
 
+        # Notify admins about new teacher registration
+        try:
+            from app.services.email_service import get_email_service
+
+            email_service = get_email_service()
+            teacher_name = f"{user.first_name} {user.last_name}"
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=invitation.tenant_id,
+                notification_type="TEACHER_ADDED",
+                title=f"New Teacher Registered: {teacher_name}",
+                body=(
+                    f"{teacher_name} ({user.email}) has accepted their invitation "
+                    f"and registered as a teacher. You can now assign them to classes."
+                ),
+                action_url=f"{settings.app_base_url}/teachers",
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "Failed to send admin notification for new teacher"
+            )
+
         return RegisterResponse(
             user_id=user.id,
             email=user.email,

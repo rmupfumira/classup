@@ -14,6 +14,7 @@ import aiosmtplib
 import resend
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database import get_db_context
@@ -364,6 +365,50 @@ class EmailService:
             },
             from_name=tenant_name,
         )
+
+    async def notify_admins(
+        self,
+        db: AsyncSession,
+        tenant_id: "Any",
+        notification_type: str,
+        title: str,
+        body: str,
+        action_url: str | None = None,
+    ) -> None:
+        """Send a notification email to all SCHOOL_ADMIN users in a tenant."""
+        from app.models import Tenant, User
+        from app.models.user import Role
+
+        # Get tenant name
+        tenant = await db.get(Tenant, tenant_id)
+        tenant_name = tenant.name if tenant else "Your School"
+
+        # Get all active school admins
+        result = await db.execute(
+            select(User).where(
+                User.tenant_id == tenant_id,
+                User.role == Role.SCHOOL_ADMIN.value,
+                User.is_active == True,
+                User.deleted_at.is_(None),
+            )
+        )
+        admins = result.scalars().all()
+
+        for admin in admins:
+            try:
+                await self.send_admin_notification(
+                    to=admin.email,
+                    admin_name=admin.first_name,
+                    notification_type=notification_type,
+                    title=title,
+                    body=body,
+                    tenant_name=tenant_name,
+                    action_url=action_url,
+                )
+            except Exception:
+                logger.exception(
+                    f"Failed to send admin notification to {admin.email}"
+                )
 
 
 # Singleton instance
