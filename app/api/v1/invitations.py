@@ -131,7 +131,7 @@ async def create_invitation(
             parent_student = ParentStudent(
                 parent_id=existing_parent.id,
                 student_id=data.student_id,
-                relationship="PARENT",
+                relationship_type="PARENT",
                 is_primary=False,
             )
             db.add(parent_student)
