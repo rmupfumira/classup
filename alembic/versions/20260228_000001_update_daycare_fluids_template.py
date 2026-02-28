@@ -1,12 +1,13 @@
-"""update daycare fluids template section
+"""update daycare template: fluids section and remove grade level restriction
 
 Revision ID: c7e2f1a3b4d5
 Revises: b501a59145b6
 Create Date: 2026-02-28 00:00:01.000000
 
-Data migration: Updates the fluids section in existing Daycare Daily Report
-templates to use descriptive SELECT amounts instead of numeric, and adds
-a notes field.
+Data migration:
+- Updates the fluids section in existing Daycare Daily Report templates to use
+  descriptive SELECT amounts instead of numeric, and adds a notes field.
+- Clears applies_to_grade_level so admins can assign grade levels themselves.
 """
 from typing import Sequence, Union
 import json
@@ -82,6 +83,7 @@ def upgrade() -> None:
             conn.execute(
                 sa.text(
                     "UPDATE report_templates SET sections = :sections, "
+                    "applies_to_grade_level = NULL, "
                     "updated_at = now() WHERE id = :id"
                 ),
                 {"sections": json.dumps(sections), "id": template_id}
@@ -115,6 +117,7 @@ def downgrade() -> None:
             conn.execute(
                 sa.text(
                     "UPDATE report_templates SET sections = :sections, "
+                    "applies_to_grade_level = 'INFANT,TODDLER,PRESCHOOL', "
                     "updated_at = now() WHERE id = :id"
                 ),
                 {"sections": json.dumps(sections), "id": template_id}

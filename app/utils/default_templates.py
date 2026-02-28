@@ -250,7 +250,7 @@ DAYCARE_DAILY_REPORT = {
     "description": "Daily activity report for daycare children including naps, meals, fluids, and bathroom",
     "report_type": "DAILY_ACTIVITY",
     "frequency": "DAILY",
-    "applies_to_grade_level": "INFANT,TODDLER,PRESCHOOL",
+    "applies_to_grade_level": None,
     "sections": [
         {
             "id": "naps",
@@ -351,7 +351,7 @@ def get_default_templates_for_education_type(education_type: str) -> list[dict]:
         templates.append(HIGH_SCHOOL_REPORT_CARD)
 
     # For combined/K12, also add daycare template
-    if education_type in ("COMBINED",):
+    if education_type in ("COMBINED", "K12"):
         templates.append(DAYCARE_DAILY_REPORT)
 
     return templates

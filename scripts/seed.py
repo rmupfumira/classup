@@ -285,7 +285,7 @@ DAYCARE_DAILY_REPORT_TEMPLATE = {
     "description": "Daily activity report for daycare children including naps, meals, fluids, and bathroom",
     "report_type": "DAILY_ACTIVITY",
     "frequency": "DAILY",
-    "applies_to_grade_level": "INFANT,TODDLER,PRESCHOOL",
+    "applies_to_grade_level": None,
     "sections": [
         {
             "id": "naps",
