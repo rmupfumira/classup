@@ -2,7 +2,7 @@
 
 > **Purpose**: This document is the single source of truth for a coding agent to build the ClassUp platform from scratch. Every architectural decision, data model, API contract, UI layout, and integration detail is specified here. If something is ambiguous, it is a bug in this document.
 
-> **Last Updated**: 2026-02-13
+> **Last Updated**: 2026-02-28
 
 ---
 
@@ -141,7 +141,9 @@ classup/
 │   │   ├── report.py                 # DailyReport, ReportTemplate
 │   │   ├── file_entity.py            # FileEntity
 │   │   ├── invitation.py             # ParentInvitation
+│   │   ├── teacher_invitation.py     # TeacherInvitation
 │   │   ├── notification.py           # Notification
+│   │   ├── system_settings.py        # SystemSettings (key-value, email config)
 │   │   ├── webhook.py                # WebhookEndpoint, WebhookEvent
 │   │   └── import_job.py             # BulkImportJob
 │   ├── schemas/                      # Pydantic request/response schemas
@@ -171,6 +173,7 @@ classup/
 │   │   ├── report_service.py
 │   │   ├── file_service.py           # R2 upload/download/presigned URLs
 │   │   ├── invitation_service.py
+│   │   ├── teacher_invitation_service.py  # Teacher invitation management
 │   │   ├── notification_service.py
 │   │   ├── email_service.py          # Email integration (SMTP / Resend, config from DB)
 │   │   ├── whatsapp_service.py       # Meta Cloud API integration
@@ -192,6 +195,7 @@ classup/
 │   │   │   ├── reports.py
 │   │   │   ├── files.py
 │   │   │   ├── invitations.py
+│   │   │   ├── admin.py              # Super admin endpoints (email settings)
 │   │   │   ├── webhooks.py
 │   │   │   ├── imports.py
 │   │   │   └── websocket.py
@@ -212,6 +216,9 @@ classup/
 │   │   ├── super_admin.py            # Platform super admin pages
 │   │   ├── onboarding.py             # Tenant onboarding wizard
 │   │   ├── imports.py                # Bulk import pages
+│   │   ├── invitations.py            # Parent invitation management pages
+│   │   ├── teachers.py               # Teacher management pages
+│   │   ├── helpers.py                # Shared web route helpers
 │   │   └── profile.py                # User profile pages
 │   ├── templates/                    # Jinja2 HTML templates
 │   │   ├── base.html                 # Master layout (nav, sidebar, footer)
@@ -234,7 +241,8 @@ classup/
 │   │   │   └── _confirm_dialog.html
 │   │   ├── auth/
 │   │   │   ├── login.html
-│   │   │   ├── register.html         # Parent registration via invite
+│   │   │   ├── register.html         # Parent registration via invite (pre-filled)
+│   │   │   ├── register_teacher.html  # Teacher registration via invite
 │   │   │   ├── forgot_password.html
 │   │   │   └── reset_password.html
 │   │   ├── dashboard/
@@ -289,14 +297,24 @@ classup/
 │   │   │   ├── upload.html
 │   │   │   ├── mapping.html          # Column mapping UI
 │   │   │   └── results.html
+│   │   ├── invitations/
+│   │   │   └── list.html             # Parent invitation management
+│   │   ├── teachers/
+│   │   │   └── list.html             # Teacher management
 │   │   ├── super_admin/
-│   │   │   ├── tenants.html
-│   │   │   ├── tenant_detail.html
+│   │   │   ├── tenants/
+│   │   │   │   ├── list.html
+│   │   │   │   ├── create.html
+│   │   │   │   ├── detail.html
+│   │   │   │   └── edit.html
+│   │   │   ├── email_settings.html   # SMTP/Resend config page
 │   │   │   └── system_stats.html
 │   │   └── emails/                   # Email templates (HTML)
 │   │       ├── base_email.html
 │   │       ├── welcome.html
 │   │       ├── parent_invite.html
+│   │       ├── teacher_invite.html
+│   │       ├── parent_link_child.html
 │   │       ├── report_ready.html
 │   │       ├── admin_notification.html
 │   │       └── password_reset.html
@@ -533,10 +551,12 @@ tenants
   ├── report_templates (tenant_id FK)
   ├── file_entities (tenant_id FK)
   ├── parent_invitations (tenant_id FK, student_id)
+  ├── teacher_invitations (tenant_id FK)
   ├── notifications (tenant_id FK, user_id)
   ├── webhook_endpoints (tenant_id FK)
   ├── webhook_events (endpoint_id)
-  └── bulk_import_jobs (tenant_id FK)
+  ├── bulk_import_jobs (tenant_id FK)
+  └── system_settings (platform-wide key-value config)
 ```
 
 ### Complete Schema Definitions
@@ -951,6 +971,8 @@ CREATE TABLE parent_invitations (
     tenant_id       UUID NOT NULL REFERENCES tenants(id),
     student_id      UUID NOT NULL REFERENCES students(id),
     email           VARCHAR(255) NOT NULL,
+    first_name      VARCHAR(100) NOT NULL DEFAULT '',        -- Parent's first name (pre-filled on registration)
+    last_name       VARCHAR(100) NOT NULL DEFAULT '',        -- Parent's last name (pre-filled on registration)
     invitation_code VARCHAR(8) NOT NULL UNIQUE,
     status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING|ACCEPTED|EXPIRED
     created_by      UUID NOT NULL REFERENCES users(id),
@@ -1047,6 +1069,41 @@ CREATE TABLE bulk_import_jobs (
 );
 
 CREATE INDEX idx_imports_tenant ON bulk_import_jobs(tenant_id);
+```
+
+#### `system_settings`
+
+```sql
+CREATE TABLE system_settings (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key         VARCHAR(100) NOT NULL UNIQUE,              -- e.g. 'email_config'
+    value       JSONB NOT NULL DEFAULT '{}'::jsonb,        -- Provider-specific config
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Platform-wide settings (not tenant-scoped). Used for email provider config. See Section 15 for `email_config` value shape.
+
+#### `teacher_invitations`
+
+```sql
+CREATE TABLE teacher_invitations (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id),
+    email           VARCHAR(255) NOT NULL,
+    first_name      VARCHAR(100) NOT NULL DEFAULT '',
+    last_name       VARCHAR(100) NOT NULL DEFAULT '',
+    invitation_code VARCHAR(8) NOT NULL UNIQUE,
+    status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING|ACCEPTED|EXPIRED|CANCELLED
+    created_by      UUID NOT NULL REFERENCES users(id),
+    expires_at      TIMESTAMPTZ NOT NULL,
+    accepted_at     TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_teacher_invitations_code ON teacher_invitations(invitation_code) WHERE status = 'PENDING';
+CREATE INDEX idx_teacher_invitations_tenant ON teacher_invitations(tenant_id) WHERE status = 'PENDING';
 ```
 
 ---
@@ -1256,13 +1313,15 @@ async def create_student(...):
 ### Parent Registration Flow
 
 ```
-1. Admin/Teacher creates invitation for parent (specifying email + student)
+1. Admin/Teacher creates invitation for parent (specifying email, first_name, last_name + student)
 2. System generates 8-char alphanumeric code, sends email to parent
-3. Parent clicks link → lands on /register?code=XXXXXXXX
-4. Parent enters: invitation code + email → System validates match
-5. If valid → Parent sets password → Account created → Auto-login
-6. Parent is automatically linked to the student via parent_students table
+3. Parent clicks link → lands on /register?code=XXXXXXXX&email=parent@example.com
+4. System looks up invitation by code+email → pre-fills name, email, school, student on form
+5. Parent only needs to set a password (name/email shown read-only as confirmation)
+6. Account created → Parent auto-linked to student via parent_students table → Auto-login
 ```
+
+> **Note**: The registration URL includes both `code` and `email` as query params (URL-encoded via `urllib.parse.urlencode`). The `register_url` is built in the invitation API and passed directly to the email template — the template must NOT append additional query params.
 
 ---
 
@@ -1406,6 +1465,9 @@ class APIResponse(BaseModel, Generic[T]):
 | PUT | `/tenants/{id}` | Update tenant | SUPER_ADMIN |
 | DELETE | `/tenants/{id}` | Deactivate tenant (soft) | SUPER_ADMIN |
 | GET | `/stats` | Platform-wide statistics | SUPER_ADMIN |
+| GET | `/email-settings` | Get current email provider config (secrets masked) | SUPER_ADMIN |
+| PUT | `/email-settings` | Save/update email provider config | SUPER_ADMIN |
+| POST | `/email-settings/test` | Send test email to verify config | SUPER_ADMIN |
 
 #### Users (`/api/v1/users`)
 
@@ -1741,6 +1803,12 @@ const ClassUp = {
     timeAgo(dateString) { /* ... */ }
 };
 ```
+
+### UX Rules
+
+- **NEVER use native `alert()`, `confirm()`, or `prompt()`**. Always use `ClassUp.toast(message, type)` for notifications and `ClassUp.confirm(message, options)` for confirmations. These provide modern slide-in toasts and styled modal dialogs.
+- Toast types: `'success'` (green), `'error'` (red), `'warning'` (amber), `'info'` (blue).
+- Confirm returns `Promise<boolean>`. Options: `{title, confirmText, cancelText, danger}`. Use `danger: true` for destructive actions (red confirm button).
 
 ### HTML-First Interactivity Patterns
 
