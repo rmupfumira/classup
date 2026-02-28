@@ -146,7 +146,7 @@ class AuthService:
         parent_student = ParentStudent(
             parent_id=user.id,
             student_id=invitation.student_id,
-            relationship="PARENT",
+            relationship_type="PARENT",
             is_primary=True,  # First registered parent is primary
         )
         db.add(parent_student)

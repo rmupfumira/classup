@@ -284,11 +284,13 @@ class StudentService:
         parent_id: uuid.UUID,
     ) -> list[Student]:
         """Get students linked to a parent (for parent users)."""
+        tenant_id = get_tenant_id()
         query = (
             select(Student)
             .join(ParentStudent, ParentStudent.student_id == Student.id)
             .where(
                 ParentStudent.parent_id == parent_id,
+                Student.tenant_id == tenant_id,
                 Student.deleted_at.is_(None),
             )
             .options(
