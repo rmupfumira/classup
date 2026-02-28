@@ -180,7 +180,7 @@ class InvitationService:
         parent_student = ParentStudent(
             parent_id=parent_id,
             student_id=invitation.student_id,
-            relationship="PARENT",
+            relationship_type="PARENT",
             is_primary=True,
         )
         db.add(parent_student)
