@@ -22,7 +22,11 @@
                 {% if report.status == 'FINALIZED' %}bg-green-100 text-green-700
                 {% else %}bg-amber-100 text-amber-700{% endif %}">
                 {% if report.status == 'DRAFT' %}
-                    Draft — Not yet sent to parents
+                    {% if permissions.is_staff %}
+                        Draft — Not yet sent to parents
+                    {% else %}
+                        Draft — This report is not yet finalized and may change
+                    {% endif %}
                 {% else %}
                     Finalized
                 {% endif %}
