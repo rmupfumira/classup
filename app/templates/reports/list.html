@@ -188,3 +188,25 @@
     {% endif %}
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const saved = params.get('saved');
+    if (saved === 'draft') {
+        ClassUp.toast('Report saved as draft', 'success');
+    } else if (saved === 'finalized') {
+        ClassUp.toast('Report finalized and parents notified!', 'success');
+    }
+    // Clean up URL without reloading
+    if (saved) {
+        params.delete('saved');
+        const newUrl = params.toString()
+            ? `${window.location.pathname}?${params.toString()}`
+            : window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+    }
+});
+</script>
+{% endblock %}

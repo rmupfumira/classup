@@ -342,8 +342,7 @@ async function saveReport(finalize = false) {
         // Finalize if requested
         if (finalize) {
             if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { danger: true, confirmText: 'Finalize' }))) {
-                ClassUp.toast('Report saved as draft', 'success');
-                window.location.href = '/reports/{{ report.id }}';
+                window.location.href = '/reports?saved=draft';
                 return;
             }
 
@@ -361,12 +360,10 @@ async function saveReport(finalize = false) {
                 return;
             }
 
-            ClassUp.toast('Report saved and finalized successfully!', 'success');
+            window.location.href = '/reports?saved=finalized';
         } else {
-            ClassUp.toast('Report saved', 'success');
+            window.location.href = '/reports?saved=draft';
         }
-
-        window.location.href = '/reports/{{ report.id }}';
     } catch (error) {
         console.error('Error saving report:', error);
         ClassUp.toast('An error occurred while saving the report', 'error');
