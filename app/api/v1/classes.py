@@ -312,7 +312,7 @@ async def assign_teacher(
     assignment = await service.assign_teacher(db, class_id, data)
     await db.commit()
 
-    # Send admin notification
+    # Send notifications
     try:
         from app.models import User
         from sqlalchemy import select
@@ -325,10 +325,13 @@ async def assign_teacher(
 
         if teacher and school_class:
             teacher_name = f"{teacher.first_name} {teacher.last_name}"
+            tenant_id = get_tenant_id()
             email_service = get_email_service()
+
+            # Notify admins
             await email_service.notify_admins(
                 db=db,
-                tenant_id=get_tenant_id(),
+                tenant_id=tenant_id,
                 notification_type="TEACHER_ASSIGNED",
                 title=f"Teacher Assigned to {school_class.name}",
                 body=(
@@ -336,8 +339,27 @@ async def assign_teacher(
                 ),
                 action_url=f"{settings.app_base_url}/classes/{class_id}",
             )
+
+            # Notify the teacher
+            from app.models import Tenant
+
+            tenant = await db.get(Tenant, tenant_id)
+            tenant_name = tenant.name if tenant else "Your School"
+            await email_service.send_teacher_notification(
+                to=teacher.email,
+                teacher_name=teacher.first_name,
+                notification_type="CLASS_ASSIGNED",
+                title=f"You've been assigned to {school_class.name}",
+                body=(
+                    f"You have been assigned to the class \"{school_class.name}\" "
+                    f"at {tenant_name}. You can now manage attendance, reports, "
+                    f"and communication for this class."
+                ),
+                tenant_name=tenant_name,
+                action_url=f"{settings.app_base_url}/dashboard",
+            )
     except Exception:
-        logger.exception("Failed to send admin notification for teacher assignment")
+        logger.exception("Failed to send notifications for teacher assignment")
 
     return APIResponse(
         data={"id": str(assignment.id), "assigned": True},
@@ -368,14 +390,17 @@ async def remove_teacher(
     await service.remove_teacher(db, class_id, teacher_id)
     await db.commit()
 
-    # Send admin notification
+    # Send notifications
     try:
         if teacher and school_class:
             teacher_name = f"{teacher.first_name} {teacher.last_name}"
+            tenant_id = get_tenant_id()
             email_service = get_email_service()
+
+            # Notify admins
             await email_service.notify_admins(
                 db=db,
-                tenant_id=get_tenant_id(),
+                tenant_id=tenant_id,
                 notification_type="TEACHER_UNASSIGNED",
                 title=f"Teacher Removed from {school_class.name}",
                 body=(
@@ -383,8 +408,27 @@ async def remove_teacher(
                 ),
                 action_url=f"{settings.app_base_url}/classes/{class_id}",
             )
+
+            # Notify the teacher
+            from app.models import Tenant
+
+            tenant = await db.get(Tenant, tenant_id)
+            tenant_name = tenant.name if tenant else "Your School"
+            await email_service.send_teacher_notification(
+                to=teacher.email,
+                teacher_name=teacher.first_name,
+                notification_type="CLASS_REMOVED",
+                title=f"You've been removed from {school_class.name}",
+                body=(
+                    f"You have been removed from the class \"{school_class.name}\" "
+                    f"at {tenant_name}. If you believe this is an error, please "
+                    f"contact your school administrator."
+                ),
+                tenant_name=tenant_name,
+                action_url=f"{settings.app_base_url}/dashboard",
+            )
     except Exception:
-        logger.exception("Failed to send admin notification for teacher removal")
+        logger.exception("Failed to send notifications for teacher removal")
 
     return APIResponse(message="Teacher removed from class")
 

@@ -410,6 +410,33 @@ class EmailService:
                     f"Failed to send admin notification to {admin.email}"
                 )
 
+    async def send_teacher_notification(
+        self,
+        to: str,
+        teacher_name: str,
+        notification_type: str,
+        title: str,
+        body: str,
+        tenant_name: str,
+        action_url: str | None = None,
+    ) -> str | None:
+        """Send a notification email to a teacher."""
+        return await self.send(
+            to=to,
+            subject=f"[{tenant_name}] {title}",
+            template_name="admin_notification.html",
+            context={
+                "admin_name": teacher_name,
+                "notification_type": notification_type,
+                "title": title,
+                "body": body,
+                "action_url": action_url,
+                "tenant_name": tenant_name,
+                "app_name": settings.app_name,
+            },
+            from_name=tenant_name,
+        )
+
 
 # Singleton instance
 _email_service: EmailService | None = None
