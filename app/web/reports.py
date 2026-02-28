@@ -311,6 +311,9 @@ async def templates_manage(
     permissions = PermissionChecker(user.role)
     report_service = get_report_service()
 
+    # Ensure default templates exist for this tenant
+    await report_service.ensure_default_templates(db)
+
     # Get templates
     templates_list, total = await report_service.get_templates(
         db,

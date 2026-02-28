@@ -10,12 +10,14 @@ from sqlalchemy.orm import selectinload
 from app.models.grade_level import GradeLevel
 from app.models.report import DailyReport, ReportStatus, ReportTemplate, ReportTemplateGradeLevel
 from app.models.student import Student
+from app.models.tenant import Tenant
 from app.schemas.report import (
     ReportCreate,
     ReportTemplateCreate,
     ReportTemplateUpdate,
     ReportUpdate,
 )
+from app.utils.default_templates import get_default_templates_for_education_type
 from app.utils.tenant_context import get_current_user_id, get_tenant_id
 
 
@@ -285,6 +287,51 @@ class ReportService:
                 db.add(association)
 
         await db.flush()
+
+    async def ensure_default_templates(self, db: AsyncSession) -> int:
+        """Create default templates if the tenant has none.
+
+        Returns the number of templates created.
+        """
+        tenant_id = get_tenant_id()
+
+        # Check if tenant already has any templates
+        count_query = select(func.count(ReportTemplate.id)).where(
+            ReportTemplate.tenant_id == tenant_id,
+            ReportTemplate.deleted_at.is_(None),
+        )
+        count = (await db.execute(count_query)).scalar() or 0
+
+        if count > 0:
+            return 0
+
+        # Get tenant's education type
+        tenant = await db.get(Tenant, tenant_id)
+        if not tenant:
+            return 0
+
+        defaults = get_default_templates_for_education_type(tenant.education_type)
+        created = 0
+
+        for template_data in defaults:
+            template = ReportTemplate(
+                tenant_id=tenant_id,
+                name=template_data["name"],
+                description=template_data.get("description"),
+                report_type=template_data["report_type"],
+                frequency=template_data.get("frequency", "DAILY"),
+                applies_to_grade_level=template_data.get("applies_to_grade_level"),
+                sections=template_data["sections"],
+                display_order=created,
+                is_active=True,
+            )
+            db.add(template)
+            created += 1
+
+        if created > 0:
+            await db.commit()
+
+        return created
 
     # ============== Report Methods ==============
 
