@@ -184,6 +184,25 @@
 
     <!-- Global Scripts -->
     <script src="{{ url_for('static', path='js/app.js') }}"></script>
+    <script>
+    if (typeof ClassUp === 'undefined') {
+        console.error('ClassUp: app.js failed to load, using fallback');
+        window.ClassUp = {
+            async fetch(url, options = {}) {
+                const opts = {headers: {'Content-Type': 'application/json'}, credentials: 'same-origin', ...options};
+                if (opts.body && typeof opts.body === 'object') opts.body = JSON.stringify(opts.body);
+                const response = await fetch(url, opts);
+                if (response.status === 401) { window.location.href = '/login'; return; }
+                const data = await response.json();
+                if (!response.ok) { alert(data.message || 'Request failed'); throw new Error(data.message || 'Request failed'); }
+                return data;
+            },
+            toast(message) { alert(message); },
+            async confirm(message) { return window.confirm(message); },
+            escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+        };
+    }
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

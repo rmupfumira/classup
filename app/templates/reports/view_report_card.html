@@ -371,25 +371,17 @@ async function finalizeReport() {
         return;
     }
 
+    const btn = document.querySelector('[onclick="finalizeReport()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Finalizing...'; }
+
     try {
-        const response = await fetch('/api/v1/reports/{{ report.id }}/finalize', {
+        await ClassUp.fetch('/api/v1/reports/{{ report.id }}/finalize', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ notify_parents: true })
+            body: { notify_parents: true }
         });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            ClassUp.toast('Report card finalized and sent to parents!', 'success');
-            window.location.reload();
-        } else {
-            ClassUp.toast(result.message || 'Failed to finalize report', 'error');
-        }
+        window.location.href = '/reports?saved=finalized';
     } catch (error) {
-        console.error('Error finalizing report:', error);
-        ClassUp.toast('An error occurred while finalizing the report', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Finalize & Send'; }
     }
 }
 </script>
