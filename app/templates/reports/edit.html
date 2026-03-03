@@ -373,50 +373,40 @@ function collectFormData() {
 async function saveReport(finalize = false) {
     const reportData = collectFormData();
 
-    try {
-        // Update the report
-        const updateResponse = await fetch('/api/v1/reports/{{ report.id }}', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ report_data: reportData })
-        });
-
-        const updateResult = await updateResponse.json();
-
-        if (!updateResponse.ok) {
-            ClassUp.toast(updateResult.message || 'Failed to update report', 'error');
+    // Ask for confirmation before finalizing
+    if (finalize) {
+        if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { danger: true, confirmText: 'Finalize' }))) {
             return;
         }
+    }
+
+    // Disable buttons and show loading state
+    const buttons = document.querySelectorAll('[onclick^="saveReport"]');
+    const btnTexts = Array.from(buttons).map(b => b.textContent);
+    buttons.forEach(b => { b.disabled = true; });
+    const activeBtn = document.querySelector(`[onclick="saveReport(${finalize})"]`);
+    if (activeBtn) activeBtn.textContent = finalize ? 'Saving & Finalizing...' : 'Saving...';
+
+    try {
+        // Update the report
+        await ClassUp.fetch('/api/v1/reports/{{ report.id }}', {
+            method: 'PUT',
+            body: { report_data: reportData }
+        });
 
         // Finalize if requested
         if (finalize) {
-            if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { danger: true, confirmText: 'Finalize' }))) {
-                window.location.href = '/reports?saved=draft';
-                return;
-            }
-
-            const finalizeResponse = await fetch('/api/v1/reports/{{ report.id }}/finalize', {
+            await ClassUp.fetch('/api/v1/reports/{{ report.id }}/finalize', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ notify_parents: true })
+                body: { notify_parents: true }
             });
-
-            if (!finalizeResponse.ok) {
-                const finalizeResult = await finalizeResponse.json();
-                ClassUp.toast(finalizeResult.message || 'Report saved but failed to finalize', 'error');
-                window.location.href = '/reports/{{ report.id }}';
-                return;
-            }
-
             window.location.href = '/reports?saved=finalized';
         } else {
             window.location.href = '/reports?saved=draft';
         }
     } catch (error) {
-        console.error('Error saving report:', error);
-        ClassUp.toast('An error occurred while saving the report', 'error');
+        // ClassUp.fetch already shows error toasts, just restore buttons
+        buttons.forEach((b, i) => { b.disabled = false; b.textContent = btnTexts[i]; });
     }
 }
 </script>

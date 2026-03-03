@@ -610,55 +610,50 @@ async function saveReport(finalize = false) {
         return;
     }
 
+    // Ask for confirmation before finalizing
+    if (finalize) {
+        if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { danger: true, confirmText: 'Save & Finalize' }))) {
+            return;
+        }
+    }
+
     const reportData = collectFormData();
+
+    // Disable buttons and show loading state
+    const buttons = document.querySelectorAll('[onclick^="saveReport"]');
+    const btnTexts = Array.from(buttons).map(b => b.textContent);
+    buttons.forEach(b => { b.disabled = true; });
+    const activeBtn = document.querySelector(`[onclick="saveReport(${finalize})"]`);
+    if (activeBtn) activeBtn.textContent = finalize ? 'Saving & Finalizing...' : 'Saving...';
 
     try {
         // Create the report
-        const createResponse = await fetch('/api/v1/reports', {
+        const createResult = await ClassUp.fetch('/api/v1/reports', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({
+            body: {
                 student_id: studentId,
                 class_id: classId,
                 template_id: templateId,
                 report_date: reportDate,
                 report_data: reportData
-            })
+            }
         });
-
-        const createResult = await createResponse.json();
-
-        if (!createResponse.ok) {
-            ClassUp.toast(createResult.message || 'Failed to create report', 'error');
-            return;
-        }
 
         const reportId = createResult.data.id;
 
         // Finalize if requested
         if (finalize) {
-            const finalizeResponse = await fetch(`/api/v1/reports/${reportId}/finalize`, {
+            await ClassUp.fetch(`/api/v1/reports/${reportId}/finalize`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ notify_parents: true })
+                body: { notify_parents: true }
             });
-
-            if (!finalizeResponse.ok) {
-                const finalizeResult = await finalizeResponse.json();
-                ClassUp.toast(finalizeResult.message || 'Report created but failed to finalize', 'error');
-                window.location.href = `/reports/${reportId}`;
-                return;
-            }
-
-            window.location.href = `/reports?saved=finalized`;
+            window.location.href = '/reports?saved=finalized';
         } else {
-            window.location.href = `/reports?saved=draft`;
+            window.location.href = '/reports?saved=draft';
         }
     } catch (error) {
-        console.error('Error saving report:', error);
-        ClassUp.toast('An error occurred while saving the report', 'error');
+        // ClassUp.fetch already shows error toasts, just restore buttons
+        buttons.forEach((b, i) => { b.disabled = false; b.textContent = btnTexts[i]; });
     }
 }
 

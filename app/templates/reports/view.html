@@ -209,28 +209,28 @@
 {% block scripts %}
 <script>
 async function finalizeReport() {
-    if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { confirmText: 'Finalize' }))) {
+    const btn = document.querySelector('[onclick="finalizeReport()"]');
+
+    if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { confirmText: 'Finalize & Send' }))) {
         return;
     }
 
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Finalizing...';
+    }
+
     try {
-        const response = await fetch('/api/v1/reports/{{ report.id }}/finalize', {
+        const result = await ClassUp.fetch('/api/v1/reports/{{ report.id }}/finalize', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ notify_parents: true })
+            body: { notify_parents: true }
         });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            window.location.href = '/reports?saved=finalized';
-        } else {
-            ClassUp.toast(result.message || 'Failed to finalize report', 'error');
-        }
+        window.location.href = '/reports?saved=finalized';
     } catch (error) {
-        console.error('Error finalizing report:', error);
-        ClassUp.toast('An error occurred while finalizing the report', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Finalize & Send';
+        }
     }
 }
 </script>
