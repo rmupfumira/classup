@@ -603,8 +603,10 @@ class ReportService:
 
             parent_ids.append(parent.id)
 
-            # Send email
+            # Send email with full report content
             try:
+                template_sections = report.template.sections if report.template else []
+                report_sections = report.report_data.get("sections", {}) if report.report_data else {}
                 await email_service.send_report_ready(
                     to=parent.email,
                     parent_name=parent.first_name,
@@ -613,6 +615,8 @@ class ReportService:
                     report_date=report_date,
                     view_url=view_url,
                     tenant_name=tenant_name,
+                    template_sections=template_sections,
+                    report_sections=report_sections,
                 )
             except Exception as e:
                 logger.error(f"Failed to email parent {parent.email} for report {report.id}: {e}")

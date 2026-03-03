@@ -294,11 +294,13 @@ class EmailService:
         report_date: str,
         view_url: str,
         tenant_name: str,
+        template_sections: list | None = None,
+        report_sections: dict | None = None,
     ) -> str | None:
-        """Send a notification that a report is ready."""
+        """Send a report with full content to parents."""
         return await self.send(
             to=to,
-            subject=f"New {report_type} for {student_name}",
+            subject=f"{student_name}'s {report_type} - {report_date}",
             template_name="report_ready.html",
             context={
                 "parent_name": parent_name,
@@ -308,6 +310,8 @@ class EmailService:
                 "view_url": view_url,
                 "tenant_name": tenant_name,
                 "app_name": settings.app_name,
+                "template_sections": template_sections or [],
+                "report_sections": report_sections or {},
             },
             from_name=tenant_name,
         )

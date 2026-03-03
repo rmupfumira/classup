@@ -1,54 +1,151 @@
 {% extends "base_email.html" %}
 
-{% block title %}New Report for {{ student_name }}{% endblock %}
+{% block title %}{{ student_name }}'s {{ report_type }} - {{ report_date }}{% endblock %}
 
 {% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
-    New Report Available
-</h2>
-
 <p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
     Hi {{ parent_name }},
 </p>
 
 <p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    A new <strong>{{ report_type }}</strong> has been prepared for <strong>{{ student_name }}</strong>.
+    Here is <strong>{{ student_name }}</strong>'s <strong>{{ report_type }}</strong> for <strong>{{ report_date }}</strong>.
 </p>
 
-<div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-        <tr>
-            <td style="padding: 0 0 12px 0;">
-                <strong style="font-size: 14px; color: #6B7280;">Student:</strong><br>
-                <span style="font-size: 15px; color: #111827;">{{ student_name }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 0 0 12px 0;">
-                <strong style="font-size: 14px; color: #6B7280;">Report Type:</strong><br>
-                <span style="font-size: 15px; color: #111827;">{{ report_type }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <strong style="font-size: 14px; color: #6B7280;">Date:</strong><br>
-                <span style="font-size: 15px; color: #111827;">{{ report_date }}</span>
-            </td>
-        </tr>
-    </table>
-</div>
+{% if template_sections %}
+{% for section in template_sections %}
+{% set section_data = report_sections.get(section.id, {}) if report_sections else {} %}
+{% set section_color = section.get('color', 'purple') %}
 
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+{# Map section colors to hex #}
+{% if section_color == 'green' %}{% set color_hex = '#059669' %}
+{% elif section_color == 'orange' %}{% set color_hex = '#EA580C' %}
+{% elif section_color == 'blue' %}{% set color_hex = '#2563EB' %}
+{% elif section_color == 'red' %}{% set color_hex = '#DC2626' %}
+{% else %}{% set color_hex = '#7C3AED' %}
+{% endif %}
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
+    <tr>
+        <td style="padding-bottom: 8px; border-bottom: 2px solid {{ color_hex }};">
+            <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: {{ color_hex }};">
+                {{ section.title }}
+            </h3>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding-top: 12px;">
+            {% if section.type == 'REPEATABLE_ENTRIES' %}
+                {% set entries = section_data.get('entries', []) %}
+                {% if entries %}
+                    {% for entry in entries %}
+                    <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
+                        {% if section.id == 'naps' %}
+                            &#128716; {{ entry.get('start_time', '') }} - {{ entry.get('end_time', '') }}
+                            {% if entry.get('duration') %}
+                            <strong style="color: {{ color_hex }};">({{ entry.get('duration') }})</strong>
+                            {% endif %}
+                        {% elif section.id == 'fluids' %}
+                            {{ entry.get('time', '') }} - {{ entry.get('amount', '') }} - {{ entry.get('type', '') }}
+                            {% if entry.get('notes') %}
+                            <br><em style="color: #6B7280;">{{ entry.get('notes') }}</em>
+                            {% endif %}
+                        {% elif section.id == 'bathroom' %}
+                            {{ entry.get('time', '') }} - {{ entry.get('type', 'Diaper') }} - {{ entry.get('condition', '') }}{% if entry.get('notes') %}, {{ entry.get('notes') }}{% endif %}
+                        {% else %}
+                            {% for field in section.fields %}
+                                {% if not loop.first %} - {% endif %}
+                                {{ entry.get(field.id, '') }}
+                            {% endfor %}
+                        {% endif %}
+                    </p>
+                    {% endfor %}
+                {% else %}
+                    <p style="margin: 0; font-size: 14px; color: #9CA3AF; font-style: italic;">No entries recorded</p>
+                {% endif %}
+
+            {% elif section.type == 'MEALS' or section.id == 'meals' %}
+                {% set ns = namespace(has_any=false) %}
+                {% for field in section.fields %}
+                    {% set amount = section_data.get(field.id ~ '_amount', '') %}
+                    {% set desc = section_data.get(field.id ~ '_desc', section_data.get(field.id, '')) %}
+                    {% if amount or desc %}
+                    {% set ns.has_any = true %}
+                    <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
+                        <strong>{{ field.label }}</strong>
+                        {% if amount %} &mdash; {{ amount }}{% endif %}
+                        {% if desc %} &mdash; {{ desc }}{% endif %}
+                    </p>
+                    {% endif %}
+                {% endfor %}
+                {% if not ns.has_any %}
+                    <p style="margin: 0; font-size: 14px; color: #9CA3AF; font-style: italic;">No meals recorded</p>
+                {% endif %}
+
+            {% elif section.type == 'CHECKLIST' %}
+                {% set ns = namespace(has_any=false) %}
+                {% for field in section.fields %}
+                {% set field_value = section_data.get(field.id, '') %}
+                {% set field_desc = section_data.get(field.id ~ '_desc', section_data.get(field.id ~ '_notes', '')) %}
+                {% if field.type == 'CHECKBOX' %}
+                    {% if field_value == true or field_value == 'true' %}
+                    {% set ns.has_any = true %}
+                    <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
+                        &#10003; {{ field.label }}
+                    </p>
+                    {% endif %}
+                {% elif field.type == 'TEXTAREA' %}
+                    {% if field_value %}
+                    {% set ns.has_any = true %}
+                    <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
+                        <strong>{{ field.label }}:</strong> {{ field_value }}
+                    </p>
+                    {% endif %}
+                {% elif field_value or field_desc %}
+                {% set ns.has_any = true %}
+                <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
+                    <strong>{{ field.label }}</strong>
+                    {% if field_value %} &mdash; {{ field_value }}{% endif %}
+                    {% if field_desc %} &mdash; {{ field_desc }}{% endif %}
+                </p>
+                {% endif %}
+                {% endfor %}
+                {% if not ns.has_any %}
+                    <p style="margin: 0; font-size: 14px; color: #9CA3AF; font-style: italic;">No activities recorded</p>
+                {% endif %}
+
+            {% elif section.type == 'NARRATIVE' %}
+                {% for field in section.fields %}
+                {% set field_value = section_data.get(field.id, '') %}
+                {% if field_value %}
+                <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{{ field_value }}</p>
+                {% else %}
+                <p style="margin: 0; font-size: 14px; color: #9CA3AF; font-style: italic;">No notes recorded</p>
+                {% endif %}
+                {% endfor %}
+
+            {% else %}
+                {% for field in section.fields %}
+                {% set field_value = section_data.get(field.id, '') %}
+                {% if field_value %}
+                <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
+                    <strong>{{ field.label }}:</strong> {{ field_value }}
+                </p>
+                {% endif %}
+                {% endfor %}
+            {% endif %}
+        </td>
+    </tr>
+</table>
+{% endfor %}
+{% endif %}
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto 0 auto;">
     <tr>
         <td style="border-radius: 8px; background-color: #7C3AED;">
             <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
-                View Report
+                View Full Report Online
             </a>
         </td>
     </tr>
 </table>
-
-<p style="margin: 24px 0 0 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
-    Log in to {{ app_name }} to view the full report and all of {{ student_name }}'s activities.
-</p>
 {% endblock %}
