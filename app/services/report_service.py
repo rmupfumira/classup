@@ -1,5 +1,6 @@
 """Report service for managing reports and templates."""
 
+import logging
 import uuid
 from datetime import date, datetime, timezone
 
@@ -7,6 +8,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.models.grade_level import GradeLevel
 from app.models.report import DailyReport, ReportStatus, ReportTemplate, ReportTemplateGradeLevel
 from app.models.student import Student
@@ -19,6 +21,8 @@ from app.schemas.report import (
 )
 from app.utils.default_templates import get_default_templates_for_education_type
 from app.utils.tenant_context import get_current_user_id, get_tenant_id
+
+logger = logging.getLogger(__name__)
 
 
 class ReportService:
@@ -558,11 +562,73 @@ class ReportService:
         report.finalized_at = datetime.now(timezone.utc)
         await db.commit()
 
-        # TODO: Send notifications to parents if notify_parents is True
-        # This will be implemented in Phase 8 with email/WhatsApp integration
+        # Send notifications to parents
+        if notify_parents:
+            try:
+                await self._notify_parents_report_ready(db, report)
+            except Exception as e:
+                logger.error(f"Failed to notify parents for report {report_id}: {e}")
 
         # Re-fetch with all relationships loaded (db.refresh doesn't reload selectin relationships)
         return await self.get_report(db, report_id)
+
+    async def _notify_parents_report_ready(
+        self, db: AsyncSession, report: DailyReport
+    ) -> None:
+        """Send email and in-app notifications to parents when a report is finalized."""
+        from app.services.email_service import get_email_service
+        from app.services.notification_service import get_notification_service
+
+        student = report.student
+        if not student or not student.parent_students:
+            logger.info(f"No parents linked to student for report {report.id}")
+            return
+
+        settings = get_settings()
+        tenant = await db.get(Tenant, report.tenant_id)
+        tenant_name = tenant.name if tenant else settings.app_name
+        report_type = report.template.name if report.template else "Report"
+        student_name = student.full_name
+        report_date = report.report_date.strftime("%B %d, %Y")
+        view_url = f"{settings.app_base_url}/reports/{report.id}"
+
+        email_service = get_email_service()
+        notification_service = get_notification_service()
+
+        parent_ids = []
+        for ps in student.parent_students:
+            parent = ps.parent
+            if not parent or not parent.is_active:
+                continue
+
+            parent_ids.append(parent.id)
+
+            # Send email
+            try:
+                await email_service.send_report_ready(
+                    to=parent.email,
+                    parent_name=parent.first_name,
+                    student_name=student_name,
+                    report_type=report_type,
+                    report_date=report_date,
+                    view_url=view_url,
+                    tenant_name=tenant_name,
+                )
+            except Exception as e:
+                logger.error(f"Failed to email parent {parent.email} for report {report.id}: {e}")
+
+        # Create in-app notifications for all parents
+        if parent_ids:
+            try:
+                await notification_service.notify_report_finalized(
+                    db=db,
+                    parent_ids=parent_ids,
+                    student_name=student_name,
+                    report_type=report_type,
+                    report_id=report.id,
+                )
+            except Exception as e:
+                logger.error(f"Failed to create notifications for report {report.id}: {e}")
 
     async def delete_report(
         self,
