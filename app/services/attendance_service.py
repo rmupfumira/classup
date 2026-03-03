@@ -1,5 +1,6 @@
 """Attendance service for tracking student attendance."""
 
+import logging
 import uuid
 from datetime import date, datetime, timedelta
 
@@ -7,8 +8,9 @@ from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.exceptions import ConflictException, ForbiddenException, NotFoundException
-from app.models import AttendanceRecord, SchoolClass, Student, TeacherClass, User
+from app.models import AttendanceRecord, SchoolClass, Student, TeacherClass, Tenant, User
 from app.models.attendance import AttendanceStatus
 from app.models.user import Role
 from app.schemas.attendance import (
@@ -20,6 +22,11 @@ from app.schemas.attendance import (
     StudentAttendanceSummary,
 )
 from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
+
+logger = logging.getLogger(__name__)
+
+# Statuses that trigger parent notifications
+_NOTIFY_STATUSES = {AttendanceStatus.ABSENT.value, AttendanceStatus.LATE.value}
 
 
 class AttendanceService:
@@ -146,6 +153,12 @@ class AttendanceService:
         await db.flush()
         await db.refresh(record)
 
+        # Notify parents for ABSENT or LATE
+        if record.status in _NOTIFY_STATUSES:
+            await self._notify_parents_attendance(
+                db, student, record.status, record.date, record.notes
+            )
+
         return record
 
     async def update_attendance_record(
@@ -185,6 +198,7 @@ class AttendanceService:
         success_count = 0
         error_count = 0
         errors = []
+        notify_student_ids = []  # Students with ABSENT/LATE to notify parents
 
         for record_data in data.records:
             try:
@@ -213,6 +227,12 @@ class AttendanceService:
 
                 success_count += 1
 
+                # Track students needing parent notification
+                if record_data.status.value in _NOTIFY_STATUSES:
+                    notify_student_ids.append(
+                        (record_data.student_id, record_data.status.value, record_data.notes)
+                    )
+
             except Exception as e:
                 error_count += 1
                 errors.append({
@@ -221,6 +241,14 @@ class AttendanceService:
                 })
 
         await db.flush()
+
+        # Send notifications for ABSENT/LATE students
+        for student_id, status, notes in notify_student_ids:
+            try:
+                student = await self._get_student(db, student_id)
+                await self._notify_parents_attendance(db, student, status, data.date, notes)
+            except Exception as e:
+                logger.error(f"Failed to notify parents for student {student_id}: {e}")
 
         return BulkAttendanceResponse(
             success_count=success_count,
@@ -434,6 +462,66 @@ class AttendanceService:
             excused_count=stats.excused or 0,
             attendance_rate=round(attendance_rate, 1),
         )
+
+    async def _notify_parents_attendance(
+        self,
+        db: AsyncSession,
+        student: Student,
+        status: str,
+        attendance_date: date,
+        notes: str | None = None,
+    ) -> None:
+        """Send email and in-app notifications to parents for ABSENT/LATE attendance."""
+        from app.services.email_service import get_email_service
+        from app.services.notification_service import get_notification_service
+
+        if not student.parent_students:
+            logger.info(f"No parents linked to student {student.id} — skipping attendance alert")
+            return
+
+        settings = get_settings()
+        tenant = await db.get(Tenant, student.tenant_id)
+        tenant_name = tenant.name if tenant else settings.app_name
+        student_name = student.full_name
+        date_str = attendance_date.strftime("%B %d, %Y")
+
+        email_service = get_email_service()
+        notification_service = get_notification_service()
+
+        parent_ids = []
+        for ps in student.parent_students:
+            parent = ps.parent
+            if not parent or not parent.is_active:
+                continue
+            parent_ids.append(parent.id)
+            try:
+                await email_service.send_attendance_alert(
+                    to=parent.email,
+                    parent_name=parent.first_name,
+                    student_name=student_name,
+                    status=status,
+                    date=date_str,
+                    tenant_name=tenant_name,
+                    notes=notes,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to email attendance alert to {parent.email} "
+                    f"for student {student.id}: {e}"
+                )
+
+        if parent_ids:
+            try:
+                await notification_service.notify_attendance_marked(
+                    db=db,
+                    parent_ids=parent_ids,
+                    student_name=student_name,
+                    status=status,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to create attendance notifications for student {student.id}: {e}"
+                )
 
     async def _get_student(self, db: AsyncSession, student_id: uuid.UUID) -> Student:
         """Get and verify a student exists."""
