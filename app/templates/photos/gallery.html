@@ -9,7 +9,7 @@
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Photo Gallery</h1>
             <p class="mt-1 text-sm text-gray-500">
-                {{ total }} photo{{ 's' if total != 1 else '' }}
+                {{ total }} share{{ 's' if total != 1 else '' }}
             </p>
         </div>
         {% if permissions.is_staff %}
@@ -49,18 +49,25 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {% for photo in photos %}
         <div class="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
-             onclick="openLightbox('{{ photo.full_url }}', '{{ photo.file.original_name }}')">
-            <img src="{{ photo.thumbnail_url }}" alt="{{ photo.file.original_name }}"
+             onclick="openLightbox('{{ photo.full_url }}', '{{ photo.caption|e }}', '{{ photo.class_name|e }}', '{{ photo.sharer_name|e }}')">
+            <img src="{{ photo.thumbnail_url }}" alt="{{ photo.original_name }}"
                  class="w-full h-full object-cover transition-transform group-hover:scale-105"
                  loading="lazy">
             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity"></div>
             <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                <p class="text-white text-xs truncate">{{ photo.file.original_name }}</p>
-                {% if photo.class_name or photo.student_name %}
-                <p class="text-white/80 text-xs truncate">
-                    {{ photo.student_name or photo.class_name }}
-                </p>
+                <p class="text-white text-xs font-medium truncate">{{ photo.class_name }}</p>
+                {% if photo.caption %}
+                <p class="text-white/90 text-xs truncate">{{ photo.caption }}</p>
                 {% endif %}
+                {% if photo.tagged_students %}
+                <p class="text-white/70 text-xs truncate">{{ photo.tagged_students|join(', ') }}</p>
+                {% endif %}
+            </div>
+            <!-- Sharer badge -->
+            <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-black/50 text-white">
+                    {{ photo.sharer_name }}
+                </span>
             </div>
         </div>
         {% endfor %}
@@ -136,25 +143,30 @@
 
 <!-- Lightbox Modal -->
 <div id="lightbox" class="fixed inset-0 z-50 hidden bg-black bg-opacity-90 flex items-center justify-center" onclick="closeLightbox()">
-    <button class="absolute top-4 right-4 text-white hover:text-gray-300" onclick="closeLightbox()">
+    <button class="absolute top-4 right-4 text-white hover:text-gray-300 z-10" onclick="closeLightbox()">
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
     </button>
-    <img id="lightbox-image" src="" alt="" class="max-h-[90vh] max-w-[90vw] object-contain" onclick="event.stopPropagation()">
-    <p id="lightbox-caption" class="absolute bottom-4 left-0 right-0 text-center text-white text-sm"></p>
+    <img id="lightbox-image" src="" alt="" class="max-h-[85vh] max-w-[90vw] object-contain" onclick="event.stopPropagation()">
+    <div id="lightbox-info" class="absolute bottom-4 left-0 right-0 text-center" onclick="event.stopPropagation()">
+        <p id="lightbox-caption" class="text-white text-base font-medium"></p>
+        <p id="lightbox-meta" class="text-white/70 text-sm mt-1"></p>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function openLightbox(url, caption) {
+function openLightbox(url, caption, className, sharerName) {
     const lightbox = document.getElementById('lightbox');
     const image = document.getElementById('lightbox-image');
     const captionEl = document.getElementById('lightbox-caption');
+    const metaEl = document.getElementById('lightbox-meta');
 
     image.src = url;
-    captionEl.textContent = caption;
+    captionEl.textContent = caption || '';
+    metaEl.textContent = [className, sharerName].filter(Boolean).join(' — ');
     lightbox.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
@@ -165,7 +177,6 @@ function closeLightbox() {
     document.body.style.overflow = '';
 }
 
-// Close on escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeLightbox();

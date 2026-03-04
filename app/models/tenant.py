@@ -6,6 +6,7 @@ from enum import Enum
 
 from sqlalchemy import Boolean, DateTime, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, SoftDeleteMixin
@@ -46,7 +47,7 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
         default=EducationType.DAYCARE.value,
     )
     settings: Mapped[dict] = mapped_column(
-        JSONB,
+        MutableDict.as_mutable(JSONB),
         nullable=False,
         default=dict,
         server_default=text("'{}'::jsonb"),

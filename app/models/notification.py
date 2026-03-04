@@ -110,6 +110,7 @@ class Notification(Base, TimestampMixin):
             "class": f"/classes/{self.reference_id}",
             "invitation": f"/invitations/{self.reference_id}",
             "announcement": f"/announcements/{self.reference_id}",
+            "photo_share": "/photos",
             "message": "/messages",
         }
 

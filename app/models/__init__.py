@@ -22,6 +22,7 @@ from app.models.teacher_invitation import TeacherInvitation
 from app.models.message import Message, MessageAttachment, MessageRecipient, MessageStatus, MessageType
 from app.models.notification import Notification, NotificationType
 from app.models.announcement import Announcement, AnnouncementDismissal, AnnouncementLevel, AnnouncementSeverity
+from app.models.photo_share import PhotoShare, PhotoShareFile, PhotoShareTag
 from app.models.webhook import (
     WebhookEndpoint,
     WebhookEvent,
@@ -90,6 +91,10 @@ __all__ = [
     "AnnouncementDismissal",
     "AnnouncementLevel",
     "AnnouncementSeverity",
+    # Photo Share
+    "PhotoShare",
+    "PhotoShareFile",
+    "PhotoShareTag",
     # Webhook
     "WebhookEndpoint",
     "WebhookEvent",

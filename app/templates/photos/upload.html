@@ -17,28 +17,9 @@
     <!-- Upload Form -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-6 space-y-6">
-            <!-- Share Options -->
-            <div class="space-y-4">
-                <label class="block text-sm font-medium text-gray-700">Share With</label>
-                <div class="flex flex-wrap gap-4">
-                    <label class="flex items-center">
-                        <input type="radio" name="share_type" value="CLASS" checked
-                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
-                               onchange="handleShareTypeChange()">
-                        <span class="ml-2 text-sm text-gray-700">Class</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="share_type" value="STUDENT"
-                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
-                               onchange="handleShareTypeChange()">
-                        <span class="ml-2 text-sm text-gray-700">Specific Student</span>
-                    </label>
-                </div>
-            </div>
-
             <!-- Class Selection -->
-            <div id="class-section">
-                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+            <div>
+                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class <span class="text-red-500">*</span></label>
                 <select id="class_id" name="class_id" required
                         class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                         onchange="handleClassChange()">
@@ -51,16 +32,6 @@
                 </select>
             </div>
 
-            <!-- Student Selection (hidden by default) -->
-            <div id="student-section" class="hidden">
-                <label for="student_id" class="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                <select id="student_id" name="student_id"
-                        class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Select student...</option>
-                </select>
-                <p class="mt-1 text-xs text-gray-500">Photos will be shared with this student's parents</p>
-            </div>
-
             <!-- Caption -->
             <div>
                 <label for="caption" class="block text-sm font-medium text-gray-700 mb-1">Caption (optional)</label>
@@ -69,9 +40,18 @@
                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
             </div>
 
+            <!-- Student Tags -->
+            <div id="student-tags-section" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tag Students (optional)</label>
+                <p class="text-xs text-gray-500 mb-2">Tagged students' parents will be notified</p>
+                <div id="student-checkboxes" class="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2">
+                    <p class="text-sm text-gray-400">Select a class first</p>
+                </div>
+            </div>
+
             <!-- Upload Area -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Photos</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Photos <span class="text-red-500">*</span></label>
                 <div id="upload-area"
                      class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
                      onclick="document.getElementById('file-input').click()">
@@ -96,7 +76,6 @@
                     </button>
                 </div>
                 <div id="preview-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                    <!-- Previews will be inserted here -->
                 </div>
             </div>
 
@@ -136,50 +115,42 @@
 <script>
 let selectedFiles = [];
 
-function handleShareTypeChange() {
-    const shareType = document.querySelector('input[name="share_type"]:checked').value;
-    const studentSection = document.getElementById('student-section');
-    const studentSelect = document.getElementById('student_id');
-
-    if (shareType === 'STUDENT') {
-        studentSection.classList.remove('hidden');
-        studentSelect.required = true;
-        handleClassChange(); // Load students for selected class
-    } else {
-        studentSection.classList.add('hidden');
-        studentSelect.required = false;
-    }
-}
-
 async function handleClassChange() {
-    const shareType = document.querySelector('input[name="share_type"]:checked').value;
-    if (shareType !== 'STUDENT') return;
-
     const classId = document.getElementById('class_id').value;
-    const studentSelect = document.getElementById('student_id');
+    const tagsSection = document.getElementById('student-tags-section');
+    const checkboxes = document.getElementById('student-checkboxes');
 
     if (!classId) {
-        studentSelect.innerHTML = '<option value="">Select student...</option>';
+        tagsSection.classList.add('hidden');
+        checkboxes.innerHTML = '<p class="text-sm text-gray-400">Select a class first</p>';
         return;
     }
 
+    tagsSection.classList.remove('hidden');
+    checkboxes.innerHTML = '<p class="text-sm text-gray-400">Loading students...</p>';
+
     try {
-        const response = await fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`, {
-            credentials: 'same-origin'
-        });
+        const response = await ClassUp.fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`);
         const result = await response.json();
 
-        if (result.data) {
-            studentSelect.innerHTML = '<option value="">Select student...</option>';
+        if (result.data && result.data.length > 0) {
+            checkboxes.innerHTML = '';
             result.data.forEach(student => {
-                const option = document.createElement('option');
-                option.value = student.id;
-                option.textContent = `${student.first_name} ${student.last_name}`;
-                studentSelect.appendChild(option);
+                const label = document.createElement('label');
+                label.className = 'flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5';
+                label.innerHTML = `
+                    <input type="checkbox" name="student_ids" value="${student.id}"
+                           class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                    <span class="text-sm text-gray-700">${student.first_name} ${student.last_name}</span>
+                `;
+                checkboxes.appendChild(label);
             });
+        } else {
+            checkboxes.innerHTML = '<p class="text-sm text-gray-400">No students in this class</p>';
         }
     } catch (error) {
         console.error('Error fetching students:', error);
+        checkboxes.innerHTML = '<p class="text-sm text-red-500">Failed to load students</p>';
     }
 }
 
@@ -275,18 +246,11 @@ function clearAllFiles() {
 }
 
 async function uploadPhotos() {
-    const shareType = document.querySelector('input[name="share_type"]:checked').value;
     const classId = document.getElementById('class_id').value;
-    const studentId = document.getElementById('student_id').value;
     const caption = document.getElementById('caption').value;
 
-    if (!classId && shareType === 'CLASS') {
+    if (!classId) {
         ClassUp.toast('Please select a class', 'warning');
-        return;
-    }
-
-    if (shareType === 'STUDENT' && !studentId) {
-        ClassUp.toast('Please select a student', 'warning');
         return;
     }
 
@@ -303,6 +267,7 @@ async function uploadPhotos() {
     uploadProgress.classList.remove('hidden');
     uploadBtn.disabled = true;
 
+    // Step 1: Upload files to /api/v1/files/upload
     const uploadedIds = [];
     const total = selectedFiles.length;
 
@@ -327,20 +292,59 @@ async function uploadPhotos() {
             console.error('Error uploading file:', error);
         }
 
-        const progress = Math.round(((i + 1) / total) * 100);
+        const progress = Math.round(((i + 1) / total) * 80); // 80% for uploads
         progressBar.style.width = `${progress}%`;
-        progressText.textContent = `${progress}%`;
+        progressText.textContent = `Uploading ${i + 1}/${total}...`;
     }
 
-    if (uploadedIds.length > 0) {
-        ClassUp.toast(`${uploadedIds.length} photo(s) uploaded successfully!`, 'success');
-        window.location.href = '/photos';
-    } else {
+    if (uploadedIds.length === 0) {
         ClassUp.toast('Failed to upload photos. Please try again.', 'error');
+        uploadProgress.classList.add('hidden');
+        uploadBtn.disabled = false;
+        return;
+    }
+
+    // Step 2: Create photo share via API
+    progressText.textContent = 'Creating photo share...';
+    progressBar.style.width = '90%';
+
+    const studentCheckboxes = document.querySelectorAll('input[name="student_ids"]:checked');
+    const studentIds = Array.from(studentCheckboxes).map(cb => cb.value);
+
+    try {
+        const shareResponse = await ClassUp.fetch('/api/v1/photos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                class_id: classId,
+                caption: caption || null,
+                file_ids: uploadedIds,
+                student_ids: studentIds,
+            }),
+        });
+
+        const shareResult = await shareResponse.json();
+
+        if (shareResponse.ok) {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Done!';
+            ClassUp.toast(`${uploadedIds.length} photo(s) shared successfully!`, 'success');
+            window.location.href = '/photos';
+        } else {
+            ClassUp.toast(shareResult.message || 'Failed to create photo share', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating photo share:', error);
+        ClassUp.toast('Failed to create photo share. Please try again.', 'error');
     }
 
     uploadProgress.classList.add('hidden');
     uploadBtn.disabled = false;
+}
+
+// Load students if class is pre-selected
+if (document.getElementById('class_id').value) {
+    handleClassChange();
 }
 </script>
 {% endblock %}
