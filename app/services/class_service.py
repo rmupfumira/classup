@@ -173,26 +173,32 @@ class ClassService:
         db: AsyncSession,
         class_id: uuid.UUID,
         is_active: bool | None = True,
-    ) -> list[Student]:
-        """Get all students in a class."""
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[list[Student], int]:
+        """Get students in a class with pagination."""
         tenant_id = get_tenant_id()
 
         # Verify class exists and belongs to tenant
         await self.get_class(db, class_id)
 
-        query = select(Student).where(
+        base = select(Student).where(
             Student.tenant_id == tenant_id,
             Student.class_id == class_id,
             Student.deleted_at.is_(None),
         )
 
         if is_active is not None:
-            query = query.where(Student.is_active == is_active)
+            base = base.where(Student.is_active == is_active)
 
-        query = query.order_by(Student.first_name, Student.last_name)
+        count_query = select(func.count()).select_from(base.subquery())
+        total = (await db.execute(count_query)).scalar() or 0
+
+        query = base.order_by(Student.first_name, Student.last_name)
+        query = query.offset((page - 1) * page_size).limit(page_size)
 
         result = await db.execute(query)
-        return list(result.scalars().all())
+        return list(result.scalars().all()), total
 
     async def get_class_teachers(
         self,

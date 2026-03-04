@@ -86,13 +86,13 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         "ParentStudent",
         back_populates="parent",
         foreign_keys="ParentStudent.parent_id",
-        lazy="selectin",
+        lazy="noload",
     )
     teacher_classes = relationship(
         "TeacherClass",
         back_populates="teacher",
         foreign_keys="TeacherClass.teacher_id",
-        lazy="selectin",
+        lazy="noload",
     )
 
     @property

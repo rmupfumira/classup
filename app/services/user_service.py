@@ -6,9 +6,11 @@ import uuid
 from passlib.context import CryptContext
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.exceptions import ConflictException, NotFoundException
 from app.models import User
+from app.models.school_class import TeacherClass
 from app.models.user import Role
 from app.utils.security import hash_password
 from app.utils.tenant_context import get_tenant_id
@@ -47,10 +49,16 @@ class UserService:
         """Get a single user by ID."""
         tenant_id = get_tenant_id()
 
-        query = select(User).where(
-            User.id == user_id,
-            User.tenant_id == tenant_id,
-            User.deleted_at.is_(None),
+        query = (
+            select(User)
+            .where(
+                User.id == user_id,
+                User.tenant_id == tenant_id,
+                User.deleted_at.is_(None),
+            )
+            .options(
+                selectinload(User.teacher_classes).selectinload(TeacherClass.school_class),
+            )
         )
 
         result = await db.execute(query)
@@ -107,6 +115,9 @@ class UserService:
         query = (
             select(User)
             .where(*base_filter)
+            .options(
+                selectinload(User.teacher_classes).selectinload(TeacherClass.school_class),
+            )
             .order_by(User.first_name, User.last_name)
             .offset((page - 1) * page_size)
             .limit(page_size)

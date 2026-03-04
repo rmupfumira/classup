@@ -261,7 +261,7 @@ async def get_class_students(
 ):
     """Get all students in a class."""
     service = get_class_service()
-    students = await service.get_class_students(db, class_id, is_active)
+    students, _ = await service.get_class_students(db, class_id, is_active)
 
     return APIResponse(
         data=[

@@ -144,7 +144,7 @@ async def class_detail(
 
     class_service = get_class_service()
     school_class = await class_service.get_class(db, class_id)
-    students = await class_service.get_class_students(db, class_id)
+    students, _ = await class_service.get_class_students(db, class_id)
     teachers_data = await class_service.get_class_teachers(db, class_id)
 
     context = {
@@ -233,8 +233,10 @@ async def manage_teachers(
     school_class = await class_service.get_class(db, class_id)
     teachers_data = await class_service.get_class_teachers(db, class_id)
 
-    # Get all available teachers
-    all_teachers = await user_service.get_users_by_role(db, Role.TEACHER)
+    # Get available teachers (paginated)
+    all_teachers, total_teachers = await user_service.get_teachers_paginated(
+        db, page=1, page_size=50,
+    )
 
     # Filter out already assigned teachers
     assigned_teacher_ids = {u.id for u, _ in teachers_data}
@@ -246,7 +248,7 @@ async def manage_teachers(
         "school_class": school_class,
         "assigned_teachers": [(u, tc) for u, tc in teachers_data],
         "available_teachers": available_teachers,
-        "total_teachers": len(all_teachers),
+        "total_teachers": total_teachers,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

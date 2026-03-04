@@ -100,8 +100,8 @@ async def invitations_list(
 
     total_pages = (total + 19) // 20
 
-    # Get students for the create invitation dialog
-    students, _ = await student_service.get_students(db, page=1, page_size=500)
+    # Get students for the create invitation dialog (first page; use search for more)
+    students, _ = await student_service.get_students(db, page=1, page_size=50)
 
     context = {
         "request": request,

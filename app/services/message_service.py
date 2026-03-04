@@ -474,7 +474,7 @@ class MessageService:
                 })
 
         elif role == "TEACHER":
-            # Get students in teacher's classes
+            # Get students in teacher's classes (limited)
             teacher_class_ids_q = select(TeacherClass.class_id).where(
                 TeacherClass.teacher_id == user_id,
             )
@@ -492,40 +492,50 @@ class MessageService:
                         Student.class_id.in_(teacher_class_ids),
                     )
                     .order_by(Student.first_name)
+                    .limit(100)
                 )
-                students = (await db.execute(students_q)).scalars().all()
+                students = list((await db.execute(students_q)).scalars().all())
+                student_ids = [s.id for s in students]
 
-                for s in students:
-                    # Get parents of this student
-                    parents_q = (
-                        select(User)
-                        .join(ParentStudent, ParentStudent.parent_id == User.id)
+                # Batch-fetch all parents for these students
+                parents_map: dict[uuid.UUID, list[dict]] = {sid: [] for sid in student_ids}
+                if student_ids:
+                    ps_q = (
+                        select(ParentStudent.student_id, User)
+                        .join(User, ParentStudent.parent_id == User.id)
                         .where(
-                            ParentStudent.student_id == s.id,
+                            ParentStudent.student_id.in_(student_ids),
                             User.is_active == True,
                             User.deleted_at.is_(None),
                         )
                     )
-                    parents = (await db.execute(parents_q)).scalars().all()
-                    recipients = [
-                        {
-                            "id": str(p.id),
-                            "name": f"{p.first_name} {p.last_name}",
-                            "role": p.role,
-                        }
-                        for p in parents
-                    ]
+                    for row in (await db.execute(ps_q)).all():
+                        parents_map[row[0]].append({
+                            "id": str(row[1].id),
+                            "name": f"{row[1].first_name} {row[1].last_name}",
+                            "role": row[1].role,
+                        })
 
-                    class_name = s.school_class.name if s.school_class else None
+                # Build class name map
+                class_ids = list({s.class_id for s in students if s.class_id})
+                class_name_map: dict[uuid.UUID, str] = {}
+                if class_ids:
+                    cls_q = select(SchoolClass.id, SchoolClass.name).where(
+                        SchoolClass.id.in_(class_ids),
+                    )
+                    for row in (await db.execute(cls_q)).all():
+                        class_name_map[row[0]] = row[1]
+
+                for s in students:
                     result.append({
                         "student_id": str(s.id),
                         "student_name": f"{s.first_name} {s.last_name}",
-                        "class_name": class_name,
-                        "recipients": recipients,
+                        "class_name": class_name_map.get(s.class_id),
+                        "recipients": parents_map.get(s.id, []),
                     })
 
         else:
-            # SCHOOL_ADMIN / SUPER_ADMIN: all students with parents
+            # SCHOOL_ADMIN / SUPER_ADMIN: students with parents + teachers (limited)
             students_q = (
                 select(Student)
                 .where(
@@ -534,50 +544,67 @@ class MessageService:
                     Student.is_active == True,
                 )
                 .order_by(Student.first_name)
+                .limit(100)
             )
-            students = (await db.execute(students_q)).scalars().all()
+            students = list((await db.execute(students_q)).scalars().all())
+            student_ids = [s.id for s in students]
 
-            for s in students:
-                parents_q = (
-                    select(User)
-                    .join(ParentStudent, ParentStudent.parent_id == User.id)
+            # Batch-fetch all parents
+            parents_map: dict[uuid.UUID, list[dict]] = {sid: [] for sid in student_ids}
+            if student_ids:
+                ps_q = (
+                    select(ParentStudent.student_id, User)
+                    .join(User, ParentStudent.parent_id == User.id)
                     .where(
-                        ParentStudent.student_id == s.id,
+                        ParentStudent.student_id.in_(student_ids),
                         User.is_active == True,
                         User.deleted_at.is_(None),
                     )
                 )
-                parents = (await db.execute(parents_q)).scalars().all()
+                for row in (await db.execute(ps_q)).all():
+                    parents_map[row[0]].append({
+                        "id": str(row[1].id),
+                        "name": f"{row[1].first_name} {row[1].last_name}",
+                        "role": row[1].role,
+                    })
 
-                # Also get teachers of the class
-                teachers = []
-                if s.class_id:
-                    teachers_q = (
-                        select(User)
-                        .join(TeacherClass, TeacherClass.teacher_id == User.id)
-                        .where(
-                            TeacherClass.class_id == s.class_id,
-                            User.is_active == True,
-                            User.deleted_at.is_(None),
-                        )
+            # Batch-fetch all teachers by class
+            class_ids = list({s.class_id for s in students if s.class_id})
+            teachers_map: dict[uuid.UUID, list[dict]] = {}
+            class_name_map: dict[uuid.UUID, str] = {}
+            if class_ids:
+                tc_q = (
+                    select(TeacherClass.class_id, User)
+                    .join(User, TeacherClass.teacher_id == User.id)
+                    .where(
+                        TeacherClass.class_id.in_(class_ids),
+                        User.is_active == True,
+                        User.deleted_at.is_(None),
                     )
-                    teachers = list((await db.execute(teachers_q)).scalars().all())
+                )
+                for row in (await db.execute(tc_q)).all():
+                    teachers_map.setdefault(row[0], []).append({
+                        "id": str(row[1].id),
+                        "name": f"{row[1].first_name} {row[1].last_name}",
+                        "role": row[1].role,
+                    })
+                cls_q = select(SchoolClass.id, SchoolClass.name).where(
+                    SchoolClass.id.in_(class_ids),
+                )
+                for row in (await db.execute(cls_q)).all():
+                    class_name_map[row[0]] = row[1]
 
-                recipients = [
-                    {
-                        "id": str(u.id),
-                        "name": f"{u.first_name} {u.last_name}",
-                        "role": u.role,
-                    }
-                    for u in [*parents, *teachers]
-                    if u.id != user_id
+            for s in students:
+                all_recipients = [
+                    *parents_map.get(s.id, []),
+                    *teachers_map.get(s.class_id, []),
                 ]
+                recipients = [r for r in all_recipients if r["id"] != str(user_id)]
 
-                class_name = s.school_class.name if s.school_class else None
                 result.append({
                     "student_id": str(s.id),
                     "student_name": f"{s.first_name} {s.last_name}",
-                    "class_name": class_name,
+                    "class_name": class_name_map.get(s.class_id),
                     "recipients": recipients,
                 })
 
