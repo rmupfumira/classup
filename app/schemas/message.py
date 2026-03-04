@@ -74,6 +74,7 @@ class ConversationSummary(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    thread_id: uuid.UUID
     student_id: uuid.UUID
     student_name: str
     student_photo_path: str | None = None

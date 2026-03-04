@@ -3,7 +3,6 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -101,11 +100,10 @@ async def get_compose_context(
     return APIResponse(data=context)
 
 
-@router.get("/thread/{student_id}/{other_user_id}", response_model=APIResponse[list[MessageResponse]])
+@router.get("/thread/{thread_id}", response_model=APIResponse[list[MessageResponse]])
 @require_role(Role.SCHOOL_ADMIN, Role.TEACHER, Role.PARENT)
 async def get_thread(
-    student_id: uuid.UUID,
-    other_user_id: uuid.UUID,
+    thread_id: uuid.UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -113,7 +111,7 @@ async def get_thread(
     """Get conversation messages (thread)."""
     service = get_message_service()
     messages, total = await service.get_conversation_messages(
-        db, student_id, other_user_id, page=page, page_size=page_size,
+        db, thread_id, page=page, page_size=page_size,
     )
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
@@ -146,31 +144,29 @@ async def send_message(
     )
 
 
-@router.post("/thread/{student_id}/{other_user_id}/reply", response_model=APIResponse[MessageResponse])
+@router.post("/thread/{thread_id}/reply", response_model=APIResponse[MessageResponse])
 @require_role(Role.SCHOOL_ADMIN, Role.TEACHER, Role.PARENT)
 async def reply_to_thread(
-    student_id: uuid.UUID,
-    other_user_id: uuid.UUID,
+    thread_id: uuid.UUID,
     data: MessageReply,
     db: AsyncSession = Depends(get_db),
 ):
-    """Reply to a conversation."""
+    """Reply to a conversation thread."""
     service = get_message_service()
-    message = await service.reply_to_conversation(db, student_id, other_user_id, data.body)
+    message = await service.reply_to_thread(db, thread_id, data.body)
     return APIResponse(
         data=_build_message_response(message),
         message="Reply sent",
     )
 
 
-@router.put("/thread/{student_id}/{other_user_id}/read", response_model=APIResponse)
+@router.put("/thread/{thread_id}/read", response_model=APIResponse)
 @require_role(Role.SCHOOL_ADMIN, Role.TEACHER, Role.PARENT)
 async def mark_thread_read(
-    student_id: uuid.UUID,
-    other_user_id: uuid.UUID,
+    thread_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Mark conversation as read."""
     service = get_message_service()
-    count = await service.mark_conversation_read(db, student_id, other_user_id)
+    count = await service.mark_conversation_read(db, thread_id)
     return APIResponse(message=f"Marked {count} messages as read")

@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, case, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,7 +25,7 @@ class MessageService:
         db: AsyncSession,
         data: dict,
     ) -> Message:
-        """Send a new message to start or continue a conversation."""
+        """Send a new message (always starts a new thread)."""
         tenant_id = get_tenant_id()
         sender_id = get_current_user_id()
         role = get_current_user_role()
@@ -41,11 +41,7 @@ class MessageService:
         student = await self._get_student(db, student_id)
         class_id = student.class_id
 
-        # Find existing conversation root to thread against
-        parent_message_id = await self._find_conversation_root(
-            db, tenant_id, student_id, sender_id, recipient_id,
-        )
-
+        # Each new message starts a fresh thread (parent_message_id=None)
         message = Message(
             tenant_id=tenant_id,
             sender_id=sender_id,
@@ -54,7 +50,7 @@ class MessageService:
             body=body,
             student_id=student_id,
             class_id=class_id,
-            parent_message_id=parent_message_id,
+            parent_message_id=None,
             status="SENT",
         )
         db.add(message)
@@ -76,35 +72,53 @@ class MessageService:
 
         return message
 
-    async def reply_to_conversation(
+    async def reply_to_thread(
         self,
         db: AsyncSession,
-        student_id: uuid.UUID,
-        other_user_id: uuid.UUID,
+        thread_id: uuid.UUID,
         body: str,
     ) -> Message:
-        """Reply to an existing conversation."""
+        """Reply to an existing thread (identified by root message ID)."""
         tenant_id = get_tenant_id()
         sender_id = get_current_user_id()
         role = get_current_user_role()
 
-        await self._validate_can_message(db, sender_id, role, student_id, other_user_id)
-
-        student = await self._get_student(db, student_id)
-
-        # Find conversation root
-        parent_message_id = await self._find_conversation_root(
-            db, tenant_id, student_id, sender_id, other_user_id,
+        # Load the root message to get student_id and determine the other user
+        root_msg = await db.execute(
+            select(Message)
+            .options(selectinload(Message.recipients))
+            .where(
+                Message.id == thread_id,
+                Message.tenant_id == tenant_id,
+                Message.deleted_at.is_(None),
+                Message.parent_message_id.is_(None),
+            )
         )
+        root = root_msg.scalar_one_or_none()
+        if not root:
+            raise ValueError("Thread not found")
+
+        # Determine the other user (whoever isn't the current sender)
+        if root.sender_id == sender_id:
+            other_user_id = root.recipients[0].user_id if root.recipients else None
+        else:
+            other_user_id = root.sender_id
+
+        if not other_user_id:
+            raise ValueError("Cannot determine recipient")
+
+        await self._validate_can_message(db, sender_id, role, root.student_id, other_user_id)
+
+        student = await self._get_student(db, root.student_id)
 
         message = Message(
             tenant_id=tenant_id,
             sender_id=sender_id,
-            message_type=MessageType.REPLY.value if parent_message_id else MessageType.STUDENT_MESSAGE.value,
+            message_type=MessageType.REPLY.value,
             body=body,
-            student_id=student_id,
+            student_id=root.student_id,
             class_id=student.class_id,
-            parent_message_id=parent_message_id,
+            parent_message_id=thread_id,
             status="SENT",
         )
         db.add(message)
@@ -131,16 +145,15 @@ class MessageService:
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[dict], int]:
-        """Get inbox conversations for the current user.
-
-        Returns a list of ConversationSummary-style dicts grouped by (student_id, other_user_id).
-        """
+        """Get inbox conversations for the current user, grouped by thread."""
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
-        role = get_current_user_role()
 
-        # Get all messages involving the current user (as sender or recipient)
-        # in this tenant, about a student
+        # thread_id = root message id. For root messages it's their own id,
+        # for replies it's parent_message_id.
+        thread_id_expr = func.coalesce(Message.parent_message_id, Message.id)
+
+        # Messages where user is sender or recipient
         recipient_msg_ids = (
             select(MessageRecipient.message_id)
             .where(MessageRecipient.user_id == user_id)
@@ -157,48 +170,56 @@ class MessageService:
             ),
         )
 
-        # Build "other_user_id" as a CASE expression:
-        # if sender is current user, other is the recipient; else other is the sender
-        other_user_id_expr = case(
-            (Message.sender_id == user_id, MessageRecipient.user_id),
-            else_=Message.sender_id,
-        )
-
-        # Join messages with recipients to determine other_user
-        conv_query = (
+        # Get distinct threads with last message time
+        threads_q = (
             select(
-                Message.student_id,
-                other_user_id_expr.label("other_user_id"),
+                thread_id_expr.label("thread_id"),
                 func.max(Message.created_at).label("last_message_at"),
             )
-            .outerjoin(MessageRecipient, MessageRecipient.message_id == Message.id)
             .where(base_filter)
-            # Ensure we don't get NULL other_user (self-sent with no recipient match)
-            .where(
-                or_(
-                    and_(Message.sender_id == user_id, MessageRecipient.user_id.isnot(None)),
-                    Message.sender_id != user_id,
-                )
-            )
-            .group_by(Message.student_id, "other_user_id")
+            .group_by(thread_id_expr)
         )
 
-        # Count total conversations
-        count_q = select(func.count()).select_from(conv_query.subquery())
+        # Count total threads
+        count_q = select(func.count()).select_from(threads_q.subquery())
         total = (await db.execute(count_q)).scalar() or 0
 
-        # Get paginated conversation keys
-        conv_query = conv_query.order_by(func.max(Message.created_at).desc())
-        conv_query = conv_query.offset((page - 1) * page_size).limit(page_size)
-        conv_rows = (await db.execute(conv_query)).all()
+        # Paginated
+        threads_q = threads_q.order_by(func.max(Message.created_at).desc())
+        threads_q = threads_q.offset((page - 1) * page_size).limit(page_size)
+        thread_rows = (await db.execute(threads_q)).all()
 
-        if not conv_rows:
+        if not thread_rows:
             return [], total
 
-        # Batch-fetch all students and users needed (2 queries instead of 2N)
-        student_ids = list({row.student_id for row in conv_rows})
-        other_user_ids = list({row.other_user_id for row in conv_rows})
+        thread_ids = [row.thread_id for row in thread_rows]
 
+        # Fetch root messages (gives us student_id, subject, sender, recipient)
+        root_msgs_result = await db.execute(
+            select(Message)
+            .options(selectinload(Message.recipients))
+            .where(Message.id.in_(thread_ids))
+        )
+        root_msgs = {m.id: m for m in root_msgs_result.scalars().all()}
+
+        # Determine other_user per thread
+        other_user_map: dict[uuid.UUID, uuid.UUID | None] = {}
+        student_ids_set: set[uuid.UUID] = set()
+        for tid in thread_ids:
+            root = root_msgs.get(tid)
+            if not root:
+                continue
+            if root.student_id:
+                student_ids_set.add(root.student_id)
+            if root.sender_id == user_id:
+                other_user_map[tid] = root.recipients[0].user_id if root.recipients else None
+            else:
+                other_user_map[tid] = root.sender_id
+
+        student_ids = list(student_ids_set)
+        other_user_ids = list({uid for uid in other_user_map.values() if uid})
+
+        # Batch-fetch students and users
         students_result = await db.execute(
             select(Student).where(Student.id.in_(student_ids))
         )
@@ -209,11 +230,11 @@ class MessageService:
         )
         users_map = {u.id: u for u in users_result.scalars().all()}
 
-        # Batch-fetch unread counts per (student_id, sender_id) — 1 query
+        # Batch-fetch unread counts per thread
+        unread_thread_expr = func.coalesce(Message.parent_message_id, Message.id)
         unread_q = (
             select(
-                Message.student_id,
-                Message.sender_id,
+                unread_thread_expr.label("thread_id"),
                 func.count(MessageRecipient.id).label("cnt"),
             )
             .join(Message, Message.id == MessageRecipient.message_id)
@@ -222,79 +243,59 @@ class MessageService:
                 MessageRecipient.is_read == False,
                 Message.tenant_id == tenant_id,
                 Message.deleted_at.is_(None),
-                Message.student_id.in_(student_ids),
+                unread_thread_expr.in_(thread_ids),
             )
-            .group_by(Message.student_id, Message.sender_id)
+            .group_by(unread_thread_expr)
         )
         unread_rows = (await db.execute(unread_q)).all()
-        unread_map = {(r.student_id, r.sender_id): r.cnt for r in unread_rows}
+        unread_map = {r.thread_id: r.cnt for r in unread_rows}
 
-        # Batch-fetch last message per conversation using DISTINCT ON equivalent
-        # Build OR conditions for each conversation pair
-        conv_conditions = []
-        for row in conv_rows:
-            conv_conditions.append(
-                and_(
-                    Message.student_id == row.student_id,
-                    or_(
-                        and_(Message.sender_id == user_id, MessageRecipient.user_id == row.other_user_id),
-                        and_(Message.sender_id == row.other_user_id, MessageRecipient.user_id == user_id),
-                    ),
-                )
-            )
-
-        last_msgs_q = (
+        # Fetch last message per thread
+        last_msg_q = (
             select(Message)
-            .outerjoin(MessageRecipient, MessageRecipient.message_id == Message.id)
             .where(
                 Message.tenant_id == tenant_id,
                 Message.deleted_at.is_(None),
-                or_(*conv_conditions),
+                or_(
+                    Message.id.in_(thread_ids),
+                    Message.parent_message_id.in_(thread_ids),
+                ),
             )
-            .order_by(Message.student_id, Message.created_at.desc())
+            .order_by(Message.created_at.desc())
         )
-        last_msgs_result = await db.execute(last_msgs_q)
-        all_msgs = last_msgs_result.scalars().unique().all()
+        last_msg_result = await db.execute(last_msg_q)
+        all_thread_msgs = last_msg_result.scalars().unique().all()
 
-        # Group by (student_id, other_user) and pick the latest
-        last_msg_map: dict[tuple, Message] = {}
-        subject_map: dict[tuple, str] = {}
-        for msg in all_msgs:
-            # Determine other_user for this message
-            if msg.sender_id == user_id:
-                for r in msg.recipients:
-                    key = (msg.student_id, r.user_id)
-                    if key not in last_msg_map:
-                        last_msg_map[key] = msg
-                    # Overwrite so oldest (root) subject wins (list is desc)
-                    if msg.subject:
-                        subject_map[key] = msg.subject
-            else:
-                key = (msg.student_id, msg.sender_id)
-                if key not in last_msg_map:
-                    last_msg_map[key] = msg
-                if msg.subject:
-                    subject_map[key] = msg.subject
+        last_msg_map: dict[uuid.UUID, Message] = {}
+        for msg in all_thread_msgs:
+            tid = msg.parent_message_id if msg.parent_message_id else msg.id
+            if tid not in last_msg_map:
+                last_msg_map[tid] = msg
 
         # Build response
         conversations = []
-        for row in conv_rows:
-            s_id = row.student_id
-            o_id = row.other_user_id
+        for row in thread_rows:
+            tid = row.thread_id
+            root = root_msgs.get(tid)
+            if not root:
+                continue
+
+            s_id = root.student_id
+            o_id = other_user_map.get(tid)
 
             student = students_map.get(s_id)
-            other_user = users_map.get(o_id)
+            other_user = users_map.get(o_id) if o_id else None
             if not student or not other_user:
                 continue
 
-            last_msg = last_msg_map.get((s_id, o_id))
-            unread_count = unread_map.get((s_id, o_id), 0)
+            last_msg = last_msg_map.get(tid)
 
             class_name = None
             if student.school_class:
                 class_name = student.school_class.name
 
             conversations.append({
+                "thread_id": tid,
                 "student_id": s_id,
                 "student_name": f"{student.first_name} {student.last_name}",
                 "student_photo_path": student.photo_path if hasattr(student, "photo_path") else None,
@@ -302,11 +303,11 @@ class MessageService:
                 "other_user_id": o_id,
                 "other_user_name": f"{other_user.first_name} {other_user.last_name}",
                 "other_user_role": other_user.role,
-                "subject": subject_map.get((s_id, o_id)),
+                "subject": root.subject,
                 "last_message_body": last_msg.body[:100] if last_msg else "",
                 "last_message_at": row.last_message_at,
                 "last_message_sender_id": last_msg.sender_id if last_msg else None,
-                "unread_count": unread_count,
+                "unread_count": unread_map.get(tid, 0),
             })
 
         return conversations, total
@@ -314,29 +315,25 @@ class MessageService:
     async def get_conversation_messages(
         self,
         db: AsyncSession,
-        student_id: uuid.UUID,
-        other_user_id: uuid.UUID,
+        thread_id: uuid.UUID,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[Message], int]:
-        """Get all messages in a conversation, ordered ASC (chat-style).
+        """Get all messages in a thread, ordered ASC (chat-style).
 
         Also marks unread messages as read for the current user.
         """
         tenant_id = get_tenant_id()
-        user_id = get_current_user_id()
 
-        # All messages between current user and other_user about this student
+        # All messages in this thread (root + replies)
         query = (
             select(Message)
-            .outerjoin(MessageRecipient, MessageRecipient.message_id == Message.id)
             .where(
                 Message.tenant_id == tenant_id,
                 Message.deleted_at.is_(None),
-                Message.student_id == student_id,
                 or_(
-                    and_(Message.sender_id == user_id, MessageRecipient.user_id == other_user_id),
-                    and_(Message.sender_id == other_user_id, MessageRecipient.user_id == user_id),
+                    Message.id == thread_id,
+                    Message.parent_message_id == thread_id,
                 ),
             )
         )
@@ -348,7 +345,6 @@ class MessageService:
         # Paginate (most recent messages last)
         query = query.order_by(Message.created_at.asc())
         # For chat, we want the latest page to show recent messages
-        # Calculate offset to get the last page if page=1
         if page == 1 and total > page_size:
             offset = total - page_size
             if offset < 0:
@@ -361,28 +357,30 @@ class MessageService:
         messages = list(result.scalars().unique().all())
 
         # Mark unread as read
-        await self.mark_conversation_read(db, student_id, other_user_id)
+        await self.mark_conversation_read(db, thread_id)
 
         return messages, total
 
     async def mark_conversation_read(
         self,
         db: AsyncSession,
-        student_id: uuid.UUID,
-        other_user_id: uuid.UUID,
+        thread_id: uuid.UUID,
     ) -> int:
-        """Mark all unread messages in a conversation as read for current user."""
+        """Mark all unread messages in a thread as read for current user."""
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
-        # Get message IDs from other_user in this conversation
+        # Get message IDs in this thread sent by others
         msg_ids_subq = (
             select(Message.id)
             .where(
                 Message.tenant_id == tenant_id,
                 Message.deleted_at.is_(None),
-                Message.student_id == student_id,
-                Message.sender_id == other_user_id,
+                or_(
+                    Message.id == thread_id,
+                    Message.parent_message_id == thread_id,
+                ),
+                Message.sender_id != user_id,
             )
             .subquery()
         )
@@ -708,33 +706,6 @@ class MessageService:
 
         else:
             raise ForbiddenException("You do not have permission to send messages")
-
-    async def _find_conversation_root(
-        self,
-        db: AsyncSession,
-        tenant_id: uuid.UUID,
-        student_id: uuid.UUID,
-        user_a_id: uuid.UUID,
-        user_b_id: uuid.UUID,
-    ) -> uuid.UUID | None:
-        """Find the first message in a conversation to use as parent_message_id."""
-        result = await db.execute(
-            select(Message.id)
-            .outerjoin(MessageRecipient, MessageRecipient.message_id == Message.id)
-            .where(
-                Message.tenant_id == tenant_id,
-                Message.deleted_at.is_(None),
-                Message.student_id == student_id,
-                or_(
-                    and_(Message.sender_id == user_a_id, MessageRecipient.user_id == user_b_id),
-                    and_(Message.sender_id == user_b_id, MessageRecipient.user_id == user_a_id),
-                ),
-            )
-            .order_by(Message.created_at.asc())
-            .limit(1)
-        )
-        row = result.scalar_one_or_none()
-        return row
 
     async def _send_message_notifications(
         self,

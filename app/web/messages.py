@@ -77,11 +77,10 @@ async def messages_inbox(
     return templates.TemplateResponse("messages/inbox.html", context)
 
 
-@router.get("/thread/{student_id}/{other_user_id}", response_class=HTMLResponse)
+@router.get("/thread/{thread_id}", response_class=HTMLResponse)
 async def messages_thread(
     request: Request,
-    student_id: uuid.UUID,
-    other_user_id: uuid.UUID,
+    thread_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Render the conversation thread page."""
@@ -100,33 +99,48 @@ async def messages_thread(
 
     try:
         messages_list, total = await service.get_conversation_messages(
-            db, student_id, other_user_id, page=1, page_size=100,
+            db, thread_id, page=1, page_size=100,
         )
     except Exception:
         return RedirectResponse(url="/messages", status_code=302)
 
-    # Get student and other user info for header
+    # Get student and other user info from the root message
     from sqlalchemy import select
+    from app.models.message import Message, MessageRecipient
     from app.models.student import Student
     from app.models.user import User
+    from sqlalchemy.orm import selectinload
 
-    student_result = await db.execute(select(Student).where(Student.id == student_id))
+    root_result = await db.execute(
+        select(Message)
+        .options(selectinload(Message.recipients))
+        .where(Message.id == thread_id)
+    )
+    root_msg = root_result.scalar_one_or_none()
+
+    if not root_msg:
+        return RedirectResponse(url="/messages", status_code=302)
+
+    student_result = await db.execute(select(Student).where(Student.id == root_msg.student_id))
     student = student_result.scalar_one_or_none()
 
-    other_result = await db.execute(select(User).where(User.id == other_user_id))
-    other_user = other_result.scalar_one_or_none()
+    # Determine the other user
+    if root_msg.sender_id == user.id:
+        other_id = root_msg.recipients[0].user_id if root_msg.recipients else None
+    else:
+        other_id = root_msg.sender_id
+
+    other_user = None
+    if other_id:
+        other_result = await db.execute(select(User).where(User.id == other_id))
+        other_user = other_result.scalar_one_or_none()
 
     student_name = f"{student.first_name} {student.last_name}" if student else "Unknown"
     other_user_name = f"{other_user.first_name} {other_user.last_name}" if other_user else "Unknown"
     other_user_role = other_user.role if other_user else ""
     class_name = student.school_class.name if student and student.school_class else None
 
-    # Get subject from the earliest message in this conversation
-    thread_subject = None
-    for msg in messages_list:
-        if msg.subject:
-            thread_subject = msg.subject
-            break
+    thread_subject = root_msg.subject
 
     # Teacher class context for nav
     class_ctx = {}
@@ -138,8 +152,7 @@ async def messages_thread(
         "user": user,
         "current_language": get_current_language(),
         "messages": messages_list,
-        "student_id": str(student_id),
-        "other_user_id": str(other_user_id),
+        "thread_id": str(thread_id),
         "student_name": student_name,
         "other_user_name": other_user_name,
         "other_user_role": other_user_role.lower() if other_user_role else "",

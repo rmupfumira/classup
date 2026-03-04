@@ -157,9 +157,10 @@
                     }
                 });
 
-                if (result) {
+                if (result && result.data) {
                     ClassUp.toast('Message sent', 'success');
-                    window.location.href = '/messages/thread/' + studentId + '/' + recipientId;
+                    // Redirect to the new thread using the message ID as thread_id
+                    window.location.href = '/messages/thread/' + result.data.id;
                 }
             } catch (error) {
                 sendBtn.disabled = false;
