@@ -217,6 +217,22 @@ class NotificationService:
             notification_type="ATTENDANCE_MARKED",
         )
 
+    async def notify_pickup(
+        self,
+        db: AsyncSession,
+        parent_ids: list[uuid.UUID],
+        student_name: str,
+        checkout_time: str,
+    ) -> list[Notification]:
+        """Send pick-up notification to parents."""
+        return await self.create_bulk_notifications(
+            db=db,
+            user_ids=parent_ids,
+            title=f"Pick-up: {student_name}",
+            body=f"{student_name} was checked out at {checkout_time}.",
+            notification_type="ATTENDANCE_CHECKED_OUT",
+        )
+
     async def notify_report_finalized(
         self,
         db: AsyncSession,

@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
-from app.exceptions import ConflictException, ForbiddenException, NotFoundException
+from app.exceptions import ConflictException, ForbiddenException, NotFoundException, ValidationException
 from app.models import AttendanceRecord, SchoolClass, Student, TeacherClass, Tenant, User
 from app.models.attendance import AttendanceStatus
 from app.models.user import Role
+from app.models.student import ParentStudent
 from app.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
@@ -24,9 +25,6 @@ from app.schemas.attendance import (
 from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 logger = logging.getLogger(__name__)
-
-# Statuses that trigger parent notifications
-_NOTIFY_STATUSES = {AttendanceStatus.ABSENT.value, AttendanceStatus.LATE.value}
 
 
 class AttendanceService:
@@ -153,11 +151,10 @@ class AttendanceService:
         await db.flush()
         await db.refresh(record)
 
-        # Notify parents for ABSENT or LATE
-        if record.status in _NOTIFY_STATUSES:
-            await self._notify_parents_attendance(
-                db, student, record.status, record.date, record.notes
-            )
+        # Notify parents of attendance status
+        await self._notify_parents_attendance(
+            db, student, record.status, record.date, record.notes
+        )
 
         return record
 
@@ -170,6 +167,9 @@ class AttendanceService:
         """Update an attendance record."""
         record = await self.get_attendance_record(db, record_id)
 
+        # Detect check-out transition (None → value)
+        had_checkout = record.check_out_time is not None
+
         # Update fields
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
@@ -180,6 +180,16 @@ class AttendanceService:
 
         await db.flush()
         await db.refresh(record)
+
+        # Notify parents if student was just checked out
+        if not had_checkout and record.check_out_time is not None:
+            try:
+                student = await self._get_student(db, record.student_id)
+                await self._notify_parents_pickup(
+                    db, student, record.check_out_time, record.date
+                )
+            except Exception as e:
+                logger.error(f"Failed to send pickup notification for student {record.student_id}: {e}")
 
         return record
 
@@ -198,7 +208,7 @@ class AttendanceService:
         success_count = 0
         error_count = 0
         errors = []
-        notify_student_ids = []  # Students with ABSENT/LATE to notify parents
+        notify_student_ids = []  # Students to notify parents
 
         for record_data in data.records:
             try:
@@ -227,11 +237,10 @@ class AttendanceService:
 
                 success_count += 1
 
-                # Track students needing parent notification
-                if record_data.status.value in _NOTIFY_STATUSES:
-                    notify_student_ids.append(
-                        (record_data.student_id, record_data.status.value, record_data.notes)
-                    )
+                # Track students for parent notification
+                notify_student_ids.append(
+                    (record_data.student_id, record_data.status.value, record_data.notes)
+                )
 
             except Exception as e:
                 error_count += 1
@@ -242,7 +251,7 @@ class AttendanceService:
 
         await db.flush()
 
-        # Send notifications for ABSENT/LATE students
+        # Send notifications to parents for all students
         for student_id, status, notes in notify_student_ids:
             try:
                 student = await self._get_student(db, student_id)
@@ -305,6 +314,7 @@ class AttendanceService:
             record = existing_records.get(student.id)
             status = record.status if record else None
             check_in_time = record.check_in_time if record else None
+            check_out_time = record.check_out_time if record else None
             notes = record.notes if record else None
 
             student_data.append({
@@ -313,6 +323,7 @@ class AttendanceService:
                 "photo_path": student.photo_path,
                 "status": status,
                 "check_in_time": check_in_time.isoformat() if check_in_time else None,
+                "check_out_time": check_out_time.isoformat() if check_out_time else None,
                 "notes": notes,
                 "record_id": str(record.id) if record else None,
             })
@@ -463,6 +474,145 @@ class AttendanceService:
             attendance_rate=round(attendance_rate, 1),
         )
 
+    async def report_absence_by_parent(
+        self,
+        db: AsyncSession,
+        student_id: uuid.UUID,
+        absence_date: date,
+        reason: str,
+    ) -> AttendanceRecord:
+        """Allow a parent to report their child's absence as EXCUSED."""
+        tenant_id = get_tenant_id()
+        user_id = get_current_user_id()
+
+        # Verify parent owns the student
+        ps_query = select(ParentStudent).where(
+            ParentStudent.parent_id == user_id,
+            ParentStudent.student_id == student_id,
+        )
+        result = await db.execute(ps_query)
+        if not result.scalar_one_or_none():
+            raise ForbiddenException("You can only report absence for your own children")
+
+        # Date must be today or in the future
+        if absence_date < date.today():
+            raise ValidationException("Cannot report absence for a past date")
+
+        # Get student
+        student = await self._get_student(db, student_id)
+
+        if not student.class_id:
+            raise ValidationException("Student is not assigned to a class")
+
+        # Check for existing record
+        existing = await self._get_existing_record(db, student_id, absence_date)
+        if existing:
+            if existing.status == AttendanceStatus.EXCUSED.value:
+                # Update notes on existing EXCUSED record
+                existing.notes = f"Reported by parent: {reason}"
+                await db.flush()
+                await db.refresh(existing)
+                return existing
+            else:
+                raise ConflictException(
+                    "Attendance has already been recorded by the teacher for this date"
+                )
+
+        # Create EXCUSED record
+        record = AttendanceRecord(
+            tenant_id=tenant_id,
+            student_id=student_id,
+            class_id=student.class_id,
+            date=absence_date,
+            status=AttendanceStatus.EXCUSED.value,
+            notes=f"Reported by parent: {reason}",
+            recorded_by=user_id,
+        )
+        db.add(record)
+        await db.flush()
+        await db.refresh(record)
+
+        # Notify staff
+        try:
+            await self._notify_staff_absence_reported(db, student, absence_date, reason)
+        except Exception as e:
+            logger.error(f"Failed to notify staff of absence report for student {student_id}: {e}")
+
+        return record
+
+    async def _notify_staff_absence_reported(
+        self,
+        db: AsyncSession,
+        student: Student,
+        absence_date: date,
+        reason: str,
+    ) -> None:
+        """Notify teachers and admins when a parent reports an absence."""
+        from app.services.email_service import get_email_service
+        from app.services.notification_service import get_notification_service
+
+        settings = get_settings()
+        tenant = await db.get(Tenant, student.tenant_id)
+        tenant_name = tenant.name if tenant else settings.app_name
+        student_name = student.full_name
+        date_str = absence_date.strftime("%B %d, %Y")
+
+        email_service = get_email_service()
+        notification_service = get_notification_service()
+
+        title = f"Absence Reported: {student_name}"
+        body = f"A parent has reported {student_name} absent for {date_str}. Reason: {reason}"
+
+        # Notify class teachers
+        if student.class_id:
+            teacher_query = select(TeacherClass).where(
+                TeacherClass.class_id == student.class_id,
+            )
+            result = await db.execute(teacher_query)
+            teacher_classes = result.scalars().all()
+
+            teacher_ids = []
+            for tc in teacher_classes:
+                teacher = await db.get(User, tc.teacher_id)
+                if not teacher or not teacher.is_active:
+                    continue
+                teacher_ids.append(teacher.id)
+                try:
+                    await email_service.send_teacher_notification(
+                        to=teacher.email,
+                        teacher_name=teacher.first_name,
+                        notification_type="ABSENCE_REPORTED",
+                        title=title,
+                        body=body,
+                        tenant_name=tenant_name,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to email absence report to teacher {teacher.email}: {e}")
+
+            if teacher_ids:
+                try:
+                    await notification_service.create_bulk_notifications(
+                        db=db,
+                        user_ids=teacher_ids,
+                        title=title,
+                        body=body,
+                        notification_type="ABSENCE_REPORTED",
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to create absence report notifications for teachers: {e}")
+
+        # Notify admins
+        try:
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=student.tenant_id,
+                notification_type="ABSENCE_REPORTED",
+                title=title,
+                body=body,
+            )
+        except Exception as e:
+            logger.error(f"Failed to notify admins of absence report: {e}")
+
     async def _notify_parents_attendance(
         self,
         db: AsyncSession,
@@ -471,7 +621,7 @@ class AttendanceService:
         attendance_date: date,
         notes: str | None = None,
     ) -> None:
-        """Send email and in-app notifications to parents for ABSENT/LATE attendance."""
+        """Send email and in-app notifications to parents for attendance updates."""
         from app.services.email_service import get_email_service
         from app.services.notification_service import get_notification_service
 
@@ -521,6 +671,65 @@ class AttendanceService:
             except Exception as e:
                 logger.error(
                     f"Failed to create attendance notifications for student {student.id}: {e}"
+                )
+
+    async def _notify_parents_pickup(
+        self,
+        db: AsyncSession,
+        student: Student,
+        checkout_time: datetime,
+        attendance_date: date,
+    ) -> None:
+        """Send email and in-app notifications to parents when a student is checked out."""
+        from app.services.email_service import get_email_service
+        from app.services.notification_service import get_notification_service
+
+        if not student.parent_students:
+            logger.info(f"No parents linked to student {student.id} — skipping pickup alert")
+            return
+
+        settings = get_settings()
+        tenant = await db.get(Tenant, student.tenant_id)
+        tenant_name = tenant.name if tenant else settings.app_name
+        student_name = student.full_name
+        date_str = attendance_date.strftime("%B %d, %Y")
+        time_str = checkout_time.strftime("%H:%M")
+
+        email_service = get_email_service()
+        notification_service = get_notification_service()
+
+        parent_ids = []
+        for ps in student.parent_students:
+            parent = ps.parent
+            if not parent or not parent.is_active:
+                continue
+            parent_ids.append(parent.id)
+            try:
+                await email_service.send_pickup_alert(
+                    to=parent.email,
+                    parent_name=parent.first_name,
+                    student_name=student_name,
+                    checkout_time=time_str,
+                    date=date_str,
+                    tenant_name=tenant_name,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to email pickup alert to {parent.email} "
+                    f"for student {student.id}: {e}"
+                )
+
+        if parent_ids:
+            try:
+                await notification_service.notify_pickup(
+                    db=db,
+                    parent_ids=parent_ids,
+                    student_name=student_name,
+                    checkout_time=time_str,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to create pickup notifications for student {student.id}: {e}"
                 )
 
     async def _get_student(self, db: AsyncSession, student_id: uuid.UUID) -> Student:

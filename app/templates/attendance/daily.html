@@ -108,9 +108,14 @@
                         </div>
                         <div class="ml-4 min-w-0">
                             <p class="text-sm font-medium text-gray-900 truncate">{{ student.student_name }}</p>
-                            {% if student.check_in_time %}
-                            <p class="text-xs text-gray-500">Checked in: {{ student.check_in_time[:5] if student.check_in_time else '' }}</p>
-                            {% endif %}
+                            <div class="flex items-center gap-3 text-xs text-gray-500">
+                                {% if student.check_in_time %}
+                                <span>In: {{ student.check_in_time[:5] }}</span>
+                                {% endif %}
+                                {% if student.check_out_time %}
+                                <span class="text-blue-600">Out: {{ student.check_out_time[:5] }}</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
@@ -140,6 +145,19 @@
                                 data-status="EXCUSED">
                             Excused
                         </button>
+
+                        {% if student.record_id and student.status in ('PRESENT', 'LATE') %}
+                            {% if student.check_out_time %}
+                            <span class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700">
+                                Checked Out
+                            </span>
+                            {% else %}
+                            <button type="button" onclick="checkOutStudent('{{ student.record_id }}')"
+                                    class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                Check Out
+                            </button>
+                            {% endif %}
+                        {% endif %}
                     </div>
                 </div>
 
@@ -279,12 +297,8 @@ async function saveAttendance() {
     }
 
     try {
-        const response = await fetch('/api/v1/attendance/bulk', {
+        const result = await ClassUp.fetch('/api/v1/attendance/bulk', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'same-origin',
             body: JSON.stringify({
                 class_id: classId,
                 date: date,
@@ -292,19 +306,31 @@ async function saveAttendance() {
             })
         });
 
-        const result = await response.json();
-
-        if (response.ok) {
-            // Show success message
-            ClassUp.toast(`Attendance saved! ${result.data.success_count} records saved.`, 'success');
-            // Reload to show updated stats
-            window.location.reload();
-        } else {
-            ClassUp.toast(result.message || 'Failed to save attendance', 'error');
-        }
+        ClassUp.toast(`Attendance saved! ${result.data.success_count} records saved.`, 'success');
+        window.location.reload();
     } catch (error) {
         console.error('Error saving attendance:', error);
         ClassUp.toast('Failed to save attendance. Please try again.', 'error');
+    }
+}
+
+async function checkOutStudent(recordId) {
+    const confirmed = await ClassUp.confirm('Check out this student? Parents will be notified.');
+    if (!confirmed) return;
+
+    try {
+        await ClassUp.fetch(`/api/v1/attendance/${recordId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                check_out_time: new Date().toISOString()
+            })
+        });
+
+        ClassUp.toast('Student checked out successfully.', 'success');
+        window.location.reload();
+    } catch (error) {
+        console.error('Error checking out student:', error);
+        ClassUp.toast('Failed to check out student. Please try again.', 'error');
     }
 }
 </script>

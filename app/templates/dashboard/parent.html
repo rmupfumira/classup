@@ -137,6 +137,16 @@
                        class="flex-1 text-center py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                         Attendance
                     </a>
+                    {% if attendance and attendance.status == 'EXCUSED' %}
+                    <span class="flex-1 text-center py-2 text-sm font-medium text-gray-400 rounded-lg">
+                        Absence Reported
+                    </span>
+                    {% else %}
+                    <button type="button" onclick="reportAbsence('{{ child.id }}', '{{ child.first_name }} {{ child.last_name }}')"
+                            class="flex-1 text-center py-2 text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors">
+                        Report Absence
+                    </button>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -271,4 +281,94 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Report Absence Modal -->
+<dialog id="absence-modal" class="rounded-2xl shadow-xl border-0 p-0 w-full max-w-md backdrop:bg-black/50">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Report Absence</h3>
+            <button type="button" onclick="document.getElementById('absence-modal').close()"
+                    class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <p class="text-sm text-gray-500 mb-4">
+            Reporting absence for <strong id="absence-student-name"></strong>
+        </p>
+
+        <form id="absence-form" class="space-y-4">
+            <input type="hidden" id="absence-student-id">
+
+            <div>
+                <label for="absence-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" id="absence-date"
+                       min="{{ today.isoformat() }}"
+                       value="{{ today.isoformat() }}"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <div>
+                <label for="absence-reason" class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                <textarea id="absence-reason" rows="3" required
+                          placeholder="e.g. Sick, family emergency, medical appointment..."
+                          class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"></textarea>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('absence-modal').close()"
+                        class="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" onclick="submitAbsence()"
+                        class="flex-1 py-2.5 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors">
+                    Submit
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function reportAbsence(studentId, studentName) {
+    document.getElementById('absence-student-id').value = studentId;
+    document.getElementById('absence-student-name').textContent = studentName;
+    document.getElementById('absence-reason').value = '';
+    document.getElementById('absence-date').value = '{{ today.isoformat() }}';
+    document.getElementById('absence-modal').showModal();
+}
+
+async function submitAbsence() {
+    const studentId = document.getElementById('absence-student-id').value;
+    const absenceDate = document.getElementById('absence-date').value;
+    const reason = document.getElementById('absence-reason').value.trim();
+
+    if (!reason) {
+        ClassUp.toast('Please provide a reason for the absence.', 'warning');
+        return;
+    }
+
+    try {
+        await ClassUp.fetch('/api/v1/attendance/report-absence', {
+            method: 'POST',
+            body: JSON.stringify({
+                student_id: studentId,
+                date: absenceDate,
+                reason: reason
+            })
+        });
+
+        document.getElementById('absence-modal').close();
+        ClassUp.toast('Absence reported successfully. The school has been notified.', 'success');
+        window.location.reload();
+    } catch (error) {
+        console.error('Error reporting absence:', error);
+        ClassUp.toast('Failed to report absence. Please try again.', 'error');
+    }
+}
+</script>
 {% endblock %}

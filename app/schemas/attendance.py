@@ -116,6 +116,14 @@ class StudentAttendanceSummary(BaseModel):
     attendance_rate: float
 
 
+class ParentAbsenceReport(BaseModel):
+    """Schema for a parent reporting their child's absence."""
+
+    student_id: uuid.UUID
+    date: date_type = Field(default_factory=date_type.today)
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
 class ClassAttendanceForDate(BaseModel):
     """Class attendance data for a specific date."""
 

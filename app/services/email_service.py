@@ -327,9 +327,13 @@ class EmailService:
         notes: str | None = None,
     ) -> str | None:
         """Send an attendance alert to parents."""
+        if status in ("ABSENT", "LATE"):
+            subject = f"Attendance Alert: {student_name} marked {status}"
+        else:
+            subject = f"Attendance Update: {student_name} marked {status}"
         return await self.send(
             to=to,
-            subject=f"Attendance Alert: {student_name} marked {status}",
+            subject=subject,
             template_name="attendance_alert.html",
             context={
                 "parent_name": parent_name,
@@ -337,6 +341,31 @@ class EmailService:
                 "status": status,
                 "date": date,
                 "notes": notes,
+                "tenant_name": tenant_name,
+                "app_name": settings.app_name,
+            },
+            from_name=tenant_name,
+        )
+
+    async def send_pickup_alert(
+        self,
+        to: str,
+        parent_name: str,
+        student_name: str,
+        checkout_time: str,
+        date: str,
+        tenant_name: str,
+    ) -> str | None:
+        """Send a pick-up alert to parents when a student is checked out."""
+        return await self.send(
+            to=to,
+            subject=f"Pick-up Alert: {student_name} checked out",
+            template_name="pickup_alert.html",
+            context={
+                "parent_name": parent_name,
+                "student_name": student_name,
+                "checkout_time": checkout_time,
+                "date": date,
                 "tenant_name": tenant_name,
                 "app_name": settings.app_name,
             },

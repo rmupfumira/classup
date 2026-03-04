@@ -17,6 +17,7 @@ from app.schemas.attendance import (
     BulkAttendanceCreate,
     BulkAttendanceResponse,
     ClassAttendanceForDate,
+    ParentAbsenceReport,
     StudentAttendanceSummary,
 )
 from app.schemas.common import APIResponse, PaginationMeta
@@ -215,6 +216,32 @@ async def get_attendance_stats(
     )
 
     return APIResponse(data=stats)
+
+
+@router.post("/report-absence", response_model=APIResponse[AttendanceRecordResponse])
+@require_role(Role.PARENT)
+async def report_absence(
+    data: ParentAbsenceReport,
+    db: AsyncSession = Depends(get_db),
+):
+    """Allow a parent to report their child's absence.
+
+    Creates an EXCUSED attendance record and notifies class teachers and admins.
+    """
+    service = get_attendance_service()
+    record = await service.report_absence_by_parent(
+        db,
+        student_id=data.student_id,
+        absence_date=data.date,
+        reason=data.reason,
+    )
+    await db.commit()
+    await db.refresh(record)
+
+    return APIResponse(
+        data=_build_attendance_response(record),
+        message="Absence reported successfully",
+    )
 
 
 @router.get("/{record_id}", response_model=APIResponse[AttendanceRecordResponse])
