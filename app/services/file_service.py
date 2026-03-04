@@ -370,23 +370,30 @@ class FileService:
         self,
         file_entity: FileEntity,
         expires_in: int = 3600,
+        inline: bool = False,
     ) -> str:
-        """Generate a presigned URL for downloading a file.
+        """Generate a presigned URL for downloading or viewing a file.
 
         Args:
             file_entity: The file entity
             expires_in: URL expiry time in seconds (default 1 hour)
+            inline: If True, use inline disposition so PDFs display in browser
 
         Returns:
             Presigned URL string
         """
         try:
+            if inline:
+                disposition = f'inline; filename="{file_entity.original_name}"'
+            else:
+                disposition = f'attachment; filename="{file_entity.original_name}"'
+
             url = self.s3_client.generate_presigned_url(
                 "get_object",
                 Params={
                     "Bucket": settings.r2_bucket_name,
                     "Key": file_entity.storage_path,
-                    "ResponseContentDisposition": f'attachment; filename="{file_entity.original_name}"',
+                    "ResponseContentDisposition": disposition,
                 },
                 ExpiresIn=expires_in,
             )

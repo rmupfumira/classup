@@ -23,6 +23,7 @@ from app.models.message import Message, MessageAttachment, MessageRecipient, Mes
 from app.models.notification import Notification, NotificationType
 from app.models.announcement import Announcement, AnnouncementDismissal, AnnouncementLevel, AnnouncementSeverity
 from app.models.photo_share import PhotoShare, PhotoShareFile, PhotoShareTag
+from app.models.document_share import DocumentShare, DocumentShareFile, DocumentShareTag, DocumentShareScope
 from app.models.webhook import (
     WebhookEndpoint,
     WebhookEvent,
@@ -95,6 +96,11 @@ __all__ = [
     "PhotoShare",
     "PhotoShareFile",
     "PhotoShareTag",
+    # Document Share
+    "DocumentShare",
+    "DocumentShareFile",
+    "DocumentShareTag",
+    "DocumentShareScope",
     # Webhook
     "WebhookEndpoint",
     "WebhookEvent",

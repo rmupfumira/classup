@@ -1,0 +1,33 @@
+{% extends "base_email.html" %}
+
+{% block title %}New Document: {{ title }}{% endblock %}
+
+{% block header_color %}#7C3AED{% endblock %}
+
+{% block content %}
+<p style="margin: 0 0 8px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    {{ sharer_name }} shared a document{% if scope == 'CLASS' and class_name %} with <strong>{{ class_name }}</strong>{% elif scope == 'STUDENT' and tagged_students %}, for <strong>{{ tagged_students|join(', ') }}</strong>{% elif scope == 'SCHOOL' %} (school-wide){% endif %}:
+</p>
+
+<div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; margin: 0 0 16px 0;">
+    <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #111827;">
+        {{ title }}
+    </p>
+    {% if description %}
+    <p style="margin: 0 0 8px 0; font-size: 14px; color: #6B7280; line-height: 1.5;">
+        {{ description }}
+    </p>
+    {% endif %}
+    <p style="margin: 0; font-size: 13px; color: #9CA3AF;">
+        {{ file_count }} file{{ 's' if file_count != 1 else '' }}
+    </p>
+</div>
+
+<p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    Log in to ClassUp to view and download the document.
+</p>
+{% endblock %}
+
+{% block footer_text %}
+This is an automated notification from {{ tenant_name }}.
+{% endblock %}

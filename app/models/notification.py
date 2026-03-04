@@ -111,6 +111,7 @@ class Notification(Base, TimestampMixin):
             "invitation": f"/invitations/{self.reference_id}",
             "announcement": f"/announcements/{self.reference_id}",
             "photo_share": "/photos",
+            "document_share": "/documents",
             "message": "/messages",
         }
 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Upload Document - {{ app_name }}{% endblock %}
+{% block title %}Share Document - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -11,7 +11,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
-        <h1 class="text-2xl font-bold text-gray-900">Upload Document</h1>
+        <h1 class="text-2xl font-bold text-gray-900">Share Document</h1>
     </div>
 
     <!-- Upload Form -->
@@ -19,31 +19,33 @@
         <div class="p-6 space-y-6">
             <!-- Document Category -->
             <div class="space-y-4">
-                <label class="block text-sm font-medium text-gray-700">Document Category</label>
+                <label class="block text-sm font-medium text-gray-700">Share With</label>
                 <div class="flex flex-wrap gap-4">
+                    {% if is_admin %}
                     <label class="flex items-center">
-                        <input type="radio" name="category" value="School-wide"
+                        <input type="radio" name="scope" value="SCHOOL"
                                class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
-                               onchange="handleCategoryChange()" checked>
+                               onchange="handleScopeChange()" checked>
                         <span class="ml-2 text-sm text-gray-700">School-wide</span>
                     </label>
+                    {% endif %}
                     <label class="flex items-center">
-                        <input type="radio" name="category" value="Class"
+                        <input type="radio" name="scope" value="CLASS"
                                class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
-                               onchange="handleCategoryChange()">
-                        <span class="ml-2 text-sm text-gray-700">Class Document</span>
+                               onchange="handleScopeChange()" {% if not is_admin %}checked{% endif %}>
+                        <span class="ml-2 text-sm text-gray-700">Class</span>
                     </label>
                     <label class="flex items-center">
-                        <input type="radio" name="category" value="Student"
+                        <input type="radio" name="scope" value="STUDENT"
                                class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
-                               onchange="handleCategoryChange()">
-                        <span class="ml-2 text-sm text-gray-700">Student Document</span>
+                               onchange="handleScopeChange()">
+                        <span class="ml-2 text-sm text-gray-700">Specific Students</span>
                     </label>
                 </div>
             </div>
 
             <!-- Class Selection -->
-            <div id="class-section" class="hidden">
+            <div id="class-section" class="{% if is_admin %}hidden{% endif %}">
                 <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
                 <select id="class_id" name="class_id"
                         class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
@@ -57,20 +59,19 @@
                 </select>
             </div>
 
-            <!-- Student Selection -->
+            <!-- Student Selection (multi-select for STUDENT scope) -->
             <div id="student-section" class="hidden">
-                <label for="student_id" class="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                <select id="student_id" name="student_id"
-                        class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Select student...</option>
-                </select>
-                <p class="mt-1 text-xs text-gray-500">Document will be shared with this student's parents</p>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Students</label>
+                <div id="student-checkboxes" class="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2">
+                    <p class="text-sm text-gray-500">Select a class first</p>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Document will be shared with selected students' parents</p>
             </div>
 
             <!-- Document Title -->
             <div>
-                <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Document Title</label>
-                <input type="text" id="title" name="title" maxlength="255"
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Document Title <span class="text-red-500">*</span></label>
+                <input type="text" id="title" name="title" maxlength="255" required
                        placeholder="Enter document title..."
                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
             </div>
@@ -85,7 +86,7 @@
 
             <!-- Upload Area -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Document File</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Document File <span class="text-red-500">*</span></label>
                 <div id="upload-area"
                      class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
                      onclick="document.getElementById('file-input').click()">
@@ -96,9 +97,9 @@
                     <p class="mt-2 text-sm text-gray-600">
                         <span class="text-primary-600 font-medium">Click to upload</span> or drag and drop
                     </p>
-                    <p class="mt-1 text-xs text-gray-500">PDF, DOC, DOCX, XLS, XLSX up to 10MB</p>
+                    <p class="mt-1 text-xs text-gray-500">PDF, DOC, DOCX up to 10MB</p>
                 </div>
-                <input type="file" id="file-input" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                <input type="file" id="file-input" class="hidden" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
             </div>
 
             <!-- Selected File Preview -->
@@ -148,7 +149,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                 </svg>
-                Upload Document
+                Share Document
             </button>
         </div>
     </div>
@@ -159,58 +160,54 @@
 <script>
 let selectedFile = null;
 
-function handleCategoryChange() {
-    const category = document.querySelector('input[name="category"]:checked').value;
+function handleScopeChange() {
+    const scope = document.querySelector('input[name="scope"]:checked').value;
     const classSection = document.getElementById('class-section');
     const studentSection = document.getElementById('student-section');
-    const classSelect = document.getElementById('class_id');
-    const studentSelect = document.getElementById('student_id');
 
-    if (category === 'School-wide') {
+    if (scope === 'SCHOOL') {
         classSection.classList.add('hidden');
         studentSection.classList.add('hidden');
-        classSelect.required = false;
-        studentSelect.required = false;
-    } else if (category === 'Class') {
+    } else if (scope === 'CLASS') {
         classSection.classList.remove('hidden');
         studentSection.classList.add('hidden');
-        classSelect.required = true;
-        studentSelect.required = false;
-    } else if (category === 'Student') {
+    } else if (scope === 'STUDENT') {
         classSection.classList.remove('hidden');
         studentSection.classList.remove('hidden');
-        classSelect.required = true;
-        studentSelect.required = true;
         handleClassChange();
     }
 }
 
 async function handleClassChange() {
-    const category = document.querySelector('input[name="category"]:checked').value;
-    if (category !== 'Student') return;
+    const scope = document.querySelector('input[name="scope"]:checked').value;
+    if (scope !== 'STUDENT') return;
 
     const classId = document.getElementById('class_id').value;
-    const studentSelect = document.getElementById('student_id');
+    const container = document.getElementById('student-checkboxes');
 
     if (!classId) {
-        studentSelect.innerHTML = '<option value="">Select student...</option>';
+        container.innerHTML = '<p class="text-sm text-gray-500">Select a class first</p>';
         return;
     }
 
     try {
-        const response = await fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`, {
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
+        const result = await ClassUp.fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`);
 
-        if (result.data) {
-            studentSelect.innerHTML = '<option value="">Select student...</option>';
+        if (result && result.data) {
+            container.innerHTML = '';
             result.data.forEach(student => {
-                const option = document.createElement('option');
-                option.value = student.id;
-                option.textContent = `${student.first_name} ${student.last_name}`;
-                studentSelect.appendChild(option);
+                const label = document.createElement('label');
+                label.className = 'flex items-center gap-2 cursor-pointer';
+                label.innerHTML = `
+                    <input type="checkbox" name="student_ids" value="${student.id}"
+                           class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+                    <span class="text-sm text-gray-700">${student.first_name} ${student.last_name}</span>
+                `;
+                container.appendChild(label);
             });
+            if (result.data.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500">No students in this class</p>';
+            }
         }
     } catch (error) {
         console.error('Error fetching students:', error);
@@ -256,12 +253,10 @@ function selectFile(file) {
         'application/pdf',
         'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
 
     if (!allowedTypes.includes(file.type)) {
-        ClassUp.toast('Invalid file type. Please upload PDF, DOC, DOCX, XLS, or XLSX files.', 'warning');
+        ClassUp.toast('Invalid file type. Please upload PDF, DOC, or DOCX files.', 'warning');
         return;
     }
 
@@ -300,12 +295,9 @@ function updateFilePreview() {
     if (selectedFile.type === 'application/pdf') {
         fileIcon.className = 'h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center';
         fileIcon.innerHTML = '<svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 4h7l5 5v11H6V4zm2 10h8v2H8v-2zm0-4h8v2H8v-2z"/></svg>';
-    } else if (selectedFile.type.includes('word')) {
+    } else {
         fileIcon.className = 'h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center';
         fileIcon.innerHTML = '<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>';
-    } else if (selectedFile.type.includes('excel') || selectedFile.type.includes('spreadsheet')) {
-        fileIcon.className = 'h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center';
-        fileIcon.innerHTML = '<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
     }
 }
 
@@ -324,20 +316,32 @@ function clearFile() {
 }
 
 async function uploadDocument() {
-    const category = document.querySelector('input[name="category"]:checked').value;
+    const scope = document.querySelector('input[name="scope"]:checked').value;
     const classId = document.getElementById('class_id').value;
-    const studentId = document.getElementById('student_id').value;
-    const title = document.getElementById('title').value;
-    const description = document.getElementById('description').value;
+    const title = document.getElementById('title').value.trim();
+    const description = document.getElementById('description').value.trim();
 
-    if (category === 'Class' && !classId) {
+    // Validation
+    if (!title) {
+        ClassUp.toast('Please enter a document title', 'warning');
+        return;
+    }
+
+    if (scope !== 'SCHOOL' && !classId) {
         ClassUp.toast('Please select a class', 'warning');
         return;
     }
 
-    if (category === 'Student' && (!classId || !studentId)) {
-        ClassUp.toast('Please select a class and student', 'warning');
-        return;
+    // Get selected student IDs for STUDENT scope
+    const studentIds = [];
+    if (scope === 'STUDENT') {
+        document.querySelectorAll('input[name="student_ids"]:checked').forEach(cb => {
+            studentIds.push(cb.value);
+        });
+        if (studentIds.length === 0) {
+            ClassUp.toast('Please select at least one student', 'warning');
+            return;
+        }
     }
 
     if (!selectedFile) {
@@ -353,21 +357,20 @@ async function uploadDocument() {
     uploadProgress.classList.remove('hidden');
     uploadBtn.disabled = true;
 
-    // Upload file
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('file_category', 'DOCUMENT');
-
     try {
-        // Simulate progress for better UX
+        // Step 1: Upload file to get file_id
         let progress = 0;
         const progressInterval = setInterval(() => {
             progress += 10;
-            if (progress <= 90) {
+            if (progress <= 70) {
                 progressBar.style.width = `${progress}%`;
                 progressText.textContent = `${progress}%`;
             }
         }, 100);
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('file_category', 'DOCUMENT');
 
         const uploadResponse = await fetch('/api/v1/files/upload', {
             method: 'POST',
@@ -382,18 +385,46 @@ async function uploadDocument() {
             throw new Error(uploadResult.message || 'Failed to upload file');
         }
 
+        progressBar.style.width = '80%';
+        progressText.textContent = '80%';
+
+        // Step 2: Create document share
+        const shareData = {
+            scope: scope,
+            title: title,
+            file_ids: [uploadResult.data.id],
+        };
+        if (scope !== 'SCHOOL' && classId) {
+            shareData.class_id = classId;
+        }
+        if (description) {
+            shareData.description = description;
+        }
+        if (studentIds.length > 0) {
+            shareData.student_ids = studentIds;
+        }
+
+        const shareResult = await ClassUp.fetch('/api/v1/documents', {
+            method: 'POST',
+            body: JSON.stringify(shareData),
+            headers: { 'Content-Type': 'application/json' },
+        });
+
         progressBar.style.width = '100%';
         progressText.textContent = '100%';
 
-        ClassUp.toast('Document uploaded successfully!', 'success');
-        window.location.href = '/documents';
+        if (shareResult && shareResult.status === 'success') {
+            ClassUp.toast('Document shared successfully!', 'success');
+            window.location.href = '/documents';
+        } else {
+            throw new Error((shareResult && shareResult.message) || 'Failed to create document share');
+        }
     } catch (error) {
-        console.error('Error uploading document:', error);
-        ClassUp.toast(error.message || 'Failed to upload document. Please try again.', 'error');
+        console.error('Error sharing document:', error);
+        ClassUp.toast(error.message || 'Failed to share document. Please try again.', 'error');
+        uploadProgress.classList.add('hidden');
+        uploadBtn.disabled = false;
     }
-
-    uploadProgress.classList.add('hidden');
-    uploadBtn.disabled = false;
 }
 </script>
 {% endblock %}
