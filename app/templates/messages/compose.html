@@ -66,14 +66,97 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/messages.js') }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof Messages !== 'undefined') {
-            Messages.initCompose({{ compose_data_json | safe }});
-        } else {
-            console.error('messages.js failed to load');
+(function() {
+    const recipientData = {{ compose_data_json | safe }};
+    const studentSelect = document.getElementById('student-select');
+    const recipientSelect = document.getElementById('recipient-select');
+    const composeForm = document.getElementById('compose-form');
+    const sendBtn = document.getElementById('send-btn');
+
+    if (!studentSelect || !recipientSelect) return;
+
+    // Build lookup: student_id -> recipients[]
+    const recipientMap = {};
+    for (const item of recipientData) {
+        recipientMap[item.student_id] = item.recipients || [];
+    }
+
+    // Update recipients when student changes
+    studentSelect.addEventListener('change', function() {
+        const sid = studentSelect.value;
+        recipientSelect.innerHTML = '';
+
+        if (!sid) {
+            recipientSelect.innerHTML = '<option value="">Select a student first...</option>';
+            recipientSelect.disabled = true;
+            return;
+        }
+
+        const recipients = recipientMap[sid] || [];
+        if (recipients.length === 0) {
+            recipientSelect.innerHTML = '<option value="">No recipients available</option>';
+            recipientSelect.disabled = true;
+            return;
+        }
+
+        recipientSelect.disabled = false;
+        recipientSelect.innerHTML = '<option value="">Select recipient...</option>';
+        for (const r of recipients) {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            opt.textContent = r.name + ' (' + r.role.toLowerCase() + ')';
+            recipientSelect.appendChild(opt);
+        }
+
+        // Auto-select if only one recipient
+        if (recipients.length === 1) {
+            recipientSelect.value = recipients[0].id;
         }
     });
+
+    // Trigger change if pre-selected
+    if (studentSelect.value) {
+        studentSelect.dispatchEvent(new Event('change'));
+    }
+
+    // Handle form submission
+    if (composeForm) {
+        composeForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const studentId = studentSelect.value;
+            const recipientId = recipientSelect.value;
+            const body = document.getElementById('message-body').value.trim();
+
+            if (!studentId || !recipientId || !body) {
+                ClassUp.toast('Please fill in all fields', 'warning');
+                return;
+            }
+
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+
+            try {
+                const result = await ClassUp.fetch('/api/v1/messages', {
+                    method: 'POST',
+                    body: {
+                        student_id: studentId,
+                        recipient_id: recipientId,
+                        body: body,
+                    }
+                });
+
+                if (result) {
+                    ClassUp.toast('Message sent', 'success');
+                    window.location.href = '/messages/thread/' + studentId + '/' + recipientId;
+                }
+            } catch (error) {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send Message';
+            }
+        });
+    }
+})();
 </script>
 {% endblock %}

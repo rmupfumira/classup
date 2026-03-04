@@ -73,14 +73,105 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/messages.js') }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof Messages !== 'undefined') {
-            Messages.initThread('{{ student_id }}', '{{ other_user_id }}', '{{ user.id }}');
-        } else {
-            console.error('messages.js failed to load');
+(function() {
+    const studentId = '{{ student_id }}';
+    const otherUserId = '{{ other_user_id }}';
+    const currentUserId = '{{ user.id }}';
+
+    const chatContainer = document.getElementById('chat-messages');
+    const replyForm = document.getElementById('reply-form');
+    const replyBody = document.getElementById('reply-body');
+    const sendBtn = document.getElementById('send-btn');
+
+    // Auto-scroll to bottom
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Auto-resize textarea
+    function autoResize(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    if (replyBody) {
+        replyBody.addEventListener('input', function() { autoResize(replyBody); });
+    }
+
+    // Append a new message bubble
+    function appendMessage(data) {
+        if (!chatContainer) return;
+
+        // Remove empty state if present
+        const emptyState = chatContainer.querySelector('.text-center');
+        if (emptyState) emptyState.remove();
+
+        const isOwn = data.sender_id === currentUserId;
+        const time = new Date(data.created_at).toLocaleDateString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        const senderFirst = data.sender_name ? ClassUp.escapeHtml(data.sender_name.split(' ')[0]) : '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex ' + (isOwn ? 'justify-end' : 'justify-start');
+
+        let html = '<div class="max-w-[80%] sm:max-w-[70%]">';
+        if (!isOwn && senderFirst) {
+            html += '<p class="text-xs text-neutral-400 mb-1 ml-1">' + senderFirst + '</p>';
         }
-    });
+        html += '<div class="' + (isOwn ? 'bg-primary-500 text-white' : 'bg-white border border-neutral-200 text-neutral-800') + ' px-3.5 py-2.5 rounded-2xl shadow-sm">';
+        html += '<p class="text-sm whitespace-pre-wrap break-words">' + ClassUp.escapeHtml(data.body) + '</p>';
+        html += '</div>';
+        html += '<p class="text-[10px] mt-1 ' + (isOwn ? 'text-right mr-1' : 'ml-1') + ' text-neutral-400">' + time + '</p>';
+        html += '</div>';
+
+        wrapper.innerHTML = html;
+        chatContainer.appendChild(wrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Handle reply submission
+    if (replyForm) {
+        replyForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const body = replyBody.value.trim();
+            if (!body) return;
+
+            sendBtn.disabled = true;
+            try {
+                const result = await ClassUp.fetch(
+                    '/api/v1/messages/thread/' + studentId + '/' + otherUserId + '/reply',
+                    { method: 'POST', body: { body: body } }
+                );
+
+                if (result && result.data) {
+                    appendMessage(result.data);
+                    replyBody.value = '';
+                    autoResize(replyBody);
+
+                    // Mark as read (fire-and-forget)
+                    ClassUp.fetch(
+                        '/api/v1/messages/thread/' + studentId + '/' + otherUserId + '/read',
+                        { method: 'PUT' }
+                    ).catch(function() {});
+                }
+            } catch (error) {
+                // ClassUp.fetch already shows toast
+            } finally {
+                sendBtn.disabled = false;
+                replyBody.focus();
+            }
+        });
+
+        // Submit on Enter (without Shift)
+        replyBody.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                replyForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    }
+})();
 </script>
 {% endblock %}
