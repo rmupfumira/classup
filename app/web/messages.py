@@ -121,6 +121,13 @@ async def messages_thread(
     other_user_role = other_user.role if other_user else ""
     class_name = student.school_class.name if student and student.school_class else None
 
+    # Get subject from the earliest message in this conversation
+    thread_subject = None
+    for msg in messages_list:
+        if msg.subject:
+            thread_subject = msg.subject
+            break
+
     # Teacher class context for nav
     class_ctx = {}
     if role == "TEACHER":
@@ -137,6 +144,7 @@ async def messages_thread(
         "other_user_name": other_user_name,
         "other_user_role": other_user_role.lower() if other_user_role else "",
         "class_name": class_name,
+        "thread_subject": thread_subject,
         "permissions": permissions,
     }
     context.update(class_ctx)

@@ -19,9 +19,11 @@
             </svg>
         </a>
         <div class="flex-1 min-w-0">
-            <h2 class="text-sm font-semibold text-neutral-800 truncate">{{ student_name }}</h2>
+            <h2 class="text-sm font-semibold text-neutral-800 truncate">
+                {% if thread_subject %}{{ thread_subject }}{% else %}{{ student_name }}{% endif %}
+            </h2>
             <p class="text-xs text-neutral-400 truncate">
-                with {{ other_user_name }}
+                {{ student_name }} &middot; {{ other_user_name }}
                 {% if other_user_role %}({{ other_user_role }}){% endif %}
                 {% if class_name %} &middot; {{ class_name }}{% endif %}
             </p>

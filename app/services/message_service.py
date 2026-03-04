@@ -258,6 +258,7 @@ class MessageService:
 
         # Group by (student_id, other_user) and pick the latest
         last_msg_map: dict[tuple, Message] = {}
+        subject_map: dict[tuple, str] = {}
         for msg in all_msgs:
             # Determine other_user for this message
             if msg.sender_id == user_id:
@@ -265,10 +266,15 @@ class MessageService:
                     key = (msg.student_id, r.user_id)
                     if key not in last_msg_map:
                         last_msg_map[key] = msg
+                    # Overwrite so oldest (root) subject wins (list is desc)
+                    if msg.subject:
+                        subject_map[key] = msg.subject
             else:
                 key = (msg.student_id, msg.sender_id)
                 if key not in last_msg_map:
                     last_msg_map[key] = msg
+                if msg.subject:
+                    subject_map[key] = msg.subject
 
         # Build response
         conversations = []
@@ -296,6 +302,7 @@ class MessageService:
                 "other_user_id": o_id,
                 "other_user_name": f"{other_user.first_name} {other_user.last_name}",
                 "other_user_role": other_user.role,
+                "subject": subject_map.get((s_id, o_id)),
                 "last_message_body": last_msg.body[:100] if last_msg else "",
                 "last_message_at": row.last_message_at,
                 "last_message_sender_id": last_msg.sender_id if last_msg else None,

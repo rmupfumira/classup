@@ -40,14 +40,16 @@
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="text-sm truncate {{ 'font-bold text-neutral-900' if conv.unread_count > 0 else 'font-medium text-neutral-800' }}">
-                        {{ conv.student_name }}
+                        {% if conv.subject %}{{ conv.subject }}{% else %}{{ conv.student_name }}{% endif %}
                     </h3>
                     <span class="text-xs text-neutral-400 flex-shrink-0 whitespace-nowrap">
                         {{ conv.last_message_at.strftime('%b %d') if conv.last_message_at else '' }}
                     </span>
                 </div>
                 <div class="flex items-center gap-1 mt-0.5">
-                    <span class="text-xs text-neutral-400">with {{ conv.other_user_name }}
+                    <span class="text-xs text-neutral-400">{{ conv.student_name }}</span>
+                    <span class="text-xs text-neutral-300">&middot;</span>
+                    <span class="text-xs text-neutral-400">{{ conv.other_user_name }}
                         {% if conv.other_user_role %}({{ conv.other_user_role|lower }}){% endif %}
                     </span>
                     {% if conv.class_name %}

@@ -12,7 +12,7 @@ class MessageCreate(BaseModel):
     student_id: uuid.UUID
     recipient_id: uuid.UUID
     body: str
-    subject: str | None = None
+    subject: str
 
     @field_validator("body")
     @classmethod
@@ -20,6 +20,16 @@ class MessageCreate(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Message body cannot be empty")
+        return v
+
+    @field_validator("subject")
+    @classmethod
+    def validate_subject(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Subject cannot be empty")
+        if len(v) > 255:
+            raise ValueError("Subject must be 255 characters or less")
         return v
 
 
@@ -71,6 +81,7 @@ class ConversationSummary(BaseModel):
     other_user_id: uuid.UUID
     other_user_name: str
     other_user_role: str | None = None
+    subject: str | None = None
     last_message_body: str
     last_message_at: datetime
     last_message_sender_id: uuid.UUID
