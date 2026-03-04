@@ -61,19 +61,19 @@ class SchoolClass(TenantScopedModel):
         "AttendanceRecord",
         back_populates="school_class",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="noload",
     )
     daily_reports = relationship(
         "DailyReport",
         back_populates="school_class",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="noload",
     )
     class_subjects = relationship(
         "ClassSubject",
         back_populates="school_class",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="noload",
     )
 
     @property

@@ -97,7 +97,7 @@ class Message(TenantScopedModel):
         "MessageAttachment",
         back_populates="message",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="noload",
     )
 
 

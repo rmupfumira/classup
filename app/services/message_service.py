@@ -195,62 +195,94 @@ class MessageService:
         if not conv_rows:
             return [], total
 
-        # Enrich each conversation with student, user, last message, unread count
+        # Batch-fetch all students and users needed (2 queries instead of 2N)
+        student_ids = list({row.student_id for row in conv_rows})
+        other_user_ids = list({row.other_user_id for row in conv_rows})
+
+        students_result = await db.execute(
+            select(Student).where(Student.id.in_(student_ids))
+        )
+        students_map = {s.id: s for s in students_result.scalars().all()}
+
+        users_result = await db.execute(
+            select(User).where(User.id.in_(other_user_ids))
+        )
+        users_map = {u.id: u for u in users_result.scalars().all()}
+
+        # Batch-fetch unread counts per (student_id, sender_id) — 1 query
+        unread_q = (
+            select(
+                Message.student_id,
+                Message.sender_id,
+                func.count(MessageRecipient.id).label("cnt"),
+            )
+            .join(Message, Message.id == MessageRecipient.message_id)
+            .where(
+                MessageRecipient.user_id == user_id,
+                MessageRecipient.is_read == False,
+                Message.tenant_id == tenant_id,
+                Message.deleted_at.is_(None),
+                Message.student_id.in_(student_ids),
+            )
+            .group_by(Message.student_id, Message.sender_id)
+        )
+        unread_rows = (await db.execute(unread_q)).all()
+        unread_map = {(r.student_id, r.sender_id): r.cnt for r in unread_rows}
+
+        # Batch-fetch last message per conversation using DISTINCT ON equivalent
+        # Build OR conditions for each conversation pair
+        conv_conditions = []
+        for row in conv_rows:
+            conv_conditions.append(
+                and_(
+                    Message.student_id == row.student_id,
+                    or_(
+                        and_(Message.sender_id == user_id, MessageRecipient.user_id == row.other_user_id),
+                        and_(Message.sender_id == row.other_user_id, MessageRecipient.user_id == user_id),
+                    ),
+                )
+            )
+
+        last_msgs_q = (
+            select(Message)
+            .outerjoin(MessageRecipient, MessageRecipient.message_id == Message.id)
+            .where(
+                Message.tenant_id == tenant_id,
+                Message.deleted_at.is_(None),
+                or_(*conv_conditions),
+            )
+            .order_by(Message.student_id, Message.created_at.desc())
+        )
+        last_msgs_result = await db.execute(last_msgs_q)
+        all_msgs = last_msgs_result.scalars().unique().all()
+
+        # Group by (student_id, other_user) and pick the latest
+        last_msg_map: dict[tuple, Message] = {}
+        for msg in all_msgs:
+            # Determine other_user for this message
+            if msg.sender_id == user_id:
+                for r in msg.recipients:
+                    key = (msg.student_id, r.user_id)
+                    if key not in last_msg_map:
+                        last_msg_map[key] = msg
+            else:
+                key = (msg.student_id, msg.sender_id)
+                if key not in last_msg_map:
+                    last_msg_map[key] = msg
+
+        # Build response
         conversations = []
         for row in conv_rows:
             s_id = row.student_id
             o_id = row.other_user_id
-            last_at = row.last_message_at
 
-            # Get student
-            student_result = await db.execute(
-                select(Student).where(Student.id == s_id)
-            )
-            student = student_result.scalar_one_or_none()
-            if not student:
+            student = students_map.get(s_id)
+            other_user = users_map.get(o_id)
+            if not student or not other_user:
                 continue
 
-            # Get other user
-            other_result = await db.execute(
-                select(User).where(User.id == o_id)
-            )
-            other_user = other_result.scalar_one_or_none()
-            if not other_user:
-                continue
-
-            # Get last message in this conversation
-            last_msg_q = (
-                select(Message)
-                .outerjoin(MessageRecipient, MessageRecipient.message_id == Message.id)
-                .where(
-                    Message.tenant_id == tenant_id,
-                    Message.deleted_at.is_(None),
-                    Message.student_id == s_id,
-                    or_(
-                        and_(Message.sender_id == user_id, MessageRecipient.user_id == o_id),
-                        and_(Message.sender_id == o_id, MessageRecipient.user_id == user_id),
-                    ),
-                )
-                .order_by(Message.created_at.desc())
-                .limit(1)
-            )
-            last_msg_result = await db.execute(last_msg_q)
-            last_msg = last_msg_result.scalar_one_or_none()
-
-            # Count unread messages in this conversation (where current user is recipient)
-            unread_q = (
-                select(func.count(MessageRecipient.id))
-                .join(Message, Message.id == MessageRecipient.message_id)
-                .where(
-                    MessageRecipient.user_id == user_id,
-                    MessageRecipient.is_read == False,
-                    Message.tenant_id == tenant_id,
-                    Message.deleted_at.is_(None),
-                    Message.student_id == s_id,
-                    Message.sender_id == o_id,
-                )
-            )
-            unread_count = (await db.execute(unread_q)).scalar() or 0
+            last_msg = last_msg_map.get((s_id, o_id))
+            unread_count = unread_map.get((s_id, o_id), 0)
 
             class_name = None
             if student.school_class:
@@ -265,7 +297,7 @@ class MessageService:
                 "other_user_name": f"{other_user.first_name} {other_user.last_name}",
                 "other_user_role": other_user.role,
                 "last_message_body": last_msg.body[:100] if last_msg else "",
-                "last_message_at": last_at,
+                "last_message_at": row.last_message_at,
                 "last_message_sender_id": last_msg.sender_id if last_msg else None,
                 "unread_count": unread_count,
             })

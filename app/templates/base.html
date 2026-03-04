@@ -227,13 +227,21 @@
             }
         }
 
-        ClassUp.fetch('/api/v1/messages/unread-count', { method: 'GET' })
-            .then(function(result) {
-                if (result && result.data != null) {
-                    updateMessageBadges(result.data.count);
-                }
-            })
-            .catch(function() {});
+        var fetchUnread = function() {
+            ClassUp.fetch('/api/v1/messages/unread-count', { method: 'GET' })
+                .then(function(result) {
+                    if (result && result.data != null) {
+                        updateMessageBadges(result.data.count);
+                    }
+                })
+                .catch(function() {});
+        };
+
+        if (window.requestIdleCallback) {
+            requestIdleCallback(fetchUnread);
+        } else {
+            setTimeout(fetchUnread, 1000);
+        }
     })();
     </script>
     {% endif %}
