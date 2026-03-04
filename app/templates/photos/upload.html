@@ -130,8 +130,7 @@ async function handleClassChange() {
     checkboxes.innerHTML = '<p class="text-sm text-gray-400">Loading students...</p>';
 
     try {
-        const response = await ClassUp.fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`);
-        const result = await response.json();
+        const result = await ClassUp.fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`);
 
         if (result.data && result.data.length > 0) {
             checkboxes.innerHTML = '';
