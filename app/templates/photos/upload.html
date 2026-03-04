@@ -311,27 +311,20 @@ async function uploadPhotos() {
     const studentIds = Array.from(studentCheckboxes).map(cb => cb.value);
 
     try {
-        const shareResponse = await ClassUp.fetch('/api/v1/photos', {
+        await ClassUp.fetch('/api/v1/photos', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: {
                 class_id: classId,
                 caption: caption || null,
                 file_ids: uploadedIds,
                 student_ids: studentIds,
-            }),
+            },
         });
 
-        const shareResult = await shareResponse.json();
-
-        if (shareResponse.ok) {
-            progressBar.style.width = '100%';
-            progressText.textContent = 'Done!';
-            ClassUp.toast(`${uploadedIds.length} photo(s) shared successfully!`, 'success');
-            window.location.href = '/photos';
-        } else {
-            ClassUp.toast(shareResult.message || 'Failed to create photo share', 'error');
-        }
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Done!';
+        ClassUp.toast(`${uploadedIds.length} photo(s) shared successfully!`, 'success');
+        window.location.href = '/photos';
     } catch (error) {
         console.error('Error creating photo share:', error);
         ClassUp.toast('Failed to create photo share. Please try again.', 'error');
