@@ -73,43 +73,57 @@ async def _get_school_admin_dashboard_data(db: AsyncSession):
         )
         absent_today = (await db.execute(absent_query)).scalar() or 0
 
-    # Get classes with their attendance for today
-    class_service = get_class_service()
-    classes, _ = await class_service.get_classes(db, page=1, page_size=100)
+    # Get classes with student counts and attendance in batch (2 queries instead of 2N)
+    from sqlalchemy import outerjoin, literal_column
+    from app.models.school_class import SchoolClass as SC
+
+    classes_q = (
+        select(SC)
+        .where(SC.tenant_id == tenant_id, SC.deleted_at.is_(None), SC.is_active == True)
+        .order_by(SC.name)
+    )
+    classes = list((await db.execute(classes_q)).scalars().all())
+    class_ids = [c.id for c in classes]
+
+    # Batch: student counts per class
+    student_counts_map = {}
+    if class_ids:
+        sc_q = (
+            select(Student.class_id, func.count(Student.id))
+            .where(
+                Student.tenant_id == tenant_id,
+                Student.deleted_at.is_(None),
+                Student.is_active == True,
+                Student.class_id.in_(class_ids),
+            )
+            .group_by(Student.class_id)
+        )
+        for row in (await db.execute(sc_q)).all():
+            student_counts_map[row[0]] = row[1]
+
+    # Batch: present counts per class today
+    present_counts_map = {}
+    if class_ids:
+        pc_q = (
+            select(AttendanceRecord.class_id, func.count(AttendanceRecord.id))
+            .where(
+                AttendanceRecord.tenant_id == tenant_id,
+                AttendanceRecord.date == today,
+                AttendanceRecord.status.in_(["PRESENT", "LATE"]),
+                AttendanceRecord.class_id.in_(class_ids),
+            )
+            .group_by(AttendanceRecord.class_id)
+        )
+        for row in (await db.execute(pc_q)).all():
+            present_counts_map[row[0]] = row[1]
 
     class_attendance = []
     for school_class in classes:
-        # Get student count in this class
-        class_student_count = await db.execute(
-            select(func.count()).select_from(
-                select(Student).where(
-                    Student.tenant_id == tenant_id,
-                    Student.class_id == school_class.id,
-                    Student.deleted_at.is_(None),
-                    Student.is_active == True,
-                ).subquery()
-            )
-        )
-        class_student_count = class_student_count.scalar() or 0
-
-        # Get present count for this class today
-        class_present_count = await db.execute(
-            select(func.count()).select_from(
-                select(AttendanceRecord).where(
-                    AttendanceRecord.tenant_id == tenant_id,
-                    AttendanceRecord.class_id == school_class.id,
-                    AttendanceRecord.date == today,
-                    AttendanceRecord.status.in_(["PRESENT", "LATE"]),
-                ).subquery()
-            )
-        )
-        class_present_count = class_present_count.scalar() or 0
-
         class_attendance.append({
             "name": school_class.name,
             "age_group": school_class.age_group or school_class.grade_level or "",
-            "present": class_present_count,
-            "total": class_student_count,
+            "present": present_counts_map.get(school_class.id, 0),
+            "total": student_counts_map.get(school_class.id, 0),
         })
 
     # Get active announcements for admin (all classes)

@@ -49,7 +49,7 @@ class SchoolClass(TenantScopedModel):
     students = relationship(
         "Student",
         back_populates="school_class",
-        lazy="selectin",
+        lazy="noload",
     )
     teacher_classes = relationship(
         "TeacherClass",

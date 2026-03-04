@@ -116,11 +116,11 @@ class ReportTemplate(TenantScopedModel):
     )
 
     # Relationships
-    grading_system = relationship("GradingSystem", lazy="selectin")
+    grading_system = relationship("GradingSystem", lazy="noload")
     daily_reports = relationship(
         "DailyReport",
         back_populates="template",
-        lazy="selectin",
+        lazy="noload",
     )
     grade_levels = relationship(
         "GradeLevel",

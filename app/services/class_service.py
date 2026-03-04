@@ -334,7 +334,6 @@ class ClassService:
                 SchoolClass.deleted_at.is_(None),
             )
             .options(
-                selectinload(SchoolClass.students),
                 selectinload(SchoolClass.grade_level_rel),
             )
         )

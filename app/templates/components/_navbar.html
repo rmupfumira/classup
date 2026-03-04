@@ -61,7 +61,6 @@
                                 <p class="font-medium truncate">{{ tc.name }}</p>
                                 <p class="text-xs text-neutral-500">
                                     {{ tc.grade_level or tc.age_group or '' }}
-                                    {% if tc.students %}{{ tc.students|selectattr('is_active')|selectattr('deleted_at', 'none')|list|length }} students{% endif %}
                                 </p>
                             </div>
                             {% if selected_class and selected_class.id == tc.id %}
