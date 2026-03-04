@@ -204,6 +204,40 @@
     }
     </script>
 
+    {% if user %}
+    <script>
+    (function() {
+        function updateMessageBadges(count) {
+            const badges = [
+                document.getElementById('sidebar-unread-badge'),
+                document.getElementById('mobile-msg-badge'),
+                document.getElementById('mobile-msg-badge-parent'),
+            ];
+            for (const badge of badges) {
+                if (!badge) continue;
+                if (count > 0) {
+                    badge.classList.remove('hidden');
+                    // Sidebar badge shows the count text; mobile badges are just dots
+                    if (badge.id === 'sidebar-unread-badge') {
+                        badge.textContent = count > 99 ? '99+' : count;
+                    }
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+
+        ClassUp.fetch('/api/v1/messages/unread-count', { method: 'GET' })
+            .then(function(result) {
+                if (result && result.data != null) {
+                    updateMessageBadges(result.data.count);
+                }
+            })
+            .catch(function() {});
+    })();
+    </script>
+    {% endif %}
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
