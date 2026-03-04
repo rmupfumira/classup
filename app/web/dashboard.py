@@ -14,6 +14,7 @@ from app.services.attendance_service import get_attendance_service
 from app.services.report_service import get_report_service
 from app.services.academic_service import get_academic_service
 from app.services.class_service import get_class_service
+from app.services.announcement_service import get_announcement_service
 from app.services.notification_service import get_notification_service
 from app.templates_config import templates
 from app.utils.tenant_context import (
@@ -111,12 +112,25 @@ async def _get_school_admin_dashboard_data(db: AsyncSession):
             "total": class_student_count,
         })
 
+    # Get active announcements for admin (all classes)
+    active_announcements = []
+    try:
+        user_id = get_current_user_id()
+        all_class_ids = [c.id for c in classes]
+        announcement_service = get_announcement_service()
+        active_announcements = await announcement_service.get_active_announcements(
+            db, user_id, all_class_ids,
+        )
+    except Exception:
+        pass
+
     return {
         "total_students": total_students,
         "present_today": present_today,
         "absent_today": absent_today,
         "pending_reports": 0,  # TODO: implement pending reports count
         "class_attendance": class_attendance,
+        "active_announcements": active_announcements,
     }
 
 
@@ -191,10 +205,24 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id):
     recent_reports.sort(key=lambda r: r.get('report_date', ''), reverse=True)
     recent_reports = recent_reports[:10]  # Limit to 10 most recent
 
+    # Get active announcements for parent's children's classes
+    active_announcements = []
+    try:
+        announcement_service = get_announcement_service()
+        parent_class_ids = [
+            child.class_id for child in children if child.class_id
+        ]
+        active_announcements = await announcement_service.get_active_announcements(
+            db, user_id, parent_class_ids,
+        )
+    except Exception:
+        pass
+
     return {
         'children': children_data,
         'recent_reports': recent_reports,
         'today': today,
+        'active_announcements': active_announcements,
     }
 
 
@@ -281,6 +309,17 @@ async def _get_teacher_dashboard_data(db: AsyncSession, user_id, selected_class=
     else:
         greeting = "Good evening"
 
+    # Get active announcements for teacher's classes
+    active_announcements = []
+    try:
+        announcement_service = get_announcement_service()
+        teacher_class_ids = await announcement_service._get_teacher_class_ids(db, user_id)
+        active_announcements = await announcement_service.get_active_announcements(
+            db, user_id, teacher_class_ids,
+        )
+    except Exception:
+        pass
+
     return {
         "greeting": greeting,
         "today": today,
@@ -293,6 +332,7 @@ async def _get_teacher_dashboard_data(db: AsyncSession, user_id, selected_class=
         "total_drafts": total_drafts,
         "unread_notifications": unread_count,
         "has_classes": selected_class is not None,
+        "active_announcements": active_announcements,
     }
 
 
@@ -345,6 +385,7 @@ async def dashboard(
         # Add dashboard stats (real data from database)
         stats = await _get_school_admin_dashboard_data(db)
         context["stats"] = stats
+        context["active_announcements"] = stats.get("active_announcements", [])
 
     # Add teacher-specific data
     elif role == "TEACHER":

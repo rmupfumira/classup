@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.web import (
     academic,
+    announcements,
     attendance,
     auth,
     classes,
@@ -27,6 +28,7 @@ web_router.include_router(auth.router)
 web_router.include_router(dashboard.router)
 web_router.include_router(students.router)
 web_router.include_router(classes.router)
+web_router.include_router(announcements.router)
 web_router.include_router(attendance.router)
 web_router.include_router(photos.router)
 web_router.include_router(documents.router)

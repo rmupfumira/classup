@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Create Announcement - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+        <a href="/announcements" class="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-neutral-800">Create Announcement</h1>
+            <p class="mt-1 text-neutral-500">Notify staff and parents</p>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form id="announcement-form" class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-5">
+        <!-- Title -->
+        <div>
+            <label for="title" class="block text-sm font-medium text-neutral-700 mb-1">Title <span class="text-red-500">*</span></label>
+            <input type="text" id="title" name="title" required maxlength="255"
+                   placeholder="e.g. School Closed Tomorrow"
+                   class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+        </div>
+
+        <!-- Body -->
+        <div>
+            <label for="body" class="block text-sm font-medium text-neutral-700 mb-1">Message <span class="text-red-500">*</span></label>
+            <textarea id="body" name="body" required rows="5"
+                      placeholder="Write the announcement details..."
+                      class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"></textarea>
+        </div>
+
+        <!-- Level -->
+        <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-2">Audience <span class="text-red-500">*</span></label>
+            <div class="flex gap-4">
+                {% if permissions.can_send_announcements() %}
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="level" value="SCHOOL" checked
+                           onchange="toggleClassSelect()"
+                           class="text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm text-neutral-700">School-wide</span>
+                </label>
+                {% endif %}
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="level" value="CLASS"
+                           {{ 'checked' if not permissions.can_send_announcements() }}
+                           onchange="toggleClassSelect()"
+                           class="text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm text-neutral-700">Specific class</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Class Selector (shown when level=CLASS) -->
+        <div id="class-select-wrapper" class="{{ '' if not permissions.can_send_announcements() else 'hidden' }}">
+            <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class <span class="text-red-500">*</span></label>
+            <select id="class_id" name="class_id"
+                    class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <option value="">Select a class...</option>
+                {% for cls in classes %}
+                <option value="{{ cls.id }}">{{ cls.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Severity -->
+        <div>
+            <label for="severity" class="block text-sm font-medium text-neutral-700 mb-1">Severity</label>
+            <select id="severity" name="severity"
+                    class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <option value="INFO">Info - General information</option>
+                <option value="WARNING">Warning - Requires attention</option>
+                <option value="URGENT">Urgent - Immediate attention needed</option>
+                <option value="EMERGENCY">Emergency - Critical alert</option>
+            </select>
+            <p class="mt-1 text-xs text-neutral-400">Urgent and Emergency announcements will also be sent via email.</p>
+        </div>
+
+        <!-- Expires At -->
+        <div>
+            <label for="expires_at" class="block text-sm font-medium text-neutral-700 mb-1">Expires (optional)</label>
+            <input type="datetime-local" id="expires_at" name="expires_at"
+                   class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            <p class="mt-1 text-xs text-neutral-400">Leave empty for no expiration.</p>
+        </div>
+
+        <!-- Pinned -->
+        <div class="flex items-center gap-2">
+            <input type="checkbox" id="is_pinned" name="is_pinned"
+                   class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+            <label for="is_pinned" class="text-sm text-neutral-700">Pin this announcement (shows at the top)</label>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex gap-3 pt-2">
+            <a href="/announcements"
+               class="flex-1 py-2.5 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="flex-1 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors">
+                Publish Announcement
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleClassSelect() {
+    const level = document.querySelector('input[name="level"]:checked').value;
+    const wrapper = document.getElementById('class-select-wrapper');
+    if (level === 'CLASS') {
+        wrapper.classList.remove('hidden');
+    } else {
+        wrapper.classList.add('hidden');
+        document.getElementById('class_id').value = '';
+    }
+}
+
+document.getElementById('announcement-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const level = document.querySelector('input[name="level"]:checked').value;
+    const classId = document.getElementById('class_id').value;
+    const expiresAt = document.getElementById('expires_at').value;
+
+    if (level === 'CLASS' && !classId) {
+        ClassUp.toast('Please select a class', 'warning');
+        return;
+    }
+
+    const payload = {
+        title: document.getElementById('title').value.trim(),
+        body: document.getElementById('body').value.trim(),
+        level: level,
+        severity: document.getElementById('severity').value,
+        is_pinned: document.getElementById('is_pinned').checked,
+    };
+
+    if (classId) {
+        payload.class_id = classId;
+    }
+    if (expiresAt) {
+        payload.expires_at = new Date(expiresAt).toISOString();
+    }
+
+    try {
+        await ClassUp.fetch('/api/v1/announcements', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+        ClassUp.toast('Announcement published!', 'success');
+        window.location.href = '/announcements';
+    } catch (error) {
+        ClassUp.toast('Failed to create announcement', 'error');
+    }
+});
+</script>
+{% endblock %}

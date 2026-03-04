@@ -20,6 +20,7 @@ from app.models.file_entity import FileEntity, FileCategory
 from app.models.invitation import ParentInvitation, InvitationStatus, generate_invitation_code
 from app.models.teacher_invitation import TeacherInvitation
 from app.models.notification import Notification, NotificationType
+from app.models.announcement import Announcement, AnnouncementDismissal, AnnouncementLevel, AnnouncementSeverity
 from app.models.webhook import (
     WebhookEndpoint,
     WebhookEvent,
@@ -77,6 +78,11 @@ __all__ = [
     # Notification
     "Notification",
     "NotificationType",
+    # Announcement
+    "Announcement",
+    "AnnouncementDismissal",
+    "AnnouncementLevel",
+    "AnnouncementSeverity",
     # Webhook
     "WebhookEndpoint",
     "WebhookEvent",

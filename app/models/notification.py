@@ -34,6 +34,9 @@ class NotificationType(str, Enum):
     STUDENT_ADDED = "STUDENT_ADDED"
     CLASS_CREATED = "CLASS_CREATED"
 
+    # Announcements
+    ANNOUNCEMENT = "ANNOUNCEMENT"
+
     # System
     SETTINGS_CHANGED = "SETTINGS_CHANGED"
     IMPORT_COMPLETED = "IMPORT_COMPLETED"
@@ -103,6 +106,7 @@ class Notification(Base, TimestampMixin):
             "student": f"/students/{self.reference_id}",
             "class": f"/classes/{self.reference_id}",
             "invitation": f"/invitations/{self.reference_id}",
+            "announcement": f"/announcements/{self.reference_id}",
         }
 
         return url_map.get(self.reference_type)

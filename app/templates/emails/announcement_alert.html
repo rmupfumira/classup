@@ -1,0 +1,48 @@
+{% extends "base_email.html" %}
+
+{% block title %}{{ severity }} Announcement: {{ title }}{% endblock %}
+
+{% block header_color %}{% if severity == 'EMERGENCY' %}#EF4444{% else %}#F97316{% endif %}{% endblock %}
+
+{% block content %}
+<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
+    {% if severity == 'EMERGENCY' %}Emergency{% else %}Urgent{% endif %} Announcement
+</h2>
+
+<div style="background-color: {% if severity == 'EMERGENCY' %}#FEF2F2{% else %}#FFF7ED{% endif %}; border-left: 4px solid {% if severity == 'EMERGENCY' %}#EF4444{% else %}#F97316{% endif %}; border-radius: 4px; padding: 16px; margin: 0 0 24px 0;">
+    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: {% if severity == 'EMERGENCY' %}#DC2626{% else %}#EA580C{% endif %};">
+        {{ severity }}
+    </p>
+    <h3 style="margin: 0 0 12px 0; font-size: 18px; color: #111827; font-weight: 700;">
+        {{ title }}
+    </h3>
+    <p style="margin: 0; font-size: 15px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{{ body }}</p>
+</div>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+    {% if creator_name %}
+    <tr>
+        <td style="padding: 0 0 8px 0;">
+            <strong style="font-size: 14px; color: #6B7280;">Posted by:</strong>
+            <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ creator_name }}</span>
+        </td>
+    </tr>
+    {% endif %}
+    {% if class_name %}
+    <tr>
+        <td style="padding: 0 0 8px 0;">
+            <strong style="font-size: 14px; color: #6B7280;">Class:</strong>
+            <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ class_name }}</span>
+        </td>
+    </tr>
+    {% endif %}
+</table>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    Please log in to ClassUp for more details or to view all announcements.
+</p>
+{% endblock %}
+
+{% block footer_text %}
+This is an automated {{ severity | lower }} announcement from {{ tenant_name }}.
+{% endblock %}

@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Announcements - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-neutral-800">Announcements</h1>
+            <p class="mt-1 text-neutral-500">School and class announcements</p>
+        </div>
+        {% if permissions.can_send_class_announcements() %}
+        <a href="/announcements/create"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create Announcement
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <form method="get" action="/announcements" class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-500 mb-1">Level</label>
+                <select name="level" class="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Levels</option>
+                    <option value="SCHOOL" {{ 'selected' if filter_level == 'SCHOOL' }}>School-wide</option>
+                    <option value="CLASS" {{ 'selected' if filter_level == 'CLASS' }}>Class</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-500 mb-1">Severity</label>
+                <select name="severity" class="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Severities</option>
+                    <option value="INFO" {{ 'selected' if filter_severity == 'INFO' }}>Info</option>
+                    <option value="WARNING" {{ 'selected' if filter_severity == 'WARNING' }}>Warning</option>
+                    <option value="URGENT" {{ 'selected' if filter_severity == 'URGENT' }}>Urgent</option>
+                    <option value="EMERGENCY" {{ 'selected' if filter_severity == 'EMERGENCY' }}>Emergency</option>
+                </select>
+            </div>
+            {% if classes %}
+            <div>
+                <label class="block text-xs font-medium text-neutral-500 mb-1">Class</label>
+                <select name="class_id" class="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Classes</option>
+                    {% for cls in classes %}
+                    <option value="{{ cls.id }}" {{ 'selected' if filter_class_id == cls.id|string }}>{{ cls.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="flex items-center gap-2">
+                <input type="checkbox" name="active_only" value="true" id="active_only"
+                       {{ 'checked' if filter_active_only }}
+                       class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <label for="active_only" class="text-sm text-neutral-600">Active only</label>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-neutral-100 text-neutral-700 font-medium rounded-lg hover:bg-neutral-200 transition-colors text-sm">
+                Filter
+            </button>
+            <a href="/announcements" class="px-4 py-2 text-neutral-500 hover:text-neutral-700 text-sm">Clear</a>
+        </form>
+    </div>
+
+    <!-- Announcement Cards -->
+    {% if announcements %}
+    <div class="space-y-4">
+        {% for announcement in announcements %}
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow">
+            <div class="p-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <!-- Severity Badge -->
+                            {% if announcement.severity == 'EMERGENCY' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Emergency</span>
+                            {% elif announcement.severity == 'URGENT' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-700">Urgent</span>
+                            {% elif announcement.severity == 'WARNING' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">Warning</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">Info</span>
+                            {% endif %}
+
+                            <!-- Level Badge -->
+                            {% if announcement.level == 'SCHOOL' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">School-wide</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-700">
+                                {{ announcement.school_class.name if announcement.school_class else 'Class' }}
+                            </span>
+                            {% endif %}
+
+                            {% if announcement.is_pinned %}
+                            <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20" title="Pinned">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            {% endif %}
+
+                            {% if announcement.is_expired %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-400">Expired</span>
+                            {% endif %}
+                        </div>
+
+                        <a href="/announcements/{{ announcement.id }}" class="block">
+                            <h3 class="text-lg font-semibold text-neutral-800 hover:text-primary-600 transition-colors">
+                                {{ announcement.title }}
+                            </h3>
+                        </a>
+                        <p class="mt-1 text-sm text-neutral-600 line-clamp-2">{{ announcement.body[:200] }}{{ '...' if announcement.body|length > 200 }}</p>
+
+                        <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+                            <span>
+                                By {{ announcement.creator.first_name }} {{ announcement.creator.last_name if announcement.creator else 'Unknown' }}
+                            </span>
+                            <span>&middot;</span>
+                            <span>{{ announcement.created_at.strftime('%b %d, %Y at %H:%M') }}</span>
+                            {% if announcement.expires_at %}
+                            <span>&middot;</span>
+                            <span>Expires {{ announcement.expires_at.strftime('%b %d, %Y') }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if permissions.can_send_class_announcements() and (user.id == announcement.created_by or permissions.can_send_announcements()) %}
+                    <div class="flex-shrink-0 flex gap-1">
+                        <button onclick="deleteAnnouncement('{{ announcement.id }}')"
+                                class="p-2 text-neutral-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                                title="Delete">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-center gap-2">
+        {% if page > 1 %}
+        <a href="/announcements?page={{ page - 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_class_id %}&class_id={{ filter_class_id }}{% endif %}{% if filter_active_only %}&active_only=true{% endif %}"
+           class="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
+            Previous
+        </a>
+        {% endif %}
+        <span class="px-3 py-2 text-sm text-neutral-500">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/announcements?page={{ page + 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_class_id %}&class_id={{ filter_class_id }}{% endif %}{% if filter_active_only %}&active_only=true{% endif %}"
+           class="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
+            Next
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-10 text-center">
+        <svg class="w-16 h-16 text-neutral-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+        <h3 class="text-lg font-medium text-neutral-800 mb-1">No announcements yet</h3>
+        <p class="text-neutral-500 mb-4">
+            {% if permissions.can_send_class_announcements() %}
+            Create your first announcement to keep everyone informed.
+            {% else %}
+            Announcements from your school will appear here.
+            {% endif %}
+        </p>
+        {% if permissions.can_send_class_announcements() %}
+        <a href="/announcements/create"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create Announcement
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function deleteAnnouncement(id) {
+    const confirmed = await ClassUp.confirm('Are you sure you want to delete this announcement?');
+    if (!confirmed) return;
+
+    try {
+        await ClassUp.fetch(`/api/v1/announcements/${id}`, { method: 'DELETE' });
+        ClassUp.toast('Announcement deleted', 'success');
+        window.location.reload();
+    } catch (error) {
+        ClassUp.toast('Failed to delete announcement', 'error');
+    }
+}
+</script>
+{% endblock %}
