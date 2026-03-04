@@ -117,7 +117,12 @@ class PhotoService:
             db.add(tag)
 
         await db.commit()
-        await db.refresh(photo_share)
+
+        # Re-fetch with eager loading so nested relationships (files→file_entity, tags→student) are loaded
+        result = await db.execute(
+            select(PhotoShare).where(PhotoShare.id == photo_share.id)
+        )
+        photo_share = result.scalar_one()
 
         # Send notifications (don't fail the create)
         try:
