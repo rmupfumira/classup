@@ -399,55 +399,55 @@ class AnnouncementService:
             reference_id=announcement.id,
         )
 
-        # Email for URGENT/EMERGENCY
-        if announcement.severity in ("URGENT", "EMERGENCY"):
-            try:
-                from app.services.email_service import get_email_service
+        # Email notifications to all parent recipients
+        try:
+            from app.services.email_service import get_email_service
 
-                email_service = get_email_service()
+            email_service = get_email_service()
 
-                # Get tenant name for from_name
-                from app.models.tenant import Tenant
-                tenant = await db.get(Tenant, announcement.tenant_id)
-                tenant_name = tenant.name if tenant else "ClassUp"
+            # Get tenant name for from_name
+            from app.models.tenant import Tenant
+            tenant = await db.get(Tenant, announcement.tenant_id)
+            tenant_name = tenant.name if tenant else "ClassUp"
 
-                # Get recipient emails
-                result = await db.execute(
-                    select(User.email).where(
-                        User.id.in_(recipient_ids),
-                        User.email.isnot(None),
-                    )
+            # Get parent recipient emails only
+            result = await db.execute(
+                select(User.email).where(
+                    User.id.in_(recipient_ids),
+                    User.role == "PARENT",
+                    User.email.isnot(None),
                 )
-                emails = [row[0] for row in result.all()]
+            )
+            parent_emails = [row[0] for row in result.all()]
 
-                class_name = None
-                if announcement.school_class:
-                    class_name = announcement.school_class.name
+            class_name = None
+            if announcement.school_class:
+                class_name = announcement.school_class.name
 
-                creator_name = None
-                if announcement.creator:
-                    creator_name = f"{announcement.creator.first_name} {announcement.creator.last_name}"
+            creator_name = None
+            if announcement.creator:
+                creator_name = f"{announcement.creator.first_name} {announcement.creator.last_name}"
 
-                for email in emails:
-                    try:
-                        await email_service.send(
-                            to=email,
-                            subject=f"[{severity_label}] {announcement.title}",
-                            template_name="announcement_alert.html",
-                            context={
-                                "severity": announcement.severity,
-                                "title": announcement.title,
-                                "body": announcement.body,
-                                "creator_name": creator_name,
-                                "class_name": class_name,
-                                "tenant_name": tenant_name,
-                            },
-                            from_name=tenant_name,
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to send announcement email to {email}: {e}")
-            except Exception as e:
-                logger.error(f"Failed to send announcement emails: {e}")
+            for email in parent_emails:
+                try:
+                    await email_service.send(
+                        to=email,
+                        subject=f"[{severity_label}] {announcement.title}",
+                        template_name="announcement_alert.html",
+                        context={
+                            "severity": announcement.severity,
+                            "title": announcement.title,
+                            "body": announcement.body,
+                            "creator_name": creator_name,
+                            "class_name": class_name,
+                            "tenant_name": tenant_name,
+                        },
+                        from_name=tenant_name,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send announcement email to {email}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to send announcement emails: {e}")
 
 
 # Singleton instance
