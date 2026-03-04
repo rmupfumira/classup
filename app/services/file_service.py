@@ -1,11 +1,13 @@
 """File service for managing file uploads and R2 storage."""
 
 import io
+import logging
 import mimetypes
 import uuid
 from datetime import datetime
 
 import boto3
+from PIL import Image
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from fastapi import UploadFile
@@ -18,6 +20,13 @@ from app.exceptions import ForbiddenException, NotFoundException, ValidationExce
 from app.models import FileEntity, User
 from app.models.file_entity import FileCategory
 from app.utils.tenant_context import get_current_user_id, get_tenant_id
+
+logger = logging.getLogger(__name__)
+
+# Max dimension for photos (longer side). Photos larger than this get resized.
+PHOTO_MAX_DIMENSION = 1920
+# JPEG quality for compressed photos (85 is a good balance of quality/size)
+PHOTO_JPEG_QUALITY = 85
 
 
 # Allowed MIME types for each category
@@ -85,6 +94,67 @@ class FileService:
             )
         return self._client
 
+    def _compress_image(self, content: bytes, content_type: str) -> tuple[bytes, str]:
+        """Compress and resize an image to reduce storage usage.
+
+        Returns the (possibly compressed) content and the final content type.
+        Converts PNG photos to JPEG (unless they have transparency).
+        Resizes images larger than PHOTO_MAX_DIMENSION on their longest side.
+        """
+        try:
+            img = Image.open(io.BytesIO(content))
+
+            # Handle EXIF orientation
+            try:
+                from PIL import ImageOps
+                img = ImageOps.exif_transpose(img)
+            except Exception:
+                pass
+
+            # Convert RGBA/P with no real transparency to RGB for JPEG
+            has_alpha = img.mode in ("RGBA", "LA", "PA")
+            if has_alpha:
+                # Check if alpha channel is actually used
+                if img.mode == "RGBA":
+                    alpha = img.getchannel("A")
+                    if alpha.getextrema() == (255, 255):
+                        has_alpha = False
+
+            if not has_alpha and img.mode != "RGB":
+                img = img.convert("RGB")
+
+            # Resize if larger than max dimension
+            w, h = img.size
+            if max(w, h) > PHOTO_MAX_DIMENSION:
+                ratio = PHOTO_MAX_DIMENSION / max(w, h)
+                new_size = (int(w * ratio), int(h * ratio))
+                img = img.resize(new_size, Image.LANCZOS)
+                logger.info(f"Resized image from {w}x{h} to {new_size[0]}x{new_size[1]}")
+
+            # Save as JPEG (or WebP for transparent images)
+            output = io.BytesIO()
+            if has_alpha:
+                img.save(output, format="WEBP", quality=PHOTO_JPEG_QUALITY)
+                content_type = "image/webp"
+            else:
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                img.save(output, format="JPEG", quality=PHOTO_JPEG_QUALITY, optimize=True)
+                content_type = "image/jpeg"
+
+            compressed = output.getvalue()
+            original_size = len(content)
+            new_size_bytes = len(compressed)
+            logger.info(
+                f"Compressed image: {original_size:,} -> {new_size_bytes:,} bytes "
+                f"({100 - (new_size_bytes / original_size * 100):.0f}% reduction)"
+            )
+            return compressed, content_type
+
+        except Exception as e:
+            logger.warning(f"Image compression failed, using original: {e}")
+            return content, content_type
+
     async def upload_file(
         self,
         db: AsyncSession,
@@ -123,9 +193,19 @@ class FileService:
         # Determine content type
         content_type = file.content_type or self._guess_content_type(file.filename)
 
-        # Generate storage path
+        # Compress images (photos, avatars, logos)
+        if category in (FileCategory.PHOTO, FileCategory.AVATAR, FileCategory.LOGO):
+            content, content_type = self._compress_image(content, content_type)
+            file_size = len(content)
+
+        # Generate storage path (use extension matching final content type)
         file_uuid = uuid.uuid4()
-        file_ext = self._get_extension(file.filename)
+        if content_type == "image/jpeg":
+            file_ext = ".jpeg"
+        elif content_type == "image/webp":
+            file_ext = ".webp"
+        else:
+            file_ext = self._get_extension(file.filename)
         storage_path = self._generate_storage_path(
             tenant_id, category, entity_id, file_uuid, file_ext
         )
