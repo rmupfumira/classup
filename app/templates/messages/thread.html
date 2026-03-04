@@ -75,6 +75,12 @@
 {% block scripts %}
 <script src="{{ url_for('static', path='js/messages.js') }}"></script>
 <script>
-    Messages.initThread('{{ student_id }}', '{{ other_user_id }}', '{{ user.id }}');
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Messages !== 'undefined') {
+            Messages.initThread('{{ student_id }}', '{{ other_user_id }}', '{{ user.id }}');
+        } else {
+            console.error('messages.js failed to load');
+        }
+    });
 </script>
 {% endblock %}

@@ -68,6 +68,12 @@
 {% block scripts %}
 <script src="{{ url_for('static', path='js/messages.js') }}"></script>
 <script>
-    Messages.initCompose({{ compose_data_json | safe }});
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Messages !== 'undefined') {
+            Messages.initCompose({{ compose_data_json | safe }});
+        } else {
+            console.error('messages.js failed to load');
+        }
+    });
 </script>
 {% endblock %}
