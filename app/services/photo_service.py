@@ -402,8 +402,10 @@ class PhotoService:
         # Send emails to parent recipients
         try:
             from app.services.email_service import get_email_service
+            from app.services.file_service import get_file_service
 
             email_service = get_email_service()
+            file_service = get_file_service()
 
             from app.models.tenant import Tenant
             tenant = await db.get(Tenant, photo_share.tenant_id)
@@ -419,6 +421,13 @@ class PhotoService:
 
             tagged_names = photo_share.tagged_student_names
 
+            # Generate presigned URLs for photos to embed in email (longer expiry for email)
+            photo_urls = []
+            for psf in (photo_share.files or [])[:4]:  # Max 4 photos in email
+                if psf.file_entity:
+                    url = file_service.generate_presigned_url(psf.file_entity, expires_in=7 * 24 * 3600)
+                    photo_urls.append(url)
+
             for email in parent_emails:
                 try:
                     await email_service.send(
@@ -431,6 +440,7 @@ class PhotoService:
                             "photo_count": photo_count,
                             "caption": photo_share.caption,
                             "tagged_students": tagged_names,
+                            "photo_urls": photo_urls,
                             "tenant_name": tenant_name,
                         },
                         from_name=tenant_name,

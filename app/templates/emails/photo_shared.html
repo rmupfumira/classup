@@ -5,32 +5,29 @@
 {% block header_color %}#7C3AED{% endblock %}
 
 {% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
-    New Photos Shared
-</h2>
+<p style="margin: 0 0 4px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    {{ sharer_name }} shared {{ photo_count }} photo{{ 's' if photo_count != 1 else '' }}{% if tagged_students %}, tagging <strong>{{ tagged_students|join(', ') }}</strong>{% endif %}:
+</p>
 
-<div style="background-color: #F5F3FF; border-left: 4px solid #7C3AED; border-radius: 4px; padding: 16px; margin: 0 0 24px 0;">
-    <p style="margin: 0 0 8px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-        {{ sharer_name }} shared {{ photo_count }} photo{{ 's' if photo_count != 1 else '' }} with <strong>{{ class_name }}</strong>.
-    </p>
-    {% if caption %}
-    <p style="margin: 0; font-size: 14px; color: #6B7280; font-style: italic;">"{{ caption }}"</p>
-    {% endif %}
-</div>
-
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
-    {% if tagged_students %}
-    <tr>
-        <td style="padding: 0 0 8px 0;">
-            <strong style="font-size: 14px; color: #6B7280;">Tagged students:</strong>
-            <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ tagged_students|join(', ') }}</span>
-        </td>
-    </tr>
-    {% endif %}
-</table>
-
+{% if caption %}
 <p style="margin: 0 0 16px 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
-    Log in to ClassUp to view the photos.
+    {{ caption }}
+</p>
+{% endif %}
+
+{% if photo_urls %}
+{% for url in photo_urls %}
+<img src="{{ url }}" alt="Shared photo" style="display: block; max-width: 100%; width: 100%; height: auto; border-radius: 8px; margin: 0 0 {% if not loop.last %}8{% else %}16{% endif %}px 0;" />
+{% endfor %}
+{% if photo_count > photo_urls|length %}
+<p style="margin: 0 0 16px 0; font-size: 13px; color: #9CA3AF; text-align: center;">
+    + {{ photo_count - photo_urls|length }} more photo{{ 's' if (photo_count - photo_urls|length) != 1 else '' }}
+</p>
+{% endif %}
+{% endif %}
+
+<p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    Log in to ClassUp to view all photos.
 </p>
 {% endblock %}
 
