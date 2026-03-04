@@ -1,0 +1,23 @@
+{% extends "base_email.html" %}
+
+{% block title %}New Message - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1F2937;">
+    New message about {{ student_name }}
+</h2>
+
+<p style="margin: 0 0 8px 0; font-size: 14px; color: #6B7280;">
+    From <strong style="color: #1F2937;">{{ sender_name }}</strong>
+</p>
+
+<div style="background-color: #F3F4F6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+    <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{{ message_body }}</p>
+</div>
+
+<div style="text-align: center; margin: 24px 0;">
+    <a href="{{ base_url }}/messages" class="button" style="background-color: #7C3AED; border-radius: 8px; color: #ffffff !important; display: inline-block; font-size: 16px; font-weight: 600; padding: 12px 24px; text-decoration: none;">
+        View &amp; Reply
+    </a>
+</div>
+{% endblock %}

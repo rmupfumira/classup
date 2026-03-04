@@ -12,6 +12,7 @@ from app.web import (
     documents,
     imports,
     invitations,
+    messages,
     onboarding,
     photos,
     reports,
@@ -38,5 +39,6 @@ web_router.include_router(settings.router)
 web_router.include_router(academic.router)
 web_router.include_router(imports.router)
 web_router.include_router(invitations.router)
+web_router.include_router(messages.router)
 web_router.include_router(teachers.router)
 web_router.include_router(super_admin.router)

@@ -19,6 +19,7 @@ from app.models.grade_level import GradeLevel
 from app.models.file_entity import FileEntity, FileCategory
 from app.models.invitation import ParentInvitation, InvitationStatus, generate_invitation_code
 from app.models.teacher_invitation import TeacherInvitation
+from app.models.message import Message, MessageAttachment, MessageRecipient, MessageStatus, MessageType
 from app.models.notification import Notification, NotificationType
 from app.models.announcement import Announcement, AnnouncementDismissal, AnnouncementLevel, AnnouncementSeverity
 from app.models.webhook import (
@@ -75,6 +76,12 @@ __all__ = [
     "InvitationStatus",
     "generate_invitation_code",
     "TeacherInvitation",
+    # Message
+    "Message",
+    "MessageRecipient",
+    "MessageAttachment",
+    "MessageType",
+    "MessageStatus",
     # Notification
     "Notification",
     "NotificationType",

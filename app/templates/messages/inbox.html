@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Messages - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-neutral-800">Messages</h1>
+            <p class="mt-1 text-neutral-500">Conversations about students</p>
+        </div>
+        {% if permissions.can_create_message() or permissions.can_reply_to_message() %}
+        <a href="/messages/compose"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Message
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Conversation List -->
+    {% if conversations %}
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
+        {% for conv in conversations %}
+        <a href="/messages/thread/{{ conv.student_id }}/{{ conv.other_user_id }}"
+           class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors min-h-[70px] {{ 'bg-primary-50/50' if conv.unread_count > 0 }}">
+            <!-- Avatar -->
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                {% if conv.student_photo_path %}
+                <img src="/api/v1/files/{{ conv.student_photo_path }}/url" alt="" class="w-10 h-10 rounded-full object-cover">
+                {% else %}
+                <span class="text-primary-600 font-semibold text-sm">{{ conv.student_name[0] }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-sm truncate {{ 'font-bold text-neutral-900' if conv.unread_count > 0 else 'font-medium text-neutral-800' }}">
+                        {{ conv.student_name }}
+                    </h3>
+                    <span class="text-xs text-neutral-400 flex-shrink-0 whitespace-nowrap">
+                        {{ conv.last_message_at.strftime('%b %d') if conv.last_message_at else '' }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-1 mt-0.5">
+                    <span class="text-xs text-neutral-400">with {{ conv.other_user_name }}
+                        {% if conv.other_user_role %}({{ conv.other_user_role|lower }}){% endif %}
+                    </span>
+                    {% if conv.class_name %}
+                    <span class="text-xs text-neutral-300">&middot;</span>
+                    <span class="text-xs text-neutral-400">{{ conv.class_name }}</span>
+                    {% endif %}
+                </div>
+                <p class="text-xs mt-0.5 truncate {{ 'text-neutral-700 font-medium' if conv.unread_count > 0 else 'text-neutral-400' }}">
+                    {% if conv.last_message_sender_id and conv.last_message_sender_id|string == user.id|string %}
+                    <span class="text-neutral-400">You: </span>
+                    {% endif %}
+                    {{ conv.last_message_body[:80] }}{{ '...' if conv.last_message_body|length > 80 }}
+                </p>
+            </div>
+
+            <!-- Unread badge -->
+            {% if conv.unread_count > 0 %}
+            <div class="flex-shrink-0">
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-primary-500 rounded-full">
+                    {{ conv.unread_count if conv.unread_count < 10 else '9+' }}
+                </span>
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-center gap-2">
+        {% if page > 1 %}
+        <a href="/messages?page={{ page - 1 }}"
+           class="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
+            Previous
+        </a>
+        {% endif %}
+        <span class="px-3 py-2 text-sm text-neutral-500">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/messages?page={{ page + 1 }}"
+           class="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
+            Next
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-10 text-center">
+        <svg class="w-16 h-16 text-neutral-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        <h3 class="text-lg font-medium text-neutral-800 mb-1">No messages yet</h3>
+        <p class="text-neutral-500 mb-4">
+            {% if permissions.can_create_message() %}
+            Start a conversation about a student.
+            {% else %}
+            Messages from teachers will appear here.
+            {% endif %}
+        </p>
+        {% if permissions.can_create_message() or permissions.can_reply_to_message() %}
+        <a href="/messages/compose"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Message
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
