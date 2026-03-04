@@ -218,11 +218,21 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id):
     except Exception:
         pass
 
+    # Get unread message count
+    unread_messages = 0
+    try:
+        from app.services.message_service import get_message_service
+        message_service = get_message_service()
+        unread_messages = await message_service.get_unread_count(db)
+    except Exception:
+        pass
+
     return {
         'children': children_data,
         'recent_reports': recent_reports,
         'today': today,
         'active_announcements': active_announcements,
+        'unread_messages': unread_messages,
     }
 
 

@@ -717,6 +717,9 @@ class MessageService:
                 tenant = await db.get(Tenant, message.tenant_id)
                 tenant_name = tenant.name if tenant else "ClassUp"
 
+                from app.config import get_settings
+                settings = get_settings()
+
                 await email_service.send(
                     to=recipient_user.email,
                     subject=f"New message about {student_name}",
@@ -727,6 +730,7 @@ class MessageService:
                         "message_body": message.body[:300],
                         "tenant_name": tenant_name,
                         "app_name": "ClassUp",
+                        "base_url": settings.app_base_url,
                     },
                     from_name=tenant_name,
                 )
