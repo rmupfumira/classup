@@ -124,6 +124,9 @@ class AttendanceService:
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
+        # Validate date: no future dates or weekends
+        self._validate_attendance_date(data.date)
+
         # Verify student exists and belongs to tenant
         student = await self._get_student(db, data.student_id)
 
@@ -193,6 +196,13 @@ class AttendanceService:
 
         return record
 
+    def _validate_attendance_date(self, target_date: date) -> None:
+        """Reject future dates and weekends for attendance."""
+        if target_date > date.today():
+            raise ValidationException("Cannot record attendance for a future date")
+        if target_date.weekday() >= 5:  # Saturday=5, Sunday=6
+            raise ValidationException("Cannot record attendance on weekends")
+
     async def record_bulk_attendance(
         self,
         db: AsyncSession,
@@ -201,6 +211,9 @@ class AttendanceService:
         """Record attendance for multiple students at once."""
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
+
+        # Validate date: no future dates or weekends
+        self._validate_attendance_date(data.date)
 
         # Verify class exists
         await self._get_class(db, data.class_id)
@@ -497,6 +510,10 @@ class AttendanceService:
         # Date must be today or in the future
         if absence_date < date.today():
             raise ValidationException("Cannot report absence for a past date")
+
+        # Weekends not allowed
+        if absence_date.weekday() >= 5:
+            raise ValidationException("Cannot report absence on weekends")
 
         # Get student
         student = await self._get_student(db, student_id)

@@ -157,6 +157,7 @@ async def reports_create(
     if template_id:
         selected_template = await report_service.get_template(db, template_id)
 
+    today = date.today()
     context = {
         "request": request,
         "user": user,
@@ -164,7 +165,8 @@ async def reports_create(
         "templates": templates_list,
         "selected_student": selected_student,
         "selected_template": selected_template,
-        "report_date": report_date or date.today(),
+        "report_date": report_date or today,
+        "today": today,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

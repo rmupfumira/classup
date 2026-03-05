@@ -14,10 +14,48 @@
         <h1 class="text-2xl font-bold text-gray-900">Create Report</h1>
     </div>
 
+    <!-- Step Wizard Indicator -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div class="flex items-center justify-between max-w-lg mx-auto">
+            <!-- Step 1 Circle -->
+            <div class="flex flex-col items-center">
+                <div id="step-circle-1" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-primary-600 text-white shadow-md shadow-primary-200 transition-all duration-300">
+                    1
+                </div>
+                <span class="hidden sm:block text-xs font-medium text-gray-600 mt-1.5">Student</span>
+            </div>
+            <!-- Connector 1-2 -->
+            <div class="flex-1 h-1 mx-2 sm:mx-4 bg-gray-200 rounded-full overflow-hidden">
+                <div id="step-connector-1" class="h-full bg-primary-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <!-- Step 2 Circle -->
+            <div class="flex flex-col items-center">
+                <div id="step-circle-2" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-gray-200 text-gray-500 transition-all duration-300">
+                    2
+                </div>
+                <span class="hidden sm:block text-xs font-medium text-gray-400 mt-1.5">Template</span>
+            </div>
+            <!-- Connector 2-3 -->
+            <div class="flex-1 h-1 mx-2 sm:mx-4 bg-gray-200 rounded-full overflow-hidden">
+                <div id="step-connector-2" class="h-full bg-primary-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <!-- Step 3 Circle -->
+            <div class="flex flex-col items-center">
+                <div id="step-circle-3" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-gray-200 text-gray-500 transition-all duration-300">
+                    3
+                </div>
+                <span class="hidden sm:block text-xs font-medium text-gray-400 mt-1.5">Fill Report</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Step 1: Select Student -->
-    <div id="step-1" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div id="step-1" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300">
         <div class="p-6">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">Step 1: Select Student</h2>
+            <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">1</span>
+                Select Student
+            </h2>
 
             <div class="space-y-4">
                 <!-- Class Selection -->
@@ -52,9 +90,12 @@
     </div>
 
     <!-- Step 2: Select Template & Date -->
-    <div id="step-2" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden {% if not selected_student %}opacity-50 pointer-events-none{% endif %}">
+    <div id="step-2" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 {% if not selected_student %}opacity-40 scale-[0.99] pointer-events-none{% endif %}">
         <div class="p-6">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">Step 2: Select Template & Date</h2>
+            <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">2</span>
+                Select Template & Date
+            </h2>
 
             <div class="space-y-4">
                 <!-- Template Selection -->
@@ -78,17 +119,28 @@
                     <label for="report_date" class="block text-sm font-medium text-gray-700 mb-1">Report Date</label>
                     <input type="date" id="report_date" name="report_date"
                            value="{{ report_date }}"
+                           max="{{ today }}"
                            class="block w-full sm:w-48 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                    <!-- Inline weekend warning -->
+                    <div id="report-weekend-warning" class="hidden mt-2 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                        Cannot create reports on weekends. Date reset to today.
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Step 3: Fill Report -->
-    <div id="step-3" class="{% if not selected_template %}hidden{% endif %}">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div id="step-3" class="{% if not selected_template %}hidden{% endif %} transition-all duration-300">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-4">Step 3: Fill Report</h2>
+                <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">3</span>
+                    Fill Report
+                </h2>
 
                 <!-- Dynamic Form Sections -->
                 <div id="report-sections" class="space-y-6">
@@ -183,20 +235,46 @@
         </div>
     </div>
 
-    <!-- Form Actions -->
-    <div id="form-actions" class="flex items-center justify-end gap-3 {% if not selected_template %}hidden{% endif %}">
-        <a href="/reports"
-           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            Cancel
-        </a>
-        <button type="button" onclick="saveReport(false)"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            Save as Draft
-        </button>
-        <button type="button" onclick="saveReport(true)"
-                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-            Save & Finalize
-        </button>
+    <!-- Sticky Action Bar -->
+    <div id="form-actions" class="{% if not selected_template %}hidden{% endif %} sticky bottom-0 z-10">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 sm:px-6 py-4">
+            <!-- Desktop layout -->
+            <div class="hidden sm:flex items-center justify-between">
+                <a href="/reports" class="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
+                    Cancel
+                </a>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="saveReport(false)"
+                            class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        Save as Draft
+                    </button>
+                    <button type="button" onclick="saveReport(true)"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Save & Finalize
+                    </button>
+                </div>
+            </div>
+            <!-- Mobile layout -->
+            <div class="sm:hidden space-y-2">
+                <button type="button" onclick="saveReport(true)"
+                        class="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Save & Finalize
+                </button>
+                <button type="button" onclick="saveReport(false)"
+                        class="w-full px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                    Save as Draft
+                </button>
+                <a href="/reports" class="block text-center text-sm font-medium text-gray-500 hover:text-gray-700 py-2 transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -205,6 +283,57 @@
 <script>
 let currentTemplate = null;
 let templateSections = {};
+
+// --- Step Wizard Indicator ---
+const checkmarkSVG = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>';
+
+function updateStepIndicator(activeStep) {
+    for (let i = 1; i <= 3; i++) {
+        const circle = document.getElementById(`step-circle-${i}`);
+        const label = circle.parentElement.querySelector('span');
+        if (i < activeStep) {
+            // Completed
+            circle.className = 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-green-500 text-white transition-all duration-300';
+            circle.innerHTML = checkmarkSVG;
+            if (label) { label.className = 'hidden sm:block text-xs font-medium text-green-600 mt-1.5'; }
+        } else if (i === activeStep) {
+            // Active
+            circle.className = 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-primary-600 text-white shadow-md shadow-primary-200 transition-all duration-300';
+            circle.textContent = i;
+            if (label) { label.className = 'hidden sm:block text-xs font-medium text-gray-600 mt-1.5'; }
+        } else {
+            // Upcoming
+            circle.className = 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-gray-200 text-gray-500 transition-all duration-300';
+            circle.textContent = i;
+            if (label) { label.className = 'hidden sm:block text-xs font-medium text-gray-400 mt-1.5'; }
+        }
+    }
+    // Connectors
+    for (let i = 1; i <= 2; i++) {
+        const connector = document.getElementById(`step-connector-${i}`);
+        if (activeStep > i) {
+            connector.style.width = '100%';
+        } else if (activeStep === i) {
+            connector.style.width = '50%';
+        } else {
+            connector.style.width = '0%';
+        }
+    }
+}
+
+// Inline weekend warning for report date
+document.getElementById('report_date').addEventListener('change', function() {
+    const d = new Date(this.value + 'T00:00:00');
+    const day = d.getDay();
+    const warning = document.getElementById('report-weekend-warning');
+    if (day === 0 || day === 6) {
+        warning.classList.remove('hidden');
+        this.value = '{{ today }}';
+        setTimeout(() => warning.classList.add('hidden'), 4000);
+    } else {
+        warning.classList.add('hidden');
+    }
+});
 
 {% if selected_template and selected_template.sections %}
 templateSections = {{ selected_template.sections | tojson | safe }};
@@ -216,8 +345,9 @@ async function handleClassChange() {
     const step2 = document.getElementById('step-2');
 
     studentSelect.innerHTML = '<option value="">Select student...</option>';
-    step2.classList.add('opacity-50', 'pointer-events-none');
+    step2.classList.add('opacity-40', 'scale-[0.99]', 'pointer-events-none');
     hideStep3();
+    updateStepIndicator(1);
 
     if (!classId) return;
 
@@ -249,11 +379,13 @@ async function handleStudentChange() {
     hideStep3();
 
     if (!studentId) {
-        step2.classList.add('opacity-50', 'pointer-events-none');
+        step2.classList.add('opacity-40', 'scale-[0.99]', 'pointer-events-none');
+        updateStepIndicator(1);
         return;
     }
 
-    step2.classList.remove('opacity-50', 'pointer-events-none');
+    step2.classList.remove('opacity-40', 'scale-[0.99]', 'pointer-events-none');
+    updateStepIndicator(2);
 
     try {
         const response = await fetch(`/api/v1/reports/templates/for-student/${studentId}`, {
@@ -281,6 +413,7 @@ async function handleTemplateChange() {
 
     if (!templateId) {
         hideStep3();
+        updateStepIndicator(2);
         return;
     }
 
@@ -296,6 +429,7 @@ async function handleTemplateChange() {
             renderFormSections();
             step3.classList.remove('hidden');
             formActions.classList.remove('hidden');
+            updateStepIndicator(3);
         }
     } catch (error) {
         console.error('Error fetching template:', error);
@@ -474,7 +608,7 @@ function calculateDuration(row) {
     const [sh, sm] = startInput.value.split(':').map(Number);
     const [eh, em] = endInput.value.split(':').map(Number);
     let diffMin = (eh * 60 + em) - (sh * 60 + sm);
-    if (diffMin < 0) diffMin += 24 * 60; // handle overnight
+    if (diffMin < 0) diffMin += 24 * 60;
 
     const hours = Math.floor(diffMin / 60);
     const mins = diffMin % 60;
@@ -541,7 +675,6 @@ function collectFormData() {
 
     templateSections.forEach(section => {
         if (section.type === 'REPEATABLE_ENTRIES') {
-            // Collect repeatable entries
             const entries = [];
             const tbody = document.getElementById(`entries-${section.id}`);
             if (tbody) {
@@ -553,7 +686,6 @@ function collectFormData() {
                             entry[field.id] = input.value;
                         }
                     });
-                    // Only add non-empty entries
                     if (Object.values(entry).some(v => v)) {
                         entries.push(entry);
                     }
@@ -561,7 +693,6 @@ function collectFormData() {
             }
             reportData.sections[section.id] = { entries };
         } else if (section.type === 'MEALS') {
-            // Collect meal entries with amount and description
             const sectionData = {};
             section.fields.forEach(field => {
                 if (field.type === 'MEAL_ENTRY') {
@@ -573,11 +704,9 @@ function collectFormData() {
             });
             reportData.sections[section.id] = sectionData;
         } else {
-            // Collect regular fields
             const sectionData = {};
             section.fields.forEach(field => {
                 if (field.type === 'MULTISELECT') {
-                    // Collect all checked checkboxes
                     const checkboxes = document.querySelectorAll(`[name="sections.${section.id}.${field.id}"]:checked`);
                     sectionData[field.id] = Array.from(checkboxes).map(cb => cb.value);
                 } else if (field.type === 'CHECKBOX') {
@@ -610,7 +739,6 @@ async function saveReport(finalize = false) {
         return;
     }
 
-    // Ask for confirmation before finalizing
     if (finalize) {
         if (!(await ClassUp.confirm('Are you sure you want to finalize this report? This will notify parents and the report cannot be edited afterwards.', { danger: true, confirmText: 'Save & Finalize' }))) {
             return;
@@ -619,7 +747,6 @@ async function saveReport(finalize = false) {
 
     const reportData = collectFormData();
 
-    // Disable buttons and show loading state
     const buttons = document.querySelectorAll('[onclick^="saveReport"]');
     const btnTexts = Array.from(buttons).map(b => b.textContent);
     buttons.forEach(b => { b.disabled = true; });
@@ -627,7 +754,6 @@ async function saveReport(finalize = false) {
     if (activeBtn) activeBtn.textContent = finalize ? 'Saving & Finalizing...' : 'Saving...';
 
     try {
-        // Create the report
         const createResult = await ClassUp.fetch('/api/v1/reports', {
             method: 'POST',
             body: {
@@ -641,7 +767,6 @@ async function saveReport(finalize = false) {
 
         const reportId = createResult.data.id;
 
-        // Finalize if requested
         if (finalize) {
             await ClassUp.fetch(`/api/v1/reports/${reportId}/finalize`, {
                 method: 'POST',
@@ -652,16 +777,23 @@ async function saveReport(finalize = false) {
             window.location.href = '/reports?saved=draft';
         }
     } catch (error) {
-        // ClassUp.fetch already shows error toasts, just restore buttons
         buttons.forEach((b, i) => { b.disabled = false; b.textContent = btnTexts[i]; });
     }
 }
 
-// Initialize if student is pre-selected
-{% if selected_student and selected_student.class_id %}
+// Initialize step indicator based on pre-selected state
 document.addEventListener('DOMContentLoaded', function() {
+    {% if selected_template %}
+    updateStepIndicator(3);
+    {% elif selected_student %}
+    updateStepIndicator(2);
+    {% else %}
+    updateStepIndicator(1);
+    {% endif %}
+
+    {% if selected_student and selected_student.class_id %}
     handleClassChange();
+    {% endif %}
 });
-{% endif %}
 </script>
 {% endblock %}

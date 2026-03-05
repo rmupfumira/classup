@@ -4,32 +4,34 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Daily Attendance</h1>
-            <p class="mt-1 text-sm text-gray-500">
-                Record attendance for {{ target_date.strftime('%A, %B %d, %Y') }}
-            </p>
+    <!-- Gradient Hero Header -->
+    <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">Daily Attendance</h1>
+                <p class="mt-1 text-sm text-primary-100">
+                    Record attendance for {{ target_date.strftime('%A, %B %d, %Y') }}
+                </p>
+            </div>
+            <a href="/attendance/history"
+               class="inline-flex items-center px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white rounded-lg transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                View History
+            </a>
         </div>
-        <a href="/attendance/history"
-           class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            View History
-        </a>
     </div>
 
     <!-- Class and Date Selection -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <form method="get" class="flex flex-col sm:flex-row gap-4">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <form method="get" class="flex flex-col sm:flex-row sm:items-end gap-4">
             <!-- Class Selection -->
             <div class="flex-1 sm:max-w-xs">
                 <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
                 <select name="class_id" id="class_id" onchange="this.form.submit()"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                     <option value="">Select a class</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
@@ -44,43 +46,133 @@
                 <label for="target_date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
                 <input type="date" name="target_date" id="target_date"
                        value="{{ target_date.isoformat() }}"
-                       onchange="this.form.submit()"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       max="{{ today.isoformat() }}"
+                       onchange="validateAttendanceDate(this)"
+                       class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
             </div>
         </form>
+        <!-- Inline weekend warning -->
+        <div id="attendance-weekend-warning" class="hidden mt-3 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            Cannot record attendance on weekends. Date reset to today.
+        </div>
     </div>
 
     {% if attendance_data %}
-    <!-- Stats Summary -->
+    <!-- Stats Summary with Icons -->
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <p class="text-sm text-gray-500">Total</p>
-            <p class="text-2xl font-bold text-gray-900">{{ attendance_data.stats.total_students }}</p>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Total</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ attendance_data.stats.total_students }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-green-50 rounded-lg shadow-sm border border-green-200 p-4">
-            <p class="text-sm text-green-600">Present</p>
-            <p class="text-2xl font-bold text-green-700">{{ attendance_data.stats.present_count }}</p>
+        <div class="bg-white rounded-xl shadow-sm border border-green-200 p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-xs text-green-600">Present</p>
+                    <p class="text-2xl font-bold text-green-700">{{ attendance_data.stats.present_count }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-red-50 rounded-lg shadow-sm border border-red-200 p-4">
-            <p class="text-sm text-red-600">Absent</p>
-            <p class="text-2xl font-bold text-red-700">{{ attendance_data.stats.absent_count }}</p>
+        <div class="bg-white rounded-xl shadow-sm border border-red-200 p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-xs text-red-600">Absent</p>
+                    <p class="text-2xl font-bold text-red-700">{{ attendance_data.stats.absent_count }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-amber-50 rounded-lg shadow-sm border border-amber-200 p-4">
-            <p class="text-sm text-amber-600">Late</p>
-            <p class="text-2xl font-bold text-amber-700">{{ attendance_data.stats.late_count }}</p>
+        <div class="bg-white rounded-xl shadow-sm border border-amber-200 p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-xs text-amber-600">Late</p>
+                    <p class="text-2xl font-bold text-amber-700">{{ attendance_data.stats.late_count }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-gray-50 rounded-lg shadow-sm border border-gray-200 p-4">
-            <p class="text-sm text-gray-500">Excused</p>
-            <p class="text-2xl font-bold text-gray-700">{{ attendance_data.stats.excused_count }}</p>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Excused</p>
+                    <p class="text-2xl font-bold text-gray-700">{{ attendance_data.stats.excused_count }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Stacked Progress Bar -->
+    {% if attendance_data.stats.total_students > 0 %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700">Attendance Overview</span>
+            <span class="text-xs text-gray-500" id="attendance-progress-label">
+                {% set total = attendance_data.stats.total_students %}
+                {% set recorded = attendance_data.stats.present_count + attendance_data.stats.absent_count + attendance_data.stats.late_count + attendance_data.stats.excused_count %}
+                {{ recorded }}/{{ total }} recorded
+            </span>
+        </div>
+        <div class="flex h-3 rounded-full overflow-hidden bg-gray-100" id="attendance-progress-bar">
+            {% set total = attendance_data.stats.total_students %}
+            {% if total > 0 %}
+            {% set present_pct = (attendance_data.stats.present_count / total * 100) | round(1) %}
+            {% set late_pct = (attendance_data.stats.late_count / total * 100) | round(1) %}
+            {% set absent_pct = (attendance_data.stats.absent_count / total * 100) | round(1) %}
+            {% set excused_pct = (attendance_data.stats.excused_count / total * 100) | round(1) %}
+            <div class="bg-green-500 transition-all duration-500" style="width: {{ present_pct }}%" title="Present {{ present_pct }}%"></div>
+            <div class="bg-amber-400 transition-all duration-500" style="width: {{ late_pct }}%" title="Late {{ late_pct }}%"></div>
+            <div class="bg-red-500 transition-all duration-500" style="width: {{ absent_pct }}%" title="Absent {{ absent_pct }}%"></div>
+            <div class="bg-gray-400 transition-all duration-500" style="width: {{ excused_pct }}%" title="Excused {{ excused_pct }}%"></div>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Present</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Late</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Absent</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-400"></span> Excused</span>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Attendance Form -->
-    <form id="attendance-form" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 class="text-lg font-medium text-gray-900">{{ attendance_data.class_name }}</h2>
+    <form id="attendance-form" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <!-- Sticky Form Header -->
+        <div class="p-4 border-b border-gray-200 flex items-center justify-between sticky top-12 bg-white z-10">
+            <div>
+                <h2 class="text-lg font-medium text-gray-900">{{ attendance_data.class_name }}</h2>
+                <p class="text-sm text-gray-500">{{ attendance_data.students | length }} student{{ 's' if attendance_data.students | length != 1 else '' }}</p>
+            </div>
             <button type="button" onclick="saveAttendance()"
-                    class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
@@ -91,7 +183,13 @@
         {% if attendance_data.students %}
         <div class="divide-y divide-gray-200">
             {% for student in attendance_data.students %}
-            <div class="p-4 hover:bg-gray-50 transition-colors" data-student-id="{{ student.student_id }}">
+            <div class="p-4 hover:bg-gray-50 transition-colors border-l-4
+                {% if student.status == 'PRESENT' %}border-l-green-500
+                {% elif student.status == 'LATE' %}border-l-amber-500
+                {% elif student.status == 'ABSENT' %}border-l-red-500
+                {% elif student.status == 'EXCUSED' %}border-l-gray-400
+                {% else %}border-l-transparent{% endif %}"
+                 data-student-id="{{ student.student_id }}">
                 <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                     <!-- Student Info -->
                     <div class="flex items-center flex-1 min-w-0">
@@ -122,38 +220,38 @@
                     <!-- Status Buttons -->
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'PRESENT')"
-                                class="status-btn px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                                       {% if student.status == 'PRESENT' %}bg-green-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-green-100{% endif %}"
+                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-green-400
+                                       {% if student.status == 'PRESENT' %}bg-green-600 text-white shadow-sm shadow-green-200{% else %}bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700{% endif %}"
                                 data-status="PRESENT">
                             Present
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'LATE')"
-                                class="status-btn px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                                       {% if student.status == 'LATE' %}bg-amber-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-amber-100{% endif %}"
+                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-amber-400
+                                       {% if student.status == 'LATE' %}bg-amber-500 text-white shadow-sm shadow-amber-200{% else %}bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-700{% endif %}"
                                 data-status="LATE">
                             Late
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'ABSENT')"
-                                class="status-btn px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                                       {% if student.status == 'ABSENT' %}bg-red-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-red-100{% endif %}"
+                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-red-400
+                                       {% if student.status == 'ABSENT' %}bg-red-600 text-white shadow-sm shadow-red-200{% else %}bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-700{% endif %}"
                                 data-status="ABSENT">
                             Absent
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'EXCUSED')"
-                                class="status-btn px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                                       {% if student.status == 'EXCUSED' %}bg-gray-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}"
+                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-gray-400
+                                       {% if student.status == 'EXCUSED' %}bg-gray-600 text-white shadow-sm shadow-gray-200{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}"
                                 data-status="EXCUSED">
                             Excused
                         </button>
 
                         {% if student.record_id and student.status in ('PRESENT', 'LATE') %}
                             {% if student.check_out_time %}
-                            <span class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700">
+                            <span class="px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-700">
                                 Checked Out
                             </span>
                             {% else %}
                             <button type="button" onclick="checkOutStudent('{{ student.record_id }}')"
-                                    class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                    class="px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                                 Check Out
                             </button>
                             {% endif %}
@@ -193,7 +291,7 @@
 
     {% elif not classes %}
     <!-- No Classes -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
@@ -204,7 +302,7 @@
 
     {% else %}
     <!-- Select a Class -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
@@ -221,6 +319,20 @@
 
 {% block scripts %}
 <script>
+function validateAttendanceDate(input) {
+    const d = new Date(input.value + 'T00:00:00');
+    const day = d.getDay();
+    const warning = document.getElementById('attendance-weekend-warning');
+    if (day === 0 || day === 6) {
+        warning.classList.remove('hidden');
+        input.value = '{{ today.isoformat() }}';
+        setTimeout(() => warning.classList.add('hidden'), 4000);
+        return;
+    }
+    warning.classList.add('hidden');
+    input.form.submit();
+}
+
 // Store attendance data
 const attendanceData = {};
 
@@ -234,33 +346,51 @@ attendanceData['{{ student.student_id }}'] = {
 {% endfor %}
 {% endif %}
 
+// Border color map for status
+const borderColorMap = {
+    PRESENT: 'border-l-green-500',
+    LATE: 'border-l-amber-500',
+    ABSENT: 'border-l-red-500',
+    EXCUSED: 'border-l-gray-400'
+};
+const allBorderColors = ['border-l-green-500', 'border-l-amber-500', 'border-l-red-500', 'border-l-gray-400', 'border-l-transparent'];
+
+// Active button styles
+const activeStyleMap = {
+    PRESENT: ['bg-green-600', 'text-white', 'shadow-sm', 'shadow-green-200'],
+    LATE: ['bg-amber-500', 'text-white', 'shadow-sm', 'shadow-amber-200'],
+    ABSENT: ['bg-red-600', 'text-white', 'shadow-sm', 'shadow-red-200'],
+    EXCUSED: ['bg-gray-600', 'text-white', 'shadow-sm', 'shadow-gray-200']
+};
+const inactiveStyles = ['bg-gray-100', 'text-gray-700'];
+const allActiveStyles = ['bg-green-600', 'bg-amber-500', 'bg-red-600', 'bg-gray-600', 'text-white', 'shadow-sm', 'shadow-green-200', 'shadow-amber-200', 'shadow-red-200', 'shadow-gray-200'];
+
 function setStatus(studentId, status) {
-    // Update data
     if (!attendanceData[studentId]) {
         attendanceData[studentId] = {};
     }
     attendanceData[studentId].status = status;
 
-    // Update UI
     const row = document.querySelector(`[data-student-id="${studentId}"]`);
     const buttons = row.querySelectorAll('.status-btn');
 
+    // Update left border
+    row.classList.remove(...allBorderColors);
+    row.classList.add(borderColorMap[status] || 'border-l-transparent');
+
+    // Update buttons
     buttons.forEach(btn => {
         const btnStatus = btn.dataset.status;
-        btn.classList.remove('bg-green-600', 'bg-amber-500', 'bg-red-600', 'bg-gray-600', 'text-white');
-        btn.classList.add('bg-gray-100', 'text-gray-700');
+        btn.classList.remove(...allActiveStyles);
+        btn.classList.remove(...inactiveStyles);
 
         if (btnStatus === status) {
-            btn.classList.remove('bg-gray-100', 'text-gray-700');
-            if (status === 'PRESENT') {
-                btn.classList.add('bg-green-600', 'text-white');
-            } else if (status === 'LATE') {
-                btn.classList.add('bg-amber-500', 'text-white');
-            } else if (status === 'ABSENT') {
-                btn.classList.add('bg-red-600', 'text-white');
-            } else if (status === 'EXCUSED') {
-                btn.classList.add('bg-gray-600', 'text-white');
-            }
+            btn.classList.add(...activeStyleMap[status]);
+            // Scale pop animation
+            btn.classList.add('status-pop');
+            setTimeout(() => btn.classList.remove('status-pop'), 150);
+        } else {
+            btn.classList.add(...inactiveStyles);
         }
     });
 }
@@ -274,7 +404,6 @@ async function saveAttendance() {
         return;
     }
 
-    // Collect all attendance records
     const records = [];
     document.querySelectorAll('[data-student-id]').forEach(row => {
         const studentId = row.dataset.studentId;

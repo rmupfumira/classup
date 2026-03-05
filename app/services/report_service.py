@@ -20,6 +20,7 @@ from app.schemas.report import (
     ReportUpdate,
 )
 from app.utils.default_templates import get_default_templates_for_education_type
+from app.exceptions import ValidationException
 from app.utils.tenant_context import get_current_user_id, get_tenant_id
 
 logger = logging.getLogger(__name__)
@@ -505,6 +506,12 @@ class ReportService:
         """Create a new report."""
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
+
+        # Validate report date: no future dates or weekends
+        if data.report_date > date.today():
+            raise ValidationException("Cannot create a report for a future date")
+        if data.report_date.weekday() >= 5:
+            raise ValidationException("Cannot create a report on weekends")
 
         report = DailyReport(
             tenant_id=tenant_id,

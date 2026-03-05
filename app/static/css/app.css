@@ -104,6 +104,22 @@ a, button {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Dialog open animation */
+dialog[open] { animation: dialog-enter 0.2s ease-out; }
+dialog[open]::backdrop { animation: backdrop-enter 0.2s ease-out; }
+@keyframes dialog-enter { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+
+/* Status button transition */
+.status-btn { transition: all 0.15s ease-out; }
+
+/* Student row border transition */
+[data-student-id] { transition: border-color 0.2s ease; }
+
+/* Status button scale pop */
+@keyframes status-pop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.status-pop { animation: status-pop 0.15s ease-out; }
+
 /* Print styles */
 @media print {
     nav, aside, .no-print {

@@ -110,6 +110,7 @@ async def attendance_daily(
         "classes": classes,
         "current_class_id": class_id,
         "target_date": target_date,
+        "today": date.today(),
         "attendance_data": attendance_data,
         "current_language": get_current_language(),
         "permissions": permissions,
