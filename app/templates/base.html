@@ -237,11 +237,13 @@
                 .catch(function() {});
         };
 
+        {% if user.role != 'SUPER_ADMIN' %}
         if (window.requestIdleCallback) {
             requestIdleCallback(fetchUnread);
         } else {
             setTimeout(fetchUnread, 1000);
         }
+        {% endif %}
     })();
     </script>
     {% endif %}
