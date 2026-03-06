@@ -283,10 +283,21 @@ async def reports_edit(
     if report.is_finalized:
         return RedirectResponse(url=f"/reports/{report_id}", status_code=302)
 
+    # Load class subjects for ACADEMIC_GRADES sections
+    class_subjects = []
+    if report.class_id:
+        try:
+            from app.services.academic_service import get_academic_service
+            academic_service = get_academic_service()
+            class_subjects = await academic_service.get_class_subjects(db, report.class_id)
+        except Exception:
+            pass
+
     context = {
         "request": request,
         "user": user,
         "report": report,
+        "class_subjects": class_subjects,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

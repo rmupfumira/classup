@@ -283,6 +283,7 @@
 <script>
 let currentTemplate = null;
 let templateSections = {};
+let classSubjects = [];
 
 // --- Step Wizard Indicator ---
 const checkmarkSVG = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>';
@@ -408,6 +409,7 @@ async function handleStudentChange() {
 
 async function handleTemplateChange() {
     const templateId = document.getElementById('template_id').value;
+    const classId = document.getElementById('class_id').value;
     const step3 = document.getElementById('step-3');
     const formActions = document.getElementById('form-actions');
 
@@ -418,14 +420,24 @@ async function handleTemplateChange() {
     }
 
     try {
-        const response = await fetch(`/api/v1/reports/templates/${templateId}`, {
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
+        // Fetch template and class subjects in parallel
+        const [templateRes, subjectsRes] = await Promise.all([
+            fetch(`/api/v1/reports/templates/${templateId}`, { credentials: 'same-origin' }),
+            classId
+                ? fetch(`/api/v1/academic/classes/${classId}/subjects`, { credentials: 'same-origin' })
+                : Promise.resolve(null),
+        ]);
 
-        if (result.data) {
-            currentTemplate = result.data;
-            templateSections = result.data.sections || [];
+        const templateResult = await templateRes.json();
+        classSubjects = [];
+        if (subjectsRes && subjectsRes.ok) {
+            const subjectsResult = await subjectsRes.json();
+            classSubjects = subjectsResult.data || [];
+        }
+
+        if (templateResult.data) {
+            currentTemplate = templateResult.data;
+            templateSections = templateResult.data.sections || [];
             renderFormSections();
             step3.classList.remove('hidden');
             formActions.classList.remove('hidden');
@@ -456,11 +468,18 @@ function renderFormSections() {
 
         let fieldsHtml = '';
 
-        if (section.type === 'MEALS') {
+        if (section.type === 'ACADEMIC_GRADES') {
+            fieldsHtml = renderAcademicGradesSection(section);
+        } else if (section.type === 'MEALS') {
             fieldsHtml = renderMealsSection(section);
-        } else if (section.type === 'CHECKLIST' || section.type === 'NARRATIVE') {
+        } else if (section.type === 'SIGNATURES') {
+            // Skip signatures in create form
+            return;
+        } else if (section.type === 'CHECKLIST' || section.type === 'NARRATIVE' || section.type === 'INFO_DISPLAY' || section.type === 'SUMMARY') {
+            const fields = (section.fields || []).filter(f => !f.auto_calculate);
+            if (fields.length === 0) return;
             fieldsHtml = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
-            section.fields.forEach(field => {
+            fields.forEach(field => {
                 fieldsHtml += renderField(section.id, field);
             });
             fieldsHtml += '</div>';
@@ -513,6 +532,97 @@ function renderMealsSection(section) {
 
     html += '</div>';
     return html;
+}
+
+function renderAcademicGradesSection(section) {
+    // Prefer database class subjects over template-embedded subjects
+    const subjects = classSubjects.length > 0
+        ? classSubjects.map(cs => ({ id: cs.subject_id, name: cs.subject_name, total_marks: cs.total_marks }))
+        : (section.subjects || []);
+
+    if (subjects.length === 0) {
+        return '<p class="text-sm text-gray-500 italic">No subjects configured. Please assign subjects to this class under Settings &gt; Academic &gt; Class Subjects.</p>';
+    }
+
+    const gradingSystem = section.grading_system || [];
+
+    let html = '<div class="overflow-x-auto">';
+    html += '<table class="min-w-full border border-gray-300">';
+    html += `<thead><tr class="bg-gray-100">
+        <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">#</th>
+        <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Subject</th>
+        <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Total Marks</th>
+        <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Marks Obtained</th>
+        <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Grade</th>
+        <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Remarks</th>
+    </tr></thead><tbody>`;
+
+    subjects.forEach((subject, idx) => {
+        const rowClass = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+        html += `<tr class="${rowClass}" data-subject-id="${subject.id}" data-total-marks="${subject.total_marks}">
+            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600">${idx + 1}</td>
+            <td class="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">${subject.name}</td>
+            <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600 text-center">${subject.total_marks}</td>
+            <td class="border border-gray-300 px-3 py-1">
+                <input type="number" name="sections.${section.id}.${subject.id}.marks_obtained"
+                       min="0" max="${subject.total_marks}" step="0.5"
+                       onchange="updateSubjectGrade(this, ${subject.total_marks})"
+                       oninput="updateSubjectGrade(this, ${subject.total_marks})"
+                       class="block w-20 mx-auto rounded border-gray-300 text-sm text-center focus:ring-primary-500 focus:border-primary-500">
+            </td>
+            <td class="border border-gray-300 px-4 py-2 text-sm text-center font-bold">
+                <span class="grade-display">-</span>
+            </td>
+            <td class="border border-gray-300 px-3 py-1">
+                <input type="text" name="sections.${section.id}.${subject.id}.remarks"
+                       class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            </td>
+        </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+
+    // Grading legend
+    if (gradingSystem.length > 0) {
+        html += '<div class="mt-4"><p class="text-xs text-gray-500">';
+        html += gradingSystem.map(g => `${g.grade}: ${g.min}-${g.max}% (${g.description})`).join(' | ');
+        html += '</p></div>';
+    }
+
+    return html;
+}
+
+function updateSubjectGrade(input, totalMarks) {
+    const row = input.closest('tr');
+    const gradeSpan = row.querySelector('.grade-display');
+    const marks = parseFloat(input.value);
+
+    if (isNaN(marks) || input.value === '') {
+        gradeSpan.textContent = '-';
+        gradeSpan.className = 'grade-display text-gray-400';
+        return;
+    }
+
+    const percentage = (marks / totalMarks) * 100;
+
+    // Find the ACADEMIC_GRADES section to get grading system
+    const section = templateSections.find(s => s.type === 'ACADEMIC_GRADES');
+    const gradingSystem = section ? (section.grading_system || []) : [];
+
+    let grade = '-';
+    for (const g of gradingSystem) {
+        if (percentage >= g.min && percentage <= g.max) {
+            grade = g.grade;
+            break;
+        }
+    }
+
+    gradeSpan.textContent = grade;
+
+    // Color code
+    const colors = { 'A+': 'text-green-600', 'A': 'text-green-600', 'B+': 'text-blue-600', 'B': 'text-blue-600',
+                     'C': 'text-amber-600', 'D': 'text-orange-600', 'E': 'text-orange-600', 'F': 'text-red-600' };
+    gradeSpan.className = 'grade-display font-bold ' + (colors[grade] || 'text-gray-600');
 }
 
 function renderField(sectionId, field) {
@@ -674,7 +784,24 @@ function collectFormData() {
     const reportData = { sections: {} };
 
     templateSections.forEach(section => {
-        if (section.type === 'REPEATABLE_ENTRIES') {
+        if (section.type === 'ACADEMIC_GRADES') {
+            const sectionData = {};
+            const subjects = classSubjects.length > 0
+                ? classSubjects.map(cs => ({ id: cs.subject_id }))
+                : (section.subjects || []);
+
+            subjects.forEach(subject => {
+                const marksInput = document.querySelector(`[name="sections.${section.id}.${subject.id}.marks_obtained"]`);
+                const remarksInput = document.querySelector(`[name="sections.${section.id}.${subject.id}.remarks"]`);
+                const subjectData = {};
+                if (marksInput && marksInput.value !== '') subjectData.marks_obtained = parseFloat(marksInput.value);
+                if (remarksInput && remarksInput.value) subjectData.remarks = remarksInput.value;
+                if (Object.keys(subjectData).length > 0) {
+                    sectionData[subject.id] = subjectData;
+                }
+            });
+            reportData.sections[section.id] = sectionData;
+        } else if (section.type === 'REPEATABLE_ENTRIES') {
             const entries = [];
             const tbody = document.getElementById(`entries-${section.id}`);
             if (tbody) {
@@ -782,9 +909,21 @@ async function saveReport(finalize = false) {
 }
 
 // Initialize step indicator based on pre-selected state
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     {% if selected_template %}
     updateStepIndicator(3);
+    // Fetch class subjects and re-render with JS (handles ACADEMIC_GRADES)
+    const classId = document.getElementById('class_id').value;
+    if (classId) {
+        try {
+            const res = await fetch(`/api/v1/academic/classes/${classId}/subjects`, { credentials: 'same-origin' });
+            if (res.ok) {
+                const result = await res.json();
+                classSubjects = result.data || [];
+            }
+        } catch (e) { /* ignore */ }
+    }
+    if (templateSections.length) renderFormSections();
     {% elif selected_student %}
     updateStepIndicator(2);
     {% else %}
