@@ -185,6 +185,7 @@ async def settings_features_save(
             "exam_management",
             "disciplinary_records",
             "whatsapp_enabled",
+            "billing",
         ]
 
         for feature in all_features:
