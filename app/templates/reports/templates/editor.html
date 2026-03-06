@@ -69,14 +69,13 @@
                     </select>
                 </div>
                 <div>
-                    <label for="applies_to" class="block text-sm font-medium text-gray-700 mb-1">
-                        Applies To (Grade/Age Levels)
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Applies To (Grade Levels)
                     </label>
-                    <input type="text" id="applies_to" name="applies_to"
-                           value="{{ template.applies_to_grade_level if template else '' }}"
-                           placeholder="e.g., TODDLER,PRESCHOOL or Grade 1,Grade 2"
-                           class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
-                    <p class="mt-1 text-xs text-gray-500">Comma-separated. Leave empty for all students.</p>
+                    <div id="grade-levels-container" class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                        <p class="text-sm text-gray-400">Loading grade levels...</p>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Select grade levels this template applies to. Leave all unchecked for a universal template.</p>
                 </div>
             </div>
 
@@ -221,9 +220,40 @@ let sections = [];
 sections = {{ template.sections | tojson | safe }};
 {% endif %}
 
+// Pre-selected grade level IDs (from FK relationship when editing)
+const selectedGradeLevelIds = new Set([
+    {% if template and template.grade_levels %}
+    {% for gl in template.grade_levels %}"{{ gl.id }}"{% if not loop.last %}, {% endif %}{% endfor %}
+    {% endif %}
+]);
+
 document.addEventListener('DOMContentLoaded', function() {
     renderSections();
+    loadGradeLevels();
 });
+
+async function loadGradeLevels() {
+    const container = document.getElementById('grade-levels-container');
+    try {
+        const response = await fetch('/api/v1/grade-levels', { credentials: 'same-origin' });
+        const result = await response.json();
+        if (response.ok && result.data && result.data.length > 0) {
+            container.innerHTML = result.data.map(gl => `
+                <label class="flex items-center gap-2 py-1">
+                    <input type="checkbox" name="grade_level_ids" value="${gl.id}"
+                           ${selectedGradeLevelIds.has(gl.id) ? 'checked' : ''}
+                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm text-gray-700">${gl.name}</span>
+                </label>
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="text-sm text-gray-400">No grade levels configured. <a href="/settings/grade-levels" class="text-primary-600 hover:underline">Add grade levels</a></p>';
+        }
+    } catch (error) {
+        console.error('Failed to load grade levels:', error);
+        container.innerHTML = '<p class="text-sm text-red-500">Failed to load grade levels</p>';
+    }
+}
 
 function renderSections() {
     const container = document.getElementById('sections-container');
@@ -402,8 +432,11 @@ async function saveTemplate() {
     const reportType = document.getElementById('report_type').value;
     const description = document.getElementById('description').value;
     const frequency = document.getElementById('frequency').value;
-    const appliesTo = document.getElementById('applies_to').value;
     const isActive = document.getElementById('is_active').checked;
+
+    // Collect selected grade level IDs
+    const gradeLevelCheckboxes = document.querySelectorAll('input[name="grade_level_ids"]:checked');
+    const gradeLevelIds = Array.from(gradeLevelCheckboxes).map(cb => cb.value);
 
     if (!name) {
         ClassUp.toast('Please enter a template name', 'warning');
@@ -417,7 +450,7 @@ async function saveTemplate() {
         report_type: reportType,
         description: description || null,
         frequency: frequency,
-        applies_to_grade_level: appliesTo || null,
+        grade_level_ids: gradeLevelIds.length > 0 ? gradeLevelIds : [],
         is_active: isActive,
         sections: sectionsData.map(s => ({
             id: s.id,

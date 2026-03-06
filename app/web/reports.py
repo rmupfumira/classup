@@ -69,6 +69,13 @@ async def reports_list(
     report_service = get_report_service()
     class_service = get_class_service()
 
+    # For teachers, default to selected class when no class_id provided
+    teacher_ctx = {}
+    if user.role == Role.TEACHER.value:
+        teacher_ctx = await get_teacher_class_context(request, db)
+        if class_id is None and teacher_ctx.get("selected_class_id"):
+            class_id = teacher_ctx["selected_class_id"]
+
     # Get classes for filter dropdown
     if user.role == Role.TEACHER.value:
         classes = await class_service.get_my_classes(db)
@@ -105,8 +112,8 @@ async def reports_list(
         "current_language": get_current_language(),
         "permissions": permissions,
     }
-    if user.role == Role.TEACHER.value:
-        context.update(await get_teacher_class_context(request, db))
+    if teacher_ctx:
+        context.update(teacher_ctx)
     return templates.TemplateResponse("reports/list.html", context)
 
 

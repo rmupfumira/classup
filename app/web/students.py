@@ -74,6 +74,13 @@ async def students_list(
     student_service = get_student_service()
     class_service = get_class_service()
 
+    # For teachers, default to selected class when no class_id provided
+    teacher_ctx = {}
+    if user.role == Role.TEACHER.value:
+        teacher_ctx = await get_teacher_class_context(request, db)
+        if class_id is None and teacher_ctx.get("selected_class_id"):
+            class_id = teacher_ctx["selected_class_id"]
+
     # Parents see their own children
     if user.role == Role.PARENT.value:
         students = await student_service.get_my_children(db, user.id)
@@ -108,8 +115,8 @@ async def students_list(
         "permissions": permissions,
     }
     # Inject teacher class context for navbar class selector
-    if user.role == Role.TEACHER.value:
-        context.update(await get_teacher_class_context(request, db))
+    if teacher_ctx:
+        context.update(teacher_ctx)
     return templates.TemplateResponse("students/list.html", context)
 
 

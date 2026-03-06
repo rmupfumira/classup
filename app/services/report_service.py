@@ -11,8 +11,10 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.models.grade_level import GradeLevel
 from app.models.report import DailyReport, ReportStatus, ReportTemplate, ReportTemplateGradeLevel
+from app.models.school_class import SchoolClass, TeacherClass
 from app.models.student import Student
 from app.models.tenant import Tenant
+from app.models.user import Role
 from app.schemas.report import (
     ReportCreate,
     ReportTemplateCreate,
@@ -21,7 +23,7 @@ from app.schemas.report import (
 )
 from app.utils.default_templates import get_default_templates_for_education_type
 from app.exceptions import ValidationException
-from app.utils.tenant_context import get_current_user_id, get_tenant_id
+from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 logger = logging.getLogger(__name__)
 
@@ -264,7 +266,10 @@ class ReportService:
         grade_level_ids: list[uuid.UUID],
         tenant_id: uuid.UUID,
     ) -> None:
-        """Set the grade levels for a template (replaces existing)."""
+        """Set the grade levels for a template (replaces existing).
+
+        Also syncs the legacy applies_to_grade_level string field.
+        """
         # Delete existing grade level associations
         delete_query = select(ReportTemplateGradeLevel).where(
             ReportTemplateGradeLevel.template_id == template_id
@@ -274,6 +279,7 @@ class ReportService:
             await db.delete(existing)
 
         # Verify grade levels belong to tenant and create new associations
+        linked_codes = []
         for grade_level_id in grade_level_ids:
             # Verify grade level exists and belongs to tenant
             gl_query = select(GradeLevel).where(
@@ -290,6 +296,12 @@ class ReportService:
                     grade_level_id=grade_level_id,
                 )
                 db.add(association)
+                linked_codes.append(grade_level.code)
+
+        # Sync legacy applies_to_grade_level string
+        template = await db.get(ReportTemplate, template_id)
+        if template:
+            template.applies_to_grade_level = ",".join(linked_codes) if linked_codes else None
 
         await db.flush()
 
@@ -318,6 +330,16 @@ class ReportService:
         defaults = get_default_templates_for_education_type(tenant.education_type)
         created = 0
 
+        # Pre-load tenant's grade levels keyed by code for FK linking
+        gl_query = select(GradeLevel).where(
+            GradeLevel.tenant_id == tenant_id,
+            GradeLevel.deleted_at.is_(None),
+        )
+        gl_result = await db.execute(gl_query)
+        grade_levels_by_code = {gl.code.upper(): gl for gl in gl_result.scalars()}
+
+        templates_with_codes = []
+
         for template_data in defaults:
             template = ReportTemplate(
                 tenant_id=tenant_id,
@@ -333,7 +355,25 @@ class ReportService:
             db.add(template)
             created += 1
 
+            # Track for FK linking
+            codes_str = template_data.get("applies_to_grade_level")
+            if codes_str:
+                codes = [c.strip().upper() for c in codes_str.split(",") if c.strip()]
+                templates_with_codes.append((template, codes))
+
         if created > 0:
+            await db.flush()  # Get template IDs before creating join entries
+
+            # Create report_template_grade_levels FK entries
+            for template, codes in templates_with_codes:
+                for code in codes:
+                    grade_level = grade_levels_by_code.get(code)
+                    if grade_level:
+                        db.add(ReportTemplateGradeLevel(
+                            template_id=template.id,
+                            grade_level_id=grade_level.id,
+                        ))
+
             await db.commit()
 
         return created
@@ -369,6 +409,15 @@ class ReportService:
             )
         )
 
+        # Teachers only see reports from their assigned classes
+        role = get_current_user_role()
+        if role == Role.TEACHER.value:
+            user_id = get_current_user_id()
+            teacher_classes_subquery = select(TeacherClass.class_id).where(
+                TeacherClass.teacher_id == user_id
+            )
+            query = query.where(DailyReport.class_id.in_(teacher_classes_subquery))
+
         if class_id:
             query = query.where(DailyReport.class_id == class_id)
         if student_id:
@@ -395,6 +444,8 @@ class ReportService:
             DailyReport.tenant_id == tenant_id,
             DailyReport.deleted_at.is_(None),
         )
+        if role == Role.TEACHER.value:
+            count_base = count_base.where(DailyReport.class_id.in_(teacher_classes_subquery))
         if class_id:
             count_base = count_base.where(DailyReport.class_id == class_id)
         if student_id:

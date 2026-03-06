@@ -48,9 +48,9 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="grade_level_id" class="block text-sm font-medium text-gray-700 mb-1">
-                        Grade Level
+                        Grade Level <span class="text-red-500">*</span>
                     </label>
-                    <select id="grade_level_id" name="grade_level_id"
+                    <select id="grade_level_id" name="grade_level_id" required
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Select grade level...</option>
                         <!-- Options loaded dynamically via JS -->
@@ -118,10 +118,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         e.preventDefault();
 
         const formData = new FormData(form);
+
+        if (!formData.get('grade_level_id')) {
+            ClassUp.toast('Please select a grade level', 'warning');
+            document.getElementById('grade_level_id').focus();
+            return;
+        }
+
         const data = {
             name: formData.get('name'),
             description: formData.get('description') || null,
-            grade_level_id: formData.get('grade_level_id') || null,
+            grade_level_id: formData.get('grade_level_id'),
             capacity: formData.get('capacity') ? parseInt(formData.get('capacity')) : null
         };
 

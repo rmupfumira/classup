@@ -8,14 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.exceptions import ConflictException, ForbiddenException, NotFoundException
-from app.models import ParentStudent, SchoolClass, Student, User
+from app.models import ParentStudent, SchoolClass, Student, TeacherClass, User
 from app.models.user import Role
 from app.schemas.student import (
     LinkParentRequest,
     StudentCreate,
     StudentUpdate,
 )
-from app.utils.tenant_context import get_current_user_role, get_tenant_id
+from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 
 class StudentService:
@@ -42,6 +42,13 @@ class StudentService:
                 selectinload(Student.school_class).selectinload(SchoolClass.grade_level_rel)
             )
         )
+
+        # Teachers only see students from their assigned classes
+        role = get_current_user_role()
+        if role == Role.TEACHER.value:
+            user_id = get_current_user_id()
+            subquery = select(TeacherClass.class_id).where(TeacherClass.teacher_id == user_id)
+            query = query.where(Student.class_id.in_(subquery))
 
         # Apply filters
         if class_id:
