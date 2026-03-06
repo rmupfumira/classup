@@ -305,12 +305,84 @@ class ReportService:
 
         await db.flush()
 
+    async def _repair_academic_grades_sections(
+        self, db: AsyncSession, tenant_id: uuid.UUID
+    ) -> None:
+        """Fix REPORT_CARD templates whose ACADEMIC_GRADES sections were
+        corrupted by the template editor (type changed to CHECKLIST,
+        subjects/grading_system stripped out)."""
+        from app.utils.default_templates import (
+            PRIMARY_SCHOOL_REPORT_CARD,
+            HIGH_SCHOOL_REPORT_CARD,
+        )
+
+        query = select(ReportTemplate).where(
+            ReportTemplate.tenant_id == tenant_id,
+            ReportTemplate.deleted_at.is_(None),
+            ReportTemplate.report_type == "REPORT_CARD",
+        )
+        result = await db.execute(query)
+        templates = list(result.scalars().all())
+
+        # Build lookup: default section by template name
+        defaults_by_name = {
+            PRIMARY_SCHOOL_REPORT_CARD["name"]: PRIMARY_SCHOOL_REPORT_CARD,
+            HIGH_SCHOOL_REPORT_CARD["name"]: HIGH_SCHOOL_REPORT_CARD,
+        }
+
+        for template in templates:
+            if not template.sections:
+                continue
+
+            default_data = defaults_by_name.get(template.name)
+            if not default_data:
+                continue
+
+            # Find the default ACADEMIC_GRADES section
+            default_ag = next(
+                (s for s in default_data["sections"] if s["type"] == "ACADEMIC_GRADES"),
+                None,
+            )
+            if not default_ag:
+                continue
+
+            # Check if this template's sections are missing ACADEMIC_GRADES
+            has_ag = any(s.get("type") == "ACADEMIC_GRADES" for s in template.sections)
+            if has_ag:
+                continue
+
+            # Find the corrupted section (same id/title as the default AG section)
+            repaired = False
+            new_sections = []
+            for section in template.sections:
+                if section.get("id") == default_ag["id"] or section.get("title") == default_ag["title"]:
+                    # Restore the full ACADEMIC_GRADES section from defaults
+                    restored = {**default_ag, "display_order": section.get("display_order", default_ag["display_order"])}
+                    new_sections.append(restored)
+                    repaired = True
+                else:
+                    new_sections.append(section)
+
+            if repaired:
+                template.sections = new_sections
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(template, "sections")
+                logger.info("Repaired ACADEMIC_GRADES section in template %s", template.id)
+
+        await db.flush()
+
     async def ensure_default_templates(self, db: AsyncSession) -> int:
         """Create default templates if the tenant has none.
+
+        Also repairs existing REPORT_CARD templates whose ACADEMIC_GRADES
+        sections were corrupted by the template editor.
 
         Returns the number of templates created.
         """
         tenant_id = get_tenant_id()
+
+        # Repair existing REPORT_CARD templates with corrupted ACADEMIC_GRADES sections
+        await self._repair_academic_grades_sections(db, tenant_id)
 
         # Check if tenant already has any templates
         count_query = select(func.count(ReportTemplate.id)).where(

@@ -145,6 +145,11 @@
                     <option value="CHECKLIST">Checklist</option>
                     <option value="REPEATABLE_ENTRIES">Repeatable Entries</option>
                     <option value="NARRATIVE">Narrative/Notes</option>
+                    <option value="ACADEMIC_GRADES">Academic Grades</option>
+                    <option value="MEALS">Meals</option>
+                    <option value="INFO_DISPLAY">Info Display</option>
+                    <option value="SUMMARY">Summary</option>
+                    <option value="SIGNATURES">Signatures</option>
                 </select>
                 <button type="button" class="toggle-section text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,8 +221,10 @@
 {% block scripts %}
 <script>
 let sections = [];
+let originalSections = [];
 {% if template and template.sections %}
 sections = {{ template.sections | tojson | safe }};
+originalSections = JSON.parse(JSON.stringify(sections));
 {% endif %}
 
 // Pre-selected grade level IDs (from FK relationship when editing)
@@ -414,13 +421,18 @@ function collectSections() {
         });
 
         if (title) {
-            sections.push({
-                id: title.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+            // Preserve extra keys from original section (subjects, grading_system, color, meal_options)
+            const sectionId = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const original = originalSections.find(s => s.id === sectionId || s.title === title) || {};
+            const sectionData = {
+                ...original,
+                id: sectionId,
                 title: title,
                 type: type,
                 display_order: sIndex + 1,
                 fields: fields
-            });
+            };
+            sections.push(sectionData);
         }
     });
 
@@ -452,19 +464,18 @@ async function saveTemplate() {
         frequency: frequency,
         grade_level_ids: gradeLevelIds.length > 0 ? gradeLevelIds : [],
         is_active: isActive,
-        sections: sectionsData.map(s => ({
-            id: s.id,
-            title: s.title,
-            type: s.type,
-            display_order: s.display_order,
-            fields: s.fields.map(f => ({
-                id: f.id,
-                label: f.label,
-                type: f.type,
-                required: f.required,
-                options: f.options || null
-            }))
-        }))
+        sections: sectionsData.map(s => {
+            const section = {
+                ...s,
+                fields: s.fields.map(f => {
+                    const field = { id: f.id, label: f.label, type: f.type, required: f.required };
+                    if (f.options) field.options = f.options;
+                    if (f.auto_calculate) field.auto_calculate = f.auto_calculate;
+                    return field;
+                })
+            };
+            return section;
+        })
     };
 
     try {
