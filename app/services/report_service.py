@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -271,12 +271,12 @@ class ReportService:
         Also syncs the legacy applies_to_grade_level string field.
         """
         # Delete existing grade level associations
-        delete_query = select(ReportTemplateGradeLevel).where(
-            ReportTemplateGradeLevel.template_id == template_id
+        await db.execute(
+            delete(ReportTemplateGradeLevel).where(
+                ReportTemplateGradeLevel.template_id == template_id
+            )
         )
-        result = await db.execute(delete_query)
-        for existing in result.scalars():
-            await db.delete(existing)
+        await db.flush()
 
         # Verify grade levels belong to tenant and create new associations
         linked_codes = []
