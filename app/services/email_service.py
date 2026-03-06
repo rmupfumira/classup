@@ -453,6 +453,13 @@ class EmailService:
         due_date: str,
         view_url: str,
         tenant_name: str,
+        line_items: list[dict[str, Any]] | None = None,
+        currency: str = "ZAR",
+        tenant_address: str | None = None,
+        tenant_phone: str | None = None,
+        tenant_email: str | None = None,
+        banking_details: str | None = None,
+        payment_instructions: str | None = None,
     ) -> str | None:
         """Send an invoice notification to a parent."""
         return await self.send(
@@ -468,6 +475,13 @@ class EmailService:
                 "view_url": view_url,
                 "tenant_name": tenant_name,
                 "app_name": settings.app_name,
+                "line_items": line_items or [],
+                "currency": currency,
+                "tenant_address": tenant_address,
+                "tenant_phone": tenant_phone,
+                "tenant_email": tenant_email,
+                "banking_details": banking_details,
+                "payment_instructions": payment_instructions,
             },
             from_name=tenant_name,
         )

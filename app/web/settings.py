@@ -308,6 +308,72 @@ async def settings_webhooks(
     )
 
 
+# === Billing ===
+
+
+@router.get("/billing", response_class=HTMLResponse)
+async def settings_billing(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Billing settings page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
+    tenant_id = get_tenant_id()
+    tenant = await db.get(Tenant, tenant_id)
+
+    return templates.TemplateResponse(
+        "settings/billing.html",
+        {
+            "request": request,
+            "user": current_user,
+            "tenant": tenant,
+            "active_tab": "billing",
+        },
+    )
+
+
+@router.post("/billing", response_class=HTMLResponse)
+async def settings_billing_save(
+    request: Request,
+    billing_currency: str = Form("ZAR"),
+    billing_banking_details: str = Form(""),
+    billing_payment_instructions: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save billing settings."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    tenant_id = get_tenant_id()
+    tenant = await db.get(Tenant, tenant_id)
+
+    if tenant:
+        settings = tenant.settings or {}
+        settings["billing_currency"] = billing_currency
+        settings["billing_banking_details"] = billing_banking_details
+        settings["billing_payment_instructions"] = billing_payment_instructions
+        tenant.settings = settings
+
+        await db.commit()
+
+    return RedirectResponse(url="/settings/billing?saved=1", status_code=302)
+
+
 # === Grade Levels ===
 
 

@@ -247,4 +247,6 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
         "timezone": "Africa/Johannesburg",
         "language": "en",
         "billing_currency": "ZAR",
+        "billing_banking_details": "",
+        "billing_payment_instructions": "",
     }

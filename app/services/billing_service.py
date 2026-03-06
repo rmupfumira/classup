@@ -17,6 +17,7 @@ from app.models.billing import (
     InvoiceStatus,
 )
 from app.models.student import ParentStudent, Student
+from app.models.user import User
 from app.schemas.billing import (
     BillingSummary,
     ChildBalance,
@@ -296,7 +297,11 @@ class BillingService:
         invoice.sent_at = datetime.now(timezone.utc)
         await db.flush()
 
-        # Notify parents
+        # Email and notify parents
+        try:
+            await self._email_parents_invoice(db, invoice)
+        except Exception:
+            logger.exception("Failed to email parents for invoice %s", invoice_id)
         try:
             await self._notify_parents_invoice(db, invoice)
         except Exception:
@@ -371,7 +376,8 @@ class BillingService:
                 total_amount=subtotal,
                 amount_paid=Decimal("0.00"),
                 balance=subtotal,
-                status=InvoiceStatus.DRAFT.value,
+                status=InvoiceStatus.SENT.value,
+                sent_at=datetime.now(timezone.utc),
                 created_by=user_id,
                 items=line_items,
             )
@@ -381,6 +387,17 @@ class BillingService:
         await db.flush()
         for inv in invoices:
             await db.refresh(inv)
+
+        # Auto-send email and in-app notification to parents
+        for inv in invoices:
+            try:
+                await self._email_parents_invoice(db, inv)
+            except Exception:
+                logger.exception("Failed to email parents for invoice %s", inv.id)
+            try:
+                await self._notify_parents_invoice(db, inv)
+            except Exception:
+                logger.exception("Failed to notify parents for invoice %s", inv.id)
 
         return invoices
 
@@ -868,6 +885,84 @@ class BillingService:
         )
         result = await db.execute(q)
         return [row[0] for row in result.all()]
+
+    async def _email_parents_invoice(
+        self, db: AsyncSession, invoice: BillingInvoice
+    ) -> None:
+        """Send invoice email to all parents of the student."""
+        from app.config import get_settings
+        from app.models import Tenant
+        from app.services.email_service import get_email_service
+
+        app_settings = get_settings()
+        email_service = get_email_service()
+
+        # Get parent users
+        parent_ids = await self._get_parent_ids_for_student(db, invoice.student_id)
+        if not parent_ids:
+            return
+
+        parents_q = select(User).where(
+            User.id.in_(parent_ids),
+            User.is_active == True,
+            User.deleted_at.is_(None),
+        )
+        parents = list((await db.execute(parents_q)).scalars().all())
+        if not parents:
+            return
+
+        # Load tenant for contact info + billing settings
+        tenant = await db.get(Tenant, invoice.tenant_id)
+        if not tenant:
+            return
+
+        tenant_settings = tenant.settings or {}
+        currency = tenant_settings.get("billing_currency", "ZAR")
+        banking_details = tenant_settings.get("billing_banking_details", "") or None
+        payment_instructions = tenant_settings.get("billing_payment_instructions", "") or None
+
+        student_name = (
+            f"{invoice.student.first_name} {invoice.student.last_name}"
+            if invoice.student
+            else "Student"
+        )
+
+        # Build line items from invoice items
+        line_items = []
+        for item in (invoice.items or []):
+            line_items.append({
+                "description": item.description,
+                "quantity": item.quantity,
+                "unit_amount": float(item.unit_amount),
+                "total_amount": float(item.total_amount),
+            })
+
+        view_url = f"{app_settings.app_base_url}/billing"
+
+        for parent in parents:
+            try:
+                await email_service.send_invoice_notification(
+                    to=parent.email,
+                    parent_name=parent.first_name,
+                    student_name=student_name,
+                    invoice_number=invoice.invoice_number,
+                    total_amount=f"{invoice.total_amount:.2f}",
+                    due_date=invoice.due_date.strftime("%d %b %Y"),
+                    view_url=view_url,
+                    tenant_name=tenant.name,
+                    line_items=line_items,
+                    currency=currency,
+                    tenant_address=tenant.address,
+                    tenant_phone=tenant.phone,
+                    tenant_email=tenant.email,
+                    banking_details=banking_details,
+                    payment_instructions=payment_instructions,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to send invoice email to parent %s for invoice %s",
+                    parent.id, invoice.id,
+                )
 
     async def _notify_parents_invoice(
         self, db: AsyncSession, invoice: BillingInvoice
