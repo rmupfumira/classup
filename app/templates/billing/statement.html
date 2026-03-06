@@ -18,16 +18,14 @@
             <div class="flex items-center gap-3 mb-4">
                 <div class="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
                     <span class="text-sm font-bold text-white">
-                        {{ bal.child.first_name[0] }}{{ bal.child.last_name[0] }}
+                        {% set name_parts = bal.student_name.split(' ') %}
+                        {{ name_parts[0][0] | upper }}{% if name_parts | length > 1 %}{{ name_parts[-1][0] | upper }}{% endif %}
                     </span>
                 </div>
                 <div class="min-w-0">
                     <h3 class="text-sm font-semibold text-gray-900 truncate">
-                        {{ bal.child.first_name }} {{ bal.child.last_name }}
+                        {{ bal.student_name }}
                     </h3>
-                    {% if bal.child.school_class %}
-                    <p class="text-xs text-gray-500">{{ bal.child.school_class.name }}</p>
-                    {% endif %}
                 </div>
             </div>
 
@@ -42,9 +40,8 @@
                 </div>
                 <div class="border-t border-gray-200 pt-2 flex items-center justify-between">
                     <span class="text-sm font-medium text-gray-700">Balance</span>
-                    {% set balance = bal.total_invoiced - bal.total_paid %}
-                    <span class="text-lg font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-900{% endif %}">
-                        {{ currency }} {{ "%.2f"|format(balance) }}
+                    <span class="text-lg font-bold {% if bal.balance > 0 %}text-red-600{% elif bal.balance < 0 %}text-green-600{% else %}text-gray-900{% endif %}">
+                        {{ currency }} {{ "%.2f"|format(bal.balance) }}
                     </span>
                 </div>
             </div>
@@ -75,7 +72,8 @@
     <div id="statement-{{ cs.child.id }}"
          class="child-statement-panel {% if not loop.first and children_statements | length > 1 %}hidden{% endif %}">
 
-        {% if cs.statement and cs.statement | length > 0 %}
+        {% set entries = cs.statement.entries if cs.statement else [] %}
+        {% if entries | length > 0 %}
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {% if children_statements | length <= 1 %}
             <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -111,7 +109,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-neutral-100">
-                        {% for entry in cs.statement %}
+                        {% for entry in entries %}
                         <tr class="hover:bg-neutral-50 transition-colors">
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                                 {{ entry.date.strftime('%Y-%m-%d') if entry.date else '-' }}
@@ -120,8 +118,8 @@
                                 {{ entry.description }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                {% if entry.type == 'invoice' and entry.invoice_id %}
-                                <a href="/billing/invoices/{{ entry.invoice_id }}"
+                                {% if entry.type == 'INVOICE' %}
+                                <a href="/billing/invoices/{{ entry.entity_id }}"
                                    class="text-primary-600 hover:text-primary-700 font-medium">
                                     {{ entry.reference }}
                                 </a>
@@ -156,16 +154,16 @@
                                 Total
                             </td>
                             <td class="px-4 py-3 text-sm text-right font-semibold text-neutral-800">
-                                {% set total_debit = cs.statement | selectattr('debit') | map(attribute='debit') | sum %}
+                                {% set total_debit = entries | selectattr('debit') | map(attribute='debit') | sum %}
                                 {{ currency }} {{ "%.2f"|format(total_debit) }}
                             </td>
                             <td class="px-4 py-3 text-sm text-right font-semibold text-green-600">
-                                {% set total_credit = cs.statement | selectattr('credit') | map(attribute='credit') | sum %}
+                                {% set total_credit = entries | selectattr('credit') | map(attribute='credit') | sum %}
                                 {{ currency }} {{ "%.2f"|format(total_credit) }}
                             </td>
                             <td class="px-4 py-3 text-sm text-right font-bold
-                                {% if cs.statement[-1].running_balance > 0 %}text-red-600{% elif cs.statement[-1].running_balance < 0 %}text-green-600{% else %}text-neutral-800{% endif %}">
-                                {{ currency }} {{ "%.2f"|format(cs.statement[-1].running_balance) }}
+                                {% if entries[-1].running_balance > 0 %}text-red-600{% elif entries[-1].running_balance < 0 %}text-green-600{% else %}text-neutral-800{% endif %}">
+                                {{ currency }} {{ "%.2f"|format(entries[-1].running_balance) }}
                             </td>
                         </tr>
                     </tfoot>
@@ -174,7 +172,7 @@
 
             <!-- Mobile Cards -->
             <div class="md:hidden divide-y divide-neutral-100">
-                {% for entry in cs.statement %}
+                {% for entry in entries %}
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-1">
                         <span class="text-xs text-neutral-500">
@@ -188,8 +186,8 @@
                     <p class="text-sm text-neutral-800 mb-1">{{ entry.description }}</p>
                     <div class="flex items-center justify-between">
                         <div>
-                            {% if entry.type == 'invoice' and entry.invoice_id %}
-                            <a href="/billing/invoices/{{ entry.invoice_id }}"
+                            {% if entry.type == 'INVOICE' %}
+                            <a href="/billing/invoices/{{ entry.entity_id }}"
                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
                                 {{ entry.reference }}
                             </a>
@@ -215,8 +213,8 @@
                     <div class="flex items-center justify-between">
                         <span class="text-sm font-semibold text-neutral-700">Outstanding Balance</span>
                         <span class="text-lg font-bold
-                            {% if cs.statement[-1].running_balance > 0 %}text-red-600{% elif cs.statement[-1].running_balance < 0 %}text-green-600{% else %}text-neutral-800{% endif %}">
-                            {{ currency }} {{ "%.2f"|format(cs.statement[-1].running_balance) }}
+                            {% if entries[-1].running_balance > 0 %}text-red-600{% elif entries[-1].running_balance < 0 %}text-green-600{% else %}text-neutral-800{% endif %}">
+                            {{ currency }} {{ "%.2f"|format(entries[-1].running_balance) }}
                         </span>
                     </div>
                 </div>

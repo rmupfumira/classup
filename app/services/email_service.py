@@ -4,7 +4,9 @@ Email configuration is stored in the system_settings DB table (key='email_config
 and can be managed at runtime via the super admin UI.
 """
 
+import base64
 import logging
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -68,9 +70,22 @@ class EmailService:
         reply_to: str | None,
         cc: list[str] | None,
         bcc: list[str] | None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> str:
         """Send email via SMTP."""
-        msg = MIMEMultipart("alternative")
+        if attachments:
+            msg = MIMEMultipart("mixed")
+            html_part = MIMEMultipart("alternative")
+            html_part.attach(MIMEText(html_body, "html", "utf-8"))
+            msg.attach(html_part)
+            for att in attachments:
+                part = MIMEApplication(att["content"], Name=att["filename"])
+                part["Content-Disposition"] = f'attachment; filename="{att["filename"]}"'
+                msg.attach(part)
+        else:
+            msg = MIMEMultipart("alternative")
+            msg.attach(MIMEText(html_body, "html", "utf-8"))
+
         msg["From"] = from_address
         msg["To"] = ", ".join(recipients)
         msg["Subject"] = subject
@@ -79,8 +94,6 @@ class EmailService:
             msg["Reply-To"] = reply_to
         if cc:
             msg["Cc"] = ", ".join(cc)
-
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
 
         all_recipients = list(recipients)
         if cc:
@@ -120,6 +133,7 @@ class EmailService:
         reply_to: str | None,
         cc: list[str] | None,
         bcc: list[str] | None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> str:
         """Send email via Resend."""
         resend.api_key = config["resend_api_key"]
@@ -137,6 +151,14 @@ class EmailService:
             params["cc"] = cc
         if bcc:
             params["bcc"] = bcc
+        if attachments:
+            params["attachments"] = [
+                {
+                    "filename": att["filename"],
+                    "content": base64.b64encode(att["content"]).decode("utf-8"),
+                }
+                for att in attachments
+            ]
 
         result = resend.Emails.send(params)
         return result.get("id", "resend-ok")
@@ -151,12 +173,14 @@ class EmailService:
         cc: list[str] | None = None,
         bcc: list[str] | None = None,
         from_name: str | None = None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> str | None:
         """Send an email using a Jinja2 template.
 
         Args:
             from_name: Override the sender display name (e.g. tenant name).
                        Falls back to the configured from_name, then the app default.
+            attachments: List of dicts with 'filename' (str) and 'content' (bytes).
 
         Returns a message ID string if successful, None if failed or not configured.
         """
@@ -179,12 +203,12 @@ class EmailService:
             if provider == "resend":
                 result_id = await self._send_via_resend(
                     config, from_address, recipients, subject, html_body,
-                    reply_to, cc, bcc,
+                    reply_to, cc, bcc, attachments,
                 )
             else:
                 result_id = await self._send_via_smtp(
                     config, from_address, recipients, subject, html_body,
-                    reply_to, cc, bcc,
+                    reply_to, cc, bcc, attachments,
                 )
 
             logger.info(f"Email sent via {provider} to {recipients}: {result_id}")
@@ -460,6 +484,7 @@ class EmailService:
         tenant_email: str | None = None,
         banking_details: str | None = None,
         payment_instructions: str | None = None,
+        attachments: list[dict[str, Any]] | None = None,
     ) -> str | None:
         """Send an invoice notification to a parent."""
         return await self.send(
@@ -484,6 +509,7 @@ class EmailService:
                 "payment_instructions": payment_instructions,
             },
             from_name=tenant_name,
+            attachments=attachments,
         )
 
     async def send_payment_confirmation(

@@ -889,10 +889,11 @@ class BillingService:
     async def _email_parents_invoice(
         self, db: AsyncSession, invoice: BillingInvoice
     ) -> None:
-        """Send invoice email to all parents of the student."""
+        """Send invoice email with PDF attachment to all parents of the student."""
         from app.config import get_settings
         from app.models import Tenant
         from app.services.email_service import get_email_service
+        from app.services.invoice_pdf import generate_invoice_pdf
 
         app_settings = get_settings()
         email_service = get_email_service()
@@ -938,6 +939,34 @@ class BillingService:
             })
 
         view_url = f"{app_settings.app_base_url}/billing"
+        due_date_str = invoice.due_date.strftime("%d %b %Y")
+        total_str = f"{invoice.total_amount:.2f}"
+
+        # Generate PDF attachment
+        try:
+            pdf_bytes = generate_invoice_pdf(
+                invoice_number=invoice.invoice_number,
+                student_name=student_name,
+                due_date=due_date_str,
+                total_amount=total_str,
+                currency=currency,
+                line_items=line_items,
+                tenant_name=tenant.name,
+                tenant_address=tenant.address,
+                tenant_phone=tenant.phone,
+                tenant_email=tenant.email,
+                banking_details=banking_details,
+                payment_instructions=payment_instructions,
+            )
+            attachments = [
+                {
+                    "filename": f"{invoice.invoice_number}.pdf",
+                    "content": pdf_bytes,
+                }
+            ]
+        except Exception:
+            logger.exception("Failed to generate PDF for invoice %s", invoice.id)
+            attachments = None
 
         for parent in parents:
             try:
@@ -946,8 +975,8 @@ class BillingService:
                     parent_name=parent.first_name,
                     student_name=student_name,
                     invoice_number=invoice.invoice_number,
-                    total_amount=f"{invoice.total_amount:.2f}",
-                    due_date=invoice.due_date.strftime("%d %b %Y"),
+                    total_amount=total_str,
+                    due_date=due_date_str,
                     view_url=view_url,
                     tenant_name=tenant.name,
                     line_items=line_items,
@@ -957,6 +986,7 @@ class BillingService:
                     tenant_email=tenant.email,
                     banking_details=banking_details,
                     payment_instructions=payment_instructions,
+                    attachments=attachments,
                 )
             except Exception:
                 logger.exception(
