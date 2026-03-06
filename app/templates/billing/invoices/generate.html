@@ -525,13 +525,15 @@ async function generateInvoices() {
     `;
 
     try {
+        const classId = document.getElementById('class_id').value;
         const payload = {
+            class_id: classId,
             student_ids: selectedStudents.map(s => s.id),
             fee_item_ids: selectedFeeItems.map(f => f.id),
             due_date: dueDate
         };
-        if (periodStart) payload.period_start = periodStart;
-        if (periodEnd) payload.period_end = periodEnd;
+        if (periodStart) payload.billing_period_start = periodStart;
+        if (periodEnd) payload.billing_period_end = periodEnd;
 
         const result = await ClassUp.fetch('/api/v1/billing/invoices/generate', {
             method: 'POST',
