@@ -147,6 +147,7 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
         "exam_management": False,
         "disciplinary_records": False,
         "whatsapp_enabled": False,
+        "billing": False,
     }
 
     school_features = {
@@ -165,6 +166,7 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
         "exam_management": True,
         "disciplinary_records": True,
         "whatsapp_enabled": False,
+        "billing": False,
     }
 
     features_map = {
@@ -244,4 +246,5 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
         },
         "timezone": "Africa/Johannesburg",
         "language": "en",
+        "billing_currency": "ZAR",
     }

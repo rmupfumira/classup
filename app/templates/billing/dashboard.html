@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('billing.title', current_language) }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-neutral-800">{{ t('billing.title', current_language) }}</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                {{ t('billing.dashboard_subtitle', current_language) }}
+            </p>
+        </div>
+        <a href="/billing/invoices/generate"
+           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 4v16m8-8H4"></path>
+            </svg>
+            {{ t('billing.generate_invoices', current_language) }}
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Invoiced -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm text-neutral-500 truncate">{{ t('billing.total_invoiced', current_language) }}</p>
+                    <p class="text-2xl font-bold text-neutral-800">{{ currency }} {{ "%.2f"|format(summary.total_invoiced) }}</p>
+                    <p class="text-xs text-neutral-400 mt-0.5">{{ summary.invoice_count }} invoice{{ 's' if summary.invoice_count != 1 else '' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Collected -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-success-50 rounded-lg flex items-center justify-center">
+                    <svg class="h-5 w-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm text-neutral-500 truncate">{{ t('billing.total_collected', current_language) }}</p>
+                    <p class="text-2xl font-bold text-success-600">{{ currency }} {{ "%.2f"|format(summary.total_collected) }}</p>
+                    <p class="text-xs text-neutral-400 mt-0.5">{{ summary.payment_count }} payment{{ 's' if summary.payment_count != 1 else '' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outstanding -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center">
+                    <svg class="h-5 w-5 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm text-neutral-500 truncate">{{ t('billing.outstanding', current_language) }}</p>
+                    <p class="text-2xl font-bold text-warning-600">{{ currency }} {{ "%.2f"|format(summary.total_outstanding) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overdue -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-error-50 rounded-lg flex items-center justify-center">
+                    <svg class="h-5 w-5 text-error-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm text-neutral-500 truncate">{{ t('billing.overdue', current_language) }}</p>
+                    <p class="text-2xl font-bold text-error-600">{{ currency }} {{ "%.2f"|format(summary.total_overdue) }}</p>
+                    <p class="text-xs text-neutral-400 mt-0.5">{{ summary.overdue_count }} overdue</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <a href="/billing/fee-items"
+           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                    <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-neutral-800 group-hover:text-primary-700 transition-colors">{{ t('billing.fee_items', current_language) }}</p>
+                    <p class="text-xs text-neutral-400">{{ t('billing.manage_fee_items', current_language) }}</p>
+                </div>
+                <svg class="ml-auto w-5 h-5 text-neutral-300 group-hover:text-primary-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <a href="/billing/invoices"
+           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                    <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-neutral-800 group-hover:text-primary-700 transition-colors">{{ t('billing.invoices', current_language) }}</p>
+                    <p class="text-xs text-neutral-400">{{ t('billing.view_all_invoices', current_language) }}</p>
+                </div>
+                <svg class="ml-auto w-5 h-5 text-neutral-300 group-hover:text-primary-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <a href="/billing/payments"
+           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                    <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-neutral-800 group-hover:text-primary-700 transition-colors">{{ t('billing.payments', current_language) }}</p>
+                    <p class="text-xs text-neutral-400">{{ t('billing.view_all_payments', current_language) }}</p>
+                </div>
+                <svg class="ml-auto w-5 h-5 text-neutral-300 group-hover:text-primary-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+    </div>
+
+    <!-- Recent Invoices & Recent Payments -->
+    <div class="grid lg:grid-cols-3 gap-6">
+        <!-- Recent Invoices (2/3 width) -->
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-neutral-800">{{ t('billing.recent_invoices', current_language) }}</h3>
+                <a href="/billing/invoices" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">{{ t('billing.view_all', current_language) }}</a>
+            </div>
+
+            {% if recent_invoices %}
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="bg-neutral-50 border-b border-neutral-200">
+                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Invoice</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Student</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Balance</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Due Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-neutral-100">
+                        {% for invoice in recent_invoices %}
+                        <tr class="hover:bg-neutral-50 transition-colors">
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <a href="/billing/invoices/{{ invoice.id }}" class="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">
+                                    {{ invoice.invoice_number }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <div class="h-7 w-7 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                        <span class="text-primary-600 font-medium text-xs">
+                                            {{ invoice.student.first_name[0] }}{{ invoice.student.last_name[0] }}
+                                        </span>
+                                    </div>
+                                    <span class="text-sm text-neutral-800">{{ invoice.student.first_name }} {{ invoice.student.last_name }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                {% if invoice.status == 'DRAFT' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                                    Draft
+                                </span>
+                                {% elif invoice.status == 'SENT' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
+                                    Sent
+                                </span>
+                                {% elif invoice.status == 'PARTIALLY_PAID' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-50 text-warning-700">
+                                    Partial
+                                </span>
+                                {% elif invoice.status == 'PAID' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
+                                    Paid
+                                </span>
+                                {% elif invoice.status == 'OVERDUE' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-error-50 text-error-700">
+                                    Overdue
+                                </span>
+                                {% elif invoice.status == 'CANCELLED' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-400 line-through">
+                                    Cancelled
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                                    {{ invoice.status }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm text-neutral-800 font-medium">
+                                {{ currency }} {{ "%.2f"|format(invoice.total_amount) }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm
+                                {% if invoice.balance > 0 %}text-warning-600 font-medium{% else %}text-neutral-400{% endif %}">
+                                {{ currency }} {{ "%.2f"|format(invoice.balance) }}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">
+                                {{ invoice.due_date.strftime('%b %d, %Y') }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="md:hidden divide-y divide-neutral-100">
+                {% for invoice in recent_invoices %}
+                <a href="/billing/invoices/{{ invoice.id }}" class="block p-4 hover:bg-neutral-50 transition-colors">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <div class="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                <span class="text-primary-600 font-medium text-xs">
+                                    {{ invoice.student.first_name[0] }}{{ invoice.student.last_name[0] }}
+                                </span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-neutral-800">{{ invoice.student.first_name }} {{ invoice.student.last_name }}</p>
+                                <p class="text-xs text-primary-600">{{ invoice.invoice_number }}</p>
+                            </div>
+                        </div>
+                        {% if invoice.status == 'DRAFT' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">Draft</span>
+                        {% elif invoice.status == 'SENT' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">Sent</span>
+                        {% elif invoice.status == 'PARTIALLY_PAID' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-50 text-warning-700">Partial</span>
+                        {% elif invoice.status == 'PAID' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">Paid</span>
+                        {% elif invoice.status == 'OVERDUE' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-error-50 text-error-700">Overdue</span>
+                        {% elif invoice.status == 'CANCELLED' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-400 line-through">Cancelled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-neutral-500">Due {{ invoice.due_date.strftime('%b %d, %Y') }}</span>
+                        <span class="font-medium text-neutral-800">{{ currency }} {{ "%.2f"|format(invoice.total_amount) }}</span>
+                    </div>
+                    {% if invoice.balance > 0 %}
+                    <div class="text-right mt-1">
+                        <span class="text-xs text-warning-600">Balance: {{ currency }} {{ "%.2f"|format(invoice.balance) }}</span>
+                    </div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="p-10 text-center">
+                <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-base font-semibold text-neutral-800">{{ t('billing.no_invoices', current_language) }}</h3>
+                <p class="mt-1 text-sm text-neutral-500">{{ t('billing.no_invoices_desc', current_language) }}</p>
+                <div class="mt-5">
+                    <a href="/billing/invoices/generate"
+                       class="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        {{ t('billing.generate_invoices', current_language) }}
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Payments (1/3 width) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-neutral-800">{{ t('billing.recent_payments', current_language) }}</h3>
+                <a href="/billing/payments" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">{{ t('billing.view_all', current_language) }}</a>
+            </div>
+
+            {% if recent_payments %}
+            <div class="divide-y divide-neutral-100">
+                {% for payment in recent_payments %}
+                <div class="p-4 hover:bg-neutral-50 transition-colors">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="h-9 w-9 rounded-full bg-success-50 flex items-center justify-center flex-shrink-0">
+                                <svg class="h-4 w-4 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-neutral-800 truncate">
+                                    {{ payment.student.first_name }} {{ payment.student.last_name }}
+                                </p>
+                                <p class="text-xs text-neutral-400 truncate">
+                                    {{ payment.invoice.invoice_number }}
+                                    {% if payment.payment_method %}
+                                    &middot; {{ payment.payment_method }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-sm font-semibold text-success-600">{{ currency }} {{ "%.2f"|format(payment.amount) }}</p>
+                            <p class="text-xs text-neutral-400">{{ payment.payment_date.strftime('%b %d') }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="p-10 text-center">
+                <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-base font-semibold text-neutral-800">{{ t('billing.no_payments', current_language) }}</h3>
+                <p class="mt-1 text-sm text-neutral-500">{{ t('billing.no_payments_desc', current_language) }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

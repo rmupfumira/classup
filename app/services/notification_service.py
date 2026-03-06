@@ -233,6 +233,67 @@ class NotificationService:
             notification_type="ATTENDANCE_CHECKED_OUT",
         )
 
+    async def notify_invoice_sent(
+        self,
+        db: AsyncSession,
+        parent_ids: list[uuid.UUID],
+        student_name: str,
+        invoice_number: str,
+        total_amount: str,
+        invoice_id: uuid.UUID,
+    ) -> list[Notification]:
+        """Send invoice notification to parents."""
+        return await self.create_bulk_notifications(
+            db=db,
+            user_ids=parent_ids,
+            title=f"Invoice: {invoice_number}",
+            body=f"An invoice of {total_amount} for {student_name} has been issued.",
+            notification_type="INVOICE_SENT",
+            reference_type="invoice",
+            reference_id=invoice_id,
+        )
+
+    async def notify_payment_received(
+        self,
+        db: AsyncSession,
+        parent_ids: list[uuid.UUID],
+        student_name: str,
+        invoice_number: str,
+        payment_amount: str,
+        remaining_balance: str,
+        invoice_id: uuid.UUID,
+    ) -> list[Notification]:
+        """Send payment received notification to parents."""
+        return await self.create_bulk_notifications(
+            db=db,
+            user_ids=parent_ids,
+            title=f"Payment Received: {invoice_number}",
+            body=f"A payment of {payment_amount} for {student_name} has been recorded. Remaining balance: {remaining_balance}",
+            notification_type="PAYMENT_RECEIVED",
+            reference_type="invoice",
+            reference_id=invoice_id,
+        )
+
+    async def notify_invoice_overdue(
+        self,
+        db: AsyncSession,
+        parent_ids: list[uuid.UUID],
+        student_name: str,
+        invoice_number: str,
+        outstanding_balance: str,
+        invoice_id: uuid.UUID,
+    ) -> list[Notification]:
+        """Send overdue invoice notification to parents."""
+        return await self.create_bulk_notifications(
+            db=db,
+            user_ids=parent_ids,
+            title=f"Overdue: {invoice_number}",
+            body=f"Invoice {invoice_number} for {student_name} is overdue. Outstanding: {outstanding_balance}",
+            notification_type="INVOICE_OVERDUE",
+            reference_type="invoice",
+            reference_id=invoice_id,
+        )
+
     async def notify_report_finalized(
         self,
         db: AsyncSession,

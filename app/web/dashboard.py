@@ -241,12 +241,29 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id):
     except Exception:
         pass
 
+    # Get billing balances (feature-gated)
+    billing_balances = []
+    billing_currency = "ZAR"
+    try:
+        from app.models import Tenant
+        tenant_id = get_tenant_id()
+        tenant = await db.get(Tenant, tenant_id)
+        if tenant and tenant.features.get("billing", False):
+            from app.services.billing_service import get_billing_service
+            billing_service = get_billing_service()
+            billing_balances = await billing_service.get_children_balances(db, user_id)
+            billing_currency = tenant.get_setting("billing_currency", "ZAR")
+    except Exception:
+        pass
+
     return {
         'children': children_data,
         'recent_reports': recent_reports,
         'today': today,
         'active_announcements': active_announcements,
         'unread_messages': unread_messages,
+        'billing_balances': billing_balances,
+        'billing_currency': billing_currency,
     }
 
 

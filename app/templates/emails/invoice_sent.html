@@ -1,0 +1,50 @@
+{% extends "base_email.html" %}
+
+{% block title %}Invoice {{ invoice_number }} - {{ student_name }}{% endblock %}
+
+{% block content %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Hi {{ parent_name }},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    An invoice has been issued for <strong>{{ student_name }}</strong>.
+</p>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px; background-color: #F9FAFB; border-radius: 8px;">
+    <tr>
+        <td style="padding: 20px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em;">Invoice Number</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">{{ invoice_number }}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em;">Amount Due</p>
+                        <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #7C3AED;">{{ total_amount }}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <p style="margin: 0; font-size: 13px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em;">Due Date</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 600; color: #111827;">{{ due_date }}</p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #7C3AED;">
+            <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                View Invoice
+            </a>
+        </td>
+    </tr>
+</table>
+{% endblock %}

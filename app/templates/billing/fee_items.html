@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+
+{% block title %}Fee Items - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Fee Items</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
+                Manage the fee items that can be added to student invoices
+            </p>
+        </div>
+        <button type="button" onclick="openAddModal()"
+                class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Fee Item
+        </button>
+    </div>
+
+    <!-- Fee Items Table -->
+    {% if fee_items %}
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-neutral-50 border-b border-neutral-200">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Amount</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Frequency</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Applies To</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    {% for item in fee_items %}
+                    <tr class="hover:bg-neutral-50 transition-colors" id="row-{{ item.id }}">
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="font-medium text-neutral-800">{{ item.name }}</div>
+                            {% if item.description %}
+                            <div class="text-xs text-neutral-500 truncate max-w-xs">{{ item.description }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-800 font-medium">
+                            {{ currency }} {{ "%.2f"|format(item.amount) }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                            {% if item.frequency == 'MONTHLY' %}Monthly
+                            {% elif item.frequency == 'TERMLY' %}Termly
+                            {% elif item.frequency == 'QUARTERLY' %}Quarterly
+                            {% elif item.frequency == 'ANNUALLY' %}Annually
+                            {% elif item.frequency == 'ONCE_OFF' %}Once-Off
+                            {% elif item.frequency == 'WEEKLY' %}Weekly
+                            {% else %}{{ item.frequency }}
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                            {% if item.applies_to == 'ALL' or not item.class_id %}
+                                All Students
+                            {% elif item.school_class %}
+                                {{ item.school_class.name }}
+                            {% else %}
+                                Specific Class
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            {% if item.is_active %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                                Inactive
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button type="button" onclick="openEditModal('{{ item.id }}')"
+                                        class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                    Edit
+                                </button>
+                                <button type="button" onclick="deleteFeeItem('{{ item.id }}', '{{ item.name }}')"
+                                        class="text-xs text-red-600 hover:text-red-700 font-medium">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div class="md:hidden divide-y divide-neutral-100">
+            {% for item in fee_items %}
+            <div class="p-4" id="card-{{ item.id }}">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-neutral-800">{{ item.name }}</p>
+                        <p class="text-sm font-semibold text-neutral-900 mt-0.5">{{ currency }} {{ "%.2f"|format(item.amount) }}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% if item.is_active %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                            Inactive
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mt-1.5 text-xs text-neutral-500">
+                    {% if item.frequency == 'MONTHLY' %}Monthly
+                    {% elif item.frequency == 'TERMLY' %}Termly
+                    {% elif item.frequency == 'QUARTERLY' %}Quarterly
+                    {% elif item.frequency == 'ANNUALLY' %}Annually
+                    {% elif item.frequency == 'ONCE_OFF' %}Once-Off
+                    {% elif item.frequency == 'WEEKLY' %}Weekly
+                    {% else %}{{ item.frequency }}
+                    {% endif %}
+                    &middot;
+                    {% if item.applies_to == 'ALL' or not item.class_id %}All Students
+                    {% elif item.school_class %}{{ item.school_class.name }}
+                    {% else %}Specific Class
+                    {% endif %}
+                </div>
+                {% if item.description %}
+                <p class="mt-1 text-xs text-neutral-400 truncate">{{ item.description }}</p>
+                {% endif %}
+                <div class="mt-2 flex gap-3">
+                    <button type="button" onclick="openEditModal('{{ item.id }}')"
+                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                        Edit
+                    </button>
+                    <button type="button" onclick="deleteFeeItem('{{ item.id }}', '{{ item.name }}')"
+                            class="text-xs text-red-600 hover:text-red-700 font-medium">
+                        Delete
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
+        <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"></path>
+            </svg>
+        </div>
+        <h3 class="text-base font-semibold text-neutral-800">No fee items yet</h3>
+        <p class="mt-1 text-sm text-neutral-500">
+            Create fee items to define tuition, registration fees, and other charges.
+        </p>
+        <div class="mt-5">
+            <button type="button" onclick="openAddModal()"
+                    class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Fee Item
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Fee Item Modal -->
+<dialog id="fee-item-modal" class="rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 id="modal-title" class="text-lg font-semibold text-neutral-800">Add Fee Item</h2>
+            <button type="button" onclick="closeModal()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="fee-item-form" class="space-y-4">
+            <input type="hidden" id="fi-id" value="">
+
+            <div>
+                <label for="fi-name" class="block text-sm font-medium text-neutral-700 mb-1">Name</label>
+                <input type="text" id="fi-name" name="name" required
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                              focus:border-primary-500 focus:ring-0"
+                       placeholder="e.g. Monthly Tuition">
+            </div>
+
+            <div>
+                <label for="fi-description" class="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                <textarea id="fi-description" name="description" rows="2"
+                          class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded-md bg-white
+                                 focus:border-primary-500 focus:ring-0"
+                          placeholder="Optional description of this fee item"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="fi-amount" class="block text-sm font-medium text-neutral-700 mb-1">Amount ({{ currency }})</label>
+                    <input type="number" id="fi-amount" name="amount" required min="0" step="0.01"
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                                  focus:border-primary-500 focus:ring-0"
+                           placeholder="0.00">
+                </div>
+                <div>
+                    <label for="fi-frequency" class="block text-sm font-medium text-neutral-700 mb-1">Frequency</label>
+                    <select id="fi-frequency" name="frequency" required
+                            class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                                   focus:border-primary-500 focus:ring-0">
+                        <option value="MONTHLY">Monthly</option>
+                        <option value="TERMLY">Termly</option>
+                        <option value="QUARTERLY">Quarterly</option>
+                        <option value="ANNUALLY">Annually</option>
+                        <option value="WEEKLY">Weekly</option>
+                        <option value="ONCE_OFF">Once-Off</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label for="fi-applies-to" class="block text-sm font-medium text-neutral-700 mb-1">Applies To</label>
+                <select id="fi-applies-to" name="applies_to"
+                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                               focus:border-primary-500 focus:ring-0"
+                        onchange="toggleClassSelect()">
+                    <option value="ALL">All Students</option>
+                    <option value="CLASS">Specific Class</option>
+                </select>
+            </div>
+
+            <div id="fi-class-group" class="hidden">
+                <label for="fi-class-id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
+                <select id="fi-class-id" name="class_id"
+                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                               focus:border-primary-500 focus:ring-0">
+                    <option value="">Select a class...</option>
+                    {% for cls in classes %}
+                    <option value="{{ cls.id }}">{{ cls.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="fi-active" name="is_active" checked
+                           class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm font-medium text-neutral-700">Active</span>
+                </label>
+                <p class="text-xs text-neutral-500 mt-1 ml-6">Inactive fee items will not appear when creating invoices.</p>
+            </div>
+
+            <div id="fi-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeModal()"
+                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                    Cancel
+                </button>
+                <button type="submit" id="fi-submit-btn"
+                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                    Save Fee Item
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const modal = document.getElementById('fee-item-modal');
+const form = document.getElementById('fee-item-form');
+const errorDiv = document.getElementById('fi-error');
+const submitBtn = document.getElementById('fi-submit-btn');
+
+function toggleClassSelect() {
+    const appliesTo = document.getElementById('fi-applies-to').value;
+    const classGroup = document.getElementById('fi-class-group');
+    const classSelect = document.getElementById('fi-class-id');
+
+    if (appliesTo === 'CLASS') {
+        classGroup.classList.remove('hidden');
+        classSelect.required = true;
+    } else {
+        classGroup.classList.add('hidden');
+        classSelect.required = false;
+        classSelect.value = '';
+    }
+}
+
+function resetForm() {
+    form.reset();
+    document.getElementById('fi-id').value = '';
+    document.getElementById('fi-active').checked = true;
+    document.getElementById('fi-class-group').classList.add('hidden');
+    document.getElementById('fi-class-id').required = false;
+    errorDiv.classList.add('hidden');
+}
+
+function openAddModal() {
+    resetForm();
+    document.getElementById('modal-title').textContent = 'Add Fee Item';
+    submitBtn.textContent = 'Save Fee Item';
+    modal.showModal();
+}
+
+async function openEditModal(id) {
+    resetForm();
+    document.getElementById('modal-title').textContent = 'Edit Fee Item';
+    submitBtn.textContent = 'Update Fee Item';
+
+    try {
+        const response = await fetch(`/api/v1/billing/fee-items/${id}`, {
+            method: 'GET',
+            credentials: 'same-origin',
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+            ClassUp.toast(result.detail || result.message || 'Failed to load fee item', 'error');
+            return;
+        }
+
+        const item = result.data;
+        document.getElementById('fi-id').value = item.id;
+        document.getElementById('fi-name').value = item.name;
+        document.getElementById('fi-description').value = item.description || '';
+        document.getElementById('fi-amount').value = item.amount;
+        document.getElementById('fi-frequency').value = item.frequency;
+        document.getElementById('fi-active').checked = item.is_active;
+
+        if (item.class_id) {
+            document.getElementById('fi-applies-to').value = 'CLASS';
+            document.getElementById('fi-class-id').value = item.class_id;
+            toggleClassSelect();
+        } else {
+            document.getElementById('fi-applies-to').value = 'ALL';
+        }
+
+        modal.showModal();
+    } catch (error) {
+        console.error('Error:', error);
+        ClassUp.toast('An error occurred while loading the fee item', 'error');
+    }
+}
+
+function closeModal() {
+    modal.close();
+}
+
+async function saveFeeItem(e) {
+    e.preventDefault();
+    errorDiv.classList.add('hidden');
+
+    const id = document.getElementById('fi-id').value;
+    const name = document.getElementById('fi-name').value.trim();
+    const description = document.getElementById('fi-description').value.trim();
+    const amount = parseFloat(document.getElementById('fi-amount').value);
+    const frequency = document.getElementById('fi-frequency').value;
+    const appliesTo = document.getElementById('fi-applies-to').value;
+    const classId = document.getElementById('fi-class-id').value || null;
+    const isActive = document.getElementById('fi-active').checked;
+
+    if (!name) {
+        errorDiv.textContent = 'Name is required.';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    if (isNaN(amount) || amount < 0) {
+        errorDiv.textContent = 'Please enter a valid amount.';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    if (appliesTo === 'CLASS' && !classId) {
+        errorDiv.textContent = 'Please select a class.';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    const data = {
+        name,
+        description: description || null,
+        amount,
+        frequency,
+        applies_to: appliesTo,
+        class_id: appliesTo === 'CLASS' ? classId : null,
+        is_active: isActive,
+    };
+
+    const isEdit = !!id;
+    const url = isEdit ? `/api/v1/billing/fee-items/${id}` : '/api/v1/billing/fee-items';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && (result.status === 'success' || response.status < 300)) {
+            ClassUp.toast(isEdit ? 'Fee item updated successfully' : 'Fee item created successfully', 'success');
+            modal.close();
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            errorDiv.textContent = result.detail || result.message || 'Failed to save fee item';
+            errorDiv.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        errorDiv.textContent = 'An error occurred. Please try again.';
+        errorDiv.classList.remove('hidden');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = isEdit ? 'Update Fee Item' : 'Save Fee Item';
+    }
+}
+
+async function deleteFeeItem(id, name) {
+    if (!(await ClassUp.confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`, { danger: true, confirmText: 'Delete' }))) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/billing/fee-items/${id}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+
+        if (response.ok) {
+            ClassUp.toast('Fee item deleted successfully', 'success');
+            window.location.reload();
+        } else {
+            const result = await response.json();
+            ClassUp.toast(result.detail || result.message || 'Failed to delete fee item', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        ClassUp.toast('An error occurred while deleting the fee item', 'error');
+    }
+}
+
+form.addEventListener('submit', saveFeeItem);
+</script>
+{% endblock %}

@@ -1,0 +1,556 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Invoices - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/billing/invoices" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Generate Invoices</h1>
+            <p class="mt-1 text-sm text-gray-500">Create invoices for multiple students at once.</p>
+        </div>
+    </div>
+
+    <!-- Step Wizard Indicator -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div class="flex items-center justify-between max-w-lg mx-auto">
+            <!-- Step 1 Circle -->
+            <div class="flex flex-col items-center">
+                <div id="step-circle-1" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-primary-600 text-white shadow-md shadow-primary-200 transition-all duration-300">
+                    1
+                </div>
+                <span class="hidden sm:block text-xs font-medium text-gray-600 mt-1.5">Select Class</span>
+            </div>
+            <!-- Connector 1-2 -->
+            <div class="flex-1 h-1 mx-2 sm:mx-4 bg-gray-200 rounded-full overflow-hidden">
+                <div id="step-connector-1" class="h-full bg-primary-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <!-- Step 2 Circle -->
+            <div class="flex flex-col items-center">
+                <div id="step-circle-2" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-gray-200 text-gray-500 transition-all duration-300">
+                    2
+                </div>
+                <span class="hidden sm:block text-xs font-medium text-gray-400 mt-1.5">Fee Items</span>
+            </div>
+            <!-- Connector 2-3 -->
+            <div class="flex-1 h-1 mx-2 sm:mx-4 bg-gray-200 rounded-full overflow-hidden">
+                <div id="step-connector-2" class="h-full bg-primary-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <!-- Step 3 Circle -->
+            <div class="flex flex-col items-center">
+                <div id="step-circle-3" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-gray-200 text-gray-500 transition-all duration-300">
+                    3
+                </div>
+                <span class="hidden sm:block text-xs font-medium text-gray-400 mt-1.5">Review</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 1: Select Class & Students -->
+    <div id="step-1" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">1</span>
+                Select Class & Students
+            </h2>
+
+            <div class="space-y-4">
+                <!-- Class Selection -->
+                <div>
+                    <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                    <select id="class_id" onchange="handleClassChange()"
+                            class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select class...</option>
+                        {% for cls in classes %}
+                        <option value="{{ cls.id }}">{{ cls.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Students List -->
+                <div id="students-container" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-sm font-medium text-gray-700">Students</label>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="select-all-students" onchange="toggleAllStudents()"
+                                   class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-gray-600">Select All</span>
+                        </label>
+                    </div>
+
+                    <div id="students-loading" class="hidden py-8 text-center">
+                        <svg class="w-6 h-6 mx-auto text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p class="mt-2 text-sm text-gray-500">Loading students...</p>
+                    </div>
+
+                    <div id="students-list" class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                        <!-- Students loaded dynamically -->
+                    </div>
+
+                    <p id="students-count" class="mt-2 text-xs text-gray-500"></p>
+                </div>
+            </div>
+
+            <!-- Step 1 Actions -->
+            <div class="mt-6 flex justify-end">
+                <button type="button" onclick="goToStep(2)" id="btn-step1-next" disabled
+                        class="inline-flex items-center px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next: Select Fee Items
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Select Fee Items -->
+    <div id="step-2" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 opacity-40 scale-[0.99] pointer-events-none">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">2</span>
+                Select Fee Items & Dates
+            </h2>
+
+            <div class="space-y-5">
+                <!-- Fee Items -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Fee Items</label>
+                    {% if fee_items %}
+                    <div class="space-y-2">
+                        {% for item in fee_items %}
+                        <label class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                            <div class="flex items-center">
+                                <input type="checkbox" name="fee_items" value="{{ item.id }}"
+                                       data-amount="{{ item.amount }}" data-name="{{ item.name }}"
+                                       onchange="updateFeeSelection()"
+                                       class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                <div class="ml-3">
+                                    <span class="text-sm font-medium text-gray-900">{{ item.name }}</span>
+                                    {% if item.description %}
+                                    <p class="text-xs text-gray-500">{{ item.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ currency }} {{ "%.2f"|format(item.amount) }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="p-4 bg-gray-50 rounded-lg text-center">
+                        <p class="text-sm text-gray-500">No fee items configured. Please create fee items first.</p>
+                        <a href="/billing/fee-items" class="mt-2 inline-block text-sm text-primary-600 hover:text-primary-700 font-medium">
+                            Manage Fee Items
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Due Date -->
+                <div>
+                    <label for="due_date" class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                    <input type="date" id="due_date"
+                           class="block w-full sm:w-48 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                </div>
+
+                <!-- Optional Billing Period -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Billing Period <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <div>
+                            <label for="period_start" class="sr-only">Period Start</label>
+                            <input type="date" id="period_start" placeholder="Start date"
+                                   class="block w-full sm:w-48 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <span class="hidden sm:inline text-gray-400">to</span>
+                        <div>
+                            <label for="period_end" class="sr-only">Period End</label>
+                            <input type="date" id="period_end" placeholder="End date"
+                                   class="block w-full sm:w-48 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selected Fee Items Summary -->
+                <div id="fee-summary" class="hidden p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                    <p class="text-sm text-primary-700">
+                        <span id="fee-summary-count">0</span> fee item(s) selected totalling
+                        <strong>{{ currency }} <span id="fee-summary-total">0.00</span></strong> per student
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 2 Actions -->
+            <div class="mt-6 flex items-center justify-between">
+                <button type="button" onclick="goToStep(1)"
+                        class="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
+                    Back
+                </button>
+                <button type="button" onclick="goToStep(3)" id="btn-step2-next" disabled
+                        class="inline-flex items-center px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next: Review
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Review & Generate -->
+    <div id="step-3" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 opacity-40 scale-[0.99] pointer-events-none">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">3</span>
+                Review & Generate
+            </h2>
+
+            <!-- Summary Card -->
+            <div class="bg-gray-50 rounded-lg border border-gray-200 p-5 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider">Students</p>
+                        <p class="mt-1 text-2xl font-bold text-gray-900" id="review-student-count">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider">Fee Items</p>
+                        <p class="mt-1 text-2xl font-bold text-gray-900" id="review-fee-count">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wider">Total Per Student</p>
+                        <p class="mt-1 text-2xl font-bold text-primary-600" id="review-per-student">{{ currency }} 0.00</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm text-gray-600">Due Date</p>
+                        <p class="text-sm font-medium text-gray-900" id="review-due-date">-</p>
+                    </div>
+                    <div class="flex items-center justify-between mt-2" id="review-period-row" style="display: none;">
+                        <p class="text-sm text-gray-600">Billing Period</p>
+                        <p class="text-sm font-medium text-gray-900" id="review-period">-</p>
+                    </div>
+                </div>
+
+                <!-- Fee Breakdown -->
+                <div class="border-t border-gray-200 pt-4">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Fee Breakdown</p>
+                    <div id="review-fee-breakdown" class="space-y-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-4 bg-primary-50 -mx-5 -mb-5 px-5 py-4 rounded-b-lg">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-primary-800">Grand Total</p>
+                        <p class="text-lg font-bold text-primary-700" id="review-grand-total">{{ currency }} 0.00</p>
+                    </div>
+                    <p class="text-xs text-primary-600 mt-1" id="review-grand-total-desc">
+                        0 students x {{ currency }} 0.00 = {{ currency }} 0.00
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 3 Actions -->
+            <div class="mt-6 flex items-center justify-between">
+                <button type="button" onclick="goToStep(2)"
+                        class="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
+                    Back
+                </button>
+                <button type="button" onclick="generateInvoices()" id="btn-generate"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Generate Invoices
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const currency = '{{ currency }}';
+let selectedStudents = [];
+let selectedFeeItems = [];
+let studentsData = [];
+
+// --- Step Wizard Indicator ---
+const checkmarkSVG = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>';
+
+function updateStepIndicator(activeStep) {
+    for (let i = 1; i <= 3; i++) {
+        const circle = document.getElementById(`step-circle-${i}`);
+        const label = circle.parentElement.querySelector('span');
+        if (i < activeStep) {
+            circle.className = 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-green-500 text-white transition-all duration-300';
+            circle.innerHTML = checkmarkSVG;
+            if (label) { label.className = 'hidden sm:block text-xs font-medium text-green-600 mt-1.5'; }
+        } else if (i === activeStep) {
+            circle.className = 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-primary-600 text-white shadow-md shadow-primary-200 transition-all duration-300';
+            circle.textContent = i;
+            if (label) { label.className = 'hidden sm:block text-xs font-medium text-gray-600 mt-1.5'; }
+        } else {
+            circle.className = 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-gray-200 text-gray-500 transition-all duration-300';
+            circle.textContent = i;
+            if (label) { label.className = 'hidden sm:block text-xs font-medium text-gray-400 mt-1.5'; }
+        }
+    }
+    for (let i = 1; i <= 2; i++) {
+        const connector = document.getElementById(`step-connector-${i}`);
+        if (activeStep > i) {
+            connector.style.width = '100%';
+        } else if (activeStep === i) {
+            connector.style.width = '50%';
+        } else {
+            connector.style.width = '0%';
+        }
+    }
+}
+
+function goToStep(step) {
+    const steps = [1, 2, 3];
+    steps.forEach(s => {
+        const el = document.getElementById(`step-${s}`);
+        if (s === step) {
+            el.classList.remove('opacity-40', 'scale-[0.99]', 'pointer-events-none');
+        } else if (s > step) {
+            el.classList.add('opacity-40', 'scale-[0.99]', 'pointer-events-none');
+        } else {
+            el.classList.remove('opacity-40', 'scale-[0.99]', 'pointer-events-none');
+        }
+    });
+
+    updateStepIndicator(step);
+
+    if (step === 3) {
+        updateReviewSummary();
+    }
+
+    document.getElementById(`step-${step}`).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// --- Step 1: Class & Students ---
+async function handleClassChange() {
+    const classId = document.getElementById('class_id').value;
+    const container = document.getElementById('students-container');
+    const list = document.getElementById('students-list');
+    const loading = document.getElementById('students-loading');
+    const countEl = document.getElementById('students-count');
+
+    list.innerHTML = '';
+    studentsData = [];
+    selectedStudents = [];
+    updateStep1NextBtn();
+
+    if (!classId) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    list.classList.add('hidden');
+
+    try {
+        const result = await ClassUp.fetch(`/api/v1/classes/${classId}/students`, { method: 'GET' });
+        loading.classList.add('hidden');
+        list.classList.remove('hidden');
+
+        if (result.data && result.data.length > 0) {
+            studentsData = result.data;
+            result.data.forEach(student => {
+                const row = document.createElement('label');
+                row.className = 'flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors';
+                row.innerHTML = `
+                    <input type="checkbox" value="${student.id}"
+                           data-name="${ClassUp.escapeHtml(student.first_name + ' ' + student.last_name)}"
+                           onchange="updateStudentSelection()"
+                           class="student-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                    <div class="ml-3 flex items-center gap-3">
+                        <div class="h-8 w-8 rounded-full bg-primary-50 flex items-center justify-center flex-shrink-0">
+                            <span class="text-primary-600 font-medium text-xs">${ClassUp.escapeHtml(student.first_name[0] + student.last_name[0])}</span>
+                        </div>
+                        <span class="text-sm text-gray-900">${ClassUp.escapeHtml(student.first_name + ' ' + student.last_name)}</span>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+            countEl.textContent = `${result.data.length} student(s) in this class`;
+        } else {
+            list.innerHTML = '<div class="p-4 text-center text-sm text-gray-500">No students in this class.</div>';
+            countEl.textContent = '';
+        }
+    } catch (error) {
+        loading.classList.add('hidden');
+        list.classList.remove('hidden');
+        list.innerHTML = '<div class="p-4 text-center text-sm text-red-500">Failed to load students.</div>';
+        console.error('Error fetching students:', error);
+    }
+}
+
+function toggleAllStudents() {
+    const selectAll = document.getElementById('select-all-students').checked;
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.checked = selectAll;
+    });
+    updateStudentSelection();
+}
+
+function updateStudentSelection() {
+    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+    selectedStudents = Array.from(checkboxes).map(cb => ({
+        id: cb.value,
+        name: cb.dataset.name
+    }));
+
+    const allCheckboxes = document.querySelectorAll('.student-checkbox');
+    document.getElementById('select-all-students').checked =
+        allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+
+    updateStep1NextBtn();
+}
+
+function updateStep1NextBtn() {
+    document.getElementById('btn-step1-next').disabled = selectedStudents.length === 0;
+}
+
+// --- Step 2: Fee Items ---
+function updateFeeSelection() {
+    const checkboxes = document.querySelectorAll('input[name="fee_items"]:checked');
+    selectedFeeItems = Array.from(checkboxes).map(cb => ({
+        id: cb.value,
+        name: cb.dataset.name,
+        amount: parseFloat(cb.dataset.amount)
+    }));
+
+    const total = selectedFeeItems.reduce((sum, item) => sum + item.amount, 0);
+    const summary = document.getElementById('fee-summary');
+    const dueDate = document.getElementById('due_date').value;
+
+    document.getElementById('fee-summary-count').textContent = selectedFeeItems.length;
+    document.getElementById('fee-summary-total').textContent = total.toFixed(2);
+
+    if (selectedFeeItems.length > 0) {
+        summary.classList.remove('hidden');
+    } else {
+        summary.classList.add('hidden');
+    }
+
+    document.getElementById('btn-step2-next').disabled = selectedFeeItems.length === 0 || !dueDate;
+}
+
+document.getElementById('due_date').addEventListener('change', updateFeeSelection);
+
+// --- Step 3: Review ---
+function updateReviewSummary() {
+    const studentCount = selectedStudents.length;
+    const feeCount = selectedFeeItems.length;
+    const perStudent = selectedFeeItems.reduce((sum, item) => sum + item.amount, 0);
+    const grandTotal = perStudent * studentCount;
+    const dueDate = document.getElementById('due_date').value;
+    const periodStart = document.getElementById('period_start').value;
+    const periodEnd = document.getElementById('period_end').value;
+
+    document.getElementById('review-student-count').textContent = studentCount;
+    document.getElementById('review-fee-count').textContent = feeCount;
+    document.getElementById('review-per-student').textContent = `${currency} ${perStudent.toFixed(2)}`;
+    document.getElementById('review-due-date').textContent = dueDate || '-';
+
+    const periodRow = document.getElementById('review-period-row');
+    if (periodStart && periodEnd) {
+        periodRow.style.display = '';
+        document.getElementById('review-period').textContent = `${periodStart} to ${periodEnd}`;
+    } else {
+        periodRow.style.display = 'none';
+    }
+
+    // Fee breakdown
+    const breakdown = document.getElementById('review-fee-breakdown');
+    breakdown.innerHTML = '';
+    selectedFeeItems.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between text-sm';
+        row.innerHTML = `
+            <span class="text-gray-600">${ClassUp.escapeHtml(item.name)}</span>
+            <span class="font-medium text-gray-900">${currency} ${item.amount.toFixed(2)}</span>
+        `;
+        breakdown.appendChild(row);
+    });
+
+    document.getElementById('review-grand-total').textContent = `${currency} ${grandTotal.toFixed(2)}`;
+    document.getElementById('review-grand-total-desc').textContent =
+        `${studentCount} student${studentCount !== 1 ? 's' : ''} x ${currency} ${perStudent.toFixed(2)} = ${currency} ${grandTotal.toFixed(2)}`;
+}
+
+// --- Generate ---
+async function generateInvoices() {
+    const btn = document.getElementById('btn-generate');
+    const originalText = btn.innerHTML;
+
+    const dueDate = document.getElementById('due_date').value;
+    const periodStart = document.getElementById('period_start').value;
+    const periodEnd = document.getElementById('period_end').value;
+
+    if (selectedStudents.length === 0 || selectedFeeItems.length === 0 || !dueDate) {
+        ClassUp.toast('Please complete all required fields.', 'warning');
+        return;
+    }
+
+    const confirmed = await ClassUp.confirm(
+        `Generate ${selectedStudents.length} invoice(s)? This will create invoices for the selected students with the chosen fee items.`,
+        { confirmText: 'Generate' }
+    );
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    btn.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Generating...
+    `;
+
+    try {
+        const payload = {
+            student_ids: selectedStudents.map(s => s.id),
+            fee_item_ids: selectedFeeItems.map(f => f.id),
+            due_date: dueDate
+        };
+        if (periodStart) payload.period_start = periodStart;
+        if (periodEnd) payload.period_end = periodEnd;
+
+        const result = await ClassUp.fetch('/api/v1/billing/invoices/generate', {
+            method: 'POST',
+            body: payload
+        });
+
+        const count = result.data ? result.data.count || selectedStudents.length : selectedStudents.length;
+        ClassUp.toast(`Successfully generated ${count} invoice(s).`, 'success');
+        window.location.href = '/billing/invoices';
+    } catch (error) {
+        console.error('Error generating invoices:', error);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateStepIndicator(1);
+});
+</script>
+{% endblock %}

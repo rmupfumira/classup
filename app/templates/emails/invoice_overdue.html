@@ -1,0 +1,54 @@
+{% extends "base_email.html" %}
+
+{% block title %}Overdue: Invoice {{ invoice_number }} - {{ student_name }}{% endblock %}
+
+{% block content %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Hi {{ parent_name }},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    This is a reminder that invoice <strong>{{ invoice_number }}</strong> for <strong>{{ student_name }}</strong> is now overdue.
+</p>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px; background-color: #FEF2F2; border-radius: 8px; border: 1px solid #FECACA;">
+    <tr>
+        <td style="padding: 20px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em;">Invoice Number</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">{{ invoice_number }}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em;">Outstanding Balance</p>
+                        <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: 700; color: #DC2626;">{{ outstanding_balance }}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <p style="margin: 0; font-size: 13px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em;">Original Due Date</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 600; color: #DC2626;">{{ due_date }}</p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<p style="margin: 0 0 24px 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+    Please arrange payment at your earliest convenience. If you have already made this payment, please disregard this reminder.
+</p>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #7C3AED;">
+            <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                View Invoice
+            </a>
+        </td>
+    </tr>
+</table>
+{% endblock %}

@@ -443,6 +443,95 @@ class EmailService:
                     f"Failed to send admin notification to {admin.email}"
                 )
 
+    async def send_invoice_notification(
+        self,
+        to: str,
+        parent_name: str,
+        student_name: str,
+        invoice_number: str,
+        total_amount: str,
+        due_date: str,
+        view_url: str,
+        tenant_name: str,
+    ) -> str | None:
+        """Send an invoice notification to a parent."""
+        return await self.send(
+            to=to,
+            subject=f"Invoice {invoice_number} for {student_name}",
+            template_name="invoice_sent.html",
+            context={
+                "parent_name": parent_name,
+                "student_name": student_name,
+                "invoice_number": invoice_number,
+                "total_amount": total_amount,
+                "due_date": due_date,
+                "view_url": view_url,
+                "tenant_name": tenant_name,
+                "app_name": settings.app_name,
+            },
+            from_name=tenant_name,
+        )
+
+    async def send_payment_confirmation(
+        self,
+        to: str,
+        parent_name: str,
+        student_name: str,
+        invoice_number: str,
+        payment_amount: str,
+        remaining_balance: str,
+        payment_method: str,
+        view_url: str,
+        tenant_name: str,
+    ) -> str | None:
+        """Send a payment confirmation to a parent."""
+        return await self.send(
+            to=to,
+            subject=f"Payment Received - {invoice_number}",
+            template_name="payment_received.html",
+            context={
+                "parent_name": parent_name,
+                "student_name": student_name,
+                "invoice_number": invoice_number,
+                "payment_amount": payment_amount,
+                "remaining_balance": remaining_balance,
+                "payment_method": payment_method,
+                "view_url": view_url,
+                "tenant_name": tenant_name,
+                "app_name": settings.app_name,
+            },
+            from_name=tenant_name,
+        )
+
+    async def send_overdue_reminder(
+        self,
+        to: str,
+        parent_name: str,
+        student_name: str,
+        invoice_number: str,
+        outstanding_balance: str,
+        due_date: str,
+        view_url: str,
+        tenant_name: str,
+    ) -> str | None:
+        """Send an overdue invoice reminder to a parent."""
+        return await self.send(
+            to=to,
+            subject=f"Overdue: Invoice {invoice_number} for {student_name}",
+            template_name="invoice_overdue.html",
+            context={
+                "parent_name": parent_name,
+                "student_name": student_name,
+                "invoice_number": invoice_number,
+                "outstanding_balance": outstanding_balance,
+                "due_date": due_date,
+                "view_url": view_url,
+                "tenant_name": tenant_name,
+                "app_name": settings.app_name,
+            },
+            from_name=tenant_name,
+        )
+
     async def send_teacher_notification(
         self,
         to: str,

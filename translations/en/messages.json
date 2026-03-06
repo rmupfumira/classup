@@ -67,7 +67,8 @@
     "settings": "Settings",
     "profile": "Profile",
     "notifications": "Notifications",
-    "help": "Help"
+    "help": "Help",
+    "billing": "Billing"
   },
   "students": {
     "title": "Students",
@@ -180,6 +181,37 @@
     "unauthorized": "Please log in to continue",
     "validation": "Please check your input",
     "server_error": "Server error occurred"
+  },
+  "billing": {
+    "title": "Billing",
+    "fee_items": "Fee Items",
+    "invoices": "Invoices",
+    "payments": "Payments",
+    "statement": "Account Statement",
+    "generate_invoices": "Generate Invoices",
+    "record_payment": "Record Payment",
+    "add_fee_item": "Add Fee Item",
+    "edit_fee_item": "Edit Fee Item",
+    "invoice_detail": "Invoice Detail",
+    "amount": "Amount",
+    "balance": "Balance",
+    "due_date": "Due Date",
+    "status": "Status",
+    "total_invoiced": "Total Invoiced",
+    "total_collected": "Total Collected",
+    "outstanding": "Outstanding",
+    "overdue": "Overdue",
+    "frequency": "Frequency",
+    "monthly": "Monthly",
+    "termly": "Termly",
+    "annually": "Annually",
+    "once_off": "Once-Off",
+    "all_students": "All Students",
+    "payment_method": "Payment Method",
+    "reference_number": "Reference Number",
+    "payment_date": "Payment Date",
+    "outstanding_fees": "Outstanding Fees",
+    "no_outstanding": "No outstanding fees"
   },
   "terminology": {
     "student": "student",

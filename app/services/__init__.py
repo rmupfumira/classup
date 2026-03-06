@@ -16,6 +16,7 @@ from app.services.student_service import StudentService, get_student_service
 from app.services.user_service import UserService, get_user_service
 from app.services.webhook_service import WebhookService, get_webhook_service
 from app.services.whatsapp_service import WhatsAppService, get_whatsapp_service
+from app.services.billing_service import BillingService, get_billing_service
 
 __all__ = [
     "AuthService",
@@ -50,4 +51,6 @@ __all__ = [
     "get_i18n_service",
     "OnboardingService",
     "get_onboarding_service",
+    "BillingService",
+    "get_billing_service",
 ]

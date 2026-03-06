@@ -7,6 +7,7 @@ from app.web import (
     announcements,
     attendance,
     auth,
+    billing,
     classes,
     dashboard,
     documents,
@@ -31,6 +32,7 @@ web_router.include_router(students.router)
 web_router.include_router(classes.router)
 web_router.include_router(announcements.router)
 web_router.include_router(attendance.router)
+web_router.include_router(billing.router)
 web_router.include_router(photos.router)
 web_router.include_router(documents.router)
 web_router.include_router(reports.router)

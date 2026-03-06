@@ -40,6 +40,11 @@ class NotificationType(str, Enum):
     # Announcements
     ANNOUNCEMENT = "ANNOUNCEMENT"
 
+    # Billing
+    INVOICE_SENT = "INVOICE_SENT"
+    INVOICE_OVERDUE = "INVOICE_OVERDUE"
+    PAYMENT_RECEIVED = "PAYMENT_RECEIVED"
+
     # System
     SETTINGS_CHANGED = "SETTINGS_CHANGED"
     IMPORT_COMPLETED = "IMPORT_COMPLETED"
@@ -113,6 +118,7 @@ class Notification(Base, TimestampMixin):
             "photo_share": "/photos",
             "document_share": "/documents",
             "message": "/messages",
+            "invoice": f"/billing/invoices/{self.reference_id}",
         }
 
         return url_map.get(self.reference_type)

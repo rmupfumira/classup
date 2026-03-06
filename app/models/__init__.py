@@ -34,6 +34,16 @@ from app.models.webhook import (
 from app.models.import_job import BulkImportJob, ImportType, ImportStatus
 from app.models.academic import Subject, ClassSubject, GradingSystem
 from app.models.system_settings import SystemSettings
+from app.models.billing import (
+    BillingFeeItem,
+    BillingInvoice,
+    BillingInvoiceItem,
+    BillingPayment,
+    FeeFrequency,
+    FeeAppliesTo,
+    InvoiceStatus,
+    PaymentMethod,
+)
 
 __all__ = [
     # Base
@@ -117,4 +127,13 @@ __all__ = [
     "GradingSystem",
     # System Settings
     "SystemSettings",
+    # Billing
+    "BillingFeeItem",
+    "BillingInvoice",
+    "BillingInvoiceItem",
+    "BillingPayment",
+    "FeeFrequency",
+    "FeeAppliesTo",
+    "InvoiceStatus",
+    "PaymentMethod",
 ]

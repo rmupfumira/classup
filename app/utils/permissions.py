@@ -214,6 +214,18 @@ class PermissionChecker:
             Role.PARENT.value,
         )
 
+    def can_manage_billing(self) -> bool:
+        """Check if user can manage billing (fee items, invoices, payments)."""
+        return self.role in (Role.SUPER_ADMIN.value, Role.SCHOOL_ADMIN.value)
+
+    def can_view_billing(self) -> bool:
+        """Check if user can view billing info (own children for parents)."""
+        return self.role in (
+            Role.SUPER_ADMIN.value,
+            Role.SCHOOL_ADMIN.value,
+            Role.PARENT.value,
+        )
+
 
 def get_permission_checker() -> PermissionChecker:
     """Get a PermissionChecker for the current user.

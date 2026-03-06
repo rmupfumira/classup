@@ -67,7 +67,8 @@
     "settings": "Instellings",
     "profile": "Profiel",
     "notifications": "Kennisgewings",
-    "help": "Hulp"
+    "help": "Hulp",
+    "billing": "Fakturering"
   },
   "students": {
     "title": "Leerlinge",
@@ -180,6 +181,37 @@
     "unauthorized": "Meld asseblief aan om voort te gaan",
     "validation": "Kontroleer asseblief jou invoer",
     "server_error": "Bedienerfout het voorgekom"
+  },
+  "billing": {
+    "title": "Fakturering",
+    "fee_items": "Fooi-items",
+    "invoices": "Fakture",
+    "payments": "Betalings",
+    "statement": "Rekeningstate",
+    "generate_invoices": "Genereer Fakture",
+    "record_payment": "Teken Betaling Aan",
+    "add_fee_item": "Voeg Fooi-item By",
+    "edit_fee_item": "Wysig Fooi-item",
+    "invoice_detail": "Faktuur Besonderhede",
+    "amount": "Bedrag",
+    "balance": "Balans",
+    "due_date": "Vervaldatum",
+    "status": "Status",
+    "total_invoiced": "Totaal Gefaktureer",
+    "total_collected": "Totaal Ingevorder",
+    "outstanding": "Uitstaande",
+    "overdue": "Agterstallig",
+    "frequency": "Frekwensie",
+    "monthly": "Maandeliks",
+    "termly": "Per Kwartaal",
+    "annually": "Jaarliks",
+    "once_off": "Eenmalig",
+    "all_students": "Alle Leerlinge",
+    "payment_method": "Betaalmetode",
+    "reference_number": "Verwysingsnommer",
+    "payment_date": "Betaaldatum",
+    "outstanding_fees": "Uitstaande Fooie",
+    "no_outstanding": "Geen uitstaande fooie nie"
   },
   "terminology": {
     "student": "leerling",

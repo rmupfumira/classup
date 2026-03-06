@@ -8,6 +8,7 @@ from app.api.v1 import (
     announcements,
     attendance,
     auth,
+    billing,
     classes,
     documents,
     files,
@@ -32,6 +33,7 @@ api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(students.router, prefix="/students", tags=["Students"])
 api_router.include_router(classes.router, prefix="/classes", tags=["Classes"])
 api_router.include_router(attendance.router, prefix="/attendance", tags=["Attendance"])
+api_router.include_router(billing.router, prefix="/billing", tags=["Billing"])
 api_router.include_router(files.router, prefix="/files", tags=["Files"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(invitations.router, prefix="/invitations", tags=["Invitations"])
