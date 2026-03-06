@@ -89,6 +89,12 @@ async def billing_dashboard(
     except Exception:
         pass
 
+    # Send recurring overdue reminders
+    try:
+        await billing_service.send_overdue_reminders(db)
+    except Exception:
+        pass
+
     summary = await billing_service.get_billing_summary(db)
 
     # Recent invoices

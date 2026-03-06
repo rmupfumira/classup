@@ -153,6 +153,9 @@ class BillingInvoice(TenantScopedModel):
     sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    last_reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     student = relationship("Student", lazy="selectin")

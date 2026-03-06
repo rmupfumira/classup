@@ -2,7 +2,7 @@
 
 import logging
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import and_, func, select, update
@@ -825,6 +825,117 @@ class BillingService:
 
         await db.flush()
         return len(overdue_invoices)
+
+    async def send_overdue_reminders(self, db: AsyncSession) -> int:
+        """Send recurring reminders for overdue invoices. Returns count sent."""
+        from app.config import get_settings
+        from app.models import Tenant
+        from app.services.email_service import get_email_service
+        from app.services.notification_service import get_notification_service
+
+        tenant_id = get_tenant_id()
+
+        # Load tenant and check settings
+        tenant = await db.get(Tenant, tenant_id)
+        if not tenant:
+            return 0
+
+        tenant_settings = tenant.settings or {}
+        if not tenant_settings.get("billing_overdue_reminders_enabled", False):
+            return 0
+
+        interval_days = tenant_settings.get("billing_overdue_reminder_interval_days", 7)
+        interval_days = max(1, min(90, interval_days))
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=interval_days)
+
+        # Find overdue invoices eligible for a reminder
+        query = select(BillingInvoice).where(
+            BillingInvoice.tenant_id == tenant_id,
+            BillingInvoice.deleted_at.is_(None),
+            BillingInvoice.status == InvoiceStatus.OVERDUE.value,
+            BillingInvoice.balance > 0,
+            (
+                BillingInvoice.last_reminder_sent_at.is_(None)
+                | (BillingInvoice.last_reminder_sent_at < cutoff)
+            ),
+        )
+        result = await db.execute(query)
+        invoices = list(result.scalars().unique().all())
+
+        if not invoices:
+            return 0
+
+        app_settings = get_settings()
+        email_service = get_email_service()
+        notification_service = get_notification_service()
+        currency = tenant_settings.get("billing_currency", "ZAR")
+        view_url = f"{app_settings.app_base_url}/billing"
+        sent_count = 0
+
+        for invoice in invoices:
+            parent_ids = await self._get_parent_ids_for_student(db, invoice.student_id)
+            if not parent_ids:
+                continue
+
+            student_name = (
+                f"{invoice.student.first_name} {invoice.student.last_name}"
+                if invoice.student
+                else "Student"
+            )
+            due_date_str = invoice.due_date.strftime("%d %b %Y")
+            balance_str = f"{invoice.balance:.2f}"
+
+            # Load parent users for email
+            parents_q = select(User).where(
+                User.id.in_(parent_ids),
+                User.is_active == True,
+                User.deleted_at.is_(None),
+            )
+            parents = list((await db.execute(parents_q)).scalars().all())
+
+            # Send emails
+            for parent in parents:
+                try:
+                    await email_service.send_overdue_reminder(
+                        to=parent.email,
+                        parent_name=parent.first_name,
+                        student_name=student_name,
+                        invoice_number=invoice.invoice_number,
+                        outstanding_balance=f"{currency} {balance_str}",
+                        due_date=due_date_str,
+                        view_url=view_url,
+                        tenant_name=tenant.name,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to send overdue reminder email to parent %s for invoice %s",
+                        parent.id, invoice.id,
+                    )
+
+            # Send in-app notifications
+            try:
+                await notification_service.create_bulk_notifications(
+                    db=db,
+                    user_ids=parent_ids,
+                    title=f"Reminder: {invoice.invoice_number} overdue",
+                    body=f"Invoice {invoice.invoice_number} for {student_name} is still overdue. Outstanding balance: {currency} {balance_str}",
+                    notification_type="INVOICE_OVERDUE",
+                    reference_type="invoice",
+                    reference_id=invoice.id,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to send overdue reminder notification for invoice %s",
+                    invoice.id,
+                )
+
+            invoice.last_reminder_sent_at = now
+            sent_count += 1
+
+        await db.flush()
+        return sent_count
 
     # =========================================================================
     # Parent Access Helpers

@@ -348,6 +348,8 @@ async def settings_billing_save(
     billing_currency: str = Form("ZAR"),
     billing_banking_details: str = Form(""),
     billing_payment_instructions: str = Form(""),
+    billing_overdue_reminders_enabled: str | None = Form(None),
+    billing_overdue_reminder_interval_days: int = Form(7),
     db: AsyncSession = Depends(get_db),
 ):
     """Save billing settings."""
@@ -367,6 +369,8 @@ async def settings_billing_save(
         settings["billing_currency"] = billing_currency
         settings["billing_banking_details"] = billing_banking_details
         settings["billing_payment_instructions"] = billing_payment_instructions
+        settings["billing_overdue_reminders_enabled"] = billing_overdue_reminders_enabled is not None
+        settings["billing_overdue_reminder_interval_days"] = max(1, min(90, billing_overdue_reminder_interval_days))
         tenant.settings = settings
 
         await db.commit()
