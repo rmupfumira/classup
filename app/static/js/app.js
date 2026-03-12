@@ -18,11 +18,15 @@ const ClassUp = {
      * @returns {Promise<object>} - Parsed JSON response
      */
     async fetch(url, options = {}) {
+        const isRawBody = options.rawBody;
+        delete options.rawBody;
+
+        const defaultHeaders = isRawBody
+            ? { 'Accept': 'application/json' }
+            : { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+
         const defaults = {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: defaultHeaders,
             credentials: 'same-origin'  // Sends cookies automatically
         };
 
@@ -36,8 +40,8 @@ const ClassUp = {
             }
         };
 
-        // If body is an object, stringify it
-        if (mergedOptions.body && typeof mergedOptions.body === 'object') {
+        // If body is a plain object (not FormData), stringify it
+        if (mergedOptions.body && typeof mergedOptions.body === 'object' && !(mergedOptions.body instanceof FormData)) {
             mergedOptions.body = JSON.stringify(mergedOptions.body);
         }
 
