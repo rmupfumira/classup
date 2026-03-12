@@ -3,15 +3,15 @@
 {% block title %}Onboarding - Complete{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
         <!-- Progress bar -->
         <div class="mb-8 px-4">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-primary-600">Step 5 of 5</span>
-                <span class="text-sm text-gray-500">All Done!</span>
+                <span class="text-sm text-neutral-500">All Done!</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="w-full bg-neutral-200 rounded-full h-2">
                 <div class="bg-primary-600 h-2 rounded-full" style="width: 100%"></div>
             </div>
         </div>
@@ -23,23 +23,23 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
                 </div>
-                <h1 class="text-2xl font-bold text-gray-900">You're All Set!</h1>
-                <p class="mt-2 text-gray-600">{{ status.tenant_name }} is ready to go.</p>
+                <h1 class="text-2xl font-bold text-neutral-900">You're All Set!</h1>
+                <p class="mt-2 text-neutral-600">{{ status.tenant_name }} is ready to go.</p>
             </div>
 
             <div class="mb-8">
-                <h3 class="text-sm font-medium text-gray-700 mb-4">Setup Summary</h3>
-                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                <h3 class="text-sm font-medium text-neutral-700 mb-4">Setup Summary</h3>
+                <div class="bg-neutral-50 rounded-lg p-4 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-gray-600">School Name</span>
+                        <span class="text-neutral-600">School Name</span>
                         <span class="font-medium">{{ status.tenant_name }}</span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Education Type</span>
+                        <span class="text-neutral-600">Education Type</span>
                         <span class="font-medium">{{ status.education_type }}</span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Classes Created</span>
+                        <span class="text-neutral-600">Classes Created</span>
                         <span class="font-medium flex items-center">
                             {% if status.has_classes %}
                             <svg class="h-5 w-5 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -47,12 +47,12 @@
                             </svg>
                             Yes
                             {% else %}
-                            <span class="text-gray-400">Not yet</span>
+                            <span class="text-neutral-400">Not yet</span>
                             {% endif %}
                         </span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Teachers Invited</span>
+                        <span class="text-neutral-600">Teachers Invited</span>
                         <span class="font-medium flex items-center">
                             {% if status.has_teachers %}
                             <svg class="h-5 w-5 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -60,28 +60,28 @@
                             </svg>
                             Yes
                             {% else %}
-                            <span class="text-gray-400">Not yet</span>
+                            <span class="text-neutral-400">Not yet</span>
                             {% endif %}
                         </span>
                     </div>
                 </div>
             </div>
 
-            <h3 class="text-sm font-medium text-gray-700 mb-4">What's Next?</h3>
+            <h3 class="text-sm font-medium text-neutral-700 mb-4">What's Next?</h3>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-8">
-                <a href="/students/create" class="flex items-center p-4 rounded-lg border border-gray-200 hover:border-primary-500 hover:shadow-sm transition-all">
+                <a href="/students/create" class="flex items-center p-4 rounded-lg border border-neutral-200 hover:border-primary-500 hover:shadow-sm transition-all">
                     <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
                         <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900">Add Students</p>
-                        <p class="text-xs text-gray-500">Start adding students to your classes</p>
+                        <p class="text-sm font-medium text-neutral-900">Add Students</p>
+                        <p class="text-xs text-neutral-500">Start adding students to your classes</p>
                     </div>
                 </a>
 
-                <a href="/settings/features" class="flex items-center p-4 rounded-lg border border-gray-200 hover:border-primary-500 hover:shadow-sm transition-all">
+                <a href="/settings/features" class="flex items-center p-4 rounded-lg border border-neutral-200 hover:border-primary-500 hover:shadow-sm transition-all">
                     <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
                         <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -89,32 +89,32 @@
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900">Customize Features</p>
-                        <p class="text-xs text-gray-500">Enable or disable features</p>
+                        <p class="text-sm font-medium text-neutral-900">Customize Features</p>
+                        <p class="text-xs text-neutral-500">Enable or disable features</p>
                     </div>
                 </a>
 
-                <a href="/reports/templates" class="flex items-center p-4 rounded-lg border border-gray-200 hover:border-primary-500 hover:shadow-sm transition-all">
+                <a href="/reports/templates" class="flex items-center p-4 rounded-lg border border-neutral-200 hover:border-primary-500 hover:shadow-sm transition-all">
                     <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
                         <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900">Report Templates</p>
-                        <p class="text-xs text-gray-500">Set up daily report templates</p>
+                        <p class="text-sm font-medium text-neutral-900">Report Templates</p>
+                        <p class="text-xs text-neutral-500">Set up daily report templates</p>
                     </div>
                 </a>
 
-                <a href="/imports" class="flex items-center p-4 rounded-lg border border-gray-200 hover:border-primary-500 hover:shadow-sm transition-all">
+                <a href="/imports" class="flex items-center p-4 rounded-lg border border-neutral-200 hover:border-primary-500 hover:shadow-sm transition-all">
                     <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
                         <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900">Bulk Import</p>
-                        <p class="text-xs text-gray-500">Import students from CSV</p>
+                        <p class="text-sm font-medium text-neutral-900">Bulk Import</p>
+                        <p class="text-xs text-neutral-500">Import students from CSV</p>
                     </div>
                 </a>
             </div>

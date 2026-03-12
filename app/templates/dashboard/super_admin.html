@@ -8,23 +8,23 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
             <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-bold text-gray-900">
+                <h1 class="text-2xl font-bold text-neutral-800">
                     {{ t('dashboard.welcome', current_language, name=user.first_name) }}
                 </h1>
                 <span class="inline-flex items-center rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-700">
                     {{ user.role | replace('_', ' ') | title }}
                 </span>
             </div>
-            <p class="mt-1 text-sm text-gray-500">
+            <p class="mt-1 text-sm text-neutral-500">
                 {{ t('dashboard.todays_overview', current_language) }}
             </p>
         </div>
         <div class="mt-4 sm:mt-0 flex space-x-3">
             <a href="/attendance"
-               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm
-                      text-sm font-medium text-gray-700 bg-white hover:bg-gray-50
+               class="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-lg shadow-sm
+                      text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50
                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                <svg class="-ml-1 mr-2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="-ml-1 mr-2 h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
@@ -45,7 +45,7 @@
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center">
                 <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
                     <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,13 +54,13 @@
                     </svg>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.total_students', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">24</p>
+                    <p class="text-sm font-medium text-neutral-500">{{ t('dashboard.total_students', current_language) }}</p>
+                    <p class="text-2xl font-bold text-neutral-800">24</p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center">
                 <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
                     <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,13 +69,13 @@
                     </svg>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.present_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">22</p>
+                    <p class="text-sm font-medium text-neutral-500">{{ t('dashboard.present_today', current_language) }}</p>
+                    <p class="text-2xl font-bold text-neutral-800">22</p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center">
                 <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
                     <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,13 +84,13 @@
                     </svg>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.absent_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">2</p>
+                    <p class="text-sm font-medium text-neutral-500">{{ t('dashboard.absent_today', current_language) }}</p>
+                    <p class="text-2xl font-bold text-neutral-800">2</p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center">
                 <div class="flex-shrink-0 bg-amber-100 rounded-lg p-3">
                     <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,8 +99,8 @@
                     </svg>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">{{ t('dashboard.pending_reports', current_language) }}</p>
-                    <p class="text-2xl font-bold text-gray-900">5</p>
+                    <p class="text-sm font-medium text-neutral-500">{{ t('dashboard.pending_reports', current_language) }}</p>
+                    <p class="text-2xl font-bold text-neutral-800">5</p>
                 </div>
             </div>
         </div>
@@ -109,41 +109,41 @@
     <!-- Quick Actions & Recent Activity -->
     <div class="grid lg:grid-cols-2 gap-6">
         <!-- Quick Actions -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('dashboard.quick_actions', current_language) }}</h2>
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4">{{ t('dashboard.quick_actions', current_language) }}</h2>
             <div class="grid grid-cols-2 gap-4">
                 <a href="/attendance"
-                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
+                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-neutral-200
                           hover:border-primary-300 hover:bg-primary-50 transition-colors group">
-                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-8 w-8 text-neutral-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
+                    <span class="mt-2 text-sm font-medium text-neutral-700 group-hover:text-primary-700">
                         {{ t('attendance.daily_attendance', current_language) }}
                     </span>
                 </a>
 
                 <a href="/reports/create"
-                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
+                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-neutral-200
                           hover:border-primary-300 hover:bg-primary-50 transition-colors group">
-                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-8 w-8 text-neutral-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
+                    <span class="mt-2 text-sm font-medium text-neutral-700 group-hover:text-primary-700">
                         {{ t('reports.create_report', current_language) }}
                     </span>
                 </a>
 
                 <a href="/photos/upload"
-                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-gray-200
+                   class="flex flex-col items-center p-4 rounded-lg border-2 border-dashed border-neutral-200
                           hover:border-primary-300 hover:bg-primary-50 transition-colors group">
-                    <svg class="h-8 w-8 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-8 w-8 text-neutral-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span class="mt-2 text-sm font-medium text-gray-700 group-hover:text-primary-700">
+                    <span class="mt-2 text-sm font-medium text-neutral-700 group-hover:text-primary-700">
                         Share Photos
                     </span>
                 </a>
@@ -151,10 +151,10 @@
         </div>
 
         <!-- Recent Activity -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('dashboard.recent_activity', current_language) }}</h2>
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4">{{ t('dashboard.recent_activity', current_language) }}</h2>
             <div class="space-y-4">
-                <p class="text-sm text-gray-500 text-center py-8">
+                <p class="text-sm text-neutral-500 text-center py-8">
                     No recent activity to display.
                 </p>
             </div>

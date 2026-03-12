@@ -1,17 +1,17 @@
-<!-- Navigation Bar - Ant Design Style -->
-<nav class="sticky top-0 z-40 bg-white border-b border-neutral-200">
+<!-- Navigation Bar - Navy Theme -->
+<nav class="sticky top-0 z-40 bg-primary-600 shadow-lg">
     <div class="px-4 lg:px-6">
-        <div class="flex h-12 items-center justify-between">
+        <div class="flex h-14 items-center justify-between">
             <!-- Logo and Brand -->
             <div class="flex items-center gap-3">
                 <a href="/dashboard" class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-primary-500 rounded flex items-center justify-center">
+                    <div class="w-9 h-9 bg-accent-500 rounded-lg flex items-center justify-center">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                   d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
                     </div>
-                    <span class="text-base font-semibold text-neutral-800 hidden sm:block">{{ app_name }}</span>
+                    <span class="text-base font-semibold text-white hidden sm:block">{{ app_name }}</span>
                 </a>
             </div>
 
@@ -20,21 +20,17 @@
             <div class="flex items-center ml-4">
                 <div class="relative">
                     <button onclick="toggleClassSelector()"
-                            class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border
-                                   {% if selected_class %}
-                                   border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100
-                                   {% else %}
-                                   border-neutral-300 bg-neutral-50 text-neutral-700 hover:bg-neutral-100
-                                   {% endif %}
+                            class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border
+                                   border-white/20 bg-white/10 text-white hover:bg-white/20
                                    transition-colors">
-                        <svg class="w-4 h-4 {% if selected_class %}text-primary-500{% else %}text-neutral-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                   d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
                         </svg>
                         <span class="hidden sm:inline max-w-[140px] truncate">
                             {% if selected_class %}{{ selected_class.name }}{% else %}Select Class{% endif %}
                         </span>
-                        <svg class="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3 h-3 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
@@ -80,10 +76,10 @@
                 <div class="relative w-full">
                     <input type="text"
                            placeholder="{{ t('common.search', current_language) }}..."
-                           class="w-full h-8 pl-8 pr-3 text-sm border border-neutral-300 rounded bg-neutral-50
-                                  focus:bg-white focus:border-primary-500 focus:ring-0
-                                  placeholder-neutral-400 transition-colors">
-                    <svg class="absolute left-2.5 top-2 h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           class="w-full h-9 pl-9 pr-3 text-sm border border-white/20 rounded-lg bg-white/10
+                                  text-white focus:bg-white/20 focus:border-white/40 focus:ring-0
+                                  placeholder-white/50 transition-colors">
+                    <svg class="absolute left-2.5 top-2.5 h-4 w-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -93,7 +89,7 @@
             <!-- Right Side -->
             <div class="flex items-center gap-1">
                 <!-- Help -->
-                <button class="p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded transition-colors"
+                <button class="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                         title="Help">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -102,7 +98,7 @@
                 </button>
 
                 <!-- Notifications -->
-                <button class="relative p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded transition-colors"
+                <button class="relative p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                         title="{{ t('nav.notifications', current_language) }}">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -114,20 +110,20 @@
                 </button>
 
                 <!-- Divider -->
-                <div class="h-4 w-px bg-neutral-200 mx-2"></div>
+                <div class="h-4 w-px bg-white/20 mx-2"></div>
 
                 <!-- User Menu -->
                 <div class="relative">
                     <button onclick="toggleUserMenu()"
-                            class="flex items-center gap-2 py-1 px-2 rounded hover:bg-neutral-100 transition-colors">
+                            class="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-white/10 transition-colors">
                         <!-- Avatar -->
-                        <div class="h-7 w-7 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium">
+                        <div class="h-8 w-8 rounded-full bg-accent-500 flex items-center justify-center text-white text-xs font-semibold">
                             {{ user.first_name[0] | upper }}{{ user.last_name[0] | upper }}
                         </div>
-                        <span class="hidden lg:block text-sm text-neutral-700">
+                        <span class="hidden lg:block text-sm text-white font-medium">
                             {{ user.first_name }}
                         </span>
-                        <svg class="hidden lg:block h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="hidden lg:block h-4 w-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>

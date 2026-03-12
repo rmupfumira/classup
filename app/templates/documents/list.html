@@ -7,8 +7,8 @@
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Documents</h1>
-            <p class="mt-1 text-sm text-gray-500">
+            <h1 class="text-2xl font-bold text-neutral-900">Documents</h1>
+            <p class="mt-1 text-sm text-neutral-500">
                 {{ total }} document{{ 's' if total != 1 else '' }}
             </p>
         </div>
@@ -25,13 +25,13 @@
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
         <form method="get" class="flex flex-col sm:flex-row gap-4">
             {% if classes %}
             <div class="sm:w-64">
-                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Filter by Class</label>
+                <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Filter by Class</label>
                 <select name="class_id" id="class_id" onchange="this.form.submit()"
-                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">All Classes</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
@@ -42,9 +42,9 @@
             </div>
             {% endif %}
             <div class="sm:w-48">
-                <label for="scope" class="block text-sm font-medium text-gray-700 mb-1">Filter by Scope</label>
+                <label for="scope" class="block text-sm font-medium text-neutral-700 mb-1">Filter by Scope</label>
                 <select name="scope" id="scope" onchange="this.form.submit()"
-                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">All Scopes</option>
                     <option value="SCHOOL" {% if current_scope == 'SCHOOL' %}selected{% endif %}>School-wide</option>
                     <option value="CLASS" {% if current_scope == 'CLASS' %}selected{% endif %}>Class</option>
@@ -56,10 +56,10 @@
 
     <!-- Documents List -->
     {% if documents %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="divide-y divide-gray-200">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="divide-y divide-neutral-200">
             {% for doc in documents %}
-            <div class="p-4 hover:bg-gray-50 transition-colors">
+            <div class="p-4 hover:bg-neutral-50 transition-colors">
                 <div class="flex items-start gap-4">
                     <!-- File Icon -->
                     <div class="flex-shrink-0 mt-1">
@@ -81,7 +81,7 @@
 
                     <!-- Document Info -->
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">{{ doc.title }}</p>
+                        <p class="text-sm font-medium text-neutral-900">{{ doc.title }}</p>
                         <div class="flex flex-wrap items-center gap-2 mt-1">
                             <!-- Scope Badge -->
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
@@ -93,19 +93,19 @@
                                 {% else %}Student{% endif %}
                             </span>
                             {% if doc.class_name %}
-                            <span class="text-xs text-gray-500">{{ doc.class_name }}</span>
+                            <span class="text-xs text-neutral-500">{{ doc.class_name }}</span>
                             {% endif %}
-                            <span class="text-xs text-gray-300">|</span>
-                            <span class="text-xs text-gray-500">{{ doc.sharer_name }}</span>
-                            <span class="text-xs text-gray-300">|</span>
-                            <span class="text-xs text-gray-500">{{ doc.created_at.strftime('%b %d, %Y') }}</span>
+                            <span class="text-xs text-neutral-300">|</span>
+                            <span class="text-xs text-neutral-500">{{ doc.sharer_name }}</span>
+                            <span class="text-xs text-neutral-300">|</span>
+                            <span class="text-xs text-neutral-500">{{ doc.created_at.strftime('%b %d, %Y') }}</span>
                             {% if doc.file_count > 1 %}
-                            <span class="text-xs text-gray-300">|</span>
-                            <span class="text-xs text-gray-500">{{ doc.file_count }} files</span>
+                            <span class="text-xs text-neutral-300">|</span>
+                            <span class="text-xs text-neutral-500">{{ doc.file_count }} files</span>
                             {% endif %}
                         </div>
                         {% if doc.description %}
-                        <p class="text-xs text-gray-500 mt-1">{{ doc.description }}</p>
+                        <p class="text-xs text-neutral-500 mt-1">{{ doc.description }}</p>
                         {% endif %}
                         {% if doc.tagged_student_names %}
                         <p class="text-xs text-green-600 mt-1">
@@ -113,7 +113,7 @@
                         </p>
                         {% endif %}
                         {% if doc.primary_file %}
-                        <p class="text-xs text-gray-400 mt-1">{{ doc.primary_file.original_name }}</p>
+                        <p class="text-xs text-neutral-400 mt-1">{{ doc.primary_file.original_name }}</p>
                         {% endif %}
                     </div>
 
@@ -134,7 +134,7 @@
                         </a>
                         <!-- Download -->
                         <a href="{{ doc.primary_file.download_url }}" target="_blank"
-                           class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                           class="inline-flex items-center px-3 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors"
                            title="Download file">
                             <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -164,13 +164,13 @@
                 <div class="mt-3 ml-16 space-y-1">
                     {% for file in doc.files[1:] %}
                     <div class="flex items-center gap-2 text-xs">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                         </svg>
-                        <span class="text-gray-600">{{ file.original_name }}</span>
+                        <span class="text-neutral-600">{{ file.original_name }}</span>
                         <a href="{{ file.view_url }}" target="_blank" class="text-primary-600 hover:text-primary-700">View</a>
-                        <a href="{{ file.download_url }}" target="_blank" class="text-gray-500 hover:text-gray-700">Download</a>
+                        <a href="{{ file.download_url }}" target="_blank" class="text-neutral-500 hover:text-neutral-700">Download</a>
                     </div>
                     {% endfor %}
                 </div>
@@ -182,37 +182,37 @@
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
-    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-neutral-200">
         <div class="flex-1 flex justify-between sm:hidden">
             {% if page > 1 %}
             <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_scope %}&scope={{ current_scope }}{% endif %}"
-               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                 Previous
             </a>
             {% endif %}
             {% if page < total_pages %}
             <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_scope %}&scope={{ current_scope }}{% endif %}"
-               class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="ml-auto px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                 Next
             </a>
             {% endif %}
         </div>
         <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
             <div>
-                <p class="text-sm text-gray-700">
+                <p class="text-sm text-neutral-700">
                     Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
                 </p>
             </div>
             <div class="flex gap-2">
                 {% if page > 1 %}
                 <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_scope %}&scope={{ current_scope }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                     Previous
                 </a>
                 {% endif %}
                 {% if page < total_pages %}
                 <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_scope %}&scope={{ current_scope }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                     Next
                 </a>
                 {% endif %}
@@ -223,13 +223,13 @@
 
     {% else %}
     <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
         </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">No documents</h3>
-        <p class="mt-2 text-sm text-gray-500">
+        <h3 class="mt-4 text-lg font-medium text-neutral-900">No documents</h3>
+        <p class="mt-2 text-sm text-neutral-500">
             {% if current_class_id %}
                 No documents have been shared with this class yet.
             {% elif current_scope %}

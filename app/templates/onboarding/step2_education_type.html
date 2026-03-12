@@ -3,23 +3,23 @@
 {% block title %}Onboarding - Education Type{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
         <!-- Progress bar -->
         <div class="mb-8 px-4">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-primary-600">Step 2 of 5</span>
-                <span class="text-sm text-gray-500">Education Type</span>
+                <span class="text-sm text-neutral-500">Education Type</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="w-full bg-neutral-200 rounded-full h-2">
                 <div class="bg-primary-600 h-2 rounded-full" style="width: 40%"></div>
             </div>
         </div>
 
         <div class="bg-white py-8 px-4 shadow-lg sm:rounded-xl sm:px-10">
             <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-gray-900">What type of institution is this?</h1>
-                <p class="mt-2 text-gray-600">This helps us customize features and terminology for your needs.</p>
+                <h1 class="text-2xl font-bold text-neutral-900">What type of institution is this?</h1>
+                <p class="mt-2 text-neutral-600">This helps us customize features and terminology for your needs.</p>
             </div>
 
             <form method="POST" action="/onboarding/step2" class="space-y-6">
@@ -29,8 +29,8 @@
                         <input type="radio" name="education_type" value="DAYCARE" class="sr-only peer" required>
                         <span class="flex flex-1 flex-col">
                             <span class="text-3xl mb-2">👶</span>
-                            <span class="block text-lg font-semibold text-gray-900">Daycare</span>
-                            <span class="mt-1 text-sm text-gray-500">Early childhood center, nursery, or creche</span>
+                            <span class="block text-lg font-semibold text-neutral-900">Daycare</span>
+                            <span class="mt-1 text-sm text-neutral-500">Early childhood center, nursery, or creche</span>
                         </span>
                         <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -43,8 +43,8 @@
                         <input type="radio" name="education_type" value="PRIMARY_SCHOOL" class="sr-only peer">
                         <span class="flex flex-1 flex-col">
                             <span class="text-3xl mb-2">📚</span>
-                            <span class="block text-lg font-semibold text-gray-900">Primary School</span>
-                            <span class="mt-1 text-sm text-gray-500">Elementary or junior school</span>
+                            <span class="block text-lg font-semibold text-neutral-900">Primary School</span>
+                            <span class="mt-1 text-sm text-neutral-500">Elementary or junior school</span>
                         </span>
                         <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -57,8 +57,8 @@
                         <input type="radio" name="education_type" value="HIGH_SCHOOL" class="sr-only peer">
                         <span class="flex flex-1 flex-col">
                             <span class="text-3xl mb-2">🎓</span>
-                            <span class="block text-lg font-semibold text-gray-900">High School</span>
-                            <span class="mt-1 text-sm text-gray-500">Secondary school</span>
+                            <span class="block text-lg font-semibold text-neutral-900">High School</span>
+                            <span class="mt-1 text-sm text-neutral-500">Secondary school</span>
                         </span>
                         <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -71,8 +71,8 @@
                         <input type="radio" name="education_type" value="K12" class="sr-only peer">
                         <span class="flex flex-1 flex-col">
                             <span class="text-3xl mb-2">🏫</span>
-                            <span class="block text-lg font-semibold text-gray-900">K-12</span>
-                            <span class="mt-1 text-sm text-gray-500">Primary through high school</span>
+                            <span class="block text-lg font-semibold text-neutral-900">K-12</span>
+                            <span class="mt-1 text-sm text-neutral-500">Primary through high school</span>
                         </span>
                         <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -85,8 +85,8 @@
                         <input type="radio" name="education_type" value="COMBINED" class="sr-only peer">
                         <span class="flex flex-1 flex-col">
                             <span class="text-3xl mb-2">🎯</span>
-                            <span class="block text-lg font-semibold text-gray-900">Combined</span>
-                            <span class="mt-1 text-sm text-gray-500">Multiple types or custom setup</span>
+                            <span class="block text-lg font-semibold text-neutral-900">Combined</span>
+                            <span class="mt-1 text-sm text-neutral-500">Multiple types or custom setup</span>
                         </span>
                         <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -97,7 +97,7 @@
 
                 <div class="flex items-center justify-between pt-4">
                     <a href="/onboarding/step1"
-                       class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+                       class="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-700">
                         <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>

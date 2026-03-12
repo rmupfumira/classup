@@ -6,32 +6,32 @@
 <div class="space-y-6">
     <!-- Page Header -->
     <div class="flex items-center gap-4">
-        <a href="/reports/{{ report.id }}" class="text-gray-400 hover:text-gray-600">
+        <a href="/reports/{{ report.id }}" class="text-neutral-400 hover:text-neutral-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Edit Report</h1>
-            <p class="mt-1 text-sm text-gray-500">
+            <h1 class="text-2xl font-bold text-neutral-900">Edit Report</h1>
+            <p class="mt-1 text-sm text-neutral-500">
                 {{ report.student.first_name }} {{ report.student.last_name }} - {{ report.report_date.strftime('%B %d, %Y') }}
             </p>
         </div>
     </div>
 
     <!-- Report Meta -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-                <span class="text-gray-500">Template:</span>
+                <span class="text-neutral-500">Template:</span>
                 <span class="ml-1 font-medium">{{ report.template.name }}</span>
             </div>
             <div>
-                <span class="text-gray-500">Class:</span>
+                <span class="text-neutral-500">Class:</span>
                 <span class="ml-1 font-medium">{{ report.school_class.name }}</span>
             </div>
             <div>
-                <span class="text-gray-500">Date:</span>
+                <span class="text-neutral-500">Date:</span>
                 <span class="ml-1 font-medium">{{ report.report_date.strftime('%B %d, %Y') }}</span>
             </div>
             <div>
@@ -45,9 +45,9 @@
     <!-- Report Sections Form -->
     <form id="report-form">
         {% for section in report.template.sections %}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h3 class="text-md font-medium text-gray-900">{{ section.title }}</h3>
+        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden mb-6">
+            <div class="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+                <h3 class="text-md font-medium text-neutral-900">{{ section.title }}</h3>
             </div>
             <div class="p-4">
                 {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
@@ -58,14 +58,14 @@
                 {% set grades_config = section.grading_system or [] %}
                 {% if subjects_list %}
                 <div class="overflow-x-auto">
-                    <table class="min-w-full border border-gray-300">
+                    <table class="min-w-full border border-neutral-300">
                         <thead>
-                            <tr class="bg-gray-100">
-                                <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">#</th>
-                                <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Subject</th>
-                                <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Total Marks</th>
-                                <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700">Marks Obtained</th>
-                                <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">Remarks</th>
+                            <tr class="bg-neutral-100">
+                                <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">#</th>
+                                <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">Subject</th>
+                                <th class="border border-neutral-300 px-4 py-2 text-center text-sm font-semibold text-neutral-700">Total Marks</th>
+                                <th class="border border-neutral-300 px-4 py-2 text-center text-sm font-semibold text-neutral-700">Marks Obtained</th>
+                                <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">Remarks</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -80,20 +80,20 @@
                                 {% set total_for_subject = item.total_marks %}
                             {% endif %}
                             {% set subject_data = section_data.get(subject_id, {}) %}
-                            <tr class="{% if loop.index is odd %}bg-white{% else %}bg-gray-50{% endif %}">
-                                <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600">{{ loop.index }}</td>
-                                <td class="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">{{ subject_name }}</td>
-                                <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600 text-center">{{ total_for_subject }}</td>
-                                <td class="border border-gray-300 px-3 py-1">
+                            <tr class="{% if loop.index is odd %}bg-white{% else %}bg-neutral-50{% endif %}">
+                                <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600">{{ loop.index }}</td>
+                                <td class="border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900">{{ subject_name }}</td>
+                                <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600 text-center">{{ total_for_subject }}</td>
+                                <td class="border border-neutral-300 px-3 py-1">
                                     <input type="number" name="sections.{{ section.id }}.{{ subject_id }}.marks_obtained"
                                            value="{{ subject_data.get('marks_obtained', '') }}"
                                            min="0" max="{{ total_for_subject }}" step="0.5"
-                                           class="block w-20 mx-auto rounded border-gray-300 text-sm text-center focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-20 mx-auto rounded border-neutral-300 text-sm text-center focus:ring-primary-500 focus:border-primary-500">
                                 </td>
-                                <td class="border border-gray-300 px-3 py-1">
+                                <td class="border border-neutral-300 px-3 py-1">
                                     <input type="text" name="sections.{{ section.id }}.{{ subject_id }}.remarks"
                                            value="{{ subject_data.get('remarks', '') }}"
-                                           class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                                 </td>
                             </tr>
                             {% endfor %}
@@ -101,12 +101,12 @@
                     </table>
                 </div>
                 {% if grades_config %}
-                <p class="mt-3 text-xs text-gray-500">
+                <p class="mt-3 text-xs text-neutral-500">
                     {% for g in grades_config %}{{ g.grade }}: {{ g.min }}-{{ g.max }}% ({{ g.description }}){% if not loop.last %} | {% endif %}{% endfor %}
                 </p>
                 {% endif %}
                 {% else %}
-                <p class="text-sm text-gray-500 italic">No subjects configured for this class.</p>
+                <p class="text-sm text-neutral-500 italic">No subjects configured for this class.</p>
                 {% endif %}
 
                 {% elif section.type == 'SIGNATURES' %}
@@ -119,9 +119,9 @@
                     {% for field in section.fields %}
                     {% if field.type == 'MEAL_ENTRY' %}
                     <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label class="w-32 text-sm font-medium text-gray-700">{{ field.label }}</label>
+                        <label class="w-32 text-sm font-medium text-neutral-700">{{ field.label }}</label>
                         <select name="sections.{{ section.id }}.{{ field.id }}_amount"
-                                class="w-32 rounded-lg border-gray-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                                class="w-32 rounded-lg border-neutral-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
                             <option value="">-</option>
                             {% for opt in meal_options %}
                             <option value="{{ opt }}" {% if section_data.get(field.id ~ '_amount') == opt %}selected{% endif %}>{{ opt }}</option>
@@ -130,7 +130,7 @@
                         <input type="text" name="sections.{{ section.id }}.{{ field.id }}_desc"
                                value="{{ section_data.get(field.id ~ '_desc', '') }}"
                                placeholder="Description (optional)"
-                               class="flex-1 rounded-lg border-gray-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                               class="flex-1 rounded-lg border-neutral-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     {% endif %}
                     {% endfor %}
@@ -140,9 +140,9 @@
                 <div class="space-y-3">
                     <table class="w-full" id="table-{{ section.id }}">
                         <thead>
-                            <tr class="text-left text-sm text-gray-500">
+                            <tr class="text-left text-sm text-neutral-500">
                                 {% for field in section.fields %}
-                                <th class="pr-2 pb-2 font-medium {% if field.type == 'CALCULATED' %}text-gray-400{% endif %}">{{ field.label }}</th>
+                                <th class="pr-2 pb-2 font-medium {% if field.type == 'CALCULATED' %}text-neutral-400{% endif %}">{{ field.label }}</th>
                                 {% endfor %}
                                 <th class="w-10"></th>
                             </tr>
@@ -155,7 +155,7 @@
                                 <td class="pr-2 pb-2">
                                     {% if field.type == 'SELECT' %}
                                     <select name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
-                                            class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                            class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                                         <option value="">-</option>
                                         {% for opt in field.options %}
                                         <option value="{{ opt }}" {% if entry.get(field.id) == opt %}selected{% endif %}>{{ opt }}</option>
@@ -165,23 +165,23 @@
                                     <input type="time" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
                                            value="{{ entry.get(field.id, '') }}"
                                            onchange="calculateDuration(this.closest('tr'))"
-                                           class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                                     {% elif field.type == 'NUMBER' %}
                                     <input type="number" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
                                            value="{{ entry.get(field.id, '') }}"
-                                           class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-24 rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                                     {% elif field.type == 'CALCULATED' %}
-                                    <span class="duration-display text-sm font-medium text-gray-700">{{ entry.get(field.id, '') }}</span>
+                                    <span class="duration-display text-sm font-medium text-neutral-700">{{ entry.get(field.id, '') }}</span>
                                     <input type="hidden" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}" value="{{ entry.get(field.id, '') }}">
                                     {% else %}
                                     <input type="text" name="sections.{{ section.id }}.entries[{{ loop.index0 }}].{{ field.id }}"
                                            value="{{ entry.get(field.id, '') }}"
-                                           class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                                     {% endif %}
                                 </td>
                                 {% endfor %}
                                 <td class="pb-2">
-                                    <button type="button" onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-600">
+                                    <button type="button" onclick="this.closest('tr').remove()" class="text-neutral-400 hover:text-red-600">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                         </svg>
@@ -204,7 +204,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {% for field in section.fields %}
                     <div class="{% if field.type == 'TEXTAREA' %}md:col-span-2{% endif %}">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <label class="block text-sm font-medium text-neutral-700 mb-1">
                             {{ field.label }}
                             {% if field.required %}<span class="text-red-500">*</span>{% endif %}
                         </label>
@@ -213,7 +213,7 @@
 
                         {% if field.type == 'SELECT' %}
                         <select name="sections.{{ section.id }}.{{ field.id }}"
-                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                                 {% if field.required %}required{% endif %}>
                             <option value="">Select...</option>
                             {% for opt in field.options %}
@@ -227,8 +227,8 @@
                             <label class="inline-flex items-center">
                                 <input type="checkbox" name="sections.{{ section.id }}.{{ field.id }}" value="{{ opt }}"
                                        {% if field_value and opt in field_value %}checked{% endif %}
-                                       class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                                <span class="ml-2 text-sm text-gray-700">{{ opt }}</span>
+                                       class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                                <span class="ml-2 text-sm text-neutral-700">{{ opt }}</span>
                             </label>
                             {% endfor %}
                         </div>
@@ -236,32 +236,32 @@
                         {% elif field.type == 'TIME' %}
                         <input type="time" name="sections.{{ section.id }}.{{ field.id }}"
                                value="{{ field_value }}"
-                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                                {% if field.required %}required{% endif %}>
 
                         {% elif field.type == 'NUMBER' %}
                         <input type="number" name="sections.{{ section.id }}.{{ field.id }}"
                                value="{{ field_value }}"
-                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                                {% if field.required %}required{% endif %}>
 
                         {% elif field.type == 'CHECKBOX' %}
                         <label class="inline-flex items-center">
                             <input type="checkbox" name="sections.{{ section.id }}.{{ field.id }}" value="true"
                                    {% if field_value == true or field_value == 'true' %}checked{% endif %}
-                                   class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                            <span class="ml-2 text-sm text-gray-700">{{ field.label }}</span>
+                                   class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                            <span class="ml-2 text-sm text-neutral-700">{{ field.label }}</span>
                         </label>
 
                         {% elif field.type == 'TEXTAREA' %}
                         <textarea name="sections.{{ section.id }}.{{ field.id }}" rows="3"
-                                  class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                  class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                                   {% if field.required %}required{% endif %}>{{ field_value }}</textarea>
 
                         {% else %}
                         <input type="text" name="sections.{{ section.id }}.{{ field.id }}"
                                value="{{ field_value }}"
-                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                                {% if field.required %}required{% endif %}>
                         {% endif %}
                     </div>
@@ -276,11 +276,11 @@
     <!-- Form Actions -->
     <div class="flex items-center justify-end gap-3">
         <a href="/reports/{{ report.id }}"
-           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+           class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
             Cancel
         </a>
         <button type="button" onclick="saveReport(false)"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
             Save Draft
         </button>
         <button type="button" onclick="saveReport(true)"
@@ -338,30 +338,30 @@ function addRepeatableEntry(sectionId) {
 
         switch (field.type) {
             case 'SELECT':
-                input = `<select name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                input = `<select name="${fieldName}" class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">-</option>
                     ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                 </select>`;
                 break;
             case 'TIME':
-                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"
+                input = `<input type="time" name="${fieldName}" class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500"
                          onchange="calculateDuration(this.closest('tr'))">`;
                 break;
             case 'NUMBER':
-                input = `<input type="number" name="${fieldName}" class="block w-24 rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                input = `<input type="number" name="${fieldName}" class="block w-24 rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
                 break;
             case 'CALCULATED':
-                input = `<span class="duration-display text-sm font-medium text-gray-700"></span>
+                input = `<span class="duration-display text-sm font-medium text-neutral-700"></span>
                          <input type="hidden" name="${fieldName}">`;
                 break;
             default:
-                input = `<input type="text" name="${fieldName}" class="block w-full rounded border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
+                input = `<input type="text" name="${fieldName}" class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">`;
         }
         cells += `<td class="pr-2 pb-2">${input}</td>`;
     });
 
     cells += `<td class="pb-2">
-        <button type="button" onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-600">
+        <button type="button" onclick="this.closest('tr').remove()" class="text-neutral-400 hover:text-red-600">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>

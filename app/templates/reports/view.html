@@ -5,7 +5,7 @@
 {% block content %}
 <div class="max-w-2xl mx-auto">
     <!-- Back Button -->
-    <a href="/reports" class="inline-flex items-center text-gray-500 hover:text-gray-700 mb-4">
+    <a href="/reports" class="inline-flex items-center text-neutral-500 hover:text-neutral-700 mb-4">
         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
         </svg>
@@ -13,9 +13,9 @@
     </a>
 
     <!-- Report Header -->
-    <div class="border-b border-gray-200 pb-4 mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">{{ report.student.first_name }}'s Report</h1>
-        <p class="text-lg text-gray-600 mt-1">{{ report.report_date.strftime('%A, %b %d, %Y') }}</p>
+    <div class="border-b border-neutral-200 pb-4 mb-6">
+        <h1 class="text-3xl font-bold text-neutral-900">{{ report.student.first_name }}'s Report</h1>
+        <p class="text-lg text-neutral-600 mt-1">{{ report.report_date.strftime('%A, %b %d, %Y') }}</p>
 
         <div class="flex items-center gap-3 mt-4">
             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
@@ -67,7 +67,7 @@
                 {% if entries %}
                 <div class="space-y-2">
                     {% for entry in entries %}
-                    <p class="text-gray-800">
+                    <p class="text-neutral-800">
                         {% if section.id == 'naps' %}
                             <!-- Nap entry format: start - end (duration) -->
                             🛏️ {{ entry.get('start_time', '') }} - {{ entry.get('end_time', '') }}
@@ -78,7 +78,7 @@
                             <!-- Fluid entry format: time - amount - type -->
                             {{ entry.get('time', '') }} - {{ entry.get('amount', 'none') | lower }} - {{ entry.get('type', '') }}
                             {% if entry.get('notes') %}
-                            <br><em class="text-gray-500">{{ entry.get('notes') }}</em>
+                            <br><em class="text-neutral-500">{{ entry.get('notes') }}</em>
                             {% endif %}
                         {% elif section.id == 'bathroom' %}
                             <!-- Bathroom entry format: time - type - condition, notes -->
@@ -94,7 +94,7 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-gray-400 italic">No entries recorded</p>
+                <p class="text-neutral-400 italic">No entries recorded</p>
                 {% endif %}
 
             {% elif section.type == 'MEALS' or section.id == 'meals' %}
@@ -104,7 +104,7 @@
                         {% set amount = section_data.get(field.id ~ '_amount', '') %}
                         {% set desc = section_data.get(field.id ~ '_desc', section_data.get(field.id, '')) %}
                         {% if amount or desc %}
-                        <p class="text-gray-800">
+                        <p class="text-neutral-800">
                             <span class="font-semibold">{{ field.label }}</span>
                             {% if amount %} - {{ amount }}{% endif %}
                             {% if desc %} - {{ desc }}{% endif %}
@@ -122,7 +122,7 @@
                     {% if field.type == 'CHECKBOX' %}
                         {% if field_value == true or field_value == 'true' %}
                         {% set ns.has_any = true %}
-                        <p class="text-gray-800 flex items-center">
+                        <p class="text-neutral-800 flex items-center">
                             <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
@@ -132,13 +132,13 @@
                     {% elif field.type == 'TEXTAREA' %}
                         {% if field_value %}
                         {% set ns.has_any = true %}
-                        <p class="text-gray-800 whitespace-pre-wrap">
+                        <p class="text-neutral-800 whitespace-pre-wrap">
                             <span class="font-semibold">{{ field.label }}:</span> {{ field_value }}
                         </p>
                         {% endif %}
                     {% elif field_value or field_desc %}
                     {% set ns.has_any = true %}
-                    <p class="text-gray-800">
+                    <p class="text-neutral-800">
                         <span class="font-semibold">{{ field.label }}</span>
                         {% if field_value %} - {{ field_value }}{% endif %}
                         {% if field_desc %} - {{ field_desc }}{% endif %}
@@ -146,7 +146,7 @@
                     {% endif %}
                     {% endfor %}
                     {% if not ns.has_any %}
-                    <p class="text-gray-400 italic">No activities recorded</p>
+                    <p class="text-neutral-400 italic">No activities recorded</p>
                     {% endif %}
                 </div>
 
@@ -154,9 +154,9 @@
                 {% for field in section.fields %}
                 {% set field_value = section_data.get(field.id, '') %}
                 {% if field_value %}
-                <p class="text-gray-800 whitespace-pre-wrap">{{ field_value }}</p>
+                <p class="text-neutral-800 whitespace-pre-wrap">{{ field_value }}</p>
                 {% else %}
-                <p class="text-gray-400 italic">No notes recorded</p>
+                <p class="text-neutral-400 italic">No notes recorded</p>
                 {% endif %}
                 {% endfor %}
 
@@ -166,7 +166,7 @@
                     {% for field in section.fields %}
                     {% set field_value = section_data.get(field.id, '') %}
                     {% if field_value %}
-                    <p class="text-gray-800">
+                    <p class="text-neutral-800">
                         <span class="font-semibold">{{ field.label }}:</span> {{ field_value }}
                     </p>
                     {% endif %}
@@ -179,15 +179,15 @@
 
     <!-- Teacher Notes (if exists as separate section) -->
     {% if report.report_data and report.report_data.sections and report.report_data.sections.get('notes') %}
-    <div class="mt-8 pt-6 border-t border-gray-200">
-        <h2 class="text-2xl font-bold text-gray-700 mb-3">Teacher's Notes</h2>
-        <p class="text-gray-800 whitespace-pre-wrap">{{ report.report_data.sections.notes.get('content', '') }}</p>
+    <div class="mt-8 pt-6 border-t border-neutral-200">
+        <h2 class="text-2xl font-bold text-neutral-700 mb-3">Teacher's Notes</h2>
+        <p class="text-neutral-800 whitespace-pre-wrap">{{ report.report_data.sections.notes.get('content', '') }}</p>
     </div>
     {% endif %}
 
     <!-- Footer Actions -->
-    <div class="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
-        <p class="text-sm text-gray-500">
+    <div class="mt-8 pt-6 border-t border-neutral-200 flex justify-between items-center">
+        <p class="text-sm text-neutral-500">
             {% if report.finalized_at %}
             Sent on {{ report.finalized_at.strftime('%b %d, %Y at %H:%M') }}
             {% else %}
@@ -195,7 +195,7 @@
             {% endif %}
         </p>
         <button type="button" onclick="window.print()"
-                class="inline-flex items-center px-4 py-2 text-gray-600 hover:text-gray-800">
+                class="inline-flex items-center px-4 py-2 text-neutral-600 hover:text-neutral-800">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>

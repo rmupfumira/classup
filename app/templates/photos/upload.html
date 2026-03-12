@@ -6,22 +6,22 @@
 <div class="space-y-6">
     <!-- Page Header -->
     <div class="flex items-center gap-4">
-        <a href="/photos" class="text-gray-400 hover:text-gray-600">
+        <a href="/photos" class="text-neutral-400 hover:text-neutral-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
-        <h1 class="text-2xl font-bold text-gray-900">Upload Photos</h1>
+        <h1 class="text-2xl font-bold text-neutral-900">Upload Photos</h1>
     </div>
 
     <!-- Upload Form -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
         <div class="p-6 space-y-6">
             <!-- Class Selection -->
             <div>
-                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class <span class="text-red-500">*</span></label>
+                <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class <span class="text-red-500">*</span></label>
                 <select id="class_id" name="class_id" required
-                        class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                        class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                         onchange="handleClassChange()">
                     <option value="">Select class...</option>
                     {% for cls in classes %}
@@ -34,35 +34,35 @@
 
             <!-- Caption -->
             <div>
-                <label for="caption" class="block text-sm font-medium text-gray-700 mb-1">Caption (optional)</label>
+                <label for="caption" class="block text-sm font-medium text-neutral-700 mb-1">Caption (optional)</label>
                 <input type="text" id="caption" name="caption" maxlength="255"
                        placeholder="Add a caption for these photos..."
-                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <!-- Student Tags -->
             <div id="student-tags-section" class="hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tag Students (optional)</label>
-                <p class="text-xs text-gray-500 mb-2">Tagged students' parents will be notified</p>
-                <div id="student-checkboxes" class="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2">
-                    <p class="text-sm text-gray-400">Select a class first</p>
+                <label class="block text-sm font-medium text-neutral-700 mb-2">Tag Students (optional)</label>
+                <p class="text-xs text-neutral-500 mb-2">Tagged students' parents will be notified</p>
+                <div id="student-checkboxes" class="max-h-48 overflow-y-auto border border-neutral-200 rounded-lg p-3 space-y-2">
+                    <p class="text-sm text-neutral-400">Select a class first</p>
                 </div>
             </div>
 
             <!-- Upload Area -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Photos <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-neutral-700 mb-2">Photos <span class="text-red-500">*</span></label>
                 <div id="upload-area"
-                     class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
+                     class="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
                      onclick="document.getElementById('file-input').click()">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
-                    <p class="mt-2 text-sm text-gray-600">
+                    <p class="mt-2 text-sm text-neutral-600">
                         <span class="text-primary-600 font-medium">Click to upload</span> or drag and drop
                     </p>
-                    <p class="mt-1 text-xs text-gray-500">JPG, PNG, WebP up to 10MB each</p>
+                    <p class="mt-1 text-xs text-neutral-500">JPG, PNG, WebP up to 10MB each</p>
                 </div>
                 <input type="file" id="file-input" class="hidden" multiple accept="image/jpeg,image/png,image/webp">
             </div>
@@ -70,7 +70,7 @@
             <!-- Preview Grid -->
             <div id="preview-grid" class="hidden">
                 <div class="flex items-center justify-between mb-2">
-                    <label class="block text-sm font-medium text-gray-700">Selected Photos</label>
+                    <label class="block text-sm font-medium text-neutral-700">Selected Photos</label>
                     <button type="button" onclick="clearAllFiles()" class="text-sm text-red-600 hover:text-red-700">
                         Clear all
                     </button>
@@ -82,19 +82,19 @@
             <!-- Upload Progress -->
             <div id="upload-progress" class="hidden">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm font-medium text-gray-700">Uploading...</span>
-                    <span id="progress-text" class="text-sm text-gray-500">0%</span>
+                    <span class="text-sm font-medium text-neutral-700">Uploading...</span>
+                    <span id="progress-text" class="text-sm text-neutral-500">0%</span>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="w-full bg-neutral-200 rounded-full h-2">
                     <div id="progress-bar" class="bg-primary-600 h-2 rounded-full transition-all" style="width: 0%"></div>
                 </div>
             </div>
         </div>
 
         <!-- Form Actions -->
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+        <div class="px-6 py-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-end gap-3">
             <a href="/photos"
-               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+               class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
                 Cancel
             </a>
             <button type="button" id="upload-btn" onclick="uploadPhotos()"
@@ -122,12 +122,12 @@ async function handleClassChange() {
 
     if (!classId) {
         tagsSection.classList.add('hidden');
-        checkboxes.innerHTML = '<p class="text-sm text-gray-400">Select a class first</p>';
+        checkboxes.innerHTML = '<p class="text-sm text-neutral-400">Select a class first</p>';
         return;
     }
 
     tagsSection.classList.remove('hidden');
-    checkboxes.innerHTML = '<p class="text-sm text-gray-400">Loading students...</p>';
+    checkboxes.innerHTML = '<p class="text-sm text-neutral-400">Loading students...</p>';
 
     try {
         const result = await ClassUp.fetch(`/api/v1/students?class_id=${classId}&is_active=true&page_size=100`);
@@ -136,16 +136,16 @@ async function handleClassChange() {
             checkboxes.innerHTML = '';
             result.data.forEach(student => {
                 const label = document.createElement('label');
-                label.className = 'flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5';
+                label.className = 'flex items-center gap-2 cursor-pointer hover:bg-neutral-50 rounded px-1 py-0.5';
                 label.innerHTML = `
                     <input type="checkbox" name="student_ids" value="${student.id}"
-                           class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
-                    <span class="text-sm text-gray-700">${student.first_name} ${student.last_name}</span>
+                           class="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500">
+                    <span class="text-sm text-neutral-700">${student.first_name} ${student.last_name}</span>
                 `;
                 checkboxes.appendChild(label);
             });
         } else {
-            checkboxes.innerHTML = '<p class="text-sm text-gray-400">No students in this class</p>';
+            checkboxes.innerHTML = '<p class="text-sm text-neutral-400">No students in this class</p>';
         }
     } catch (error) {
         console.error('Error fetching students:', error);

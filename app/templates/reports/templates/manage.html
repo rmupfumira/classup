@@ -7,14 +7,14 @@
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <a href="/reports" class="text-gray-400 hover:text-gray-600">
+            <a href="/reports" class="text-neutral-400 hover:text-neutral-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
             </a>
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">Report Templates</h1>
-                <p class="mt-1 text-sm text-gray-500">
+                <h1 class="text-2xl font-bold text-neutral-900">Report Templates</h1>
+                <p class="mt-1 text-sm text-neutral-500">
                     {{ total }} template{{ 's' if total != 1 else '' }}
                 </p>
             </div>
@@ -30,16 +30,16 @@
 
     <!-- Templates List -->
     {% if templates %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="divide-y divide-gray-200">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="divide-y divide-neutral-200">
             {% for template in templates %}
-            <div class="p-4 hover:bg-gray-50 transition-colors">
+            <div class="p-4 hover:bg-neutral-50 transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <h3 class="text-sm font-medium text-gray-900">{{ template.name }}</h3>
+                            <h3 class="text-sm font-medium text-neutral-900">{{ template.name }}</h3>
                             {% if not template.is_active %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
                                 Inactive
                             </span>
                             {% endif %}
@@ -51,29 +51,29 @@
                                 {% else %}bg-green-100 text-green-700{% endif %}">
                                 {{ template.report_type | replace('_', ' ') | title }}
                             </span>
-                            <span class="text-xs text-gray-500">{{ template.frequency }}</span>
-                            <span class="text-xs text-gray-300">|</span>
-                            <span class="text-xs text-gray-500">{{ template.sections | length }} section(s)</span>
+                            <span class="text-xs text-neutral-500">{{ template.frequency }}</span>
+                            <span class="text-xs text-neutral-300">|</span>
+                            <span class="text-xs text-neutral-500">{{ template.sections | length }} section(s)</span>
                             {% if template.applies_to_grade_level %}
-                            <span class="text-xs text-gray-300">|</span>
-                            <span class="text-xs text-gray-500">{{ template.applies_to_grade_level }}</span>
+                            <span class="text-xs text-neutral-300">|</span>
+                            <span class="text-xs text-neutral-500">{{ template.applies_to_grade_level }}</span>
                             {% endif %}
                         </div>
                         {% if template.description %}
-                        <p class="mt-1 text-xs text-gray-500 truncate">{{ template.description }}</p>
+                        <p class="mt-1 text-xs text-neutral-500 truncate">{{ template.description }}</p>
                         {% endif %}
                     </div>
 
                     <div class="flex items-center gap-2">
                         <a href="/reports/templates/{{ template.id }}/edit"
-                           class="p-2 text-gray-400 hover:text-primary-600 transition-colors">
+                           class="p-2 text-neutral-400 hover:text-primary-600 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
                         </a>
                         <button type="button" onclick="toggleTemplate('{{ template.id }}', {{ 'false' if template.is_active else 'true' }})"
-                                class="p-2 text-gray-400 hover:text-amber-600 transition-colors"
+                                class="p-2 text-neutral-400 hover:text-amber-600 transition-colors"
                                 title="{{ 'Deactivate' if template.is_active else 'Activate' }}">
                             {% if template.is_active %}
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,7 +90,7 @@
                             {% endif %}
                         </button>
                         <button type="button" onclick="deleteTemplate('{{ template.id }}')"
-                                class="p-2 text-gray-400 hover:text-red-600 transition-colors">
+                                class="p-2 text-neutral-400 hover:text-red-600 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -105,22 +105,22 @@
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
-    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-neutral-200">
         <div>
-            <p class="text-sm text-gray-700">
+            <p class="text-sm text-neutral-700">
                 Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
             </p>
         </div>
         <div class="flex gap-2">
             {% if page > 1 %}
             <a href="?page={{ page - 1 }}"
-               class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                 Previous
             </a>
             {% endif %}
             {% if page < total_pages %}
             <a href="?page={{ page + 1 }}"
-               class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                 Next
             </a>
             {% endif %}
@@ -130,13 +130,13 @@
 
     {% else %}
     <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
         </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">No templates yet</h3>
-        <p class="mt-2 text-sm text-gray-500">
+        <h3 class="mt-4 text-lg font-medium text-neutral-900">No templates yet</h3>
+        <p class="mt-2 text-sm text-neutral-500">
             Create your first report template to start generating reports.
         </p>
         <div class="mt-6">

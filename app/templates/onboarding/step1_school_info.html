@@ -3,59 +3,59 @@
 {% block title %}Onboarding - School Information{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
         <!-- Progress bar -->
         <div class="mb-8 px-4">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-primary-600">Step 1 of 5</span>
-                <span class="text-sm text-gray-500">School Information</span>
+                <span class="text-sm text-neutral-500">School Information</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="w-full bg-neutral-200 rounded-full h-2">
                 <div class="bg-primary-600 h-2 rounded-full" style="width: 20%"></div>
             </div>
         </div>
 
         <div class="bg-white py-8 px-4 shadow-lg sm:rounded-xl sm:px-10">
             <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-gray-900">Welcome to ClassUp!</h1>
-                <p class="mt-2 text-gray-600">Let's set up your school. This will only take a few minutes.</p>
+                <h1 class="text-2xl font-bold text-neutral-900">Welcome to ClassUp!</h1>
+                <p class="mt-2 text-neutral-600">Let's set up your school. This will only take a few minutes.</p>
             </div>
 
             <form method="POST" action="/onboarding/step1" class="space-y-6">
                 <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700">
+                    <label for="name" class="block text-sm font-medium text-neutral-700">
                         School Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="name" id="name" required
                            value="{{ status.tenant_name }}"
-                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                           class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
                 </div>
 
                 <div>
-                    <label for="address" class="block text-sm font-medium text-gray-700">
+                    <label for="address" class="block text-sm font-medium text-neutral-700">
                         Address
                     </label>
                     <textarea name="address" id="address" rows="3"
-                              class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                              class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                               placeholder="123 Main Street, City, Country"></textarea>
                 </div>
 
                 <div>
-                    <label for="phone" class="block text-sm font-medium text-gray-700">
+                    <label for="phone" class="block text-sm font-medium text-neutral-700">
                         Phone Number
                     </label>
                     <input type="tel" name="phone" id="phone"
-                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                           class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                            placeholder="+27 12 345 6789">
                 </div>
 
                 <div>
-                    <label for="timezone" class="block text-sm font-medium text-gray-700">
+                    <label for="timezone" class="block text-sm font-medium text-neutral-700">
                         Timezone
                     </label>
                     <select name="timezone" id="timezone"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
                         <option value="Africa/Johannesburg" selected>Africa/Johannesburg (SAST)</option>
                         <option value="Africa/Cairo">Africa/Cairo (EET)</option>
                         <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
@@ -68,7 +68,7 @@
                 </div>
 
                 <div class="flex items-center justify-between pt-4">
-                    <a href="/onboarding/skip" class="text-sm text-gray-500 hover:text-gray-700">
+                    <a href="/onboarding/skip" class="text-sm text-neutral-500 hover:text-neutral-700">
                         Skip for now
                     </a>
                     <button type="submit"

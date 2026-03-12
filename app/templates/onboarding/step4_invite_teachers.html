@@ -3,49 +3,49 @@
 {% block title %}Onboarding - Invite Teachers{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
         <!-- Progress bar -->
         <div class="mb-8 px-4">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-primary-600">Step 4 of 5</span>
-                <span class="text-sm text-gray-500">Invite Teachers</span>
+                <span class="text-sm text-neutral-500">Invite Teachers</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="w-full bg-neutral-200 rounded-full h-2">
                 <div class="bg-primary-600 h-2 rounded-full" style="width: 80%"></div>
             </div>
         </div>
 
         <div class="bg-white py-8 px-4 shadow-lg sm:rounded-xl sm:px-10">
             <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-gray-900">Invite Your Teachers</h1>
-                <p class="mt-2 text-gray-600">Add teacher email addresses. They'll receive an invitation to join.</p>
+                <h1 class="text-2xl font-bold text-neutral-900">Invite Your Teachers</h1>
+                <p class="mt-2 text-neutral-600">Add teacher email addresses. They'll receive an invitation to join.</p>
             </div>
 
             <form method="POST" action="/onboarding/step4" class="space-y-6" id="teacherForm">
                 <div id="teachersContainer" class="space-y-4">
                     <!-- Teacher 1 -->
-                    <div class="teacher-entry rounded-lg border border-gray-200 p-4" data-index="1">
+                    <div class="teacher-entry rounded-lg border border-neutral-200 p-4" data-index="1">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-medium text-gray-700">Teacher 1</h3>
+                            <h3 class="text-sm font-medium text-neutral-700">Teacher 1</h3>
                         </div>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">First Name</label>
+                                <label class="block text-sm font-medium text-neutral-700">First Name</label>
                                 <input type="text" name="teacher_first_name_1"
-                                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                       class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                        placeholder="Jane">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                                <label class="block text-sm font-medium text-neutral-700">Last Name</label>
                                 <input type="text" name="teacher_last_name_1"
-                                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                       class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                        placeholder="Smith">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                                <label class="block text-sm font-medium text-neutral-700">Email <span class="text-red-500">*</span></label>
                                 <input type="email" name="teacher_email_1"
-                                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                       class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                        placeholder="jane@school.com">
                             </div>
                         </div>
@@ -53,7 +53,7 @@
                 </div>
 
                 <button type="button" id="addTeacherBtn"
-                        class="w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors">
+                        class="w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-neutral-300 rounded-lg text-sm font-medium text-neutral-600 hover:border-primary-500 hover:text-primary-600 transition-colors">
                     <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -62,14 +62,14 @@
 
                 <div class="flex items-center justify-between pt-4">
                     <a href="/onboarding/step3"
-                       class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+                       class="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-700">
                         <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
                         Back
                     </a>
                     <div class="flex items-center gap-4">
-                        <a href="/onboarding/step5" class="text-sm text-gray-500 hover:text-gray-700">
+                        <a href="/onboarding/step5" class="text-sm text-neutral-500 hover:text-neutral-700">
                             Skip for now
                         </a>
                         <button type="submit"
@@ -94,33 +94,33 @@ document.getElementById('addTeacherBtn').addEventListener('click', function() {
     const container = document.getElementById('teachersContainer');
 
     const teacherEntry = document.createElement('div');
-    teacherEntry.className = 'teacher-entry rounded-lg border border-gray-200 p-4';
+    teacherEntry.className = 'teacher-entry rounded-lg border border-neutral-200 p-4';
     teacherEntry.dataset.index = teacherCount;
 
     teacherEntry.innerHTML = `
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-gray-700">Teacher ${teacherCount}</h3>
+            <h3 class="text-sm font-medium text-neutral-700">Teacher ${teacherCount}</h3>
             <button type="button" class="remove-teacher text-red-500 hover:text-red-700 text-sm">
                 Remove
             </button>
         </div>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-                <label class="block text-sm font-medium text-gray-700">First Name</label>
+                <label class="block text-sm font-medium text-neutral-700">First Name</label>
                 <input type="text" name="teacher_first_name_${teacherCount}"
-                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                       class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                        placeholder="Jane">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                <label class="block text-sm font-medium text-neutral-700">Last Name</label>
                 <input type="text" name="teacher_last_name_${teacherCount}"
-                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                       class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                        placeholder="Smith">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-neutral-700">Email <span class="text-red-500">*</span></label>
                 <input type="email" name="teacher_email_${teacherCount}"
-                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                       class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                        placeholder="jane@school.com">
             </div>
         </div>

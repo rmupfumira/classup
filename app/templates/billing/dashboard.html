@@ -25,7 +25,7 @@
     <!-- Stats Cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Total Invoiced -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
                     <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@
         </div>
 
         <!-- Total Collected -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-success-50 rounded-lg flex items-center justify-center">
                     <svg class="h-5 w-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +59,7 @@
         </div>
 
         <!-- Outstanding -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center">
                     <svg class="h-5 w-5 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,7 +75,7 @@
         </div>
 
         <!-- Overdue -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-error-50 rounded-lg flex items-center justify-center">
                     <svg class="h-5 w-5 text-error-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +95,7 @@
     <!-- Quick Links -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <a href="/billing/fee-items"
-           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
+           class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
                     <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +114,7 @@
         </a>
 
         <a href="/billing/invoices"
-           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
+           class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
                     <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +133,7 @@
         </a>
 
         <a href="/billing/payments"
-           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
+           class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 hover:border-primary-200 hover:bg-primary-50 transition-all group">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
                     <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@
     <!-- Recent Invoices & Recent Payments -->
     <div class="grid lg:grid-cols-3 gap-6">
         <!-- Recent Invoices (2/3 width) -->
-        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
             <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-neutral-800">{{ t('billing.recent_invoices', current_language) }}</h3>
                 <a href="/billing/invoices" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">{{ t('billing.view_all', current_language) }}</a>
@@ -307,7 +307,7 @@
         </div>
 
         <!-- Recent Payments (1/3 width) -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
             <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-neutral-800">{{ t('billing.recent_payments', current_language) }}</h3>
                 <a href="/billing/payments" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">{{ t('billing.view_all', current_language) }}</a>

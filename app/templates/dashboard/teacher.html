@@ -45,15 +45,15 @@
 
     {% if not has_classes %}
     <!-- No Classes State -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-10 text-center">
         <div class="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="w-8 h-8 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
             </svg>
         </div>
-        <h3 class="text-lg font-semibold text-gray-900">No classes assigned yet</h3>
-        <p class="mt-2 text-sm text-gray-500 max-w-md mx-auto">
+        <h3 class="text-lg font-semibold text-neutral-800">No classes assigned yet</h3>
+        <p class="mt-2 text-sm text-neutral-500 max-w-md mx-auto">
             Your school admin hasn't assigned you to any classes yet. Once you're assigned, you'll see your students, attendance, and reports here.
         </p>
     </div>
@@ -63,11 +63,11 @@
     <!-- Today's Snapshot for Selected Class -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Students in Class -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Students</p>
-                    <p class="mt-1 text-2xl font-bold text-gray-900">{{ total_students }}</p>
+                    <p class="text-sm font-medium text-neutral-500">Students</p>
+                    <p class="mt-1 text-2xl font-bold text-neutral-800">{{ total_students }}</p>
                 </div>
                 <div class="flex-shrink-0 bg-blue-50 rounded-lg p-3">
                     <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,10 +79,10 @@
         </div>
 
         <!-- Present Today -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Present Today</p>
+                    <p class="text-sm font-medium text-neutral-500">Present Today</p>
                     <p class="mt-1 text-2xl font-bold text-green-600">{{ total_present }}</p>
                 </div>
                 <div class="flex-shrink-0 bg-green-50 rounded-lg p-3">
@@ -95,11 +95,11 @@
         </div>
 
         <!-- Absent Today -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Absent Today</p>
-                    <p class="mt-1 text-2xl font-bold {% if total_absent > 0 %}text-red-600{% else %}text-gray-900{% endif %}">{{ total_absent }}</p>
+                    <p class="text-sm font-medium text-neutral-500">Absent Today</p>
+                    <p class="mt-1 text-2xl font-bold {% if total_absent > 0 %}text-red-600{% else %}text-neutral-800{% endif %}">{{ total_absent }}</p>
                 </div>
                 <div class="flex-shrink-0 bg-red-50 rounded-lg p-3">
                     <svg class="h-6 w-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,14 +111,14 @@
         </div>
 
         <!-- Attendance Rate -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">Attendance Rate</p>
+                    <p class="text-sm font-medium text-neutral-500">Attendance Rate</p>
                     {% if current_class and current_class.attendance_taken %}
                     <p class="mt-1 text-2xl font-bold text-primary-600">{{ current_class.attendance_rate }}%</p>
                     {% else %}
-                    <p class="mt-1 text-2xl font-bold text-gray-400">&mdash;</p>
+                    <p class="mt-1 text-2xl font-bold text-neutral-400">&mdash;</p>
                     {% endif %}
                 </div>
                 <div class="flex-shrink-0 bg-primary-50 rounded-lg p-3">
@@ -156,9 +156,9 @@
 
             <!-- Today's Attendance Breakdown -->
             {% if current_class and current_class.attendance_taken %}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <h2 class="text-base font-semibold text-gray-900">Today's Attendance</h2>
+            <div class="bg-white rounded-xl shadow-sm border border-neutral-200">
+                <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-neutral-800">Today's Attendance</h2>
                     <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
                        class="text-sm text-primary-600 hover:text-primary-700 font-medium">
                         View Details
@@ -168,40 +168,40 @@
                     <div class="flex items-center gap-6 flex-wrap">
                         <div class="flex items-center gap-2">
                             <span class="w-3 h-3 rounded-full bg-green-500"></span>
-                            <span class="text-sm text-gray-600">Present</span>
-                            <span class="text-sm font-bold text-gray-900">{{ current_class.present }}</span>
+                            <span class="text-sm text-neutral-500">Present</span>
+                            <span class="text-sm font-bold text-neutral-800">{{ current_class.present }}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="w-3 h-3 rounded-full bg-red-500"></span>
-                            <span class="text-sm text-gray-600">Absent</span>
-                            <span class="text-sm font-bold text-gray-900">{{ current_class.absent }}</span>
+                            <span class="text-sm text-neutral-500">Absent</span>
+                            <span class="text-sm font-bold text-neutral-800">{{ current_class.absent }}</span>
                         </div>
                         {% if current_class.late > 0 %}
                         <div class="flex items-center gap-2">
                             <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-                            <span class="text-sm text-gray-600">Late</span>
-                            <span class="text-sm font-bold text-gray-900">{{ current_class.late }}</span>
+                            <span class="text-sm text-neutral-500">Late</span>
+                            <span class="text-sm font-bold text-neutral-800">{{ current_class.late }}</span>
                         </div>
                         {% endif %}
                         {% if current_class.excused > 0 %}
                         <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full bg-gray-400"></span>
-                            <span class="text-sm text-gray-600">Excused</span>
-                            <span class="text-sm font-bold text-gray-900">{{ current_class.excused }}</span>
+                            <span class="w-3 h-3 rounded-full bg-neutral-400"></span>
+                            <span class="text-sm text-neutral-500">Excused</span>
+                            <span class="text-sm font-bold text-neutral-800">{{ current_class.excused }}</span>
                         </div>
                         {% endif %}
                     </div>
 
                     <!-- Attendance bar -->
                     <div class="mt-4">
-                        <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
+                        <div class="w-full bg-neutral-100 rounded-full h-3 overflow-hidden flex">
                             {% if current_class.student_count > 0 %}
                             <div class="bg-green-500 h-full" style="width: {{ (current_class.present / current_class.student_count * 100) | round(0) }}%"></div>
                             <div class="bg-amber-500 h-full" style="width: {{ (current_class.late / current_class.student_count * 100) | round(0) }}%"></div>
                             <div class="bg-red-500 h-full" style="width: {{ (current_class.absent / current_class.student_count * 100) | round(0) }}%"></div>
                             {% endif %}
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">
+                        <p class="text-xs text-neutral-500 mt-1">
                             {{ current_class.attendance_rate }}% attendance rate &middot;
                             {{ current_class.student_count }} total students
                         </p>
@@ -212,20 +212,20 @@
 
             <!-- Draft Reports -->
             {% if draft_reports %}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="bg-white rounded-xl shadow-sm border border-neutral-200">
+                <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                     <div>
-                        <h2 class="text-base font-semibold text-gray-900">Draft Reports</h2>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ total_drafts }} report{{ 's' if total_drafts != 1 else '' }} waiting to be finalized</p>
+                        <h2 class="text-base font-semibold text-neutral-800">Draft Reports</h2>
+                        <p class="text-xs text-neutral-500 mt-0.5">{{ total_drafts }} report{{ 's' if total_drafts != 1 else '' }} waiting to be finalized</p>
                     </div>
                     <a href="/reports?status=DRAFT{% if selected_class %}&class_id={{ selected_class.id }}{% endif %}" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
                         View All
                     </a>
                 </div>
-                <div class="divide-y divide-gray-100">
+                <div class="divide-y divide-neutral-100">
                     {% for report in draft_reports %}
                     <a href="/reports/{{ report.id }}"
-                       class="block px-6 py-3 hover:bg-gray-50 transition-colors">
+                       class="block px-6 py-3 hover:bg-neutral-50 transition-colors">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center">
@@ -235,8 +235,8 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-medium text-gray-900">{{ report.student_name }}</p>
-                                    <p class="text-xs text-gray-500">{{ report.template_name }} &middot; {{ report.report_date }}</p>
+                                    <p class="text-sm font-medium text-neutral-800">{{ report.student_name }}</p>
+                                    <p class="text-xs text-neutral-500">{{ report.template_name }} &middot; {{ report.report_date }}</p>
                                 </div>
                             </div>
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
@@ -254,11 +254,11 @@
         <div class="space-y-6">
 
             <!-- Quick Actions -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 class="text-base font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+                <h2 class="text-base font-semibold text-neutral-800 mb-4">Quick Actions</h2>
                 <div class="space-y-2">
                     <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
-                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
                         <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
                             <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -266,13 +266,13 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-gray-900">Take Attendance</p>
-                            <p class="text-xs text-gray-500">Record daily attendance</p>
+                            <p class="text-sm font-medium text-neutral-800">Take Attendance</p>
+                            <p class="text-xs text-neutral-500">Record daily attendance</p>
                         </div>
                     </a>
 
                     <a href="/reports/create"
-                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
                         <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
                             <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -280,13 +280,13 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-gray-900">Create Report</p>
-                            <p class="text-xs text-gray-500">Write a student report</p>
+                            <p class="text-sm font-medium text-neutral-800">Create Report</p>
+                            <p class="text-xs text-neutral-500">Write a student report</p>
                         </div>
                     </a>
 
                     <a href="/students{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
-                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
                         <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                             <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -294,13 +294,13 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-gray-900">View Students</p>
-                            <p class="text-xs text-gray-500">See your student roster</p>
+                            <p class="text-sm font-medium text-neutral-800">View Students</p>
+                            <p class="text-xs text-neutral-500">See your student roster</p>
                         </div>
                     </a>
 
                     <a href="/messages"
-                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
                         <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                             <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -309,8 +309,8 @@
                         </div>
                         <div class="flex-1 flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-900">Messages</p>
-                                <p class="text-xs text-gray-500">Communicate with parents</p>
+                                <p class="text-sm font-medium text-neutral-800">Messages</p>
+                                <p class="text-xs text-neutral-500">Communicate with parents</p>
                             </div>
                             {% if unread_notifications > 0 %}
                             <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold">
@@ -321,7 +321,7 @@
                     </a>
 
                     <a href="/photos/upload"
-                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                       class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
                         <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
                             <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -331,8 +331,8 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-gray-900">Share Photos</p>
-                            <p class="text-xs text-gray-500">Share class moments</p>
+                            <p class="text-sm font-medium text-neutral-800">Share Photos</p>
+                            <p class="text-xs text-neutral-500">Share class moments</p>
                         </div>
                     </a>
                 </div>
@@ -340,26 +340,26 @@
 
             <!-- Multi-class info -->
             {% if teacher_classes is defined and teacher_classes|length > 1 %}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 class="text-base font-semibold text-gray-900 mb-3">My Classes</h2>
-                <p class="text-xs text-gray-500 mb-3">
+            <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+                <h2 class="text-base font-semibold text-neutral-800 mb-3">My Classes</h2>
+                <p class="text-xs text-neutral-500 mb-3">
                     Switch classes using the selector in the top navigation bar.
                 </p>
                 <div class="space-y-2">
                     {% for tc in teacher_classes %}
                     <button onclick="switchClass('{{ tc.id }}')"
                             class="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors
-                                   {% if selected_class and selected_class.id == tc.id %}bg-primary-50 border border-primary-200{% else %}hover:bg-gray-50{% endif %}">
+                                   {% if selected_class and selected_class.id == tc.id %}bg-primary-50 border border-primary-200{% else %}hover:bg-neutral-50{% endif %}">
                         <div class="flex-shrink-0 w-8 h-8 rounded-md
-                                    {% if selected_class and selected_class.id == tc.id %}bg-primary-100{% else %}bg-gray-100{% endif %}
+                                    {% if selected_class and selected_class.id == tc.id %}bg-primary-100{% else %}bg-neutral-100{% endif %}
                                     flex items-center justify-center">
                             <span class="text-xs font-semibold
-                                         {% if selected_class and selected_class.id == tc.id %}text-primary-600{% else %}text-gray-500{% endif %}">
+                                         {% if selected_class and selected_class.id == tc.id %}text-primary-600{% else %}text-neutral-500{% endif %}">
                                 {{ tc.name[:2] | upper }}
                             </span>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium {% if selected_class and selected_class.id == tc.id %}text-primary-700{% else %}text-gray-700{% endif %} truncate">
+                            <p class="text-sm font-medium {% if selected_class and selected_class.id == tc.id %}text-primary-700{% else %}text-neutral-700{% endif %} truncate">
                                 {{ tc.name }}
                             </p>
                         </div>

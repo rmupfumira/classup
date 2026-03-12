@@ -7,8 +7,8 @@
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Attendance History</h1>
-            <p class="mt-1 text-sm text-gray-500">
+            <h1 class="text-2xl font-bold text-neutral-900">Attendance History</h1>
+            <p class="mt-1 text-sm text-neutral-500">
                 {{ total }} record{{ 's' if total != 1 else '' }} found
             </p>
         </div>
@@ -23,13 +23,13 @@
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
         <form method="get" class="flex flex-col sm:flex-row gap-4">
             <!-- Class Filter -->
             <div class="sm:w-48">
-                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
                 <select name="class_id" id="class_id"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                     <option value="">All Classes</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
@@ -41,23 +41,23 @@
 
             <!-- Date From -->
             <div class="sm:w-40">
-                <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">From</label>
+                <label for="date_from" class="block text-sm font-medium text-neutral-700 mb-1">From</label>
                 <input type="date" name="date_from" id="date_from"
                        value="{{ date_from.isoformat() if date_from else '' }}"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <!-- Date To -->
             <div class="sm:w-40">
-                <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                <label for="date_to" class="block text-sm font-medium text-neutral-700 mb-1">To</label>
                 <input type="date" name="date_to" id="date_to"
                        value="{{ date_to.isoformat() if date_to else '' }}"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <div class="flex items-end">
                 <button type="submit"
-                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        class="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors">
                     Filter
                 </button>
             </div>
@@ -67,9 +67,9 @@
     <!-- Stats Summary -->
     {% if stats %}
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <p class="text-sm text-gray-500">Students</p>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.total_students }}</p>
+        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+            <p class="text-sm text-neutral-500">Students</p>
+            <p class="text-2xl font-bold text-neutral-900">{{ stats.total_students }}</p>
         </div>
         <div class="bg-green-50 rounded-lg shadow-sm border border-green-200 p-4">
             <p class="text-sm text-green-600">Present</p>
@@ -92,36 +92,36 @@
 
     <!-- Records List -->
     {% if records %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
         <!-- Desktop Table -->
         <div class="hidden md:block overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-neutral-200">
+                <thead class="bg-neutral-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Date
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Student
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Class
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Status
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Check In
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Notes
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-neutral-200">
                     {% for record in records %}
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <tr class="hover:bg-neutral-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                             {{ record.date.strftime('%b %d, %Y') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -140,13 +140,13 @@
                                 </div>
                                 <div class="ml-3">
                                     <a href="/attendance/student/{{ record.student_id }}"
-                                       class="text-sm font-medium text-gray-900 hover:text-primary-600">
+                                       class="text-sm font-medium text-neutral-900 hover:text-primary-600">
                                         {{ record.student.first_name if record.student else 'Unknown' }} {{ record.student.last_name if record.student else '' }}
                                     </a>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">
                             {{ record.school_class.name if record.school_class else '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -163,15 +163,15 @@
                                 Late
                             </span>
                             {% elif record.status == 'EXCUSED' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-800">
                                 Excused
                             </span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">
                             {{ record.check_in_time.strftime('%H:%M') if record.check_in_time else '-' }}
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        <td class="px-6 py-4 text-sm text-neutral-500 max-w-xs truncate">
                             {{ record.notes or '-' }}
                         </td>
                     </tr>
@@ -181,7 +181,7 @@
         </div>
 
         <!-- Mobile Cards -->
-        <div class="md:hidden divide-y divide-gray-200">
+        <div class="md:hidden divide-y divide-neutral-200">
             {% for record in records %}
             <div class="p-4">
                 <div class="flex items-center justify-between">
@@ -199,10 +199,10 @@
                             {% endif %}
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm font-medium text-gray-900">
+                            <p class="text-sm font-medium text-neutral-900">
                                 {{ record.student.first_name if record.student else 'Unknown' }} {{ record.student.last_name if record.student else '' }}
                             </p>
-                            <p class="text-xs text-gray-500">{{ record.date.strftime('%b %d, %Y') }}</p>
+                            <p class="text-xs text-neutral-500">{{ record.date.strftime('%b %d, %Y') }}</p>
                         </div>
                     </div>
                     {% if record.status == 'PRESENT' %}
@@ -218,13 +218,13 @@
                         Late
                     </span>
                     {% elif record.status == 'EXCUSED' %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-800">
                         Excused
                     </span>
                     {% endif %}
                 </div>
                 {% if record.notes %}
-                <p class="mt-2 text-sm text-gray-500">{{ record.notes }}</p>
+                <p class="mt-2 text-sm text-neutral-500">{{ record.notes }}</p>
                 {% endif %}
             </div>
             {% endfor %}
@@ -233,37 +233,37 @@
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
-    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
+    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-neutral-200">
         <div class="flex-1 flex justify-between sm:hidden">
             {% if page > 1 %}
             <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
-               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                 Previous
             </a>
             {% endif %}
             {% if page < total_pages %}
             <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
-               class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+               class="ml-auto px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                 Next
             </a>
             {% endif %}
         </div>
         <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
             <div>
-                <p class="text-sm text-gray-700">
+                <p class="text-sm text-neutral-700">
                     Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
                 </p>
             </div>
             <div class="flex gap-2">
                 {% if page > 1 %}
                 <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                     Previous
                 </a>
                 {% endif %}
                 {% if page < total_pages %}
                 <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
                     Next
                 </a>
                 {% endif %}
@@ -274,13 +274,13 @@
 
     {% else %}
     <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
         </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">No attendance records</h3>
-        <p class="mt-2 text-sm text-gray-500">
+        <h3 class="mt-4 text-lg font-medium text-neutral-900">No attendance records</h3>
+        <p class="mt-2 text-sm text-neutral-500">
             {% if date_from or date_to or current_class_id %}
                 No records match your filter criteria.
             {% else %}

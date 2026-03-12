@@ -5,8 +5,8 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="mb-8">
-        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
-        <p class="mt-1 text-sm text-gray-500">Enable or disable features for your school.</p>
+        <h1 class="text-2xl font-bold text-neutral-900">Settings</h1>
+        <p class="mt-1 text-sm text-neutral-500">Enable or disable features for your school.</p>
     </div>
 
     {% if request.query_params.get('saved') %}
@@ -21,30 +21,30 @@
     {% endif %}
 
     <!-- Tabs -->
-    <div class="border-b border-gray-200 mb-6">
+    <div class="border-b border-neutral-200 mb-6">
         <nav class="-mb-px flex space-x-8 overflow-x-auto">
             <a href="/settings/general"
-               class="{% if active_tab == 'general' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'general' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 General
             </a>
             <a href="/settings/features"
-               class="{% if active_tab == 'features' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'features' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Features
             </a>
             <a href="/settings/grade-levels"
-               class="{% if active_tab == 'grade_levels' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'grade_levels' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Grade Levels
             </a>
             <a href="/settings/terminology"
-               class="{% if active_tab == 'terminology' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'terminology' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Terminology
             </a>
             <a href="/settings/billing"
-               class="{% if active_tab == 'billing' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'billing' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Billing
             </a>
             <a href="/settings/webhooks"
-               class="{% if active_tab == 'webhooks' %}border-primary-500 text-primary-600{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'webhooks' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Webhooks
             </a>
         </nav>
@@ -54,42 +54,42 @@
     <form method="POST" action="/settings/features" class="space-y-6">
         <!-- Core Features -->
         <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Core Features</h3>
+            <h3 class="text-lg font-medium text-neutral-900 mb-4">Core Features</h3>
             <div class="space-y-4">
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_attendance_tracking"
                            {% if features.get('attendance_tracking', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Attendance Tracking</span>
-                        <span class="block text-sm text-gray-500">Track daily student attendance with check-in/check-out</span>
+                        <span class="block text-sm font-medium text-neutral-900">Attendance Tracking</span>
+                        <span class="block text-sm text-neutral-500">Track daily student attendance with check-in/check-out</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_messaging"
                            {% if features.get('messaging', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Messaging</span>
-                        <span class="block text-sm text-gray-500">Send messages and announcements to parents</span>
+                        <span class="block text-sm font-medium text-neutral-900">Messaging</span>
+                        <span class="block text-sm text-neutral-500">Send messages and announcements to parents</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_photo_sharing"
                            {% if features.get('photo_sharing', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Photo Sharing</span>
-                        <span class="block text-sm text-gray-500">Share photos with parents</span>
+                        <span class="block text-sm font-medium text-neutral-900">Photo Sharing</span>
+                        <span class="block text-sm text-neutral-500">Share photos with parents</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_document_sharing"
                            {% if features.get('document_sharing', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Document Sharing</span>
-                        <span class="block text-sm text-gray-500">Share documents and files with parents</span>
+                        <span class="block text-sm font-medium text-neutral-900">Document Sharing</span>
+                        <span class="block text-sm text-neutral-500">Share documents and files with parents</span>
                     </span>
                 </label>
             </div>
@@ -97,42 +97,42 @@
 
         <!-- Daycare Features -->
         <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Daycare Features</h3>
+            <h3 class="text-lg font-medium text-neutral-900 mb-4">Daycare Features</h3>
             <div class="space-y-4">
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_daily_reports"
                            {% if features.get('daily_reports', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Daily Reports</span>
-                        <span class="block text-sm text-gray-500">Create and send daily activity reports to parents</span>
+                        <span class="block text-sm font-medium text-neutral-900">Daily Reports</span>
+                        <span class="block text-sm text-neutral-500">Create and send daily activity reports to parents</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_nap_tracking"
                            {% if features.get('nap_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Nap Tracking</span>
-                        <span class="block text-sm text-gray-500">Track nap and rest times</span>
+                        <span class="block text-sm font-medium text-neutral-900">Nap Tracking</span>
+                        <span class="block text-sm text-neutral-500">Track nap and rest times</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_meal_tracking"
                            {% if features.get('meal_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Meal Tracking</span>
-                        <span class="block text-sm text-gray-500">Track meals and eating habits</span>
+                        <span class="block text-sm font-medium text-neutral-900">Meal Tracking</span>
+                        <span class="block text-sm text-neutral-500">Track meals and eating habits</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_diaper_tracking"
                            {% if features.get('diaper_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Diaper Tracking</span>
-                        <span class="block text-sm text-gray-500">Track diaper changes</span>
+                        <span class="block text-sm font-medium text-neutral-900">Diaper Tracking</span>
+                        <span class="block text-sm text-neutral-500">Track diaper changes</span>
                     </span>
                 </label>
             </div>
@@ -140,33 +140,33 @@
 
         <!-- School Features -->
         <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">School Features</h3>
+            <h3 class="text-lg font-medium text-neutral-900 mb-4">School Features</h3>
             <div class="space-y-4">
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_homework_tracking"
                            {% if features.get('homework_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Homework Tracking</span>
-                        <span class="block text-sm text-gray-500">Track homework assignments</span>
+                        <span class="block text-sm font-medium text-neutral-900">Homework Tracking</span>
+                        <span class="block text-sm text-neutral-500">Track homework assignments</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_grade_tracking"
                            {% if features.get('grade_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Grade Tracking</span>
-                        <span class="block text-sm text-gray-500">Track grades and academic progress</span>
+                        <span class="block text-sm font-medium text-neutral-900">Grade Tracking</span>
+                        <span class="block text-sm text-neutral-500">Track grades and academic progress</span>
                     </span>
                 </label>
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_behavior_tracking"
                            {% if features.get('behavior_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Behavior Tracking</span>
-                        <span class="block text-sm text-gray-500">Track student behavior and conduct</span>
+                        <span class="block text-sm font-medium text-neutral-900">Behavior Tracking</span>
+                        <span class="block text-sm text-neutral-500">Track student behavior and conduct</span>
                     </span>
                 </label>
             </div>
@@ -174,15 +174,15 @@
 
         <!-- Administration -->
         <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Administration</h3>
+            <h3 class="text-lg font-medium text-neutral-900 mb-4">Administration</h3>
             <div class="space-y-4">
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_billing"
                            {% if features.get('billing', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">Billing &amp; Invoicing</span>
-                        <span class="block text-sm text-gray-500">Manage fee items, generate invoices, record payments, and send statements to parents</span>
+                        <span class="block text-sm font-medium text-neutral-900">Billing &amp; Invoicing</span>
+                        <span class="block text-sm text-neutral-500">Manage fee items, generate invoices, record payments, and send statements to parents</span>
                     </span>
                 </label>
             </div>
@@ -190,15 +190,15 @@
 
         <!-- Integrations -->
         <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Integrations</h3>
+            <h3 class="text-lg font-medium text-neutral-900 mb-4">Integrations</h3>
             <div class="space-y-4">
                 <label class="flex items-start">
                     <input type="checkbox" name="feature_whatsapp_enabled"
                            {% if features.get('whatsapp_enabled', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="ml-3">
-                        <span class="block text-sm font-medium text-gray-900">WhatsApp Integration</span>
-                        <span class="block text-sm text-gray-500">Send notifications via WhatsApp</span>
+                        <span class="block text-sm font-medium text-neutral-900">WhatsApp Integration</span>
+                        <span class="block text-sm text-neutral-500">Send notifications via WhatsApp</span>
                     </span>
                 </label>
             </div>

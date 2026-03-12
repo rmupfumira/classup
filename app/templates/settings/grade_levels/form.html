@@ -6,62 +6,62 @@
 <div class="max-w-2xl mx-auto space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="/settings/grade-levels" class="text-gray-400 hover:text-gray-600">
+        <a href="/settings/grade-levels" class="text-neutral-400 hover:text-neutral-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
-        <h1 class="text-2xl font-bold text-gray-900">
+        <h1 class="text-2xl font-bold text-neutral-900">
             {% if grade_level %}Edit Grade Level{% else %}Add Grade Level{% endif %}
         </h1>
     </div>
 
     <!-- Form -->
-    <form id="grade-level-form" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+    <form id="grade-level-form" class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Name -->
             <div class="md:col-span-2">
-                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
                     Grade Level Name <span class="text-red-500">*</span>
                 </label>
                 <input type="text" id="name" name="name" required
                        value="{{ grade_level.name if grade_level else '' }}"
                        placeholder="e.g., Grade 1, Kindergarten, Year 7"
-                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <!-- Code -->
             <div>
-                <label for="code" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="code" class="block text-sm font-medium text-neutral-700 mb-1">
                     Code <span class="text-red-500">*</span>
                 </label>
                 <input type="text" id="code" name="code" required maxlength="30"
                        value="{{ grade_level.code if grade_level else '' }}"
                        placeholder="e.g., GRADE_1, KINDERGARTEN"
-                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500 uppercase">
-                <p class="text-sm text-gray-500 mt-1">Unique identifier (max 30 characters)</p>
+                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500 uppercase">
+                <p class="text-sm text-neutral-500 mt-1">Unique identifier (max 30 characters)</p>
             </div>
 
             <!-- Display Order -->
             <div>
-                <label for="display_order" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="display_order" class="block text-sm font-medium text-neutral-700 mb-1">
                     Display Order
                 </label>
                 <input type="number" id="display_order" name="display_order"
                        value="{{ grade_level.display_order if grade_level else 0 }}"
                        min="0"
-                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
-                <p class="text-sm text-gray-500 mt-1">Lower numbers appear first</p>
+                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
+                <p class="text-sm text-neutral-500 mt-1">Lower numbers appear first</p>
             </div>
 
             <!-- Description -->
             <div class="md:col-span-2">
-                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="description" class="block text-sm font-medium text-neutral-700 mb-1">
                     Description
                 </label>
                 <textarea id="description" name="description" rows="3"
                           placeholder="Optional description of this grade level..."
-                          class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">{{ grade_level.description if grade_level else '' }}</textarea>
+                          class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">{{ grade_level.description if grade_level else '' }}</textarea>
             </div>
 
             {% if grade_level %}
@@ -70,18 +70,18 @@
                 <label class="flex items-center gap-3">
                     <input type="checkbox" id="is_active" name="is_active"
                            {% if grade_level.is_active %}checked{% endif %}
-                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                    <span class="text-sm font-medium text-gray-700">Active</span>
+                           class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm font-medium text-neutral-700">Active</span>
                 </label>
-                <p class="text-sm text-gray-500 mt-1 ml-7">Inactive grade levels won't appear in selection dropdowns</p>
+                <p class="text-sm text-neutral-500 mt-1 ml-7">Inactive grade levels won't appear in selection dropdowns</p>
             </div>
             {% endif %}
         </div>
 
         <!-- Form Actions -->
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <div class="flex justify-end gap-3 pt-4 border-t border-neutral-200">
             <a href="/settings/grade-levels"
-               class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+               class="px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900">
                 Cancel
             </a>
             <button type="submit"

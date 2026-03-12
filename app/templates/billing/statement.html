@@ -6,15 +6,15 @@
 <div class="space-y-6 max-w-4xl mx-auto">
     <!-- Page Header -->
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Account Statement</h1>
-        <p class="mt-1 text-sm text-gray-500">View invoices, payments, and outstanding balances for your children.</p>
+        <h1 class="text-2xl font-bold text-neutral-900">Account Statement</h1>
+        <p class="mt-1 text-sm text-neutral-500">View invoices, payments, and outstanding balances for your children.</p>
     </div>
 
     {% if balances and balances | length > 0 %}
     <!-- Balance Summary Cards -->
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-{{ [balances | length, 3] | min }}">
         {% for bal in balances %}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center gap-3 mb-4">
                 <div class="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
                     <span class="text-sm font-bold text-white">
@@ -23,7 +23,7 @@
                     </span>
                 </div>
                 <div class="min-w-0">
-                    <h3 class="text-sm font-semibold text-gray-900 truncate">
+                    <h3 class="text-sm font-semibold text-neutral-900 truncate">
                         {{ bal.student_name }}
                     </h3>
                 </div>
@@ -31,16 +31,16 @@
 
             <div class="space-y-2">
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-500">Total Invoiced</span>
-                    <span class="font-medium text-gray-700">{{ currency }} {{ "%.2f"|format(bal.total_invoiced) }}</span>
+                    <span class="text-neutral-500">Total Invoiced</span>
+                    <span class="font-medium text-neutral-700">{{ currency }} {{ "%.2f"|format(bal.total_invoiced) }}</span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-500">Total Paid</span>
+                    <span class="text-neutral-500">Total Paid</span>
                     <span class="font-medium text-green-600">{{ currency }} {{ "%.2f"|format(bal.total_paid) }}</span>
                 </div>
-                <div class="border-t border-gray-200 pt-2 flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700">Balance</span>
-                    <span class="text-lg font-bold {% if bal.balance > 0 %}text-red-600{% elif bal.balance < 0 %}text-green-600{% else %}text-gray-900{% endif %}">
+                <div class="border-t border-neutral-200 pt-2 flex items-center justify-between">
+                    <span class="text-sm font-medium text-neutral-700">Balance</span>
+                    <span class="text-lg font-bold {% if bal.balance > 0 %}text-red-600{% elif bal.balance < 0 %}text-green-600{% else %}text-neutral-900{% endif %}">
                         {{ currency }} {{ "%.2f"|format(bal.balance) }}
                     </span>
                 </div>
@@ -51,14 +51,14 @@
 
     <!-- Tab Navigation (if multiple children) -->
     {% if children_statements | length > 1 %}
-    <div class="border-b border-gray-200">
+    <div class="border-b border-neutral-200">
         <nav class="flex gap-1 -mb-px overflow-x-auto" id="child-tabs" role="tablist">
             {% for cs in children_statements %}
             <button type="button" role="tab"
                     onclick="showChildTab('{{ cs.child.id }}')"
                     id="tab-{{ cs.child.id }}"
                     class="child-tab whitespace-nowrap px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors
-                           {% if loop.first %}border-primary-500 text-primary-600 bg-primary-50/50{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}"
+                           {% if loop.first %}border-primary-500 text-primary-600 bg-primary-50/50{% else %}border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300{% endif %}"
                     aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
                 {{ cs.child.first_name }} {{ cs.child.last_name }}
             </button>
@@ -74,10 +74,10 @@
 
         {% set entries = cs.statement.entries if cs.statement else [] %}
         {% if entries | length > 0 %}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
             {% if children_statements | length <= 1 %}
-            <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h2 class="text-sm font-semibold text-gray-700">
+            <div class="px-4 py-3 border-b border-neutral-200 bg-neutral-50">
+                <h2 class="text-sm font-semibold text-neutral-700">
                     {{ cs.child.first_name }} {{ cs.child.last_name }} - Transaction History
                 </h2>
             </div>
@@ -264,12 +264,12 @@ function showChildTab(childId) {
     // Update tab styles
     document.querySelectorAll('.child-tab').forEach(tab => {
         tab.classList.remove('border-primary-500', 'text-primary-600', 'bg-primary-50/50');
-        tab.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        tab.classList.add('border-transparent', 'text-neutral-500', 'hover:text-neutral-700', 'hover:border-neutral-300');
         tab.setAttribute('aria-selected', 'false');
     });
 
     const activeTab = document.getElementById(`tab-${childId}`);
-    activeTab.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+    activeTab.classList.remove('border-transparent', 'text-neutral-500', 'hover:text-neutral-700', 'hover:border-neutral-300');
     activeTab.classList.add('border-primary-500', 'text-primary-600', 'bg-primary-50/50');
     activeTab.setAttribute('aria-selected', 'true');
 

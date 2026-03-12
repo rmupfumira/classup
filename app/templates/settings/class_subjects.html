@@ -6,36 +6,36 @@
 <div class="max-w-4xl mx-auto space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="/classes/{{ school_class.id }}" class="text-gray-400 hover:text-gray-600">
+        <a href="/classes/{{ school_class.id }}" class="text-neutral-400 hover:text-neutral-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manage Subjects</h1>
-            <p class="text-gray-500">{{ school_class.name }}</p>
+            <h1 class="text-2xl font-bold text-neutral-900">Manage Subjects</h1>
+            <p class="text-neutral-500">{{ school_class.name }}</p>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Assigned Subjects -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="font-semibold text-gray-900">Assigned Subjects ({{ class_subjects | length }})</h2>
-                <p class="text-sm text-gray-500">Subjects included in report cards for this class</p>
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+            <div class="p-4 border-b border-neutral-200 bg-neutral-50">
+                <h2 class="font-semibold text-neutral-900">Assigned Subjects ({{ class_subjects | length }})</h2>
+                <p class="text-sm text-neutral-500">Subjects included in report cards for this class</p>
             </div>
 
             {% if class_subjects %}
-            <div class="divide-y divide-gray-100" id="assigned-subjects">
+            <div class="divide-y divide-neutral-100" id="assigned-subjects">
                 {% for cs in class_subjects %}
-                <div class="p-4 flex items-center justify-between hover:bg-gray-50" data-subject-id="{{ cs.subject_id }}">
+                <div class="p-4 flex items-center justify-between hover:bg-neutral-50" data-subject-id="{{ cs.subject_id }}">
                     <div class="flex items-center gap-3">
                         <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary-100 text-primary-700 font-bold text-sm">
                             {{ cs.subject.code }}
                         </span>
                         <div>
-                            <p class="font-medium text-gray-900">{{ cs.subject.name }}</p>
-                            <p class="text-sm text-gray-500">
+                            <p class="font-medium text-neutral-900">{{ cs.subject.name }}</p>
+                            <p class="text-sm text-neutral-500">
                                 {{ cs.effective_total_marks }} marks
                                 {% if not cs.is_compulsory %}
                                 <span class="ml-2 text-amber-600">(Optional)</span>
@@ -46,14 +46,14 @@
                     <div class="flex items-center gap-2">
                         <button type="button"
                                 onclick="editClassSubject('{{ cs.id }}', '{{ cs.subject_id }}', {{ cs.total_marks or 'null' }}, {{ cs.is_compulsory | lower }})"
-                                class="text-gray-400 hover:text-gray-600 p-1">
+                                class="text-neutral-400 hover:text-neutral-600 p-1">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
                         </button>
                         <button type="button"
                                 onclick="removeSubject('{{ cs.subject_id }}', '{{ cs.subject.name }}')"
-                                class="text-gray-400 hover:text-red-600 p-1">
+                                class="text-neutral-400 hover:text-red-600 p-1">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
@@ -63,7 +63,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="p-8 text-center text-gray-500">
+            <div class="p-8 text-center text-neutral-500">
                 <p>No subjects assigned yet.</p>
                 <p class="text-sm">Add subjects from the available list.</p>
             </div>
@@ -71,38 +71,38 @@
         </div>
 
         <!-- Available Subjects -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="font-semibold text-gray-900">Available Subjects ({{ available_subjects | length }})</h2>
-                <p class="text-sm text-gray-500">Click to add subjects to this class</p>
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+            <div class="p-4 border-b border-neutral-200 bg-neutral-50">
+                <h2 class="font-semibold text-neutral-900">Available Subjects ({{ available_subjects | length }})</h2>
+                <p class="text-sm text-neutral-500">Click to add subjects to this class</p>
             </div>
 
             {% if available_subjects %}
-            <div class="divide-y divide-gray-100" id="available-subjects">
+            <div class="divide-y divide-neutral-100" id="available-subjects">
                 {% for subject in available_subjects %}
-                <div class="p-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                <div class="p-4 flex items-center justify-between hover:bg-neutral-50 cursor-pointer"
                      onclick="addSubject('{{ subject.id }}', '{{ subject.name }}')"
                      data-subject-id="{{ subject.id }}">
                     <div class="flex items-center gap-3">
-                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-gray-600 font-bold text-sm">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-neutral-100 text-neutral-600 font-bold text-sm">
                             {{ subject.code }}
                         </span>
                         <div>
-                            <p class="font-medium text-gray-900">{{ subject.name }}</p>
-                            <p class="text-sm text-gray-500">
+                            <p class="font-medium text-neutral-900">{{ subject.name }}</p>
+                            <p class="text-sm text-neutral-500">
                                 {{ subject.default_total_marks }} marks
                                 {% if subject.category %}· {{ subject.category }}{% endif %}
                             </p>
                         </div>
                     </div>
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <div class="p-8 text-center text-gray-500">
+            <div class="p-8 text-center text-neutral-500">
                 <p>All subjects have been assigned.</p>
                 <a href="/settings/academic/subjects/create" class="text-primary-600 hover:text-primary-700 text-sm">
                     Create new subject
@@ -113,9 +113,9 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
         <div class="flex flex-wrap gap-4 items-center justify-between">
-            <p class="text-sm text-gray-600">
+            <p class="text-sm text-neutral-600">
                 Need to create new subjects?
             </p>
             <a href="/settings/academic/subjects"
@@ -129,26 +129,26 @@
 <!-- Edit Modal -->
 <dialog id="edit-modal" class="rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
     <div class="p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Edit Subject Settings</h3>
+        <h3 class="text-lg font-semibold text-neutral-900 mb-4">Edit Subject Settings</h3>
         <form id="edit-form" class="space-y-4">
             <input type="hidden" id="edit-subject-id">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Total Marks</label>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Total Marks</label>
                 <input type="number" id="edit-total-marks" min="1" max="1000"
                        placeholder="Leave empty to use default"
-                       class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
-                <p class="text-sm text-gray-500 mt-1">Override the default marks for this class</p>
+                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
+                <p class="text-sm text-neutral-500 mt-1">Override the default marks for this class</p>
             </div>
             <div>
                 <label class="flex items-center gap-3">
                     <input type="checkbox" id="edit-compulsory"
-                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                    <span class="text-sm font-medium text-gray-700">Compulsory Subject</span>
+                           class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm font-medium text-neutral-700">Compulsory Subject</span>
                 </label>
             </div>
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" onclick="closeEditModal()"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                        class="px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900">
                     Cancel
                 </button>
                 <button type="submit"

@@ -89,10 +89,10 @@ const ClassUp = {
         }
 
         const colors = {
-            success: 'bg-green-50 border-green-500 text-green-800',
-            error: 'bg-red-50 border-red-500 text-red-800',
-            warning: 'bg-amber-50 border-amber-500 text-amber-800',
-            info: 'bg-blue-50 border-blue-500 text-blue-800'
+            success: 'toast-success',
+            error: 'toast-error',
+            warning: 'toast-warning',
+            info: 'toast-info'
         };
 
         const icons = {
@@ -111,12 +111,12 @@ const ClassUp = {
         };
 
         const toast = document.createElement('div');
-        toast.className = `flex items-center p-4 rounded-lg border-l-4 shadow-md ${colors[type]}
+        toast.className = `flex items-center p-4 rounded-lg shadow-md ${colors[type]}
                           transform transition-all duration-300 translate-x-full toast-enter`;
         toast.innerHTML = `
             <span class="flex-shrink-0 mr-3">${icons[type]}</span>
             <span class="flex-1 text-sm font-medium">${this.escapeHtml(message)}</span>
-            <button class="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600" onclick="this.parentElement.remove()">
+            <button class="ml-4 flex-shrink-0 text-neutral-400 hover:text-neutral-600" onclick="this.parentElement.remove()">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                 </svg>
@@ -157,7 +157,7 @@ const ClassUp = {
             backdrop.className = 'fixed inset-0 z-[9999] overflow-y-auto';
             backdrop.innerHTML = `
                 <div class="flex min-h-screen items-center justify-center p-4">
-                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" id="confirm-backdrop"></div>
+                    <div class="fixed inset-0 bg-neutral-500 bg-opacity-75 transition-opacity" id="confirm-backdrop"></div>
                     <div class="relative transform overflow-hidden rounded-xl bg-white shadow-xl transition-all sm:w-full sm:max-w-lg">
                         <div class="bg-white px-6 py-5">
                             <div class="flex items-start">
@@ -173,13 +173,13 @@ const ClassUp = {
                                     `}
                                 </div>
                                 <div class="ml-4 mt-0.5">
-                                    <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(title)}</h3>
-                                    <p class="mt-2 text-sm text-gray-500">${this.escapeHtml(message)}</p>
+                                    <h3 class="text-lg font-semibold text-neutral-900">${this.escapeHtml(title)}</h3>
+                                    <p class="mt-2 text-sm text-neutral-500">${this.escapeHtml(message)}</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                            <button type="button" id="confirm-cancel" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        <div class="bg-neutral-50 px-6 py-4 flex justify-end space-x-3">
+                            <button type="button" id="confirm-cancel" class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                                 ${this.escapeHtml(cancelText)}
                             </button>
                             <button type="button" id="confirm-ok" class="px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${danger ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500'}">

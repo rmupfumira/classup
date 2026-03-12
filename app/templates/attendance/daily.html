@@ -25,13 +25,13 @@
     </div>
 
     <!-- Class and Date Selection -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
         <form method="get" class="flex flex-col sm:flex-row sm:items-end gap-4">
             <!-- Class Selection -->
             <div class="flex-1 sm:max-w-xs">
-                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
                 <select name="class_id" id="class_id" onchange="this.form.submit()"
-                        class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        class="block w-full px-3 py-2.5 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                     <option value="">Select a class</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
@@ -43,12 +43,12 @@
 
             <!-- Date Selection -->
             <div class="sm:w-48">
-                <label for="target_date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <label for="target_date" class="block text-sm font-medium text-neutral-700 mb-1">Date</label>
                 <input type="date" name="target_date" id="target_date"
                        value="{{ target_date.isoformat() }}"
                        max="{{ today.isoformat() }}"
                        onchange="validateAttendanceDate(this)"
-                       class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       class="block w-full px-3 py-2.5 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
             </div>
         </form>
         <!-- Inline weekend warning -->
@@ -63,16 +63,16 @@
     {% if attendance_data %}
     <!-- Stats Summary with Icons -->
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500">Total</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ attendance_data.stats.total_students }}</p>
+                    <p class="text-xs text-neutral-500">Total</p>
+                    <p class="text-2xl font-bold text-neutral-900">{{ attendance_data.stats.total_students }}</p>
                 </div>
             </div>
         </div>
@@ -115,16 +115,16 @@
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-lg bg-neutral-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500">Excused</p>
-                    <p class="text-2xl font-bold text-gray-700">{{ attendance_data.stats.excused_count }}</p>
+                    <p class="text-xs text-neutral-500">Excused</p>
+                    <p class="text-2xl font-bold text-neutral-700">{{ attendance_data.stats.excused_count }}</p>
                 </div>
             </div>
         </div>
@@ -132,16 +132,16 @@
 
     <!-- Stacked Progress Bar -->
     {% if attendance_data.stats.total_students > 0 %}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
         <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-gray-700">Attendance Overview</span>
-            <span class="text-xs text-gray-500" id="attendance-progress-label">
+            <span class="text-sm font-medium text-neutral-700">Attendance Overview</span>
+            <span class="text-xs text-neutral-500" id="attendance-progress-label">
                 {% set total = attendance_data.stats.total_students %}
                 {% set recorded = attendance_data.stats.present_count + attendance_data.stats.absent_count + attendance_data.stats.late_count + attendance_data.stats.excused_count %}
                 {{ recorded }}/{{ total }} recorded
             </span>
         </div>
-        <div class="flex h-3 rounded-full overflow-hidden bg-gray-100" id="attendance-progress-bar">
+        <div class="flex h-3 rounded-full overflow-hidden bg-neutral-100" id="attendance-progress-bar">
             {% set total = attendance_data.stats.total_students %}
             {% if total > 0 %}
             {% set present_pct = (attendance_data.stats.present_count / total * 100) | round(1) %}
@@ -151,25 +151,25 @@
             <div class="bg-green-500 transition-all duration-500" style="width: {{ present_pct }}%" title="Present {{ present_pct }}%"></div>
             <div class="bg-amber-400 transition-all duration-500" style="width: {{ late_pct }}%" title="Late {{ late_pct }}%"></div>
             <div class="bg-red-500 transition-all duration-500" style="width: {{ absent_pct }}%" title="Absent {{ absent_pct }}%"></div>
-            <div class="bg-gray-400 transition-all duration-500" style="width: {{ excused_pct }}%" title="Excused {{ excused_pct }}%"></div>
+            <div class="bg-neutral-400 transition-all duration-500" style="width: {{ excused_pct }}%" title="Excused {{ excused_pct }}%"></div>
             {% endif %}
         </div>
-        <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+        <div class="flex items-center gap-4 mt-2 text-xs text-neutral-500">
             <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Present</span>
             <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Late</span>
             <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Absent</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-400"></span> Excused</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-neutral-400"></span> Excused</span>
         </div>
     </div>
     {% endif %}
 
     <!-- Attendance Form -->
-    <form id="attendance-form" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <form id="attendance-form" class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         <!-- Sticky Form Header -->
-        <div class="p-4 border-b border-gray-200 flex items-center justify-between sticky top-12 bg-white z-10">
+        <div class="p-4 border-b border-neutral-200 flex items-center justify-between sticky top-12 bg-white z-10">
             <div>
-                <h2 class="text-lg font-medium text-gray-900">{{ attendance_data.class_name }}</h2>
-                <p class="text-sm text-gray-500">{{ attendance_data.students | length }} student{{ 's' if attendance_data.students | length != 1 else '' }}</p>
+                <h2 class="text-lg font-medium text-neutral-900">{{ attendance_data.class_name }}</h2>
+                <p class="text-sm text-neutral-500">{{ attendance_data.students | length }} student{{ 's' if attendance_data.students | length != 1 else '' }}</p>
             </div>
             <button type="button" onclick="saveAttendance()"
                     class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
@@ -181,13 +181,13 @@
         </div>
 
         {% if attendance_data.students %}
-        <div class="divide-y divide-gray-200">
+        <div class="divide-y divide-neutral-200">
             {% for student in attendance_data.students %}
-            <div class="p-4 hover:bg-gray-50 transition-colors border-l-4
+            <div class="p-4 hover:bg-neutral-50 transition-colors border-l-4
                 {% if student.status == 'PRESENT' %}border-l-green-500
                 {% elif student.status == 'LATE' %}border-l-amber-500
                 {% elif student.status == 'ABSENT' %}border-l-red-500
-                {% elif student.status == 'EXCUSED' %}border-l-gray-400
+                {% elif student.status == 'EXCUSED' %}border-l-neutral-400
                 {% else %}border-l-transparent{% endif %}"
                  data-student-id="{{ student.student_id }}">
                 <div class="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -205,8 +205,8 @@
                             {% endif %}
                         </div>
                         <div class="ml-4 min-w-0">
-                            <p class="text-sm font-medium text-gray-900 truncate">{{ student.student_name }}</p>
-                            <div class="flex items-center gap-3 text-xs text-gray-500">
+                            <p class="text-sm font-medium text-neutral-900 truncate">{{ student.student_name }}</p>
+                            <div class="flex items-center gap-3 text-xs text-neutral-500">
                                 {% if student.check_in_time %}
                                 <span>In: {{ student.check_in_time[:5] }}</span>
                                 {% endif %}
@@ -221,25 +221,25 @@
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'PRESENT')"
                                 class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-green-400
-                                       {% if student.status == 'PRESENT' %}bg-green-600 text-white shadow-sm shadow-green-200{% else %}bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700{% endif %}"
+                                       {% if student.status == 'PRESENT' %}bg-green-600 text-white shadow-sm shadow-green-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-green-50 hover:text-green-700{% endif %}"
                                 data-status="PRESENT">
                             Present
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'LATE')"
                                 class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-amber-400
-                                       {% if student.status == 'LATE' %}bg-amber-500 text-white shadow-sm shadow-amber-200{% else %}bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-700{% endif %}"
+                                       {% if student.status == 'LATE' %}bg-amber-500 text-white shadow-sm shadow-amber-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-amber-50 hover:text-amber-700{% endif %}"
                                 data-status="LATE">
                             Late
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'ABSENT')"
                                 class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-red-400
-                                       {% if student.status == 'ABSENT' %}bg-red-600 text-white shadow-sm shadow-red-200{% else %}bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-700{% endif %}"
+                                       {% if student.status == 'ABSENT' %}bg-red-600 text-white shadow-sm shadow-red-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-red-50 hover:text-red-700{% endif %}"
                                 data-status="ABSENT">
                             Absent
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'EXCUSED')"
-                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-gray-400
-                                       {% if student.status == 'EXCUSED' %}bg-gray-600 text-white shadow-sm shadow-gray-200{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}"
+                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-neutral-400
+                                       {% if student.status == 'EXCUSED' %}bg-neutral-600 text-white shadow-sm shadow-neutral-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-neutral-200{% endif %}"
                                 data-status="EXCUSED">
                             Excused
                         </button>
@@ -264,14 +264,14 @@
                     <input type="text" placeholder="Add notes (optional)"
                            data-notes="{{ student.student_id }}"
                            value="{{ student.notes or '' }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                 </div>
             </div>
             {% endfor %}
         </div>
 
         <!-- Save Button (Mobile Fixed) -->
-        <div class="sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-lg">
+        <div class="sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-neutral-200 shadow-lg">
             <button type="button" onclick="saveAttendance()"
                     class="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
                 Save Attendance
@@ -279,36 +279,36 @@
         </div>
         {% else %}
         <div class="p-12 text-center">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
             </svg>
-            <h3 class="mt-4 text-lg font-medium text-gray-900">No students in this class</h3>
-            <p class="mt-2 text-sm text-gray-500">Add students to this class to start taking attendance.</p>
+            <h3 class="mt-4 text-lg font-medium text-neutral-900">No students in this class</h3>
+            <p class="mt-2 text-sm text-neutral-500">Add students to this class to start taking attendance.</p>
         </div>
         {% endif %}
     </form>
 
     {% elif not classes %}
     <!-- No Classes -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
         </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">No classes assigned</h3>
-        <p class="mt-2 text-sm text-gray-500">You need to be assigned to a class to take attendance.</p>
+        <h3 class="mt-4 text-lg font-medium text-neutral-900">No classes assigned</h3>
+        <p class="mt-2 text-sm text-neutral-500">You need to be assigned to a class to take attendance.</p>
     </div>
 
     {% else %}
     <!-- Select a Class -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
         </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">Select a class</h3>
-        <p class="mt-2 text-sm text-gray-500">Choose a class from the dropdown above to start taking attendance.</p>
+        <h3 class="mt-4 text-lg font-medium text-neutral-900">Select a class</h3>
+        <p class="mt-2 text-sm text-neutral-500">Choose a class from the dropdown above to start taking attendance.</p>
     </div>
     {% endif %}
 </div>
@@ -351,19 +351,19 @@ const borderColorMap = {
     PRESENT: 'border-l-green-500',
     LATE: 'border-l-amber-500',
     ABSENT: 'border-l-red-500',
-    EXCUSED: 'border-l-gray-400'
+    EXCUSED: 'border-l-neutral-400'
 };
-const allBorderColors = ['border-l-green-500', 'border-l-amber-500', 'border-l-red-500', 'border-l-gray-400', 'border-l-transparent'];
+const allBorderColors = ['border-l-green-500', 'border-l-amber-500', 'border-l-red-500', 'border-l-neutral-400', 'border-l-transparent'];
 
 // Active button styles
 const activeStyleMap = {
     PRESENT: ['bg-green-600', 'text-white', 'shadow-sm', 'shadow-green-200'],
     LATE: ['bg-amber-500', 'text-white', 'shadow-sm', 'shadow-amber-200'],
     ABSENT: ['bg-red-600', 'text-white', 'shadow-sm', 'shadow-red-200'],
-    EXCUSED: ['bg-gray-600', 'text-white', 'shadow-sm', 'shadow-gray-200']
+    EXCUSED: ['bg-neutral-600', 'text-white', 'shadow-sm', 'shadow-neutral-200']
 };
-const inactiveStyles = ['bg-gray-100', 'text-gray-700'];
-const allActiveStyles = ['bg-green-600', 'bg-amber-500', 'bg-red-600', 'bg-gray-600', 'text-white', 'shadow-sm', 'shadow-green-200', 'shadow-amber-200', 'shadow-red-200', 'shadow-gray-200'];
+const inactiveStyles = ['bg-neutral-100', 'text-neutral-700'];
+const allActiveStyles = ['bg-green-600', 'bg-amber-500', 'bg-red-600', 'bg-neutral-600', 'text-white', 'shadow-sm', 'shadow-green-200', 'shadow-amber-200', 'shadow-red-200', 'shadow-neutral-200'];
 
 function setStatus(studentId, status) {
     if (!attendanceData[studentId]) {

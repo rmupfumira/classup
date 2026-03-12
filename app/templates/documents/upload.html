@@ -6,49 +6,49 @@
 <div class="space-y-6">
     <!-- Page Header -->
     <div class="flex items-center gap-4">
-        <a href="/documents" class="text-gray-400 hover:text-gray-600">
+        <a href="/documents" class="text-neutral-400 hover:text-neutral-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
-        <h1 class="text-2xl font-bold text-gray-900">Share Document</h1>
+        <h1 class="text-2xl font-bold text-neutral-900">Share Document</h1>
     </div>
 
     <!-- Upload Form -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
         <div class="p-6 space-y-6">
             <!-- Document Category -->
             <div class="space-y-4">
-                <label class="block text-sm font-medium text-gray-700">Share With</label>
+                <label class="block text-sm font-medium text-neutral-700">Share With</label>
                 <div class="flex flex-wrap gap-4">
                     {% if is_admin %}
                     <label class="flex items-center">
                         <input type="radio" name="scope" value="SCHOOL"
-                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                               class="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
                                onchange="handleScopeChange()" checked>
-                        <span class="ml-2 text-sm text-gray-700">School-wide</span>
+                        <span class="ml-2 text-sm text-neutral-700">School-wide</span>
                     </label>
                     {% endif %}
                     <label class="flex items-center">
                         <input type="radio" name="scope" value="CLASS"
-                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                               class="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
                                onchange="handleScopeChange()" {% if not is_admin %}checked{% endif %}>
-                        <span class="ml-2 text-sm text-gray-700">Class</span>
+                        <span class="ml-2 text-sm text-neutral-700">Class</span>
                     </label>
                     <label class="flex items-center">
                         <input type="radio" name="scope" value="STUDENT"
-                               class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                               class="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
                                onchange="handleScopeChange()">
-                        <span class="ml-2 text-sm text-gray-700">Specific Students</span>
+                        <span class="ml-2 text-sm text-neutral-700">Specific Students</span>
                     </label>
                 </div>
             </div>
 
             <!-- Class Selection -->
             <div id="class-section" class="{% if is_admin %}hidden{% endif %}">
-                <label for="class_id" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
                 <select id="class_id" name="class_id"
-                        class="block w-full sm:w-64 rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                        class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
                         onchange="handleClassChange()">
                     <option value="">Select class...</option>
                     {% for cls in classes %}
@@ -61,50 +61,50 @@
 
             <!-- Student Selection (multi-select for STUDENT scope) -->
             <div id="student-section" class="hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Students</label>
-                <div id="student-checkboxes" class="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2">
-                    <p class="text-sm text-gray-500">Select a class first</p>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Students</label>
+                <div id="student-checkboxes" class="max-h-48 overflow-y-auto border border-neutral-200 rounded-lg p-3 space-y-2">
+                    <p class="text-sm text-neutral-500">Select a class first</p>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">Document will be shared with selected students' parents</p>
+                <p class="mt-1 text-xs text-neutral-500">Document will be shared with selected students' parents</p>
             </div>
 
             <!-- Document Title -->
             <div>
-                <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Document Title <span class="text-red-500">*</span></label>
+                <label for="title" class="block text-sm font-medium text-neutral-700 mb-1">Document Title <span class="text-red-500">*</span></label>
                 <input type="text" id="title" name="title" maxlength="255" required
                        placeholder="Enter document title..."
-                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <!-- Description -->
             <div>
-                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <label for="description" class="block text-sm font-medium text-neutral-700 mb-1">Description (optional)</label>
                 <textarea id="description" name="description" rows="3" maxlength="500"
                           placeholder="Add a description for this document..."
-                          class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
+                          class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
             </div>
 
             <!-- Upload Area -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Document File <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-neutral-700 mb-2">Document File <span class="text-red-500">*</span></label>
                 <div id="upload-area"
-                     class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
+                     class="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
                      onclick="document.getElementById('file-input').click()">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                     </svg>
-                    <p class="mt-2 text-sm text-gray-600">
+                    <p class="mt-2 text-sm text-neutral-600">
                         <span class="text-primary-600 font-medium">Click to upload</span> or drag and drop
                     </p>
-                    <p class="mt-1 text-xs text-gray-500">PDF, DOC, DOCX up to 10MB</p>
+                    <p class="mt-1 text-xs text-neutral-500">PDF, DOC, DOCX up to 10MB</p>
                 </div>
                 <input type="file" id="file-input" class="hidden" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
             </div>
 
             <!-- Selected File Preview -->
             <div id="file-preview" class="hidden">
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
                     <div class="flex items-center gap-3">
                         <div id="file-icon" class="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
                             <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24">
@@ -112,11 +112,11 @@
                             </svg>
                         </div>
                         <div>
-                            <p id="file-name" class="text-sm font-medium text-gray-900"></p>
-                            <p id="file-size" class="text-xs text-gray-500"></p>
+                            <p id="file-name" class="text-sm font-medium text-neutral-900"></p>
+                            <p id="file-size" class="text-xs text-neutral-500"></p>
                         </div>
                     </div>
-                    <button type="button" onclick="clearFile()" class="text-gray-400 hover:text-red-600">
+                    <button type="button" onclick="clearFile()" class="text-neutral-400 hover:text-red-600">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -127,19 +127,19 @@
             <!-- Upload Progress -->
             <div id="upload-progress" class="hidden">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm font-medium text-gray-700">Uploading...</span>
-                    <span id="progress-text" class="text-sm text-gray-500">0%</span>
+                    <span class="text-sm font-medium text-neutral-700">Uploading...</span>
+                    <span id="progress-text" class="text-sm text-neutral-500">0%</span>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="w-full bg-neutral-200 rounded-full h-2">
                     <div id="progress-bar" class="bg-primary-600 h-2 rounded-full transition-all" style="width: 0%"></div>
                 </div>
             </div>
         </div>
 
         <!-- Form Actions -->
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+        <div class="px-6 py-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-end gap-3">
             <a href="/documents"
-               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+               class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
                 Cancel
             </a>
             <button type="button" id="upload-btn" onclick="uploadDocument()"
@@ -186,7 +186,7 @@ async function handleClassChange() {
     const container = document.getElementById('student-checkboxes');
 
     if (!classId) {
-        container.innerHTML = '<p class="text-sm text-gray-500">Select a class first</p>';
+        container.innerHTML = '<p class="text-sm text-neutral-500">Select a class first</p>';
         return;
     }
 
@@ -200,13 +200,13 @@ async function handleClassChange() {
                 label.className = 'flex items-center gap-2 cursor-pointer';
                 label.innerHTML = `
                     <input type="checkbox" name="student_ids" value="${student.id}"
-                           class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
-                    <span class="text-sm text-gray-700">${student.first_name} ${student.last_name}</span>
+                           class="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500">
+                    <span class="text-sm text-neutral-700">${student.first_name} ${student.last_name}</span>
                 `;
                 container.appendChild(label);
             });
             if (result.data.length === 0) {
-                container.innerHTML = '<p class="text-sm text-gray-500">No students in this class</p>';
+                container.innerHTML = '<p class="text-sm text-neutral-500">No students in this class</p>';
             }
         }
     } catch (error) {

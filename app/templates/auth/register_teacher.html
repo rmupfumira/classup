@@ -3,7 +3,7 @@
 {% block title %}Teacher Registration - {{ app_name }}{% endblock %}
 
 {% block auth_content %}
-<div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-50 py-12">
+<div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-neutral-50 py-12">
     <div class="max-w-md w-full">
         <!-- Logo -->
         <div class="text-center mb-8">
@@ -13,12 +13,12 @@
                           d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
             </div>
-            <h2 class="text-2xl font-bold text-gray-900">Teacher Registration</h2>
-            <p class="mt-2 text-gray-600">Enter your invitation code to create your account</p>
+            <h2 class="text-2xl font-bold text-neutral-800">Teacher Registration</h2>
+            <p class="mt-2 text-neutral-500">Enter your invitation code to create your account</p>
         </div>
 
         <!-- Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 sm:p-8">
             {% if error %}
             <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div class="flex items-center">
@@ -33,7 +33,7 @@
             <form method="POST" action="/register/teacher" class="space-y-5">
                 <!-- Invitation Code -->
                 <div>
-                    <label for="invitation_code" class="block text-sm font-medium text-gray-700">
+                    <label for="invitation_code" class="block text-sm font-medium text-neutral-700">
                         Invitation Code
                     </label>
                     <input type="text"
@@ -42,15 +42,15 @@
                            value="{{ code | default('') }}"
                            required
                            maxlength="8"
-                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-gray-400 text-gray-900 uppercase tracking-wider font-mono"
+                                  placeholder-neutral-400 text-neutral-800 uppercase tracking-wider font-mono"
                            placeholder="XXXXXXXX">
                 </div>
 
                 <!-- Email -->
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">
+                    <label for="email" class="block text-sm font-medium text-neutral-700">
                         Email Address
                     </label>
                     <input type="email"
@@ -58,17 +58,17 @@
                            name="email"
                            value="{{ email | default('') }}"
                            required
-                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-gray-400 text-gray-900"
+                                  placeholder-neutral-400 text-neutral-800"
                            placeholder="you@example.com">
-                    <p class="mt-1 text-xs text-gray-500">Use the same email address the invitation was sent to</p>
+                    <p class="mt-1 text-xs text-neutral-500">Use the same email address the invitation was sent to</p>
                 </div>
 
                 <!-- Name Fields -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="first_name" class="block text-sm font-medium text-gray-700">
+                        <label for="first_name" class="block text-sm font-medium text-neutral-700">
                             First Name
                         </label>
                         <input type="text"
@@ -76,12 +76,12 @@
                                name="first_name"
                                value="{{ first_name | default('') }}"
                                required
-                               class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                               class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                       focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                      placeholder-gray-400 text-gray-900">
+                                      placeholder-neutral-400 text-neutral-800">
                     </div>
                     <div>
-                        <label for="last_name" class="block text-sm font-medium text-gray-700">
+                        <label for="last_name" class="block text-sm font-medium text-neutral-700">
                             Last Name
                         </label>
                         <input type="text"
@@ -89,30 +89,30 @@
                                name="last_name"
                                value="{{ last_name | default('') }}"
                                required
-                               class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                               class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                       focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                      placeholder-gray-400 text-gray-900">
+                                      placeholder-neutral-400 text-neutral-800">
                     </div>
                 </div>
 
                 <!-- Phone -->
                 <div>
-                    <label for="phone" class="block text-sm font-medium text-gray-700">
-                        Phone <span class="text-gray-400 font-normal">(optional)</span>
+                    <label for="phone" class="block text-sm font-medium text-neutral-700">
+                        Phone <span class="text-neutral-400 font-normal">(optional)</span>
                     </label>
                     <input type="tel"
                            id="phone"
                            name="phone"
                            value="{{ phone | default('') }}"
-                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-gray-400 text-gray-900"
+                                  placeholder-neutral-400 text-neutral-800"
                            placeholder="+27 82 123 4567">
                 </div>
 
                 <!-- Password -->
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700">
+                    <label for="password" class="block text-sm font-medium text-neutral-700">
                         Password
                     </label>
                     <input type="password"
@@ -120,15 +120,15 @@
                            name="password"
                            required
                            minlength="8"
-                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-gray-400 text-gray-900"
+                                  placeholder-neutral-400 text-neutral-800"
                            placeholder="Minimum 8 characters">
                 </div>
 
                 <!-- Confirm Password -->
                 <div>
-                    <label for="confirm_password" class="block text-sm font-medium text-gray-700">
+                    <label for="confirm_password" class="block text-sm font-medium text-neutral-700">
                         Confirm Password
                     </label>
                     <input type="password"
@@ -136,9 +136,9 @@
                            name="confirm_password"
                            required
                            minlength="8"
-                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-gray-400 text-gray-900"
+                                  placeholder-neutral-400 text-neutral-800"
                            placeholder="Confirm your password">
                 </div>
 
@@ -153,7 +153,7 @@
         </div>
 
         <!-- Login Link -->
-        <p class="mt-6 text-center text-sm text-gray-600">
+        <p class="mt-6 text-center text-sm text-neutral-500">
             Already have an account?
             <a href="/login" class="font-medium text-primary-600 hover:text-primary-500">
                 Log In

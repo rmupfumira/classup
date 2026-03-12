@@ -6,38 +6,38 @@
 <div class="space-y-6">
     <!-- Page Header -->
     <div class="flex items-center gap-4">
-        <a href="/reports/templates/manage" class="text-gray-400 hover:text-gray-600">
+        <a href="/reports/templates/manage" class="text-neutral-400 hover:text-neutral-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
-        <h1 class="text-2xl font-bold text-gray-900">
+        <h1 class="text-2xl font-bold text-neutral-900">
             {{ 'Edit' if template else 'Create' }} Report Template
         </h1>
     </div>
 
     <!-- Template Details -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h2 class="text-md font-medium text-gray-900">Template Details</h2>
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+            <h2 class="text-md font-medium text-neutral-900">Template Details</h2>
         </div>
         <div class="p-6 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
                         Template Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" id="name" name="name" required
                            value="{{ template.name if template else '' }}"
                            placeholder="e.g., Daily Activity Report"
-                           class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                           class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
                 <div>
-                    <label for="report_type" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="report_type" class="block text-sm font-medium text-neutral-700 mb-1">
                         Report Type <span class="text-red-500">*</span>
                     </label>
                     <select id="report_type" name="report_type" required
-                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                            class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="DAILY_ACTIVITY" {% if template and template.report_type == 'DAILY_ACTIVITY' %}selected{% endif %}>
                             Daily Activity
                         </option>
@@ -52,46 +52,46 @@
             </div>
 
             <div>
-                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label for="description" class="block text-sm font-medium text-neutral-700 mb-1">Description</label>
                 <textarea id="description" name="description" rows="2"
                           placeholder="Brief description of this template..."
-                          class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">{{ template.description if template else '' }}</textarea>
+                          class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">{{ template.description if template else '' }}</textarea>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label for="frequency" class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                    <label for="frequency" class="block text-sm font-medium text-neutral-700 mb-1">Frequency</label>
                     <select id="frequency" name="frequency"
-                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                            class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="DAILY" {% if template and template.frequency == 'DAILY' %}selected{% endif %}>Daily</option>
                         <option value="WEEKLY" {% if template and template.frequency == 'WEEKLY' %}selected{% endif %}>Weekly</option>
                         <option value="TERMLY" {% if template and template.frequency == 'TERMLY' %}selected{% endif %}>Termly</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
                         Applies To (Grade Levels)
                     </label>
-                    <div id="grade-levels-container" class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
-                        <p class="text-sm text-gray-400">Loading grade levels...</p>
+                    <div id="grade-levels-container" class="border border-neutral-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                        <p class="text-sm text-neutral-400">Loading grade levels...</p>
                     </div>
-                    <p class="mt-1 text-xs text-gray-500">Select grade levels this template applies to. Leave all unchecked for a universal template.</p>
+                    <p class="mt-1 text-xs text-neutral-500">Select grade levels this template applies to. Leave all unchecked for a universal template.</p>
                 </div>
             </div>
 
             <div class="flex items-center">
                 <input type="checkbox" id="is_active" name="is_active"
                        {% if not template or template.is_active %}checked{% endif %}
-                       class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                <label for="is_active" class="ml-2 text-sm text-gray-700">Active (available for creating reports)</label>
+                       class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <label for="is_active" class="ml-2 text-sm text-neutral-700">Active (available for creating reports)</label>
             </div>
         </div>
     </div>
 
     <!-- Sections Builder -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h2 class="text-md font-medium text-gray-900">Report Sections</h2>
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
+            <h2 class="text-md font-medium text-neutral-900">Report Sections</h2>
             <button type="button" onclick="addSection()"
                     class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +104,7 @@
             <div id="sections-container" class="space-y-4">
                 <!-- Sections will be rendered here -->
             </div>
-            <div id="empty-sections" class="text-center py-8 text-gray-500 {% if template and template.sections %}hidden{% endif %}">
+            <div id="empty-sections" class="text-center py-8 text-neutral-500 {% if template and template.sections %}hidden{% endif %}">
                 <p>No sections yet. Click "Add Section" to create your first section.</p>
             </div>
         </div>
@@ -113,7 +113,7 @@
     <!-- Form Actions -->
     <div class="flex items-center justify-end gap-3">
         <a href="/reports/templates/manage"
-           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+           class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
             Cancel
         </a>
         <button type="button" onclick="saveTemplate()"
@@ -129,19 +129,19 @@
 
 <!-- Section Template (hidden) -->
 <template id="section-template">
-    <div class="section-item border border-gray-200 rounded-lg overflow-hidden" data-section-index="">
-        <div class="px-4 py-3 bg-gray-50 flex items-center justify-between">
+    <div class="section-item border border-neutral-200 rounded-lg overflow-hidden" data-section-index="">
+        <div class="px-4 py-3 bg-neutral-50 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <button type="button" class="drag-handle text-gray-400 cursor-move">
+                <button type="button" class="drag-handle text-neutral-400 cursor-move">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
                     </svg>
                 </button>
-                <input type="text" class="section-title font-medium text-gray-900 border-0 bg-transparent focus:ring-0 p-0"
+                <input type="text" class="section-title font-medium text-neutral-900 border-0 bg-transparent focus:ring-0 p-0"
                        placeholder="Section Title" value="">
             </div>
             <div class="flex items-center gap-2">
-                <select class="section-type text-sm border-gray-300 rounded focus:ring-primary-500 focus:border-primary-500">
+                <select class="section-type text-sm border-neutral-300 rounded focus:ring-primary-500 focus:border-primary-500">
                     <option value="CHECKLIST">Checklist</option>
                     <option value="REPEATABLE_ENTRIES">Repeatable Entries</option>
                     <option value="NARRATIVE">Narrative/Notes</option>
@@ -151,12 +151,12 @@
                     <option value="SUMMARY">Summary</option>
                     <option value="SIGNATURES">Signatures</option>
                 </select>
-                <button type="button" class="toggle-section text-gray-400 hover:text-gray-600">
+                <button type="button" class="toggle-section text-neutral-400 hover:text-neutral-600">
                     <svg class="w-5 h-5 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
-                <button type="button" class="remove-section text-gray-400 hover:text-red-600">
+                <button type="button" class="remove-section text-neutral-400 hover:text-red-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -179,16 +179,16 @@
 
 <!-- Field Template (hidden) -->
 <template id="field-template">
-    <div class="field-item flex items-start gap-3 p-3 bg-gray-50 rounded-lg" data-field-index="">
+    <div class="field-item flex items-start gap-3 p-3 bg-neutral-50 rounded-lg" data-field-index="">
         <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Label</label>
-                <input type="text" class="field-label block w-full text-sm rounded border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                <label class="block text-xs text-neutral-500 mb-1">Label</label>
+                <input type="text" class="field-label block w-full text-sm rounded border-neutral-300 focus:ring-primary-500 focus:border-primary-500"
                        placeholder="Field label">
             </div>
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Type</label>
-                <select class="field-type block w-full text-sm rounded border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                <label class="block text-xs text-neutral-500 mb-1">Type</label>
+                <select class="field-type block w-full text-sm rounded border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
                     <option value="TEXT">Text</option>
                     <option value="TEXTAREA">Text Area</option>
                     <option value="SELECT">Dropdown</option>
@@ -198,18 +198,18 @@
                 </select>
             </div>
             <div class="field-options-container">
-                <label class="block text-xs text-gray-500 mb-1">Options (comma-separated)</label>
-                <input type="text" class="field-options block w-full text-sm rounded border-gray-300 focus:ring-primary-500 focus:border-primary-500"
+                <label class="block text-xs text-neutral-500 mb-1">Options (comma-separated)</label>
+                <input type="text" class="field-options block w-full text-sm rounded border-neutral-300 focus:ring-primary-500 focus:border-primary-500"
                        placeholder="Option 1, Option 2">
             </div>
             <div class="flex items-end">
                 <label class="inline-flex items-center">
-                    <input type="checkbox" class="field-required rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-2 text-sm text-gray-600">Required</span>
+                    <input type="checkbox" class="field-required rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                    <span class="ml-2 text-sm text-neutral-600">Required</span>
                 </label>
             </div>
         </div>
-        <button type="button" class="remove-field mt-5 text-gray-400 hover:text-red-600">
+        <button type="button" class="remove-field mt-5 text-neutral-400 hover:text-red-600">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -249,12 +249,12 @@ async function loadGradeLevels() {
                 <label class="flex items-center gap-2 py-1">
                     <input type="checkbox" name="grade_level_ids" value="${gl.id}"
                            ${selectedGradeLevelIds.has(gl.id) ? 'checked' : ''}
-                           class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                    <span class="text-sm text-gray-700">${gl.name}</span>
+                           class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm text-neutral-700">${gl.name}</span>
                 </label>
             `).join('');
         } else {
-            container.innerHTML = '<p class="text-sm text-gray-400">No grade levels configured. <a href="/settings/grade-levels" class="text-primary-600 hover:underline">Add grade levels</a></p>';
+            container.innerHTML = '<p class="text-sm text-neutral-400">No grade levels configured. <a href="/settings/grade-levels" class="text-primary-600 hover:underline">Add grade levels</a></p>';
         }
     } catch (error) {
         console.error('Failed to load grade levels:', error);

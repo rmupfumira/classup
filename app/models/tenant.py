@@ -108,7 +108,7 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     @property
     def primary_color(self) -> str:
         """Get the primary brand color."""
-        return self.branding.get("primary_color", "#7C3AED")
+        return self.branding.get("primary_color", "#1B3A6B")
 
     @property
     def timezone(self) -> str:
@@ -241,8 +241,8 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
             "send_announcements": True,
         },
         "branding": {
-            "primary_color": "#7C3AED",
-            "secondary_color": "#5B21B6",
+            "primary_color": "#1B3A6B",
+            "secondary_color": "#C9962A",
         },
         "timezone": "Africa/Johannesburg",
         "language": "en",

@@ -3,11 +3,11 @@
 {% block title %}Bad Request - {{ app_name }}{% endblock %}
 
 {% block auth_content %}
-<div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-50">
+<div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-neutral-50">
     <div class="text-center">
         <p class="text-9xl font-bold text-amber-500">400</p>
-        <h1 class="mt-4 text-3xl font-bold text-gray-900">Bad Request</h1>
-        <p class="mt-2 text-gray-600">{{ message | default('The request could not be processed.') }}</p>
+        <h1 class="mt-4 text-3xl font-bold text-neutral-900">Bad Request</h1>
+        <p class="mt-2 text-neutral-600">{{ message | default('The request could not be processed.') }}</p>
         <div class="mt-6">
             <a href="javascript:history.back()"
                class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg

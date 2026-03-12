@@ -43,25 +43,25 @@
             <!-- Features -->
             <div class="space-y-4">
                 <div class="flex items-center space-x-3 text-primary-100">
-                    <svg class="w-5 h-5 text-primary-300" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-5 h-5 text-accent-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
                     <span>Easy attendance tracking</span>
                 </div>
                 <div class="flex items-center space-x-3 text-primary-100">
-                    <svg class="w-5 h-5 text-primary-300" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-5 h-5 text-accent-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
                     <span>Daily reports for parents</span>
                 </div>
                 <div class="flex items-center space-x-3 text-primary-100">
-                    <svg class="w-5 h-5 text-primary-300" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-5 h-5 text-accent-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
                     <span>Secure photo & document sharing</span>
                 </div>
                 <div class="flex items-center space-x-3 text-primary-100">
-                    <svg class="w-5 h-5 text-primary-300" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-5 h-5 text-accent-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
                     <span>Real-time messaging</span>
@@ -70,12 +70,12 @@
         </div>
 
         <!-- Decorative circles -->
-        <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-primary-500/30 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-accent-500/20 rounded-full blur-3xl"></div>
         <div class="absolute -top-32 -right-32 w-96 h-96 bg-primary-400/20 rounded-full blur-3xl"></div>
     </div>
 
     <!-- Right Panel - Login Form -->
-    <div class="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-20 xl:px-24 bg-gray-50">
+    <div class="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-20 xl:px-24 bg-neutral-50">
         <div class="mx-auto w-full max-w-sm lg:max-w-md">
             <!-- Mobile Logo -->
             <div class="lg:hidden flex items-center justify-center space-x-2 mb-8">
@@ -85,14 +85,14 @@
                               d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                 </div>
-                <span class="text-xl font-bold text-gray-900">{{ app_name }}</span>
+                <span class="text-xl font-bold text-neutral-800">{{ app_name }}</span>
             </div>
 
             <div class="text-center lg:text-left mb-8">
-                <h2 class="text-2xl lg:text-3xl font-bold text-gray-900">
+                <h2 class="text-2xl lg:text-3xl font-bold text-neutral-800">
                     {{ t('auth.welcome_back', current_language) }}
                 </h2>
-                <p class="mt-2 text-gray-600">
+                <p class="mt-2 text-neutral-500">
                     {{ t('auth.login_to_continue', current_language) }}
                 </p>
             </div>
@@ -126,7 +126,7 @@
                 <input type="hidden" name="next" value="{{ next }}">
 
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">
+                    <label for="email" class="block text-sm font-medium text-neutral-700">
                         {{ t('auth.email', current_language) }}
                     </label>
                     <input type="email"
@@ -135,14 +135,14 @@
                            value="{{ email | default('') }}"
                            required
                            autocomplete="email"
-                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-gray-400 text-gray-900"
+                                  placeholder-neutral-400 text-neutral-800"
                            placeholder="you@example.com">
                 </div>
 
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700">
+                    <label for="password" class="block text-sm font-medium text-neutral-700">
                         {{ t('auth.password', current_language) }}
                     </label>
                     <input type="password"
@@ -150,9 +150,9 @@
                            name="password"
                            required
                            autocomplete="current-password"
-                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm
+                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-gray-400 text-gray-900"
+                                  placeholder-neutral-400 text-neutral-800"
                            placeholder="Enter your password">
                 </div>
 
@@ -161,8 +161,8 @@
                         <input type="checkbox"
                                id="remember_me"
                                name="remember_me"
-                               class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
-                        <label for="remember_me" class="ml-2 block text-sm text-gray-700">
+                               class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded">
+                        <label for="remember_me" class="ml-2 block text-sm text-neutral-700">
                             {{ t('auth.remember_me', current_language) }}
                         </label>
                     </div>
@@ -182,7 +182,7 @@
             </form>
 
             <!-- Register Link -->
-            <p class="mt-8 text-center text-sm text-gray-600">
+            <p class="mt-8 text-center text-sm text-neutral-500">
                 {{ t('auth.no_account', current_language) }}
                 <a href="/register" class="font-medium text-primary-600 hover:text-primary-500">
                     {{ t('auth.create_account', current_language) }}
