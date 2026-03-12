@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Student Enrollment - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <a href="/imports" class="text-sm text-neutral-500 hover:text-neutral-700 flex items-center">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Imports
+        </a>
+        <h1 class="mt-4 text-2xl font-bold text-neutral-900">Bulk Student Enrollment</h1>
+        <p class="mt-1 text-sm text-neutral-500">Download an Excel template, fill in student details, and upload to enroll students in bulk.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main content: 2 columns -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Step 1: Download Template -->
+            <div class="bg-white shadow-sm rounded-xl border border-neutral-200 p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">1</span>
+                    <h2 class="text-lg font-semibold text-neutral-900">Download Template</h2>
+                </div>
+                <p class="text-sm text-neutral-600 mb-4">
+                    Download the Excel template with the correct column headers. You can optionally select a class to pre-fill the class name column.
+                </p>
+
+                <div class="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                    <div class="flex-1 w-full">
+                        <label for="classSelect" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Class <span class="text-neutral-400">(optional)</span>
+                        </label>
+                        <select id="classSelect" class="block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500">
+                            <option value="">All Classes (blank class column)</option>
+                            {% for cls in classes %}
+                            <option value="{{ cls.id }}">{{ cls.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="button" id="downloadBtn" onclick="downloadTemplate()"
+                            class="inline-flex items-center rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 whitespace-nowrap">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download Template
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Upload Filled Template -->
+            <div class="bg-white shadow-sm rounded-xl border border-neutral-200 p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">2</span>
+                    <h2 class="text-lg font-semibold text-neutral-900">Upload Filled Template</h2>
+                </div>
+                <p class="text-sm text-neutral-600 mb-4">
+                    After filling in the template with student data, upload it here. The system will process each row and create student records.
+                </p>
+
+                <form id="enrollmentForm" enctype="multipart/form-data">
+                    <!-- Dropzone -->
+                    <div id="dropzone"
+                         class="flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-300 border-dashed rounded-lg hover:border-primary-500 transition-colors cursor-pointer">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            <div class="flex text-sm text-neutral-600">
+                                <label for="file" class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                    <span>Upload a file</span>
+                                    <input id="file" name="file" type="file" accept=".xlsx" class="sr-only">
+                                </label>
+                                <p class="pl-1">or drag and drop</p>
+                            </div>
+                            <p class="text-xs text-neutral-500">Excel files (.xlsx) only</p>
+                        </div>
+                    </div>
+
+                    <!-- Selected File Display -->
+                    <div id="selectedFile" class="hidden mt-4 flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <span id="fileName" class="text-sm font-medium text-neutral-700"></span>
+                        </div>
+                        <button type="button" id="removeFile" class="text-sm text-red-600 hover:text-red-800">Remove</button>
+                    </div>
+
+                    <div class="mt-4 flex justify-end">
+                        <button type="submit" id="submitBtn" disabled
+                                class="inline-flex items-center rounded-lg bg-accent-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span id="btnText">Upload & Enroll Students</span>
+                            <svg id="btnSpinner" class="hidden ml-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar: Instructions -->
+        <div class="lg:col-span-1">
+            <div class="bg-white shadow-sm rounded-xl border border-neutral-200 p-6 sticky top-20">
+                <h3 class="text-sm font-semibold text-neutral-900 mb-4">Template Fields</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">First Name</span>
+                            <span class="text-red-500">*</span>
+                            <p class="text-neutral-500 text-xs">Required</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Last Name</span>
+                            <span class="text-red-500">*</span>
+                            <p class="text-neutral-500 text-xs">Required</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Date of Birth</span>
+                            <p class="text-neutral-500 text-xs">Format: YYYY-MM-DD</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Gender</span>
+                            <p class="text-neutral-500 text-xs">MALE, FEMALE, or OTHER</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Class Name</span>
+                            <p class="text-neutral-500 text-xs">Must match exactly</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Medical Info</span>
+                            <p class="text-neutral-500 text-xs">Optional notes</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Allergies</span>
+                            <p class="text-neutral-500 text-xs">Optional</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Parent Email</span>
+                            <p class="text-neutral-500 text-xs">For future linking</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
+                        <div>
+                            <span class="font-medium text-neutral-800">Emergency Contact</span>
+                            <p class="text-neutral-500 text-xs">Name + Phone</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-neutral-200">
+                    <p class="text-xs text-neutral-500">
+                        <strong>Tip:</strong> Select a class before downloading to pre-fill the class name column. The Excel template includes dropdown menus for Gender and Class Name.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Download template
+function downloadTemplate() {
+    const classId = document.getElementById('classSelect').value;
+    let url = '/api/v1/imports/enrollment/template';
+    if (classId) {
+        url += `?class_id=${classId}`;
+    }
+    window.location.href = url;
+}
+
+// File upload handling
+const form = document.getElementById('enrollmentForm');
+const fileInput = document.getElementById('file');
+const dropzone = document.getElementById('dropzone');
+const selectedFile = document.getElementById('selectedFile');
+const fileNameEl = document.getElementById('fileName');
+const removeFile = document.getElementById('removeFile');
+const submitBtn = document.getElementById('submitBtn');
+const btnText = document.getElementById('btnText');
+const btnSpinner = document.getElementById('btnSpinner');
+
+// Drag and drop
+dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('border-primary-500', 'bg-primary-50');
+});
+
+dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('border-primary-500', 'bg-primary-50');
+});
+
+dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('border-primary-500', 'bg-primary-50');
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].name.endsWith('.xlsx')) {
+        fileInput.files = files;
+        showSelectedFile(files[0].name);
+    } else {
+        ClassUp.toast('Please upload an Excel file (.xlsx)', 'error');
+    }
+});
+
+dropzone.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        showSelectedFile(fileInput.files[0].name);
+    }
+});
+
+removeFile.addEventListener('click', () => {
+    fileInput.value = '';
+    selectedFile.classList.add('hidden');
+    dropzone.classList.remove('hidden');
+    submitBtn.disabled = true;
+});
+
+function showSelectedFile(name) {
+    fileNameEl.textContent = name;
+    selectedFile.classList.remove('hidden');
+    dropzone.classList.add('hidden');
+    submitBtn.disabled = false;
+}
+
+// Form submit
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!fileInput.files.length) {
+        ClassUp.toast('Please select a file first', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    submitBtn.disabled = true;
+    btnText.textContent = 'Processing...';
+    btnSpinner.classList.remove('hidden');
+
+    try {
+        const response = await ClassUp.fetch('/api/v1/imports/enrollment/upload', {
+            method: 'POST',
+            body: formData,
+            rawBody: true,
+        });
+
+        if (response && response.data && response.data.id) {
+            ClassUp.toast(response.message || 'Enrollment complete!', 'success');
+            window.location.href = `/imports/${response.data.id}`;
+        } else {
+            ClassUp.toast(response.message || 'Upload completed', 'success');
+            window.location.href = '/imports';
+        }
+    } catch (err) {
+        submitBtn.disabled = false;
+        btnText.textContent = 'Upload & Enroll Students';
+        btnSpinner.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

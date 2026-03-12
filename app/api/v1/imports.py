@@ -1,12 +1,16 @@
 """Bulk import API endpoints."""
 
 import logging
+from io import BytesIO
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models import SchoolClass
 from app.schemas.common import APIResponse
 from app.schemas.import_job import (
     ImportFieldInfo,
@@ -15,8 +19,10 @@ from app.schemas.import_job import (
     ImportPreviewResponse,
     ImportType,
 )
+from app.services.enrollment_template_service import get_enrollment_template_service
 from app.services.import_service import IMPORT_FIELDS, get_import_service
 from app.utils.permissions import require_role
+from app.utils.tenant_context import get_tenant_id
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +97,111 @@ async def upload_csv(
         },
         message="File uploaded. Please map columns and start import.",
     )
+
+
+@router.get("/enrollment/template")
+@require_role("SCHOOL_ADMIN", "TEACHER")
+async def download_enrollment_template(
+    class_id: UUID | None = Query(None, description="Pre-fill template with this class"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Download an Excel enrollment template."""
+    tenant_id = get_tenant_id()
+    template_service = get_enrollment_template_service()
+
+    # Get active classes for this tenant
+    result = await db.execute(
+        select(SchoolClass).where(
+            SchoolClass.tenant_id == tenant_id,
+            SchoolClass.deleted_at.is_(None),
+            SchoolClass.is_active.is_(True),
+        ).order_by(SchoolClass.name)
+    )
+    classes = list(result.scalars().all())
+    class_names = [c.name for c in classes]
+
+    # If class_id specified, validate and get name for pre-fill
+    prefill_class_name = None
+    file_suffix = ""
+    if class_id:
+        target_class = next((c for c in classes if c.id == class_id), None)
+        if not target_class:
+            raise HTTPException(status_code=404, detail="Class not found")
+        prefill_class_name = target_class.name
+        file_suffix = f"_{target_class.name.replace(' ', '_')}"
+
+    # Generate template
+    excel_bytes = template_service.generate_template(
+        class_names=class_names,
+        prefill_class_name=prefill_class_name,
+    )
+
+    filename = f"student_enrollment{file_suffix}.xlsx"
+    return StreamingResponse(
+        BytesIO(excel_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/enrollment/upload", response_model=APIResponse)
+@require_role("SCHOOL_ADMIN", "TEACHER")
+async def upload_enrollment(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a filled Excel enrollment template and process it."""
+    service = get_import_service()
+
+    # Validate file type
+    if not file.filename or not file.filename.endswith(".xlsx"):
+        raise HTTPException(
+            status_code=400,
+            detail="File must be an Excel file (.xlsx). Please use the downloaded template.",
+        )
+
+    # Read file content
+    try:
+        file_bytes = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {e}")
+
+    if len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+
+    # Process enrollment
+    try:
+        job = await service.create_and_process_enrollment(
+            db,
+            file_name=file.filename,
+            file_bytes=file_bytes,
+        )
+
+        return APIResponse(
+            status="success",
+            data=ImportJobResponse(
+                id=job.id,
+                tenant_id=job.tenant_id,
+                import_type=job.import_type,
+                file_name=job.file_name,
+                status=job.status,
+                total_rows=job.total_rows,
+                processed_rows=job.processed_rows,
+                success_count=job.success_count,
+                error_count=job.error_count,
+                errors=job.errors or [],
+                column_mapping={},
+                created_by=job.created_by,
+                completed_at=job.completed_at,
+                created_at=job.created_at,
+            ),
+            message=f"Enrollment complete: {job.success_count} students created, {job.error_count} errors",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Enrollment upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process enrollment: {e}")
 
 
 @router.post("/{job_id}/start", response_model=APIResponse)

@@ -417,6 +417,88 @@ class ImportService:
 
         return jobs, total
 
+    async def create_and_process_enrollment(
+        self,
+        db: AsyncSession,
+        file_name: str,
+        file_bytes: bytes,
+    ) -> BulkImportJob:
+        """
+        Process an Excel enrollment upload directly (no column mapping step).
+
+        Parses the Excel file, creates a BulkImportJob, processes each row
+        using the existing _import_student_row logic, and returns the job
+        with results.
+        """
+        from app.services.enrollment_template_service import (
+            ENROLLMENT_COLUMNS,
+            EnrollmentTemplateService,
+        )
+
+        tenant_id = get_tenant_id()
+        user_id = get_current_user_id()
+
+        # Parse the Excel file
+        rows, total_rows = EnrollmentTemplateService.parse_excel(file_bytes)
+
+        if total_rows == 0:
+            raise ValueError("The uploaded file contains no student data. Please fill in the template and try again.")
+
+        # Create import job
+        job = BulkImportJob(
+            tenant_id=tenant_id,
+            import_type="STUDENTS",
+            file_name=file_name,
+            status="PROCESSING",
+            total_rows=total_rows,
+            created_by=user_id,
+            column_mapping={"_source": "excel_enrollment"},
+        )
+        db.add(job)
+        await db.flush()
+
+        # Build identity mapping: field_name -> field_name
+        # This makes _import_student_row read row[field_name] directly
+        field_to_csv = {col[0]: col[0] for col in ENROLLMENT_COLUMNS}
+
+        errors = []
+        success_count = 0
+        processed_count = 0
+
+        for row_data in rows:
+            row_num = row_data.pop("_row_number", processed_count + 3)
+            processed_count += 1
+
+            try:
+                await self._import_student_row(db, tenant_id, row_data, field_to_csv)
+                success_count += 1
+            except Exception as e:
+                errors.append({
+                    "row": row_num,
+                    "field": None,
+                    "value": f"{row_data.get('first_name', '')} {row_data.get('last_name', '')}".strip() or None,
+                    "message": str(e),
+                })
+
+            # Update progress periodically
+            if processed_count % 50 == 0:
+                job.processed_rows = processed_count
+                job.success_count = success_count
+                job.error_count = len(errors)
+                await db.flush()
+
+        # Final update
+        job.processed_rows = processed_count
+        job.success_count = success_count
+        job.error_count = len(errors)
+        job.errors = errors
+        job.status = "COMPLETED"
+        job.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(job)
+
+        return job
+
 
 # Singleton instance
 _import_service: ImportService | None = None

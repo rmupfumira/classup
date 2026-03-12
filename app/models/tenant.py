@@ -147,7 +147,7 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
         "exam_management": False,
         "disciplinary_records": False,
         "whatsapp_enabled": False,
-        "billing": False,
+        "billing": True,
     }
 
     school_features = {
@@ -166,7 +166,7 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
         "exam_management": True,
         "disciplinary_records": True,
         "whatsapp_enabled": False,
-        "billing": False,
+        "billing": True,
     }
 
     features_map = {

@@ -164,15 +164,15 @@
     {% endif %}
 
     <!-- Attendance Form -->
-    <form id="attendance-form" class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <!-- Sticky Form Header -->
-        <div class="p-4 border-b border-neutral-200 flex items-center justify-between sticky top-12 bg-white z-10">
+    <form id="attendance-form" class="bg-white rounded-xl shadow-sm border border-neutral-200">
+        <!-- Form Header -->
+        <div class="p-4 border-b border-neutral-200 flex items-center justify-between">
             <div>
                 <h2 class="text-lg font-medium text-neutral-900">{{ attendance_data.class_name }}</h2>
                 <p class="text-sm text-neutral-500">{{ attendance_data.students | length }} student{{ 's' if attendance_data.students | length != 1 else '' }}</p>
             </div>
             <button type="button" onclick="saveAttendance()"
-                    class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
+                    class="hidden sm:inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>

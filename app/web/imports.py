@@ -4,13 +4,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models import SchoolClass
 from app.services.auth_service import get_auth_service
 from app.services.import_service import IMPORT_FIELDS, get_import_service
 from app.templates_config import templates
-from app.utils.tenant_context import get_current_user_id_or_none, get_current_user_role
+from app.utils.tenant_context import get_current_user_id_or_none, get_current_user_role, get_tenant_id
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 
@@ -39,7 +41,7 @@ async def imports_list(
         "imports/list.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "jobs": jobs,
             "total": total,
         },
@@ -67,7 +69,45 @@ async def imports_upload(
         "imports/upload.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
+        },
+    )
+
+
+@router.get("/enrollment", response_class=HTMLResponse)
+async def imports_enrollment(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Excel enrollment page — download template and upload filled file."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
+    # Get active classes for this tenant
+    tenant_id = get_tenant_id()
+    result = await db.execute(
+        select(SchoolClass).where(
+            SchoolClass.tenant_id == tenant_id,
+            SchoolClass.deleted_at.is_(None),
+            SchoolClass.is_active.is_(True),
+        ).order_by(SchoolClass.name)
+    )
+    classes = list(result.scalars().all())
+
+    return templates.TemplateResponse(
+        "imports/enrollment.html",
+        {
+            "request": request,
+            "user": current_user,
+            "classes": classes,
         },
     )
 
@@ -96,7 +136,7 @@ async def imports_detail(
     if not job:
         return templates.TemplateResponse(
             "errors/404.html",
-            {"request": request, "current_user": current_user},
+            {"request": request, "user": current_user},
             status_code=404,
         )
 
@@ -104,7 +144,7 @@ async def imports_detail(
         "imports/results.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "job": job,
         },
     )
@@ -134,7 +174,7 @@ async def imports_mapping(
     if not job:
         return templates.TemplateResponse(
             "errors/404.html",
-            {"request": request, "current_user": current_user},
+            {"request": request, "user": current_user},
             status_code=404,
         )
 
@@ -161,7 +201,7 @@ async def imports_mapping(
         "imports/mapping.html",
         {
             "request": request,
-            "current_user": current_user,
+            "user": current_user,
             "job": job,
             "headers": headers,
             "sample_rows": sample_rows,

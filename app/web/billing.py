@@ -83,17 +83,15 @@ async def billing_dashboard(
 
     billing_service = get_billing_service()
 
-    # Check overdue invoices
+    # Check overdue invoices & send reminders in an isolated session
+    # so any failure doesn't poison the main dashboard query
+    from app.database import get_db_context
     try:
-        await billing_service.check_overdue_invoices(db)
+        async with get_db_context() as side_db:
+            await billing_service.check_overdue_invoices(side_db)
+            await billing_service.send_overdue_reminders(side_db)
     except Exception:
-        pass
-
-    # Send recurring overdue reminders
-    try:
-        await billing_service.send_overdue_reminders(db)
-    except Exception:
-        pass
+        pass  # Non-critical background tasks, don't block dashboard
 
     summary = await billing_service.get_billing_summary(db)
 
