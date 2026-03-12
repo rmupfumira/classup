@@ -88,12 +88,12 @@
                                     <input type="number" name="sections.{{ section.id }}.{{ subject_id }}.marks_obtained"
                                            value="{{ subject_data.get('marks_obtained', '') }}"
                                            min="0" max="{{ total_for_subject }}" step="0.5"
-                                           class="block w-20 mx-auto rounded border-neutral-300 text-sm text-center focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-20 mx-auto rounded border border-neutral-300 text-sm text-center focus:ring-primary-500 focus:border-primary-500">
                                 </td>
                                 <td class="border border-neutral-300 px-3 py-1">
                                     <input type="text" name="sections.{{ section.id }}.{{ subject_id }}.remarks"
                                            value="{{ subject_data.get('remarks', '') }}"
-                                           class="block w-full rounded border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-full rounded border border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                                 </td>
                             </tr>
                             {% endfor %}

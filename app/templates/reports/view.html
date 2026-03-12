@@ -47,17 +47,18 @@
     <!-- Report Sections -->
     <div class="space-y-8">
         {% for section in report.template.sections %}
+        {% if section.type != 'INFO_DISPLAY' %}
         {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
         {% set section_color = section.get('color', 'purple') %}
 
         <div class="report-section">
             <!-- Section Title with Color -->
             <h2 class="text-2xl font-bold mb-3
-                {% if section_color == 'purple' or section_color == 'violet' %}text-violet-600
-                {% elif section_color == 'green' %}text-green-600
-                {% elif section_color == 'orange' %}text-orange-500
-                {% elif section_color == 'blue' %}text-blue-600
-                {% elif section_color == 'red' %}text-red-600
+                {% if section_color in ['purple', 'violet', '#7C3AED', '#6366F1', '#8B5CF6'] %}text-violet-600
+                {% elif section_color in ['green', '#10B981', '#059669', '#34D399'] %}text-green-600
+                {% elif section_color in ['orange', '#F59E0B', '#D97706', '#FBBF24'] %}text-orange-500
+                {% elif section_color in ['blue', '#3B82F6', '#2563EB', '#1B3A6B'] %}text-blue-600
+                {% elif section_color in ['red', '#EF4444', '#DC2626'] %}text-red-600
                 {% else %}text-violet-600{% endif %}">
                 {{ section.title }}
             </h2>
@@ -174,6 +175,7 @@
                 </div>
             {% endif %}
         </div>
+        {% endif %}{# end if not INFO_DISPLAY #}
         {% endfor %}
     </div>
 
