@@ -13,6 +13,8 @@
 
 {% if template_sections %}
 {% for section in template_sections %}
+{# Skip INFO_DISPLAY and SIGNATURES sections in email #}
+{% if section.type != 'INFO_DISPLAY' and section.type != 'SIGNATURES' %}
 {% set section_data = report_sections.get(section.id, {}) if report_sections else {} %}
 {% set section_color = section.get('color', 'purple') %}
 
@@ -34,7 +36,128 @@
     </tr>
     <tr>
         <td style="padding-top: 12px;">
-            {% if section.type == 'REPEATABLE_ENTRIES' %}
+            {% if section.type == 'ACADEMIC_GRADES' %}
+                {# Academic grades table with subjects, marks, and grades #}
+                {% set subjects_list = section.get('subjects', []) %}
+                {% set grades_config = section.get('grading_system', []) %}
+                {% if subjects_list %}
+                <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background-color: #F3F4F6;">
+                            <th style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: left; font-weight: 600; color: #374151;">#</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: left; font-weight: 600; color: #374151;">Subject</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: center; font-weight: 600; color: #374151;">Total</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: center; font-weight: 600; color: #374151;">Marks</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: center; font-weight: 600; color: #374151;">Grade</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: left; font-weight: 600; color: #374151;">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set totals = namespace(marks=0, obtained=0) %}
+                        {% for subject in subjects_list %}
+                        {% set subject_id = subject.id %}
+                        {% set subject_data = section_data.get(subject_id, {}) %}
+                        {% set marks_obtained = subject_data.get('marks_obtained', '') %}
+                        {% set total_marks = subject.get('total_marks', 100) %}
+
+                        {# Calculate grade #}
+                        {% set ns = namespace(grade='') %}
+                        {% if marks_obtained != '' and marks_obtained is not none %}
+                            {% set percentage = (marks_obtained | float / total_marks * 100) | round(0) | int %}
+                            {% for g in grades_config %}
+                                {% if percentage >= g.min and percentage <= g.max %}
+                                    {% set ns.grade = g.grade %}
+                                {% endif %}
+                            {% endfor %}
+                            {% set totals.marks = totals.marks + total_marks %}
+                            {% set totals.obtained = totals.obtained + (marks_obtained | float) %}
+                        {% endif %}
+
+                        {# Determine grade color #}
+                        {% if ns.grade in ['A+', 'A'] %}{% set grade_color = '#059669' %}
+                        {% elif ns.grade in ['B+', 'B'] %}{% set grade_color = '#2563EB' %}
+                        {% elif ns.grade == 'C' %}{% set grade_color = '#D97706' %}
+                        {% elif ns.grade in ['D', 'E'] %}{% set grade_color = '#EA580C' %}
+                        {% elif ns.grade == 'F' %}{% set grade_color = '#DC2626' %}
+                        {% else %}{% set grade_color = '#374151' %}{% endif %}
+
+                        <tr style="background-color: {% if loop.index is odd %}#FFFFFF{% else %}#F9FAFB{% endif %};">
+                            <td style="border: 1px solid #D1D5DB; padding: 6px 10px; color: #6B7280;">{{ loop.index }}</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 6px 10px; font-weight: 500; color: #111827;">{{ subject.name }}</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 6px 10px; text-align: center; color: #6B7280;">{{ total_marks | int }}</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 6px 10px; text-align: center; font-weight: 600; color: #111827;">{{ (marks_obtained | int) if marks_obtained != '' else '-' }}</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 6px 10px; text-align: center; font-weight: 700; color: {{ grade_color }};">{{ ns.grade if ns.grade else '-' }}</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 6px 10px; color: #6B7280;">{{ subject_data.get('remarks', '') }}</td>
+                        </tr>
+                        {% endfor %}
+
+                        {# Totals row #}
+                        {% if totals.marks > 0 %}
+                        <tr style="background-color: #F3F4F6; font-weight: 700;">
+                            <td colspan="2" style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: right; color: #111827;">Total</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: center; color: #111827;">{{ totals.marks | int }}</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: center; color: #111827;">{{ totals.obtained | int }}</td>
+                            <td colspan="2" style="border: 1px solid #D1D5DB; padding: 8px 10px;"></td>
+                        </tr>
+                        {% endif %}
+
+                        {# Overall percentage and grade #}
+                        {% if totals.marks > 0 %}
+                        {% set overall_pct = (totals.obtained / totals.marks * 100) | round(1) %}
+                        {% set ns_overall = namespace(grade='') %}
+                        {% for g in grades_config %}
+                            {% if overall_pct >= g.min and overall_pct <= g.max %}
+                                {% set ns_overall.grade = g.grade %}
+                            {% endif %}
+                        {% endfor %}
+                        <tr style="background-color: #EFF6FF;">
+                            <td colspan="2" style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: right; font-weight: 700; color: #1B3A6B;">Overall</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 8px 10px;"></td>
+                            <td style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: center; font-weight: 700; color: #1B3A6B;">{{ overall_pct }}%</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 8px 10px; text-align: center; font-weight: 700; color: #1B3A6B;">{{ ns_overall.grade }}</td>
+                            <td style="border: 1px solid #D1D5DB; padding: 8px 10px;"></td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+
+                {# Grading key #}
+                {% if grades_config %}
+                <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse: collapse; font-size: 11px; margin-top: 12px;">
+                    <tr style="background-color: #F3F4F6;">
+                        {% for g in grades_config %}
+                        <th style="border: 1px solid #D1D5DB; padding: 4px 6px; text-align: center; font-weight: 600; color: #374151;">{{ g.grade }}</th>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        {% for g in grades_config %}
+                        <td style="border: 1px solid #D1D5DB; padding: 4px 6px; text-align: center; color: #6B7280;">{{ g.min | int }}-{{ g.max | int }}%</td>
+                        {% endfor %}
+                    </tr>
+                </table>
+                {% endif %}
+                {% else %}
+                <p style="margin: 0; font-size: 14px; color: #9CA3AF; font-style: italic;">No academic grades recorded</p>
+                {% endif %}
+
+            {% elif section.type == 'SUMMARY' %}
+                {# Summary section — show non-auto-calculated fields #}
+                {% set ns_sum = namespace(has_any=false) %}
+                {% set fields = section.get('fields', []) %}
+                {% for field in fields %}
+                    {% set val = section_data.get(field.id, '') %}
+                    {% if val and not field.get('auto_calculate', false) %}
+                    {% set ns_sum.has_any = true %}
+                    <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
+                        <strong>{{ field.label }}:</strong> {{ val }}
+                    </p>
+                    {% endif %}
+                {% endfor %}
+                {% if not ns_sum.has_any %}
+                <p style="margin: 0; font-size: 14px; color: #9CA3AF; font-style: italic;">No summary recorded</p>
+                {% endif %}
+
+            {% elif section.type == 'REPEATABLE_ENTRIES' %}
                 {% set entries = section_data.get('entries', []) %}
                 {% if entries %}
                     {% for entry in entries %}
@@ -124,7 +247,8 @@
                 {% endfor %}
 
             {% else %}
-                {% for field in section.fields %}
+                {# Default rendering for other section types #}
+                {% for field in section.get('fields', []) %}
                 {% set field_value = section_data.get(field.id, '') %}
                 {% if field_value %}
                 <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151; line-height: 1.5;">
@@ -136,6 +260,7 @@
         </td>
     </tr>
 </table>
+{% endif %}{# end if not INFO_DISPLAY/SIGNATURES #}
 {% endfor %}
 {% endif %}
 
