@@ -1,7 +1,7 @@
 # ClassUp v2 — Architecture Specification
 
 > Single source of truth for building ClassUp. Multi-tenant SaaS for schools/daycares.
-> Last Updated: 2026-02-28
+> Last Updated: 2026-03-09
 
 ## Design Principles
 
@@ -29,17 +29,20 @@ app/
 ├── models/             # base.py, tenant.py, user.py, student.py, school_class.py,
 │                       # attendance.py, message.py, report.py, file_entity.py,
 │                       # invitation.py, teacher_invitation.py, notification.py,
-│                       # system_settings.py, webhook.py, import_job.py
+│                       # system_settings.py, webhook.py, import_job.py,
+│                       # billing.py, academic.py
 ├── schemas/            # common.py, auth.py, tenant.py, user.py, student.py, etc.
 ├── services/           # auth, tenant, user, student, class, attendance, message,
 │                       # report, file, invitation, teacher_invitation, notification,
-│                       # email, whatsapp, webhook, import, i18n, realtime
+│                       # email, whatsapp, webhook, import, i18n, realtime,
+│                       # billing_service, academic_service
 ├── api/v1/             # auth, tenants, users, students, classes, attendance,
 │                       # messages, reports, files, invitations, admin, webhooks,
-│                       # imports, websocket
+│                       # imports, websocket, billing, academic
 ├── web/                # auth, dashboard, students, classes, attendance, messages,
 │                       # reports, photos, documents, settings, admin, super_admin,
-│                       # onboarding, imports, invitations, teachers, profile, helpers
+│                       # onboarding, imports, invitations, teachers, profile, helpers,
+│                       # billing
 ├── templates/          # base.html, components/*, auth/*, dashboard/*, students/*,
 │                       # classes/*, attendance/*, messages/*, reports/*, photos/*,
 │                       # documents/*, settings/*, onboarding/*, imports/*,
@@ -66,7 +69,7 @@ Email provider config stored in `system_settings` DB table (not env vars), switc
 
 **tenants**: id, name, slug (unique), email, phone, address, logo_path, education_type (DAYCARE|PRIMARY_SCHOOL|HIGH_SCHOOL|K12|COMBINED), settings (JSONB), is_active, onboarding_completed, timestamps, deleted_at
 
-**tenants.settings JSONB**: `{education_type, enabled_grade_levels[], features{attendance_tracking, messaging, photo_sharing, document_sharing, daily_reports, parent_communication, nap_tracking, bathroom_tracking, fluid_tracking, meal_tracking, diaper_tracking, homework_tracking, grade_tracking, behavior_tracking, timetable_management, subject_management, exam_management, disciplinary_records, whatsapp_enabled}, terminology{student, students, teacher, teachers, class, classes, parent, parents}, report_config{default_report_type, enabled_sections[]}, whatsapp{enabled, phone_number_id, send_attendance_alerts, send_report_notifications, send_announcements}, branding{primary_color, secondary_color}, timezone, language}`
+**tenants.settings JSONB**: `{education_type, enabled_grade_levels[], features{attendance_tracking, messaging, photo_sharing, document_sharing, daily_reports, parent_communication, nap_tracking, bathroom_tracking, fluid_tracking, meal_tracking, diaper_tracking, homework_tracking, grade_tracking, behavior_tracking, timetable_management, subject_management, exam_management, disciplinary_records, whatsapp_enabled, billing}, terminology{student, students, teacher, teachers, class, classes, parent, parents}, report_config{default_report_type, enabled_sections[]}, whatsapp{enabled, phone_number_id, send_attendance_alerts, send_report_notifications, send_announcements}, branding{primary_color, secondary_color}, billing_currency, billing_banking_details, billing_payment_instructions, billing_overdue_reminders_enabled, billing_overdue_reminder_interval_days, timezone, language}`
 
 **users**: id, tenant_id (NULL for SUPER_ADMIN), email, password_hash, first_name, last_name, phone, role (SUPER_ADMIN|SCHOOL_ADMIN|TEACHER|PARENT), avatar_path, is_active, language, whatsapp_phone (E.164), whatsapp_opted_in, last_login_at, timestamps, deleted_at. Unique: (email, tenant_id) WHERE deleted_at IS NULL.
 
@@ -92,15 +95,15 @@ Email provider config stored in `system_settings` DB table (not env vars), switc
 
 **report_templates**: id, tenant_id, name, description, report_type (DAILY_ACTIVITY|PROGRESS_REPORT|REPORT_CARD), frequency (DAILY|WEEKLY|TERMLY), applies_to_grade_level (comma-separated), sections (JSONB), display_order, is_active, timestamps, deleted_at
 
-**report_templates.sections JSONB**: Array of `{id, title, type (CHECKLIST|REPEATABLE_ENTRIES|NARRATIVE), display_order, fields[{id, label, type (SELECT|TEXT|TIME|NUMBER|TEXTAREA), options[], required}]}`
+**report_templates.sections JSONB**: Array of `{id, title, type (CHECKLIST|REPEATABLE_ENTRIES|NARRATIVE|ACADEMIC_GRADES|MEALS|INFO_DISPLAY|SUMMARY|SIGNATURES), display_order, color, fields[{id, label, type (SELECT|TEXT|TIME|NUMBER|TEXTAREA|CHECKBOX|MEAL_ENTRY|SIGNATURE|DATE|CALCULATED), options[], required, auto_calculate}]}`. ACADEMIC_GRADES sections also have: `subjects[{id, name, total_marks}]`, `grading_system[{min, max, grade, description}]`. MEALS sections also have: `meal_options[]`.
 
-**report_data JSONB**: `{sections: {section_id: {field_id: value, ...}, repeatable_section_id: {entries: [{field_id: value}]}}}`
+**report_data JSONB**: `{sections: {section_id: {field_id: value, ...}, repeatable_section_id: {entries: [{field_id: value}]}, academic_grades_section_id: {subject_id: {marks_obtained, remarks}}}}`
 
 **parent_invitations**: id, tenant_id, student_id FK, email, first_name, last_name, invitation_code (8-char unique), status (PENDING|ACCEPTED|EXPIRED), created_by FK, expires_at, accepted_at, created_at
 
 **teacher_invitations**: id, tenant_id, email, first_name, last_name, invitation_code (8-char unique), status (PENDING|ACCEPTED|EXPIRED|CANCELLED), created_by FK, expires_at, accepted_at, created_at
 
-**notifications**: id, tenant_id, user_id FK, title, body, notification_type, reference_type, reference_id, is_read, read_at, created_at. Types: ATTENDANCE_MARKED, ATTENDANCE_LATE, REPORT_FINALIZED, REPORT_READY, MESSAGE_RECEIVED, ANNOUNCEMENT, PHOTO_SHARED, DOCUMENT_SHARED, INVITATION_SENT, TEACHER_ADDED, STUDENT_ADDED, CLASS_CREATED, SETTINGS_CHANGED, IMPORT_COMPLETED, WHATSAPP_MESSAGE
+**notifications**: id, tenant_id, user_id FK, title, body, notification_type, reference_type, reference_id, is_read, read_at, created_at. Types: ATTENDANCE_MARKED, ATTENDANCE_LATE, REPORT_FINALIZED, REPORT_READY, MESSAGE_RECEIVED, ANNOUNCEMENT, PHOTO_SHARED, DOCUMENT_SHARED, INVITATION_SENT, TEACHER_ADDED, STUDENT_ADDED, CLASS_CREATED, SETTINGS_CHANGED, IMPORT_COMPLETED, WHATSAPP_MESSAGE, INVOICE_SENT, INVOICE_OVERDUE, PAYMENT_RECEIVED
 
 **webhook_endpoints**: id, tenant_id, url, secret (HMAC), events (JSONB []), is_active, timestamps
 
@@ -110,15 +113,33 @@ Email provider config stored in `system_settings` DB table (not env vars), switc
 
 **system_settings**: id, key (unique), value (JSONB), timestamps. Platform-wide (not tenant-scoped). Email config stored here as key='email_config'.
 
+**subjects**: id, tenant_id, name, code (unique per tenant), description, default_total_marks (default 100), category, display_order, is_active, timestamps, deleted_at
+
+**class_subjects**: id, class_id FK CASCADE, subject_id FK CASCADE, total_marks (nullable, overrides subject default), is_compulsory (default true), display_order, timestamps. UNIQUE(class_id, subject_id). Property: `effective_total_marks` (returns total_marks or subject default)
+
+**grading_systems**: id, tenant_id, name, description, is_default, is_active, grades (JSONB `[{min, max, grade, description, points}]`), timestamps, deleted_at
+
+**billing_fee_items**: id, tenant_id, name, description, amount (Numeric 12,2), frequency (MONTHLY|TERMLY|ANNUALLY|ONCE_OFF), applies_to (ALL|CLASS), class_id FK (nullable), is_active, display_order, deleted_at, timestamps
+
+**billing_invoices**: id, tenant_id, student_id FK CASCADE, invoice_number (unique per tenant+year, format INV-YYYY-NNNN), billing_period_start/end, due_date, subtotal, total_amount, amount_paid, balance (all Numeric 12,2), status (DRAFT|SENT|PARTIALLY_PAID|PAID|OVERDUE|CANCELLED), notes, created_by FK, sent_at, last_reminder_sent_at, deleted_at, timestamps
+
+**billing_invoice_items**: id, invoice_id FK CASCADE, fee_item_id FK SET NULL, description, quantity, unit_amount, total_amount (Numeric)
+
+**billing_payments**: id, tenant_id, invoice_id FK CASCADE, student_id FK CASCADE, amount (Numeric 12,2), payment_method (CASH|BANK_TRANSFER|EFT|CARD|CHEQUE|OTHER), reference_number, payment_date, notes, recorded_by FK, deleted_at, timestamps
+
 ### ER Summary
 
 ```
 tenants → users, students, school_classes, attendance_records, messages,
           daily_reports, report_templates, file_entities, parent_invitations,
-          teacher_invitations, notifications, webhook_endpoints, bulk_import_jobs
+          teacher_invitations, notifications, webhook_endpoints, bulk_import_jobs,
+          subjects, grading_systems, billing_fee_items, billing_invoices, billing_payments
 students ←→ users (via parent_students)
 school_classes ←→ users (via teacher_classes)
+school_classes ←→ subjects (via class_subjects)
 messages → message_recipients, message_attachments → file_entities
+billing_invoices → billing_invoice_items, billing_payments
+billing_invoices → students (student_id)
 ```
 
 ## Multi-Tenancy
@@ -153,6 +174,10 @@ Shared DB, row-level isolation. TenantMiddleware extracts tenant_id from JWT →
 | Documents: class | Yes | Own classes | No |
 | Settings, Webhooks, Import | Yes | No | No |
 | Invitations create | Yes | Yes | No |
+| Billing: fee items, invoices, payments | Yes | No | No |
+| Billing: view own invoices/statement | Yes | No | Own children |
+| Academic: subjects, grading CRUD | Yes | No | No |
+| Academic: view class subjects | Yes | Own classes | No |
 
 ### Parent Registration Flow
 
@@ -200,6 +225,10 @@ Shared DB, row-level isolation. TenantMiddleware extracts tenant_id from JWT →
 
 **Imports** `/api/v1/imports`: POST /upload, /{id}/start; GET /{id}, /{id}/errors, /
 
+**Billing** `/api/v1/billing`: CRUD /fee-items; GET/POST /invoices; POST /invoices/generate; GET/PUT/DELETE /invoices/{id}; POST /invoices/{id}/send, /invoices/{id}/cancel; GET/POST /payments; DELETE /payments/{id}; GET /students/{sid}/statement, /students/{sid}/balance; GET /my-children/balances (PARENT); GET /summary
+
+**Academic** `/api/v1/academic`: CRUD /subjects; GET/POST /classes/{cid}/subjects; PUT/DELETE /classes/{cid}/subjects/{sid}; POST /classes/{cid}/subjects/bulk; CRUD /grading-systems; POST /setup-defaults
+
 **WhatsApp** `/api/v1/whatsapp`: GET/POST /webhook (Meta); POST /send
 
 **WebSocket**: `/api/v1/ws/{token}` — JWT in URL path
@@ -228,7 +257,10 @@ Types: ANNOUNCEMENT (school-wide), CLASS_ANNOUNCEMENT, STUDENT_MESSAGE, REPLY, C
 Upload via Dropzone.js → client validation → POST multipart → python-magic MIME check → R2 upload → FileEntity record. Presigned URLs generated on every fetch (1h expiry). Photos max 5MB, documents max 10MB.
 
 ### Reports
-Template-driven (no hardcoded logic). Template sections: CHECKLIST (select/text fields), REPEATABLE_ENTRIES (dynamic table rows), NARRATIVE (textarea). Report creation: select student → match templates by age_group/grade_level → fill form → save as DRAFT or FINALIZE. Finalization triggers notifications to parents + webhook `report.finalized`.
+Template-driven (no hardcoded logic). Section types: CHECKLIST (select/text fields), REPEATABLE_ENTRIES (dynamic table rows), NARRATIVE (textarea), ACADEMIC_GRADES (subject marks table with auto-grading), MEALS (meal intake tracking), INFO_DISPLAY (student metadata), SUMMARY (auto-calculated totals), SIGNATURES (print-only). ACADEMIC_GRADES sections prefer database `class_subjects` over template-embedded subjects. Report creation: select student → match templates by grade_level → fill form → save as DRAFT or FINALIZE. Finalization triggers notifications to parents + webhook `report.finalized`. Default templates auto-created per education type (DAYCARE → daily report, PRIMARY/HIGH_SCHOOL → report card).
+
+### Academic
+Subjects managed per tenant with code (unique), default_total_marks, category. Subjects assigned to classes via `class_subjects` join table (with optional total_marks override, is_compulsory flag). Grading systems define grade boundaries (`[{min, max, grade, description}]`); one can be marked `is_default`. Report cards use class subjects + grading system for academic performance section. Setup defaults available per education type (primary: 9 subjects, high school: 10 subjects).
 
 ## Email System
 
@@ -238,7 +270,11 @@ Config shape: `{provider, enabled, from_email, from_name, smtp_host, smtp_port, 
 
 Tenant-scoped emails use tenant name as sender display name. Service loads config from DB on every send; skips silently if not configured.
 
-**Triggers**: tenant created (welcome), parent invited (parent_invite), report finalized (report_ready), password reset, attendance absence, admin notifications.
+**Triggers**: tenant created (welcome), parent invited (parent_invite), report finalized (report_ready), password reset, attendance absence, admin notifications, invoice sent, invoice overdue reminder, payment received.
+
+## Billing
+
+Fee items define charges (amount, frequency MONTHLY|TERMLY|ANNUALLY|ONCE_OFF, applies to ALL or specific CLASS). Invoices generated per student with line items from fee items; auto-numbered INV-YYYY-NNNN. Lifecycle: DRAFT → SENT (triggers email to parents) → PARTIALLY_PAID/PAID/OVERDUE/CANCELLED. Payments recorded against invoices; balance auto-recalculated. Overdue detection runs on `/billing` dashboard load (`check_overdue_invoices()`). Recurring overdue reminders configurable via Settings > Billing (`billing_overdue_reminders_enabled`, `billing_overdue_reminder_interval_days` default 7, tracked by `last_reminder_sent_at`). Parents see invoices (non-draft), statements, and balances for their children. Settings stored in `tenant.settings` JSONB: `billing_currency`, `billing_banking_details`, `billing_payment_instructions`.
 
 ## WhatsApp Integration
 
@@ -269,7 +305,7 @@ Languages: en (default), af (Afrikaans). JSON translation files at `translations
 
 ## Webhooks
 
-Events: student.created/updated/deleted, attendance.marked/bulk, report.created/finalized, message.sent, teacher.added, parent.registered, class.created, import.completed. HMAC-signed delivery (`X-ClassUp-Signature: sha256=...`). Retry: 3 attempts, exponential backoff (1m, 5m, 30m).
+Events: student.created/updated/deleted, attendance.marked/bulk, report.created/finalized, message.sent, teacher.added, parent.registered, class.created, import.completed, invoice.sent, payment.recorded. HMAC-signed delivery (`X-ClassUp-Signature: sha256=...`). Retry: 3 attempts, exponential backoff (1m, 5m, 30m).
 
 ## Background Tasks (arq)
 

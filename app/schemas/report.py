@@ -46,15 +46,38 @@ class TemplateField(BaseModel):
     max_value: float | None = None
 
 
+class GradingLevel(BaseModel):
+    """A grade boundary in a grading system."""
+
+    min: float
+    max: float
+    grade: str
+    description: str = ""
+
+
+class SubjectEntry(BaseModel):
+    """A subject in an ACADEMIC_GRADES section."""
+
+    id: str
+    name: str
+    total_marks: float = 100
+
+
 class TemplateSection(BaseModel):
     """A section within a report template."""
 
     id: str
     title: str
-    type: str  # CHECKLIST, REPEATABLE_ENTRIES, NARRATIVE
+    type: str  # CHECKLIST, REPEATABLE_ENTRIES, NARRATIVE, ACADEMIC_GRADES, MEALS, etc.
     display_order: int
-    fields: list[TemplateField]
+    fields: list[TemplateField] = []
     description: str | None = None
+    color: str | None = None
+    # ACADEMIC_GRADES specific
+    subjects: list[SubjectEntry] | None = None
+    grading_system: list[GradingLevel] | None = None
+    # MEALS specific
+    meal_options: list[str] | None = None
 
 
 # ============== Template Schemas ==============
