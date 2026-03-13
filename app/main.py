@@ -62,9 +62,14 @@ def create_app() -> FastAPI:
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
     # Add CORS middleware
+    cors_origins = ["*"] if settings.is_development else [
+        settings.app_base_url,
+        "https://classup.co.za",
+        "https://www.classup.co.za",
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.is_development else [settings.app_base_url],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

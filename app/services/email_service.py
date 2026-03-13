@@ -600,6 +600,51 @@ class EmailService:
         )
 
 
+    async def send_raw_email(
+        self,
+        to: str | list[str],
+        subject: str,
+        html_body: str,
+        from_name: str | None = None,
+    ) -> str | None:
+        """Send a raw HTML email without a template.
+
+        This method skips tenant context and is suitable for
+        platform-level emails (e.g. trial signup notifications).
+        """
+        config = await _load_email_config()
+        if not config:
+            logger.warning("Email not configured or disabled — skipping send")
+            return None
+
+        provider = config.get("provider", "smtp")
+
+        try:
+            sender_name = from_name or config.get("from_name") or settings.email_from_name
+            from_email = config.get("from_email") or settings.email_from_address
+            from_address = f"{sender_name} <{from_email}>"
+
+            recipients = to if isinstance(to, list) else [to]
+
+            if provider == "resend":
+                result_id = await self._send_via_resend(
+                    config, from_address, recipients, subject, html_body,
+                    None, None, None,
+                )
+            else:
+                result_id = await self._send_via_smtp(
+                    config, from_address, recipients, subject, html_body,
+                    None, None, None,
+                )
+
+            logger.info(f"Raw email sent via {provider} to {recipients}: {result_id}")
+            return result_id
+
+        except Exception as e:
+            logger.error(f"Failed to send raw email via {provider} to {to}: {e}")
+            return None
+
+
 # Singleton instance
 _email_service: EmailService | None = None
 

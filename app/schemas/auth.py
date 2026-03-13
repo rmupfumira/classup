@@ -155,3 +155,18 @@ class VerifyInvitationResponse(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     message: str | None = None
+
+
+class TrialSignupRequest(BaseModel):
+    """Free trial signup request from the marketing site."""
+
+    school_name: str = Field(..., min_length=1, max_length=200)
+    contact_name: str = Field(..., min_length=1, max_length=200)
+    email: EmailStr
+    phone: str = Field(..., min_length=1, max_length=50)
+    country: str = Field("South Africa", max_length=100)
+    province: str | None = Field(None, max_length=100)
+    school_type: str = Field(..., pattern=r"^(daycare|primary_school|high_school|combined|other)$")
+    school_type_other: str | None = Field(None, max_length=200)
+    student_count: int | None = Field(None, ge=1, le=10000)
+    message: str | None = Field(None, max_length=1000)

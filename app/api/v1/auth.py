@@ -15,6 +15,7 @@ from app.schemas.auth import (
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
+    TrialSignupRequest,
     UpdateProfileRequest,
     UserProfile,
     VerifyInvitationRequest,
@@ -274,3 +275,150 @@ async def verify_invitation(
             last_name=invitation.last_name if invitation.last_name else None,
         )
     )
+
+
+@router.post("/trial-signup", response_model=APIResponse[None])
+async def trial_signup(
+    request: TrialSignupRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Handle free trial signup from the marketing site.
+
+    This is a public endpoint (no auth required). It sends a notification
+    email to the SUPER_ADMIN with the school details, and a confirmation
+    email to the applicant.
+    """
+    import logging
+    from sqlalchemy import select
+    from app.models import User
+    from app.models.user import Role
+
+    logger = logging.getLogger(__name__)
+
+    school_type_labels = {
+        "daycare": "Daycare / Creche",
+        "primary_school": "Primary School",
+        "high_school": "High School",
+        "combined": "Combined",
+        "other": "Other",
+    }
+    school_type_label = school_type_labels.get(request.school_type, request.school_type)
+    if request.school_type == "other" and request.school_type_other:
+        school_type_label = f"Other — {request.school_type_other}"
+
+    location_parts = [request.country or "South Africa"]
+    if request.province:
+        location_parts.append(request.province)
+    location_label = ", ".join(location_parts)
+
+    # Look up SUPER_ADMIN email
+    stmt = select(User).where(
+        User.role == Role.SUPER_ADMIN.value,
+        User.is_active == True,
+        User.deleted_at.is_(None),
+    )
+    result = await db.execute(stmt)
+    super_admin = result.scalar_one_or_none()
+
+    email_service = get_email_service()
+
+    # Build admin notification email
+    admin_html = f"""
+    <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1B3A6B 0%, #0f2544 100%); padding: 32px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: #C9962A; margin: 0; font-size: 24px;">New Trial Signup Request</h1>
+        </div>
+        <div style="background: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 14px; width: 140px;">School Name</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px; font-weight: 600;">{request.school_name}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Contact Person</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px; font-weight: 600;">{request.contact_name}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Email</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;"><a href="mailto:{request.email}" style="color: #1B3A6B;">{request.email}</a></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Phone</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{request.phone}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Location</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{location_label}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">School Type</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{school_type_label}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Students</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{request.student_count or 'Not specified'}</td>
+                </tr>
+                {"<tr><td style='padding: 12px 0; color: #6b7280; font-size: 14px; vertical-align: top;'>Message</td><td style='padding: 12px 0; color: #111827; font-size: 14px;'>" + request.message + "</td></tr>" if request.message else ""}
+            </table>
+        </div>
+    </div>
+    """
+
+    # Send notification to super admin
+    if super_admin:
+        try:
+            await email_service.send_raw_email(
+                to=super_admin.email,
+                subject=f"New Trial Signup: {request.school_name}",
+                html_body=admin_html,
+                from_name="ClassUp Signups",
+            )
+        except Exception:
+            logger.exception("Failed to send trial signup notification to admin")
+
+    # Send confirmation to applicant
+    confirmation_html = f"""
+    <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1B3A6B 0%, #0f2544 100%); padding: 32px; border-radius: 12px 12px 0 0; text-align: center;">
+            <h1 style="color: #C9962A; margin: 0; font-size: 24px;">Welcome to ClassUp!</h1>
+        </div>
+        <div style="background: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+                Hi {request.contact_name},
+            </p>
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+                Thank you for your interest in ClassUp! We've received your free trial request for <strong>{request.school_name}</strong>.
+            </p>
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+                Our team will review your details and get in touch within <strong>24 hours</strong> to set up your account and walk you through the platform.
+            </p>
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+                In the meantime, if you have any questions, feel free to reply to this email.
+            </p>
+            <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px;">What happens next:</p>
+                <ol style="color: #374151; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                    <li>We'll create your ClassUp account</li>
+                    <li>You'll receive login credentials via email</li>
+                    <li>Enjoy 1 month of full access — no credit card required</li>
+                </ol>
+            </div>
+            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0;">
+                Best regards,<br>
+                <strong style="color: #1B3A6B;">The ClassUp Team</strong>
+            </p>
+        </div>
+    </div>
+    """
+
+    try:
+        await email_service.send_raw_email(
+            to=request.email,
+            subject="Welcome to ClassUp — Your Free Trial Request",
+            html_body=confirmation_html,
+            from_name="ClassUp",
+        )
+    except Exception:
+        logger.exception(f"Failed to send trial confirmation to {request.email}")
+
+    return APIResponse(message="Thank you! We'll be in touch within 24 hours to set up your free trial.")
