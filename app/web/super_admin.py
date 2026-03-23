@@ -220,6 +220,33 @@ async def tenant_edit_form(
     )
 
 
+@router.get("/subscriptions", response_class=HTMLResponse)
+async def subscriptions_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Render the subscriptions & revenue management page."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    _require_super_admin()
+
+    return templates.TemplateResponse(
+        "super_admin/subscriptions.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
 @router.get("/email-settings", response_class=HTMLResponse)
 async def email_settings(
     request: Request,

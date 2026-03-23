@@ -50,48 +50,48 @@
         </nav>
     </div>
 
+    {% if plan_features %}
+    <div class="mb-6 rounded-lg bg-blue-50 border border-blue-200 p-4">
+        <div class="flex">
+            <svg class="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <p class="ml-3 text-sm text-blue-700">Some features are controlled by your subscription plan and cannot be changed here. Features marked with a lock icon are managed by your plan.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% macro feature_toggle(name, label, description, default=False) %}
+    {% set locked = plan_features is defined and name in plan_features %}
+    {% set enabled = features.get(name, default) %}
+    <label class="flex items-start {% if locked %}opacity-75{% endif %}">
+        <input type="checkbox" name="feature_{{ name }}"
+               {% if enabled %}checked{% endif %}
+               {% if locked %}disabled{% endif %}
+               class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+        <span class="ml-3">
+            <span class="block text-sm font-medium text-neutral-900">
+                {{ label }}
+                {% if locked %}
+                <svg class="inline w-3.5 h-3.5 text-neutral-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                <span class="text-xs font-normal text-neutral-400">Plan-managed</span>
+                {% endif %}
+            </span>
+            <span class="block text-sm text-neutral-500">{{ description }}</span>
+        </span>
+    </label>
+    {% endmacro %}
+
     <!-- Form -->
     <form method="POST" action="/settings/features" class="space-y-6">
         <!-- Core Features -->
         <div class="bg-white shadow-sm rounded-lg p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Core Features</h3>
             <div class="space-y-4">
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_attendance_tracking"
-                           {% if features.get('attendance_tracking', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Attendance Tracking</span>
-                        <span class="block text-sm text-neutral-500">Track daily student attendance with check-in/check-out</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_messaging"
-                           {% if features.get('messaging', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Messaging</span>
-                        <span class="block text-sm text-neutral-500">Send messages and announcements to parents</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_photo_sharing"
-                           {% if features.get('photo_sharing', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Photo Sharing</span>
-                        <span class="block text-sm text-neutral-500">Share photos with parents</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_document_sharing"
-                           {% if features.get('document_sharing', True) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Document Sharing</span>
-                        <span class="block text-sm text-neutral-500">Share documents and files with parents</span>
-                    </span>
-                </label>
+                {{ feature_toggle('attendance_tracking', 'Attendance Tracking', 'Track daily student attendance with check-in/check-out', True) }}
+                {{ feature_toggle('messaging', 'Messaging', 'Send messages and announcements to parents', True) }}
+                {{ feature_toggle('photo_sharing', 'Photo Sharing', 'Share photos with parents', True) }}
+                {{ feature_toggle('document_sharing', 'Document Sharing', 'Share documents and files with parents', True) }}
             </div>
         </div>
 
@@ -99,42 +99,10 @@
         <div class="bg-white shadow-sm rounded-lg p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Daycare Features</h3>
             <div class="space-y-4">
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_daily_reports"
-                           {% if features.get('daily_reports', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Daily Reports</span>
-                        <span class="block text-sm text-neutral-500">Create and send daily activity reports to parents</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_nap_tracking"
-                           {% if features.get('nap_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Nap Tracking</span>
-                        <span class="block text-sm text-neutral-500">Track nap and rest times</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_meal_tracking"
-                           {% if features.get('meal_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Meal Tracking</span>
-                        <span class="block text-sm text-neutral-500">Track meals and eating habits</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_diaper_tracking"
-                           {% if features.get('diaper_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Diaper Tracking</span>
-                        <span class="block text-sm text-neutral-500">Track diaper changes</span>
-                    </span>
-                </label>
+                {{ feature_toggle('daily_reports', 'Daily Reports', 'Create and send daily activity reports to parents') }}
+                {{ feature_toggle('nap_tracking', 'Nap Tracking', 'Track nap and rest times') }}
+                {{ feature_toggle('meal_tracking', 'Meal Tracking', 'Track meals and eating habits') }}
+                {{ feature_toggle('diaper_tracking', 'Diaper Tracking', 'Track diaper changes') }}
             </div>
         </div>
 
@@ -142,33 +110,9 @@
         <div class="bg-white shadow-sm rounded-lg p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">School Features</h3>
             <div class="space-y-4">
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_homework_tracking"
-                           {% if features.get('homework_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Homework Tracking</span>
-                        <span class="block text-sm text-neutral-500">Track homework assignments</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_grade_tracking"
-                           {% if features.get('grade_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Grade Tracking</span>
-                        <span class="block text-sm text-neutral-500">Track grades and academic progress</span>
-                    </span>
-                </label>
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_behavior_tracking"
-                           {% if features.get('behavior_tracking', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Behavior Tracking</span>
-                        <span class="block text-sm text-neutral-500">Track student behavior and conduct</span>
-                    </span>
-                </label>
+                {{ feature_toggle('homework_tracking', 'Homework Tracking', 'Track homework assignments') }}
+                {{ feature_toggle('grade_tracking', 'Grade Tracking', 'Track grades and academic progress') }}
+                {{ feature_toggle('behavior_tracking', 'Behavior Tracking', 'Track student behavior and conduct') }}
             </div>
         </div>
 
@@ -176,15 +120,7 @@
         <div class="bg-white shadow-sm rounded-lg p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Administration</h3>
             <div class="space-y-4">
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_billing"
-                           {% if features.get('billing', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">Billing &amp; Invoicing</span>
-                        <span class="block text-sm text-neutral-500">Manage fee items, generate invoices, record payments, and send statements to parents</span>
-                    </span>
-                </label>
+                {{ feature_toggle('billing', 'Billing & Invoicing', 'Manage fee items, generate invoices, record payments, and send statements to parents') }}
             </div>
         </div>
 
@@ -192,15 +128,7 @@
         <div class="bg-white shadow-sm rounded-lg p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Integrations</h3>
             <div class="space-y-4">
-                <label class="flex items-start">
-                    <input type="checkbox" name="feature_whatsapp_enabled"
-                           {% if features.get('whatsapp_enabled', False) %}checked{% endif %}
-                           class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="ml-3">
-                        <span class="block text-sm font-medium text-neutral-900">WhatsApp Integration</span>
-                        <span class="block text-sm text-neutral-500">Send notifications via WhatsApp</span>
-                    </span>
-                </label>
+                {{ feature_toggle('whatsapp_enabled', 'WhatsApp Integration', 'Send notifications via WhatsApp') }}
             </div>
         </div>
 

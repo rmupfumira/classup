@@ -13,13 +13,39 @@
             </p>
         </div>
         {% if permissions.can_manage_students() %}
-        <a href="/students/new"
-           class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Add Student
-        </a>
+        <div class="flex items-center gap-2">
+            <!-- Export Buttons -->
+            <div class="hidden sm:flex items-center gap-1.5">
+                <a href="/students/export/csv?{{ export_query }}" title="Export CSV"
+                   class="inline-flex items-center px-2.5 py-1.5 text-sm text-neutral-600 bg-white border border-neutral-300 rounded hover:bg-neutral-50 transition-colors">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    CSV
+                </a>
+                <a href="/students/export/pdf?{{ export_query }}" title="Export PDF"
+                   class="inline-flex items-center px-2.5 py-1.5 text-sm text-neutral-600 bg-white border border-neutral-300 rounded hover:bg-neutral-50 transition-colors">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    PDF
+                </a>
+                <button onclick="window.print()" title="Print"
+                        class="inline-flex items-center px-2.5 py-1.5 text-sm text-neutral-600 bg-white border border-neutral-300 rounded hover:bg-neutral-50 transition-colors">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                    Print
+                </button>
+            </div>
+            <a href="/students/new"
+               class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Student
+            </a>
+        </div>
         {% endif %}
     </div>
 
@@ -284,6 +310,19 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+    nav, .sidebar, .bottom-nav, form, .pagination, button, a[href*="export"],
+    a[href="/students/new"], .print\\:hidden { display: none !important; }
+    .shadow-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    body { font-size: 12px; }
+    table { width: 100%; }
+    th, td { padding: 4px 8px !important; }
+}
+</style>
 {% endblock %}
 
 {% block scripts %}

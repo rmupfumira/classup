@@ -39,9 +39,17 @@ class InvitationService:
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
-        # Verify student exists and belongs to tenant
-        student = await db.get(Student, student_id)
-        if not student or student.tenant_id != tenant_id:
+        # Verify student exists and belongs to tenant (tenant-scoped query)
+        result = await db.execute(
+            select(Student).where(
+                and_(
+                    Student.id == student_id,
+                    Student.tenant_id == tenant_id,
+                )
+            )
+        )
+        student = result.scalar_one_or_none()
+        if not student:
             raise ValueError("Student not found")
 
         # Check for existing pending invitation for this email/student

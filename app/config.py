@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     whatsapp_verify_token: str = ""
     whatsapp_business_account_id: str = ""
 
+    # Paystack
+    paystack_secret_key: str = ""
+    paystack_public_key: str = ""
+    paystack_webhook_secret: str = ""
+    paystack_base_url: str = "https://api.paystack.co"
+
     # Defaults
     default_language: str = "en"
     supported_languages: str = "en,af"

@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div>
+        <h1 class="text-xl font-semibold text-neutral-800">Your Subscription</h1>
+        <p class="mt-1 text-sm text-neutral-500">Manage your ClassUp subscription and billing</p>
+    </div>
+
+    <!-- Subscription Status Card -->
+    <div class="bg-white rounded-xl border border-neutral-200 p-6" id="sub-card">
+        <div class="flex items-center justify-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+        </div>
+    </div>
+
+    <!-- Available Plans -->
+    <div class="bg-white rounded-xl border border-neutral-200">
+        <div class="px-6 py-4 border-b border-neutral-200">
+            <h2 class="text-lg font-semibold text-neutral-800">Available Plans</h2>
+            <p class="text-sm text-neutral-500 mt-1">Choose the plan that fits your school</p>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="plans-grid">
+                <div class="text-center text-neutral-400 py-8 col-span-full">Loading plans...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paystack Info -->
+    <div class="bg-neutral-50 rounded-xl border border-neutral-200 p-5">
+        <div class="flex gap-3">
+            <svg class="w-5 h-5 text-neutral-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <div>
+                <p class="text-sm font-medium text-neutral-700">Secure payments via Paystack</p>
+                <p class="text-xs text-neutral-500 mt-1">All payments are processed securely through Paystack. Your card details are never stored on our servers. You can cancel anytime from this page.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History -->
+    <div class="bg-white rounded-xl border border-neutral-200">
+        <div class="px-6 py-4 border-b border-neutral-200">
+            <h2 class="text-lg font-semibold text-neutral-800">Payment History</h2>
+        </div>
+        <div id="invoices-section" class="p-6">
+            <p class="text-center text-neutral-400">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const statusMessages = {
+    TRIALING: { icon: '&#9200;', color: 'blue', label: 'Free Trial', desc: 'Your free trial is active.' },
+    ACTIVE: { icon: '&#10003;', color: 'green', label: 'Active', desc: 'Your subscription is active.' },
+    PAST_DUE: { icon: '&#9888;', color: 'yellow', label: 'Past Due', desc: 'Your payment is overdue. Please update your payment method.' },
+    SUSPENDED: { icon: '&#10005;', color: 'red', label: 'Suspended', desc: 'Your subscription is suspended. Please make a payment to restore access.' },
+    CANCELLED: { icon: '&#10005;', color: 'neutral', label: 'Cancelled', desc: 'Your subscription has been cancelled. Select a plan below to reactivate.' },
+};
+
+let currentPlanId = null;
+let currentStatus = null;
+
+function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-ZA', {year:'numeric',month:'long',day:'numeric'}) : '-'; }
+
+async function loadSubscription() {
+    const card = document.getElementById('sub-card');
+    try {
+        const res = await ClassUp.fetch('/api/v1/subscription');
+        const sub = res.data;
+        if (!sub) {
+            currentPlanId = null;
+            currentStatus = null;
+            card.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-800 mb-2">No Active Subscription</h3>
+                    <p class="text-neutral-500 mb-4">Choose a plan below to get started with your free trial.</p>
+                </div>`;
+            return;
+        }
+
+        // Track current plan for the plan cards
+        currentStatus = sub.status;
+        // We need plan_id — get it from the plan name match in plans list later
+        // For now store what we have
+        currentPlanId = sub.id; // subscription ID, will match plan below
+
+        const sm = statusMessages[sub.status] || statusMessages.SUSPENDED;
+        const isTrialing = sub.status === 'TRIALING';
+        const needsPayment = ['TRIALING', 'PAST_DUE', 'SUSPENDED'].includes(sub.status);
+        const trialDaysLeft = isTrialing && sub.trial_end
+            ? Math.max(0, Math.ceil((new Date(sub.trial_end) - new Date()) / 86400000))
+            : 0;
+
+        card.innerHTML = `
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-${sm.color}-100 flex items-center justify-center text-${sm.color}-600 text-xl">
+                    ${sm.icon}
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-lg font-semibold text-neutral-800">${sub.plan_name || 'No Plan'}</h3>
+                        <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-${sm.color}-100 text-${sm.color}-800">${sm.label}</span>
+                    </div>
+                    <p class="mt-1 text-sm text-neutral-500">${sm.desc}</p>
+                    ${isTrialing ? `<p class="mt-2 text-sm font-medium text-blue-600">${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} remaining in your free trial</p>` : ''}
+
+                    <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                        <div>
+                            <span class="text-neutral-500">Monthly Price</span>
+                            <p class="font-semibold text-neutral-800">R ${sub.plan_price ? sub.plan_price.toFixed(2) : '0.00'}</p>
+                        </div>
+                        <div>
+                            <span class="text-neutral-500">${isTrialing ? 'Trial Ends' : 'Next Billing'}</span>
+                            <p class="font-semibold text-neutral-800">${formatDate(isTrialing ? sub.trial_end : sub.current_period_end)}</p>
+                        </div>
+                        <div>
+                            <span class="text-neutral-500">Max Students</span>
+                            <p class="font-semibold text-neutral-800">${sub.max_students || 'Unlimited'}</p>
+                        </div>
+                        <div>
+                            <span class="text-neutral-500">Max Staff</span>
+                            <p class="font-semibold text-neutral-800">${sub.max_staff || 'Unlimited'}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex flex-wrap gap-3">
+                        ${needsPayment ? `
+                            <button onclick="startPayment()"
+                                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 transition-colors">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                </svg>
+                                ${isTrialing ? 'Add Payment Method' : 'Make Payment'}
+                            </button>
+                        ` : ''}
+                        ${sub.status === 'ACTIVE' ? `
+                            <button onclick="cancelSubscription()"
+                                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-md hover:bg-red-50 transition-colors">
+                                Cancel Subscription
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Store plan name for plan card matching
+        card.dataset.planName = sub.plan_name || '';
+
+        // Check if returning from payment
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('payment') === 'complete' && params.get('reference')) {
+            verifyPayment(params.get('reference'));
+        }
+    } catch (e) {
+        card.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load subscription details.</p>';
+        console.error(e);
+    }
+}
+
+async function loadPlans() {
+    const grid = document.getElementById('plans-grid');
+    try {
+        const res = await ClassUp.fetch('/api/v1/plans');
+        if (!res.data || !res.data.length) {
+            grid.innerHTML = '<div class="text-center text-neutral-400 py-8 col-span-full">No plans available yet.</div>';
+            return;
+        }
+
+        const currentPlanName = document.getElementById('sub-card').dataset?.planName;
+
+        grid.innerHTML = res.data.map(p => {
+            const isCurrent = currentPlanName && p.name === currentPlanName;
+            const enabledFeatures = p.features
+                ? Object.entries(p.features).filter(([,v]) => v).map(([k]) => k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
+                : [];
+
+            return `
+            <div class="border-2 ${isCurrent ? 'border-primary-500 ring-1 ring-primary-200' : 'border-neutral-200'} rounded-xl p-5 flex flex-col relative">
+                ${isCurrent ? '<div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-primary-500 text-white text-xs font-semibold rounded-full">Current Plan</div>' : ''}
+                <h3 class="text-lg font-semibold text-neutral-800">${p.name}</h3>
+                <div class="mt-2">
+                    <span class="text-3xl font-bold text-neutral-900">R ${Number(p.price_monthly).toLocaleString('en-ZA', {minimumFractionDigits: 2})}</span>
+                    <span class="text-sm text-neutral-500">/month</span>
+                </div>
+                ${p.price_annually ? `<p class="text-xs text-neutral-500 mt-1">or R ${Number(p.price_annually).toLocaleString('en-ZA', {minimumFractionDigits: 2})}/year</p>` : ''}
+                <p class="text-sm text-neutral-500 mt-3">${p.description || ''}</p>
+                <div class="mt-4 space-y-2 text-sm flex-1">
+                    <div class="flex items-center gap-2 text-neutral-600">
+                        <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        ${p.max_students ? p.max_students + ' students' : 'Unlimited students'}
+                    </div>
+                    <div class="flex items-center gap-2 text-neutral-600">
+                        <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        ${p.max_staff ? p.max_staff + ' staff' : 'Unlimited staff'}
+                    </div>
+                    <div class="flex items-center gap-2 text-neutral-600">
+                        <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        ${p.trial_days}-day free trial
+                    </div>
+                    ${enabledFeatures.length ? `
+                    <div class="pt-2 border-t border-neutral-100 mt-3">
+                        <p class="text-xs font-medium text-neutral-500 uppercase mb-2">Includes</p>
+                        ${enabledFeatures.slice(0, 6).map(f => `
+                        <div class="flex items-center gap-2 text-neutral-600 py-0.5">
+                            <svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span class="text-xs">${f}</span>
+                        </div>`).join('')}
+                        ${enabledFeatures.length > 6 ? `<p class="text-xs text-neutral-400 mt-1">+${enabledFeatures.length - 6} more features</p>` : ''}
+                    </div>` : ''}
+                </div>
+                <div class="mt-5">
+                    ${isCurrent
+                        ? `<button disabled class="w-full px-4 py-2.5 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-lg cursor-default">Current Plan</button>`
+                        : `<button onclick="selectPlan('${p.id}', '${p.name.replace(/'/g, "\\'")}')"
+                                  class="w-full px-4 py-2.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition-colors">
+                              ${currentPlanName ? 'Switch to ' + p.name : 'Start Free Trial'}
+                          </button>`
+                    }
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        grid.innerHTML = '<div class="text-center text-red-500 py-8 col-span-full">Failed to load plans.</div>';
+        console.error('Failed to load plans', e);
+    }
+}
+
+async function selectPlan(planId, planName) {
+    const confirmed = await ClassUp.confirm(
+        `Switch to the ${planName} plan? Your trial will be reset and features will be updated to match the new plan.`
+    );
+    if (!confirmed) return;
+
+    try {
+        await ClassUp.fetch('/api/v1/subscription/select-plan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ plan_id: planId }),
+        });
+        ClassUp.toast(`Switched to ${planName} plan!`, 'success');
+        // Reload both sections
+        await loadSubscription();
+        loadPlans();
+    } catch (e) {
+        ClassUp.toast('Failed to switch plan. Please try again.', 'error');
+    }
+}
+
+async function loadInvoices() {
+    const section = document.getElementById('invoices-section');
+    try {
+        const res = await ClassUp.fetch('/api/v1/subscription/invoices');
+        if (!res.data || !res.data.length) {
+            section.innerHTML = '<p class="text-center text-neutral-400 py-4">No payment history yet.</p>';
+            return;
+        }
+        section.innerHTML = `
+            <table class="min-w-full divide-y divide-neutral-200">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Period</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Amount</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-200">
+                    ${res.data.map(inv => `
+                        <tr>
+                            <td class="px-4 py-3 text-sm">${inv.billing_period_start} - ${inv.billing_period_end}</td>
+                            <td class="px-4 py-3 text-sm font-medium">R ${inv.amount.toFixed(2)}</td>
+                            <td class="px-4 py-3 text-sm">
+                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full
+                                    ${inv.status === 'PAID' ? 'bg-green-100 text-green-800' : inv.status === 'FAILED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
+                                    ${inv.status}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-neutral-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (e) {
+        section.innerHTML = '<p class="text-center text-red-500">Failed to load payment history.</p>';
+    }
+}
+
+async function startPayment() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/subscription/initialize-payment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                callback_url: window.location.origin + '/subscription?payment=complete',
+            }),
+        });
+        if (res.data && res.data.authorization_url) {
+            window.location.href = res.data.authorization_url;
+        }
+    } catch (e) {
+        ClassUp.toast('Failed to initialize payment. Please try again.', 'error');
+    }
+}
+
+async function verifyPayment(reference) {
+    try {
+        const res = await ClassUp.fetch(`/api/v1/subscription/verify-payment?reference=${reference}`);
+        ClassUp.toast('Payment verified! Your subscription is now active.', 'success');
+        window.history.replaceState({}, '', '/subscription');
+        loadSubscription();
+        loadPlans();
+    } catch (e) {
+        ClassUp.toast('Payment verification failed. Please contact support.', 'error');
+    }
+}
+
+async function cancelSubscription() {
+    const confirmed = await ClassUp.confirm('Are you sure you want to cancel your subscription? You will lose access at the end of your current billing period.');
+    if (!confirmed) return;
+
+    try {
+        await ClassUp.fetch('/api/v1/subscription/cancel', { method: 'POST' });
+        ClassUp.toast('Subscription cancelled.', 'success');
+        loadSubscription();
+        loadPlans();
+    } catch (e) {
+        ClassUp.toast('Failed to cancel subscription.', 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadSubscription();
+    loadPlans();
+    loadInvoices();
+});
+</script>
+{% endblock %}

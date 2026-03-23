@@ -796,6 +796,85 @@ class BillingService:
         )
 
     # =========================================================================
+    # Arrears / Ageing Report
+    # =========================================================================
+
+    async def get_arrears_report(
+        self,
+        db: AsyncSession,
+        class_id: uuid.UUID | None = None,
+    ) -> list[dict]:
+        """Get arrears/ageing report grouped by student.
+
+        Returns per-student: total_due, total_paid, outstanding, and ageing
+        buckets (current, 30 days, 60 days, 90+ days).
+        """
+        tenant_id = get_tenant_id()
+        today = date.today()
+
+        # Get all non-cancelled invoices with outstanding balance
+        query = (
+            select(BillingInvoice)
+            .join(Student, BillingInvoice.student_id == Student.id)
+            .where(
+                BillingInvoice.tenant_id == tenant_id,
+                BillingInvoice.deleted_at.is_(None),
+                BillingInvoice.status.in_([
+                    InvoiceStatus.SENT.value,
+                    InvoiceStatus.PARTIALLY_PAID.value,
+                    InvoiceStatus.OVERDUE.value,
+                ]),
+            )
+        )
+        if class_id:
+            query = query.where(Student.class_id == class_id)
+
+        query = query.order_by(Student.last_name, Student.first_name)
+        result = await db.execute(query)
+        invoices = list(result.scalars().unique().all())
+
+        # Group by student
+        student_data: dict[uuid.UUID, dict] = {}
+        for inv in invoices:
+            sid = inv.student_id
+            if sid not in student_data:
+                student_data[sid] = {
+                    "student": inv.student,
+                    "total_due": Decimal("0"),
+                    "total_paid": Decimal("0"),
+                    "outstanding": Decimal("0"),
+                    "current": Decimal("0"),
+                    "days_30": Decimal("0"),
+                    "days_60": Decimal("0"),
+                    "days_90_plus": Decimal("0"),
+                    "invoices": [],
+                }
+
+            entry = student_data[sid]
+            entry["total_due"] += inv.total_amount or Decimal("0")
+            entry["total_paid"] += inv.amount_paid or Decimal("0")
+            balance = inv.balance or Decimal("0")
+            entry["outstanding"] += balance
+
+            # Ageing buckets based on due date
+            if inv.due_date:
+                days_overdue = (today - inv.due_date).days
+                if days_overdue <= 0:
+                    entry["current"] += balance
+                elif days_overdue <= 30:
+                    entry["days_30"] += balance
+                elif days_overdue <= 60:
+                    entry["days_60"] += balance
+                else:
+                    entry["days_90_plus"] += balance
+            else:
+                entry["current"] += balance
+
+            entry["invoices"].append(inv)
+
+        return list(student_data.values())
+
+    # =========================================================================
     # Overdue Detection
     # =========================================================================
 

@@ -150,6 +150,7 @@ async def list_files(
 
 
 @router.get("/{file_id}", response_model=APIResponse[FileEntityResponse])
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER, Role.PARENT)
 async def get_file(
     file_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -162,6 +163,7 @@ async def get_file(
 
 
 @router.get("/{file_id}/url", response_model=APIResponse[PresignedUrlResponse])
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER, Role.PARENT)
 async def get_file_url(
     file_id: uuid.UUID,
     expires_in: int = Query(3600, ge=60, le=86400, description="URL expiry time in seconds (1 hour default)"),

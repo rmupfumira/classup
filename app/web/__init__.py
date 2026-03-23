@@ -19,6 +19,7 @@ from app.web import (
     reports,
     settings,
     students,
+    subscription,
     super_admin,
     teachers,
 )
@@ -43,4 +44,5 @@ web_router.include_router(imports.router)
 web_router.include_router(invitations.router)
 web_router.include_router(messages.router)
 web_router.include_router(teachers.router)
+web_router.include_router(subscription.router)
 web_router.include_router(super_admin.router)

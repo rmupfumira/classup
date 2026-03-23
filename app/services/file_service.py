@@ -3,8 +3,11 @@
 import io
 import logging
 import mimetypes
+import urllib.parse
 import uuid
 from datetime import datetime
+
+import magic
 
 import boto3
 from PIL import Image
@@ -190,8 +193,24 @@ class FileService:
                 "message": f"File size exceeds maximum allowed ({settings.max_upload_size_mb}MB)",
             }])
 
-        # Determine content type
+        # Determine content type using magic bytes (not just extension/header)
+        try:
+            detected_mime = magic.from_buffer(content[:2048], mime=True)
+        except Exception:
+            detected_mime = None
+
         content_type = file.content_type or self._guess_content_type(file.filename)
+
+        # If magic detected a type, use it for validation (prevents extension spoofing)
+        if detected_mime:
+            allowed_types = ALLOWED_MIME_TYPES.get(category, set())
+            if detected_mime not in allowed_types:
+                raise ValidationException([{
+                    "field": "file",
+                    "message": f"File content does not match allowed types for {category.value}. "
+                               f"Detected: {detected_mime}",
+                }])
+            content_type = detected_mime
 
         # Compress images (photos, avatars, logos)
         if category in (FileCategory.PHOTO, FileCategory.AVATAR, FileCategory.LOGO):
@@ -383,10 +402,13 @@ class FileService:
             Presigned URL string
         """
         try:
+            # Sanitize filename for Content-Disposition header (RFC 5987)
+            safe_name = file_entity.original_name.replace('"', '_').replace('\\', '_')
+            encoded_name = urllib.parse.quote(file_entity.original_name, safe='')
             if inline:
-                disposition = f'inline; filename="{file_entity.original_name}"'
+                disposition = f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{encoded_name}"
             else:
-                disposition = f'attachment; filename="{file_entity.original_name}"'
+                disposition = f"attachment; filename=\"{safe_name}\"; filename*=UTF-8''{encoded_name}"
 
             url = self.s3_client.generate_presigned_url(
                 "get_object",

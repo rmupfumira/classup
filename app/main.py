@@ -7,7 +7,11 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import close_db
@@ -16,6 +20,7 @@ from app.exceptions import (
     ValidationException,
     create_exception_handlers,
 )
+from app.rate_limit import limiter
 from app.templates_config import templates
 
 # Configure logging - force DEBUG level for development
@@ -56,6 +61,25 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Rate limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    # Security headers middleware
+    class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["X-XSS-Protection"] = "1; mode=block"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+            if settings.is_production:
+                response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            return response
+
+    app.add_middleware(SecurityHeadersMiddleware)
+
     # Trust proxy headers (Railway terminates SSL at the proxy)
     # This ensures url_for() generates https:// URLs in production
     from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
@@ -74,6 +98,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add subscription enforcement middleware (runs after auth)
+    from app.middleware.subscription import SubscriptionMiddleware
+    app.add_middleware(SubscriptionMiddleware)
 
     # Add authentication middleware
     from app.middleware.auth import AuthMiddleware

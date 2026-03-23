@@ -19,6 +19,7 @@ from app.api.v1 import (
     photos,
     reports,
     students,
+    subscriptions,
     users,
     webhooks,
     websocket,
@@ -45,6 +46,7 @@ api_router.include_router(imports.router, prefix="/imports", tags=["Imports"])
 api_router.include_router(academic.router, prefix="/academic", tags=["Academic"])
 api_router.include_router(grade_levels.router, prefix="/grade-levels", tags=["Grade Levels"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
+api_router.include_router(subscriptions.router)
 api_router.include_router(admin.router)
 api_router.include_router(websocket.router)
 api_router.include_router(whatsapp.router)

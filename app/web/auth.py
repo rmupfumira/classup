@@ -117,6 +117,10 @@ async def register_page(
         response.delete_cookie("access_token")
         return response
 
+    # Registration requires an invitation code — block open registration
+    if not code:
+        return RedirectResponse(url="/login", status_code=302)
+
     # Pre-fill from invitation if code + email provided
     first_name = ""
     last_name = ""

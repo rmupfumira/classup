@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block title %}Subscriptions & Revenue - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Subscriptions & Revenue</h1>
+            <p class="mt-1 text-sm text-neutral-500">Manage plans, view subscriptions, and track revenue</p>
+        </div>
+        <button onclick="showPlanModal()"
+                class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 transition-colors shadow-sm">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Create Plan
+        </button>
+    </div>
+
+    <!-- Revenue Metrics -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl border border-neutral-200 p-5">
+            <p class="text-sm font-medium text-neutral-500">Monthly Recurring Revenue</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="mrr">R 0.00</p>
+        </div>
+        <div class="bg-white rounded-xl border border-neutral-200 p-5">
+            <p class="text-sm font-medium text-neutral-500">Revenue This Month</p>
+            <p class="mt-2 text-3xl font-semibold text-success-600" id="monthly-revenue">R 0.00</p>
+        </div>
+        <div class="bg-white rounded-xl border border-neutral-200 p-5">
+            <p class="text-sm font-medium text-neutral-500">Total Revenue</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="total-revenue">R 0.00</p>
+        </div>
+        <div class="bg-white rounded-xl border border-neutral-200 p-5">
+            <p class="text-sm font-medium text-neutral-500">Active Subscriptions</p>
+            <p class="mt-2 text-3xl font-semibold text-primary-600" id="active-count">0</p>
+            <div class="mt-2 text-xs text-neutral-500" id="status-breakdown"></div>
+        </div>
+    </div>
+
+    <!-- Plans Section -->
+    <div class="bg-white rounded-xl border border-neutral-200">
+        <div class="px-6 py-4 border-b border-neutral-200">
+            <h2 class="text-lg font-semibold text-neutral-800">Subscription Plans</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="plans-grid">
+                <div class="text-center text-neutral-400 py-8 col-span-full">Loading plans...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscriptions Table -->
+    <div class="bg-white rounded-xl border border-neutral-200">
+        <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-neutral-800">Tenant Subscriptions</h2>
+            <select id="status-filter" onchange="loadSubscriptions()"
+                    class="text-sm border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                <option value="">All Statuses</option>
+                <option value="TRIALING">Trialing</option>
+                <option value="ACTIVE">Active</option>
+                <option value="PAST_DUE">Past Due</option>
+                <option value="SUSPENDED">Suspended</option>
+                <option value="CANCELLED">Cancelled</option>
+            </select>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-neutral-200">
+                <thead class="bg-neutral-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Tenant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Plan</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Trial End</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Next Billing</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Price</th>
+                    </tr>
+                </thead>
+                <tbody id="subscriptions-body" class="bg-white divide-y divide-neutral-200">
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-neutral-400">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Invoices -->
+    <div class="bg-white rounded-xl border border-neutral-200">
+        <div class="px-6 py-4 border-b border-neutral-200">
+            <h2 class="text-lg font-semibold text-neutral-800">Recent Platform Invoices</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-neutral-200">
+                <thead class="bg-neutral-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Tenant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Period</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Paid At</th>
+                    </tr>
+                </thead>
+                <tbody id="invoices-body" class="bg-white divide-y divide-neutral-200">
+                    <tr><td colspan="5" class="px-6 py-8 text-center text-neutral-400">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Plan Modal (create & edit) -->
+<dialog id="plan-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold" id="plan-modal-title">Create Subscription Plan</h3>
+            <button onclick="document.getElementById('plan-modal').close()" class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form id="plan-form" onsubmit="savePlan(event)" class="space-y-4">
+            <input type="hidden" name="plan_id" value="">
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Plan Name</label>
+                <input type="text" name="name" required class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. Starter">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                <div class="flex gap-2 items-start">
+                    <textarea name="description" rows="2" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="What's included"></textarea>
+                    <button type="button" onclick="autoGenerateDescription()" title="Auto-generate from features"
+                            class="shrink-0 mt-1 p-1.5 text-neutral-400 hover:text-primary-600 border border-neutral-200 rounded-md hover:border-primary-300 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Monthly Price (ZAR)</label>
+                    <input type="number" name="price_monthly" step="0.01" required class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="299.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Annual Price (ZAR)</label>
+                    <input type="number" name="price_annually" step="0.01" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="2990.00">
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Max Students</label>
+                    <input type="number" name="max_students" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="Unlimited">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Max Staff</label>
+                    <input type="number" name="max_staff" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="Unlimited">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Trial Days</label>
+                    <input type="number" name="trial_days" value="30" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                </div>
+            </div>
+            <!-- Active toggle (edit only) -->
+            <div id="plan-active-toggle" class="hidden">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="is_active" checked class="rounded border-neutral-300 text-primary-600">
+                    <span class="font-medium text-neutral-700">Plan is active</span>
+                </label>
+            </div>
+            <!-- Plan Features -->
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-2">Included Features</label>
+                <div class="max-h-56 overflow-y-auto border border-neutral-200 rounded-md p-3 space-y-3">
+                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide">Core</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_attendance_tracking" checked class="rounded border-neutral-300 text-primary-600"> Attendance Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_messaging" checked class="rounded border-neutral-300 text-primary-600"> Messaging</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_photo_sharing" checked class="rounded border-neutral-300 text-primary-600"> Photo Sharing</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_document_sharing" checked class="rounded border-neutral-300 text-primary-600"> Document Sharing</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_parent_communication" checked class="rounded border-neutral-300 text-primary-600"> Parent Communication</label>
+
+                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide pt-2">Daycare</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_daily_reports" checked class="rounded border-neutral-300 text-primary-600"> Daily Reports</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_nap_tracking" checked class="rounded border-neutral-300 text-primary-600"> Nap Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_bathroom_tracking" checked class="rounded border-neutral-300 text-primary-600"> Bathroom Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_fluid_tracking" checked class="rounded border-neutral-300 text-primary-600"> Fluid Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_meal_tracking" checked class="rounded border-neutral-300 text-primary-600"> Meal Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_diaper_tracking" checked class="rounded border-neutral-300 text-primary-600"> Diaper Tracking</label>
+
+                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide pt-2">School</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_homework_tracking" checked class="rounded border-neutral-300 text-primary-600"> Homework Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_grade_tracking" checked class="rounded border-neutral-300 text-primary-600"> Grade Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_behavior_tracking" checked class="rounded border-neutral-300 text-primary-600"> Behavior Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_timetable_management" checked class="rounded border-neutral-300 text-primary-600"> Timetable Management</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_subject_management" checked class="rounded border-neutral-300 text-primary-600"> Subject Management</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_exam_management" checked class="rounded border-neutral-300 text-primary-600"> Exam Management</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_disciplinary_records" checked class="rounded border-neutral-300 text-primary-600"> Disciplinary Records</label>
+
+                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide pt-2">Admin & Integrations</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_billing" checked class="rounded border-neutral-300 text-primary-600"> Billing & Invoicing</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_enabled" class="rounded border-neutral-300 text-primary-600"> WhatsApp Integration</label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" onclick="document.getElementById('plan-modal').close()"
+                        class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                    Cancel
+                </button>
+                <button type="submit" id="plan-submit-btn"
+                        class="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                    Create Plan
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+const statusColors = {
+    TRIALING: 'bg-blue-100 text-blue-800',
+    ACTIVE: 'bg-green-100 text-green-800',
+    PAST_DUE: 'bg-yellow-100 text-yellow-800',
+    SUSPENDED: 'bg-red-100 text-red-800',
+    CANCELLED: 'bg-neutral-100 text-neutral-600',
+    PAID: 'bg-green-100 text-green-800',
+    PENDING: 'bg-yellow-100 text-yellow-800',
+    FAILED: 'bg-red-100 text-red-800',
+};
+
+// Human-readable labels for feature keys
+const featureLabels = {
+    attendance_tracking: 'Attendance Tracking',
+    messaging: 'Messaging',
+    photo_sharing: 'Photo Sharing',
+    document_sharing: 'Document Sharing',
+    parent_communication: 'Parent Communication',
+    daily_reports: 'Daily Reports',
+    nap_tracking: 'Nap Tracking',
+    bathroom_tracking: 'Bathroom Tracking',
+    fluid_tracking: 'Fluid Tracking',
+    meal_tracking: 'Meal Tracking',
+    diaper_tracking: 'Diaper Tracking',
+    homework_tracking: 'Homework Tracking',
+    grade_tracking: 'Grade Tracking',
+    behavior_tracking: 'Behavior Tracking',
+    timetable_management: 'Timetable Management',
+    subject_management: 'Subject Management',
+    exam_management: 'Exam Management',
+    disciplinary_records: 'Disciplinary Records',
+    billing: 'Billing & Invoicing',
+    whatsapp_enabled: 'WhatsApp Integration',
+};
+
+// Cache loaded plans for editing
+let plansCache = [];
+
+function badge(status) {
+    const cls = statusColors[status] || 'bg-neutral-100 text-neutral-600';
+    return `<span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${cls}">${status}</span>`;
+}
+
+function formatR(amount) {
+    return `R ${Number(amount).toLocaleString('en-ZA', {minimumFractionDigits: 2})}`;
+}
+
+function buildDescriptionFromFeatures() {
+    const form = document.getElementById('plan-form');
+    const enabled = [];
+    form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
+        if (cb.checked) {
+            const key = cb.name.replace('feat_', '');
+            enabled.push(featureLabels[key] || key);
+        }
+    });
+    if (!enabled.length) return 'No features included.';
+    return 'Includes: ' + enabled.join(', ') + '.';
+}
+
+function autoGenerateDescription() {
+    const form = document.getElementById('plan-form');
+    form.description.value = buildDescriptionFromFeatures();
+}
+
+// ── Modal: show for create or edit ────────────────────────
+
+function showPlanModal(planId) {
+    const form = document.getElementById('plan-form');
+    const modal = document.getElementById('plan-modal');
+    const title = document.getElementById('plan-modal-title');
+    const submitBtn = document.getElementById('plan-submit-btn');
+    const activeToggle = document.getElementById('plan-active-toggle');
+
+    form.reset();
+    form.plan_id.value = '';
+
+    if (planId) {
+        // Edit mode — populate from cache
+        const plan = plansCache.find(p => p.id === planId);
+        if (!plan) return;
+
+        title.textContent = 'Edit Plan: ' + plan.name;
+        submitBtn.textContent = 'Save Changes';
+        activeToggle.classList.remove('hidden');
+        form.plan_id.value = plan.id;
+        form.name.value = plan.name;
+        form.description.value = plan.description || '';
+        form.price_monthly.value = plan.price_monthly;
+        form.price_annually.value = plan.price_annually || '';
+        form.max_students.value = plan.max_students || '';
+        form.max_staff.value = plan.max_staff || '';
+        form.trial_days.value = plan.trial_days;
+        form.is_active.checked = plan.is_active;
+
+        // Set feature checkboxes
+        form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
+            const key = cb.name.replace('feat_', '');
+            if (plan.features && key in plan.features) {
+                cb.checked = plan.features[key];
+            } else {
+                cb.checked = true; // default checked for features not in plan
+            }
+        });
+    } else {
+        // Create mode — defaults
+        title.textContent = 'Create Subscription Plan';
+        submitBtn.textContent = 'Create Plan';
+        activeToggle.classList.add('hidden');
+        // Reset checkboxes to default (all checked except whatsapp)
+        form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
+            cb.checked = cb.name !== 'feat_whatsapp_enabled';
+        });
+    }
+
+    modal.showModal();
+}
+
+async function savePlan(e) {
+    e.preventDefault();
+    const form = e.target;
+    const planId = form.plan_id.value;
+    const isEdit = !!planId;
+
+    // Collect feature toggles
+    const features = {};
+    form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
+        const key = cb.name.replace('feat_', '');
+        features[key] = cb.checked;
+    });
+
+    const data = {
+        name: form.name.value,
+        description: form.description.value || null,
+        price_monthly: parseFloat(form.price_monthly.value),
+        price_annually: form.price_annually.value ? parseFloat(form.price_annually.value) : null,
+        max_students: form.max_students.value ? parseInt(form.max_students.value) : null,
+        max_staff: form.max_staff.value ? parseInt(form.max_staff.value) : null,
+        trial_days: parseInt(form.trial_days.value) || 30,
+        features: features,
+    };
+
+    if (isEdit) {
+        data.is_active = form.is_active.checked;
+    }
+
+    try {
+        if (isEdit) {
+            await ClassUp.fetch(`/api/v1/admin/subscription-plans/${planId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data),
+            });
+            ClassUp.toast('Plan updated successfully', 'success');
+        } else {
+            await ClassUp.fetch('/api/v1/admin/subscription-plans', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data),
+            });
+            ClassUp.toast('Plan created successfully', 'success');
+        }
+        document.getElementById('plan-modal').close();
+        form.reset();
+        loadPlans();
+    } catch (err) {
+        ClassUp.toast(isEdit ? 'Failed to update plan' : 'Failed to create plan', 'error');
+    }
+}
+
+async function deletePlan(planId, planName) {
+    const confirmed = await ClassUp.confirm(`Delete plan "${planName}"? This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+        await ClassUp.fetch(`/api/v1/admin/subscription-plans/${planId}`, { method: 'DELETE' });
+        ClassUp.toast('Plan deleted', 'success');
+        loadPlans();
+    } catch (err) {
+        ClassUp.toast('Failed to delete plan', 'error');
+    }
+}
+
+// ── Data loaders ────────────────────────────────────────
+
+async function loadRevenue() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/subscription-revenue');
+        const d = res.data;
+        document.getElementById('mrr').textContent = formatR(d.mrr);
+        document.getElementById('monthly-revenue').textContent = formatR(d.monthly_revenue);
+        document.getElementById('total-revenue').textContent = formatR(d.total_revenue);
+        document.getElementById('active-count').textContent = d.subscriptions.active || 0;
+        const parts = [];
+        if (d.subscriptions.trialing) parts.push(`${d.subscriptions.trialing} trialing`);
+        if (d.subscriptions.past_due) parts.push(`${d.subscriptions.past_due} past due`);
+        if (d.subscriptions.suspended) parts.push(`${d.subscriptions.suspended} suspended`);
+        document.getElementById('status-breakdown').textContent = parts.join(' · ') || 'No subscriptions yet';
+    } catch (e) { console.error('Failed to load revenue', e); }
+}
+
+async function loadPlans() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/subscription-plans?active_only=false');
+        plansCache = res.data || [];
+        const grid = document.getElementById('plans-grid');
+        if (!plansCache.length) {
+            grid.innerHTML = '<div class="text-center text-neutral-400 py-8 col-span-full">No plans yet. Create your first plan above.</div>';
+            return;
+        }
+        grid.innerHTML = plansCache.map(p => {
+            const enabledFeatures = p.features ? Object.entries(p.features).filter(([,v]) => v).map(([k]) => featureLabels[k] || k) : [];
+            const featureSummary = enabledFeatures.length
+                ? `<div class="mt-2 text-xs text-neutral-400">${enabledFeatures.slice(0, 5).join(', ')}${enabledFeatures.length > 5 ? ` +${enabledFeatures.length - 5} more` : ''}</div>`
+                : '<div class="mt-2 text-xs text-yellow-600">No features configured</div>';
+            return `
+            <div class="border border-neutral-200 rounded-lg p-5 ${p.is_active ? '' : 'opacity-50'} relative group">
+                <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="showPlanModal('${p.id}')" title="Edit plan"
+                            class="p-1 text-neutral-400 hover:text-primary-600 rounded hover:bg-primary-50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </button>
+                    <button onclick="deletePlan('${p.id}', '${p.name.replace(/'/g, "\\'")}')" title="Delete plan"
+                            class="p-1 text-neutral-400 hover:text-red-600 rounded hover:bg-red-50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-neutral-800">${p.name}</h3>
+                    ${p.is_active ? '<span class="text-xs text-green-600">Active</span>' : '<span class="text-xs text-neutral-400">Inactive</span>'}
+                </div>
+                <p class="text-2xl font-bold text-primary-600">${formatR(p.price_monthly)}<span class="text-sm font-normal text-neutral-500">/mo</span></p>
+                <p class="text-sm text-neutral-500 mt-2">${p.description || ''}</p>
+                <div class="mt-3 space-y-1 text-xs text-neutral-500">
+                    <div>Students: ${p.max_students || 'Unlimited'}</div>
+                    <div>Staff: ${p.max_staff || 'Unlimited'}</div>
+                    <div>Trial: ${p.trial_days} days</div>
+                    <div>Features: ${enabledFeatures.length} / ${p.features ? Object.keys(p.features).length : 0} enabled</div>
+                </div>
+                ${featureSummary}
+            </div>`;
+        }).join('');
+    } catch (e) { console.error('Failed to load plans', e); }
+}
+
+async function loadSubscriptions() {
+    const status = document.getElementById('status-filter').value;
+    try {
+        const url = '/api/v1/admin/subscriptions' + (status ? `?status=${status}` : '');
+        const res = await ClassUp.fetch(url);
+        const tbody = document.getElementById('subscriptions-body');
+        if (!res.data || !res.data.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-neutral-400">No subscriptions found</td></tr>';
+            return;
+        }
+        tbody.innerHTML = res.data.map(s => `
+            <tr class="hover:bg-neutral-50">
+                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${s.tenant_name || 'Unknown'}</td>
+                <td class="px-6 py-4 text-sm text-neutral-600">${s.plan_name || '-'}</td>
+                <td class="px-6 py-4 text-sm">${badge(s.status)}</td>
+                <td class="px-6 py-4 text-sm text-neutral-600">${s.trial_end || '-'}</td>
+                <td class="px-6 py-4 text-sm text-neutral-600">${s.current_period_end || '-'}</td>
+                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${s.plan_price ? formatR(s.plan_price) : '-'}</td>
+            </tr>
+        `).join('');
+    } catch (e) { console.error('Failed to load subscriptions', e); }
+}
+
+async function loadInvoices() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/platform-invoices?page_size=10');
+        const tbody = document.getElementById('invoices-body');
+        if (!res.data || !res.data.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-neutral-400">No invoices yet</td></tr>';
+            return;
+        }
+        tbody.innerHTML = res.data.map(inv => `
+            <tr class="hover:bg-neutral-50">
+                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${inv.tenant_name || 'Unknown'}</td>
+                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${formatR(inv.amount)}</td>
+                <td class="px-6 py-4 text-sm text-neutral-600">${inv.billing_period_start} - ${inv.billing_period_end}</td>
+                <td class="px-6 py-4 text-sm">${badge(inv.status)}</td>
+                <td class="px-6 py-4 text-sm text-neutral-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
+            </tr>
+        `).join('');
+    } catch (e) { console.error('Failed to load invoices', e); }
+}
+
+// Load all data on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadRevenue();
+    loadPlans();
+    loadSubscriptions();
+    loadInvoices();
+});
+</script>
+{% endblock %}

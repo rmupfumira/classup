@@ -2,11 +2,13 @@
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import secrets
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
@@ -26,6 +28,44 @@ class WebhookService:
         """Generate a secure webhook signing secret."""
         return secrets.token_hex(32)
 
+    def _validate_webhook_url(self, url: str) -> None:
+        """Validate webhook URL to prevent SSRF attacks.
+
+        Blocks: localhost, private IPs, link-local, cloud metadata endpoints.
+        """
+        parsed = urlparse(url)
+
+        # Only allow http/https
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(f"Invalid URL scheme '{parsed.scheme}'. Only http and https are allowed.")
+
+        hostname = parsed.hostname or ""
+
+        # Block localhost variants
+        blocked_hostnames = {
+            "localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]",
+            "169.254.169.254",  # Cloud metadata (AWS/GCP/Railway)
+            "metadata.google.internal",
+        }
+        if hostname.lower() in blocked_hostnames:
+            raise ValueError(f"Webhook URL cannot point to internal addresses.")
+
+        # Block private/reserved IP ranges
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local:
+                raise ValueError("Webhook URL cannot point to private or reserved IP addresses.")
+        except ValueError as e:
+            if "private" in str(e) or "reserved" in str(e) or "internal" in str(e):
+                raise
+            # Not an IP address — that's fine, it's a hostname
+
+        # Block common internal hostnames
+        if any(hostname.lower().endswith(suffix) for suffix in (
+            ".local", ".internal", ".localhost", ".svc.cluster.local",
+        )):
+            raise ValueError("Webhook URL cannot point to internal hostnames.")
+
     def _sign_payload(self, payload: str, secret: str) -> str:
         """Sign a payload with HMAC-SHA256."""
         signature = hmac.new(
@@ -43,6 +83,7 @@ class WebhookService:
         is_active: bool = True,
     ) -> WebhookEndpoint:
         """Create a new webhook endpoint."""
+        self._validate_webhook_url(url)
         tenant_id = get_tenant_id()
 
         endpoint = WebhookEndpoint(
@@ -92,6 +133,7 @@ class WebhookService:
             return None
 
         if url is not None:
+            self._validate_webhook_url(url)
             endpoint.url = url
         if events is not None:
             endpoint.events = events

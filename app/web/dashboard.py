@@ -1,6 +1,9 @@
 """Dashboard web routes."""
 
+import logging
 from datetime import date, timedelta
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -428,6 +431,32 @@ async def dashboard(
         context["stats"] = stats
         context["active_announcements"] = stats.get("active_announcements", [])
 
+        # Add subscription status for trial/billing banner
+        try:
+            from app.services.subscription_service import get_subscription_service
+            sub_service = get_subscription_service()
+            tenant_id = get_tenant_id()
+            subscription = await sub_service.get_tenant_subscription(db, tenant_id)
+            if subscription:
+                sub_info = {
+                    "status": subscription.status,
+                    "trial_end": subscription.trial_end,
+                    "current_period_end": subscription.current_period_end,
+                    "plan_name": None,
+                }
+                if subscription.plan_id:
+                    plan = await sub_service.get_plan(db, subscription.plan_id)
+                    if plan:
+                        sub_info["plan_name"] = plan.name
+                        sub_info["price_monthly"] = float(plan.price_monthly)
+                # Calculate days remaining for trial
+                if subscription.status == "TRIALING" and subscription.trial_end:
+                    days_left = (subscription.trial_end - date.today()).days
+                    sub_info["trial_days_remaining"] = max(0, days_left)
+                context["subscription"] = sub_info
+        except Exception as e:
+            logger.exception(f"Failed to check subscription for dashboard banner: {e}")
+
     # Add teacher-specific data
     elif role == "TEACHER":
         class_ctx = await get_teacher_class_context(request, db)
@@ -443,7 +472,6 @@ async def dashboard(
 
         # Get tenant info for the school contact card
         from app.models import Tenant
-        from app.utils.tenant_context import get_tenant_id
         tenant_id = get_tenant_id()
         tenant = await db.get(Tenant, tenant_id)
         context["tenant"] = tenant

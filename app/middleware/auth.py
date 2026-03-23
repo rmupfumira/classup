@@ -38,6 +38,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/api/v1/auth/reset-password",
         "/api/v1/invitations/verify",
         "/api/v1/whatsapp/webhook",
+        "/api/v1/paystack/webhook",
+        "/api/v1/plans",
+        "/api/v1/auth/trial-signup",
     }
 
     # Path prefixes that don't require authentication

@@ -121,7 +121,7 @@ def _build_student_detail_response(student) -> StudentDetailResponse:
 @require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
 async def list_students(
     class_id: uuid.UUID | None = Query(None, description="Filter by class ID"),
-    grade_level_id: uuid.UUID | None = Query(None, description="Filter by grade level ID (via class)"),
+    grade_level_id: str | None = Query(None, description="Filter by grade level ID (via class)"),
     age_group: str | None = Query(None, description="DEPRECATED: Filter by age group"),
     is_active: bool | None = Query(True, description="Filter by active status"),
     search: str | None = Query(None, description="Search by name"),
@@ -134,11 +134,19 @@ async def list_students(
     Teachers only see students in their assigned classes.
     School admins see all students in their tenant.
     """
+    # Sanitize grade_level_id: empty string → None
+    parsed_grade_level_id = None
+    if grade_level_id and grade_level_id.strip():
+        try:
+            parsed_grade_level_id = uuid.UUID(grade_level_id)
+        except ValueError:
+            pass
+
     service = get_student_service()
     students, total = await service.get_students(
         db,
         class_id=class_id,
-        grade_level_id=grade_level_id,
+        grade_level_id=parsed_grade_level_id,
         age_group=age_group,  # DEPRECATED
         is_active=is_active,
         search=search,

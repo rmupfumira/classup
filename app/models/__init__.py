@@ -44,6 +44,13 @@ from app.models.billing import (
     InvoiceStatus,
     PaymentMethod,
 )
+from app.models.subscription import (
+    SubscriptionPlan,
+    TenantSubscription,
+    PlatformInvoice,
+    SubscriptionStatus,
+    PlatformInvoiceStatus,
+)
 
 __all__ = [
     # Base
@@ -136,4 +143,10 @@ __all__ = [
     "FeeAppliesTo",
     "InvoiceStatus",
     "PaymentMethod",
+    # Subscription
+    "SubscriptionPlan",
+    "TenantSubscription",
+    "PlatformInvoice",
+    "SubscriptionStatus",
+    "PlatformInvoiceStatus",
 ]

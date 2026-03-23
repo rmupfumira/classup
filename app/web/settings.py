@@ -129,6 +129,17 @@ async def settings_features(
 
     features = (tenant.settings or {}).get("features", {})
 
+    # Check if tenant has a subscription with plan-defined features
+    plan_features = {}
+    try:
+        from app.services.subscription_service import get_subscription_service
+        sub_service = get_subscription_service()
+        sub = await sub_service.get_tenant_subscription(db, tenant_id)
+        if sub and sub.plan and sub.plan.features:
+            plan_features = sub.plan.features
+    except Exception:
+        pass
+
     return templates.TemplateResponse(
         "settings/features.html",
         {
@@ -136,6 +147,7 @@ async def settings_features(
             "user": current_user,
             "tenant": tenant,
             "features": features,
+            "plan_features": plan_features,
             "active_tab": "features",
         },
     )
@@ -188,8 +200,23 @@ async def settings_features_save(
             "billing",
         ]
 
+        # Check plan-locked features
+        plan_features = {}
+        try:
+            from app.services.subscription_service import get_subscription_service
+            sub_service = get_subscription_service()
+            sub = await sub_service.get_tenant_subscription(db, tenant_id)
+            if sub and sub.plan and sub.plan.features:
+                plan_features = sub.plan.features
+        except Exception:
+            pass
+
         for feature in all_features:
-            features[feature] = f"feature_{feature}" in form_data
+            if feature in plan_features:
+                # Plan controls this feature — enforce plan value
+                features[feature] = plan_features[feature]
+            else:
+                features[feature] = f"feature_{feature}" in form_data
 
         settings["features"] = features
         tenant.settings = settings

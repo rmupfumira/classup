@@ -1,9 +1,12 @@
 """Billing web routes for HTML pages."""
 
+import csv
+import io
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -154,6 +157,110 @@ async def fee_items_page(
         "permissions": PermissionChecker(user.role),
     }
     return templates.TemplateResponse("billing/fee_items.html", context)
+
+
+@router.get("/arrears", response_class=HTMLResponse)
+async def arrears_report(
+    request: Request,
+    class_id: uuid.UUID | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Arrears / ageing report page."""
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    if get_current_user_role() not in (Role.SCHOOL_ADMIN.value, Role.SUPER_ADMIN.value):
+        raise ForbiddenException("Access denied")
+
+    billing_service = get_billing_service()
+    class_service = get_class_service()
+
+    arrears_data = await billing_service.get_arrears_report(db, class_id=class_id)
+    classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
+
+    tenant = await _get_tenant(db)
+    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+
+    # Totals
+    from decimal import Decimal
+    totals = {
+        "total_due": sum((d["total_due"] for d in arrears_data), Decimal("0")),
+        "total_paid": sum((d["total_paid"] for d in arrears_data), Decimal("0")),
+        "outstanding": sum((d["outstanding"] for d in arrears_data), Decimal("0")),
+        "current": sum((d["current"] for d in arrears_data), Decimal("0")),
+        "days_30": sum((d["days_30"] for d in arrears_data), Decimal("0")),
+        "days_60": sum((d["days_60"] for d in arrears_data), Decimal("0")),
+        "days_90_plus": sum((d["days_90_plus"] for d in arrears_data), Decimal("0")),
+    }
+
+    context = {
+        "request": request,
+        "user": user,
+        "arrears_data": arrears_data,
+        "classes": classes,
+        "current_class_id": class_id,
+        "currency": currency,
+        "totals": totals,
+        "current_language": get_current_language(),
+        "permissions": PermissionChecker(user.role),
+    }
+    return templates.TemplateResponse("billing/arrears.html", context)
+
+
+@router.get("/arrears/export/csv")
+async def arrears_export_csv(
+    request: Request,
+    class_id: uuid.UUID | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Export arrears report to CSV."""
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    if get_current_user_role() not in (Role.SCHOOL_ADMIN.value, Role.SUPER_ADMIN.value):
+        raise ForbiddenException("Access denied")
+
+    billing_service = get_billing_service()
+    arrears_data = await billing_service.get_arrears_report(db, class_id=class_id)
+
+    tenant = await _get_tenant(db)
+    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Student", "Class", "Total Due", "Total Paid", "Outstanding", "Current", "30 Days", "60 Days", "90+ Days"])
+    for d in arrears_data:
+        s = d["student"]
+        class_name = s.school_class.name if s and s.school_class else ""
+        writer.writerow([
+            f"{s.first_name} {s.last_name}" if s else "",
+            class_name,
+            f"{d['total_due']:.2f}",
+            f"{d['total_paid']:.2f}",
+            f"{d['outstanding']:.2f}",
+            f"{d['current']:.2f}",
+            f"{d['days_30']:.2f}",
+            f"{d['days_60']:.2f}",
+            f"{d['days_90_plus']:.2f}",
+        ])
+
+    output.seek(0)
+    today = date.today().isoformat()
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=arrears_report_{today}.csv"},
+    )
 
 
 @router.get("/invoices", response_class=HTMLResponse)

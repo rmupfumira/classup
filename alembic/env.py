@@ -31,6 +31,9 @@ from app.models import (
     ClassSubject,
     GradingSystem,
     SystemSettings,
+    SubscriptionPlan,
+    TenantSubscription,
+    PlatformInvoice,
 )
 
 # This is the Alembic Config object

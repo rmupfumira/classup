@@ -1,6 +1,6 @@
 """Authentication API endpoints."""
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -26,15 +26,18 @@ from app.services.auth_service import get_auth_service
 from app.services.email_service import get_email_service
 from app.services.user_service import get_user_service
 from app.utils.security import create_password_reset_token, decode_password_reset_token, hash_password
+from app.rate_limit import limiter
 from app.utils.tenant_context import get_current_user_id_or_none
 
 router = APIRouter()
 
 
 @router.post("/login", response_model=APIResponse[LoginResponse])
+@limiter.limit("10/minute")
 async def login(
-    request: LoginRequest,
+    request: Request,
     response: Response,
+    body: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate user and return tokens.
@@ -43,11 +46,11 @@ async def login(
     tokens in the response body for API clients.
     """
     auth_service = get_auth_service()
-    login_response, user = await auth_service.login(db, request)
+    login_response, user = await auth_service.login(db, body)
 
     # Set HttpOnly cookie for web clients
     cookie_max_age = settings.jwt_access_token_expire_minutes * 60
-    if request.remember_me:
+    if body.remember_me:
         cookie_max_age = settings.jwt_refresh_token_expire_days * 24 * 60 * 60
 
     response.set_cookie(
@@ -66,13 +69,15 @@ async def login(
 
 
 @router.post("/register", response_model=APIResponse[RegisterResponse])
+@limiter.limit("5/minute")
 async def register(
-    request: RegisterRequest,
+    request: Request,
+    body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Register a new parent user via invitation code."""
     auth_service = get_auth_service()
-    result = await auth_service.register_parent(db, request)
+    result = await auth_service.register_parent(db, body)
 
     return APIResponse(
         data=result,
@@ -121,8 +126,10 @@ async def logout(response: Response):
 
 
 @router.post("/forgot-password", response_model=APIResponse[ForgotPasswordResponse])
+@limiter.limit("3/minute")
 async def forgot_password(
-    request: ForgotPasswordRequest,
+    request: Request,
+    body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Request a password reset email.
@@ -137,7 +144,7 @@ async def forgot_password(
 
     # Look up user by email (don't reveal if not found)
     stmt = select(User).where(
-        User.email == request.email,
+        User.email == body.email,
         User.deleted_at.is_(None),
         User.is_active == True,
     )
@@ -166,8 +173,10 @@ async def forgot_password(
 
 
 @router.post("/reset-password", response_model=APIResponse[None])
+@limiter.limit("5/minute")
 async def reset_password(
-    request: ResetPasswordRequest,
+    request: Request,
+    body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Reset password using a valid reset token."""
@@ -175,7 +184,7 @@ async def reset_password(
     from sqlalchemy import select
     from app.models import User
 
-    payload = decode_password_reset_token(request.token)
+    payload = decode_password_reset_token(body.token)
     if not payload:
         raise UnauthorizedException("Invalid or expired reset token")
 
@@ -188,7 +197,7 @@ async def reset_password(
     if not user:
         raise UnauthorizedException("Invalid or expired reset token")
 
-    user.password_hash = hash_password(request.password)
+    user.password_hash = hash_password(body.password)
     await db.commit()
 
     return APIResponse(message="Password reset successfully. You can now log in.")
@@ -278,8 +287,10 @@ async def verify_invitation(
 
 
 @router.post("/trial-signup", response_model=APIResponse[None])
+@limiter.limit("3/hour")
 async def trial_signup(
-    request: TrialSignupRequest,
+    request: Request,
+    body: TrialSignupRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Handle free trial signup from the marketing site.
@@ -302,13 +313,13 @@ async def trial_signup(
         "combined": "Combined",
         "other": "Other",
     }
-    school_type_label = school_type_labels.get(request.school_type, request.school_type)
-    if request.school_type == "other" and request.school_type_other:
-        school_type_label = f"Other — {request.school_type_other}"
+    school_type_label = school_type_labels.get(body.school_type, body.school_type)
+    if body.school_type == "other" and body.school_type_other:
+        school_type_label = f"Other — {body.school_type_other}"
 
-    location_parts = [request.country or "South Africa"]
-    if request.province:
-        location_parts.append(request.province)
+    location_parts = [body.country or "South Africa"]
+    if body.province:
+        location_parts.append(body.province)
     location_label = ", ".join(location_parts)
 
     # Look up SUPER_ADMIN email
@@ -332,19 +343,19 @@ async def trial_signup(
             <table style="width: 100%; border-collapse: collapse;">
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                     <td style="padding: 12px 0; color: #6b7280; font-size: 14px; width: 140px;">School Name</td>
-                    <td style="padding: 12px 0; color: #111827; font-size: 14px; font-weight: 600;">{request.school_name}</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px; font-weight: 600;">{body.school_name}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                     <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Contact Person</td>
-                    <td style="padding: 12px 0; color: #111827; font-size: 14px; font-weight: 600;">{request.contact_name}</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px; font-weight: 600;">{body.contact_name}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                     <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Email</td>
-                    <td style="padding: 12px 0; color: #111827; font-size: 14px;"><a href="mailto:{request.email}" style="color: #1B3A6B;">{request.email}</a></td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;"><a href="mailto:{body.email}" style="color: #1B3A6B;">{body.email}</a></td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                     <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Phone</td>
-                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{request.phone}</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{body.phone}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                     <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Location</td>
@@ -356,9 +367,9 @@ async def trial_signup(
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                     <td style="padding: 12px 0; color: #6b7280; font-size: 14px;">Students</td>
-                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{request.student_count or 'Not specified'}</td>
+                    <td style="padding: 12px 0; color: #111827; font-size: 14px;">{body.student_count or 'Not specified'}</td>
                 </tr>
-                {"<tr><td style='padding: 12px 0; color: #6b7280; font-size: 14px; vertical-align: top;'>Message</td><td style='padding: 12px 0; color: #111827; font-size: 14px;'>" + request.message + "</td></tr>" if request.message else ""}
+                {"<tr><td style='padding: 12px 0; color: #6b7280; font-size: 14px; vertical-align: top;'>Message</td><td style='padding: 12px 0; color: #111827; font-size: 14px;'>" + body.message + "</td></tr>" if body.message else ""}
             </table>
         </div>
     </div>
@@ -369,7 +380,7 @@ async def trial_signup(
         try:
             await email_service.send_raw_email(
                 to=super_admin.email,
-                subject=f"New Trial Signup: {request.school_name}",
+                subject=f"New Trial Signup: {body.school_name}",
                 html_body=admin_html,
                 from_name="ClassUp Signups",
             )
@@ -384,10 +395,10 @@ async def trial_signup(
         </div>
         <div style="background: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
             <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-                Hi {request.contact_name},
+                Hi {body.contact_name},
             </p>
             <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-                Thank you for your interest in ClassUp! We've received your free trial request for <strong>{request.school_name}</strong>.
+                Thank you for your interest in ClassUp! We've received your free trial request for <strong>{body.school_name}</strong>.
             </p>
             <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
                 Our team will review your details and get in touch within <strong>24 hours</strong> to set up your account and walk you through the platform.
@@ -413,12 +424,12 @@ async def trial_signup(
 
     try:
         await email_service.send_raw_email(
-            to=request.email,
+            to=body.email,
             subject="Welcome to ClassUp — Your Free Trial Request",
             html_body=confirmation_html,
             from_name="ClassUp",
         )
     except Exception:
-        logger.exception(f"Failed to send trial confirmation to {request.email}")
+        logger.exception(f"Failed to send trial confirmation to {body.email}")
 
     return APIResponse(message="Thank you! We'll be in touch within 24 hours to set up your free trial.")

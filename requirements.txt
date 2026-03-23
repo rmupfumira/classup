@@ -70,6 +70,9 @@ redis==5.2.1
 # Multipart form handling
 python-multipart==0.0.19
 
+# Rate limiting
+slowapi>=0.1.9
+
 # Async utilities
 aiofiles==24.1.0
 anyio==4.7.0
