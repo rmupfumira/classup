@@ -137,6 +137,25 @@
                     {{ t('nav.classes', current_language) }}
                 </a>
 
+                {% set _tt_tenant = tenant if tenant is defined and tenant else request.state.tenant %}
+                {% if _tt_tenant and _tt_tenant.features.get('timetable_management', false) %}
+                <!-- Timetable -->
+                <a href="/timetable"
+                   class="group flex items-center px-3 py-2.5 text-sm rounded-md
+                          {% if '/timetable' in request.url.path %}
+                          bg-primary-50 text-primary-600 font-medium
+                          {% else %}
+                          text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900
+                          {% endif %}">
+                    <svg class="mr-3 h-4 w-4 {% if '/timetable' in request.url.path %}text-primary-500{% else %}text-neutral-400 group-hover:text-neutral-600{% endif %}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Timetable
+                </a>
+                {% endif %}
+
                 {% if user.role == 'SCHOOL_ADMIN' %}
                 <!-- Teachers -->
                 <a href="/teachers"

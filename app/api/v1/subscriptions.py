@@ -60,6 +60,11 @@ class AssignPlan(BaseModel):
     plan_id: str
 
 
+class ExtendTrial(BaseModel):
+    """Super admin extends a tenant's trial period."""
+    days: int = Field(..., ge=1, le=365, description="Number of days to extend the trial")
+
+
 # ── Super Admin: Plan Management ──────────────────────────
 
 
@@ -249,6 +254,31 @@ async def assign_plan_to_tenant(
         message=f"Trial started for {tenant.name}",
         data={"subscription_id": str(sub.id), "trial_end": sub.trial_end.isoformat()},
     )
+
+
+@router.post("/admin/subscriptions/{subscription_id}/extend-trial")
+@require_super_admin()
+async def extend_trial(
+    subscription_id: uuid.UUID,
+    body: ExtendTrial,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Extend a tenant's trial period by a custom number of days (super admin)."""
+    service = get_subscription_service()
+    try:
+        sub = await service.extend_trial(db, subscription_id, body.days)
+        await db.commit()
+        return APIResponse(
+            status="success",
+            message=f"Trial extended by {body.days} days. New end date: {sub.trial_end.isoformat()}",
+            data={
+                "subscription_id": str(sub.id),
+                "trial_end": sub.trial_end.isoformat(),
+                "status": sub.status,
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/admin/subscription-revenue")

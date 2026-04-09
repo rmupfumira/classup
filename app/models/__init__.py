@@ -51,6 +51,13 @@ from app.models.subscription import (
     SubscriptionStatus,
     PlatformInvoiceStatus,
 )
+from app.models.timetable import (
+    TimetableConfig,
+    Timetable,
+    TimetableEntry,
+    DEFAULT_DAYS,
+    get_default_periods,
+)
 
 __all__ = [
     # Base
@@ -149,4 +156,10 @@ __all__ = [
     "PlatformInvoice",
     "SubscriptionStatus",
     "PlatformInvoiceStatus",
+    # Timetable
+    "TimetableConfig",
+    "Timetable",
+    "TimetableEntry",
+    "DEFAULT_DAYS",
+    "get_default_periods",
 ]

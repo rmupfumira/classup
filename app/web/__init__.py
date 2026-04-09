@@ -22,6 +22,7 @@ from app.web import (
     subscription,
     super_admin,
     teachers,
+    timetable,
 )
 
 web_router = APIRouter(include_in_schema=False)
@@ -40,6 +41,7 @@ web_router.include_router(reports.router)
 web_router.include_router(onboarding.router)
 web_router.include_router(settings.router)
 web_router.include_router(academic.router)
+web_router.include_router(timetable.router)
 web_router.include_router(imports.router)
 web_router.include_router(invitations.router)
 web_router.include_router(messages.router)

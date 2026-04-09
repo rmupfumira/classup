@@ -7,7 +7,10 @@ import urllib.parse
 import uuid
 from datetime import datetime
 
-import magic
+try:
+    import magic  # type: ignore
+except Exception:  # libmagic not installed on this platform
+    magic = None  # type: ignore
 
 import boto3
 from PIL import Image
@@ -194,10 +197,12 @@ class FileService:
             }])
 
         # Determine content type using magic bytes (not just extension/header)
-        try:
-            detected_mime = magic.from_buffer(content[:2048], mime=True)
-        except Exception:
-            detected_mime = None
+        detected_mime = None
+        if magic is not None:
+            try:
+                detected_mime = magic.from_buffer(content[:2048], mime=True)
+            except Exception:
+                detected_mime = None
 
         content_type = file.content_type or self._guess_content_type(file.filename)
 

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Timetable Config - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl space-y-5">
+    <div>
+        <a href="/timetable" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Back to Timetables</a>
+        <h1 class="mt-2 text-xl font-semibold text-neutral-800">School Day Configuration</h1>
+        <p class="mt-0.5 text-sm text-neutral-500">Set the days of the week and periods/breaks for your school day.</p>
+    </div>
+
+    <!-- Days -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5">
+        <h2 class="text-sm font-semibold text-neutral-800 mb-3">School Days</h2>
+        <div class="flex flex-wrap gap-2" id="days-container">
+            {% for day in ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] %}
+            <label class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded-md cursor-pointer hover:bg-neutral-50">
+                <input type="checkbox" value="{{ day }}" class="day-checkbox mr-2 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                       {% if day in config.days %}checked{% endif %}>
+                <span class="text-sm text-neutral-700">{{ day }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Periods -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-neutral-800">Periods</h2>
+            <button type="button" onclick="addPeriod()" class="text-sm text-primary-600 hover:text-primary-700">+ Add Period</button>
+        </div>
+        <div class="space-y-2" id="periods-container">
+            <!-- Rows injected by JS -->
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-2">
+        <a href="/timetable" class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</a>
+        <button type="button" onclick="saveConfig()" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save Config</button>
+    </div>
+</div>
+
+<script>
+const initialPeriods = {{ config.periods|tojson }};
+
+function periodRowHtml(p, idx) {
+    return `
+    <div class="period-row flex items-center gap-2 py-1" data-idx="${idx}">
+        <input type="number" class="period-index w-14 h-8 px-2 text-sm border border-neutral-300 rounded" value="${p.index || idx + 1}" min="1">
+        <input type="text" class="period-label flex-1 h-8 px-2 text-sm border border-neutral-300 rounded" value="${p.label || ''}" placeholder="Label">
+        <input type="time" class="period-start w-28 h-8 px-2 text-sm border border-neutral-300 rounded" value="${p.start_time || '08:00'}">
+        <span class="text-neutral-400 text-sm">to</span>
+        <input type="time" class="period-end w-28 h-8 px-2 text-sm border border-neutral-300 rounded" value="${p.end_time || '08:40'}">
+        <label class="inline-flex items-center text-xs text-neutral-600">
+            <input type="checkbox" class="period-break mr-1 rounded border-neutral-300 text-primary-600" ${p.is_break ? 'checked' : ''}>
+            Break
+        </label>
+        <button type="button" onclick="this.closest('.period-row').remove()" class="text-danger-500 hover:text-danger-600 p-1" title="Remove">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>`;
+}
+
+function renderPeriods(periods) {
+    const container = document.getElementById('periods-container');
+    container.innerHTML = periods.map((p, i) => periodRowHtml(p, i)).join('');
+}
+
+function addPeriod() {
+    const container = document.getElementById('periods-container');
+    const rows = container.querySelectorAll('.period-row');
+    const nextIdx = rows.length + 1;
+    container.insertAdjacentHTML('beforeend', periodRowHtml({
+        index: nextIdx, label: `Period ${nextIdx}`, start_time: '08:00', end_time: '08:40', is_break: false
+    }, rows.length));
+}
+
+async function saveConfig() {
+    const days = Array.from(document.querySelectorAll('.day-checkbox:checked')).map(c => c.value);
+    if (!days.length) {
+        ClassUp.toast('Select at least one school day', 'error');
+        return;
+    }
+
+    const periods = Array.from(document.querySelectorAll('.period-row')).map(row => ({
+        index: parseInt(row.querySelector('.period-index').value) || 1,
+        label: row.querySelector('.period-label').value.trim() || 'Period',
+        start_time: row.querySelector('.period-start').value,
+        end_time: row.querySelector('.period-end').value,
+        is_break: row.querySelector('.period-break').checked,
+    }));
+
+    if (!periods.length) {
+        ClassUp.toast('Add at least one period', 'error');
+        return;
+    }
+
+    try {
+        await ClassUp.fetch('/api/v1/timetable/config', {
+            method: 'PUT',
+            body: JSON.stringify({ days, periods }),
+        });
+        ClassUp.toast('Config saved', 'success');
+    } catch (err) {
+        ClassUp.toast(err.message || 'Failed to save config', 'error');
+    }
+}
+
+renderPeriods(initialPeriods || []);
+</script>
+{% endblock %}

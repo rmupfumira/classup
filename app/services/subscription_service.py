@@ -149,6 +149,32 @@ class SubscriptionService:
         )
         return subscription
 
+    async def extend_trial(
+        self, db: AsyncSession, subscription_id: uuid.UUID, days: int
+    ) -> TenantSubscription:
+        """Extend a tenant's trial period by a given number of days (super admin)."""
+        sub = await db.get(TenantSubscription, subscription_id)
+        if not sub:
+            raise ValueError("Subscription not found")
+
+        if days < 1 or days > 365:
+            raise ValueError("Extension must be between 1 and 365 days")
+
+        # If suspended/cancelled trial, reactivate it
+        if sub.status in (SubscriptionStatus.SUSPENDED.value, SubscriptionStatus.CANCELLED.value):
+            sub.status = SubscriptionStatus.TRIALING.value
+
+        new_trial_end = (sub.trial_end or date.today()) + timedelta(days=days)
+        sub.trial_end = new_trial_end
+        sub.current_period_end = new_trial_end
+        await db.flush()
+
+        logger.info(
+            f"Extended trial for subscription {subscription_id} by {days} days, "
+            f"new end date: {new_trial_end}"
+        )
+        return sub
+
     async def activate_subscription(
         self, db: AsyncSession, tenant_id: uuid.UUID,
         paystack_authorization_code: str | None = None,

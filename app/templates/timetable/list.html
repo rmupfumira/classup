@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Timetables - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Timetables</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
+                Manage class schedules and period plans
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/timetable/config"
+               class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50 transition-colors">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Day Config
+            </a>
+            <a href="/timetable/new"
+               class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Timetable
+            </a>
+        </div>
+    </div>
+
+    {% if timetables %}
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <table class="min-w-full">
+            <thead>
+                <tr class="bg-neutral-50 border-b border-neutral-200">
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Class</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Slots Filled</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-100">
+                {% for t in timetables %}
+                <tr class="hover:bg-neutral-50 transition-colors">
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <a href="/timetable/{{ t.id }}" class="text-sm font-medium text-neutral-800 hover:text-primary-600">{{ t.name }}</a>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                        {{ t.school_class.name if t.school_class else '-' }}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">{{ t.entries|length }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        {% if t.is_active %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">Active</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                        <a href="/timetable/{{ t.id }}" class="text-primary-500 hover:text-primary-600 mr-3">Open</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
+        <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h3 class="text-base font-semibold text-neutral-800">No timetables yet</h3>
+        <p class="mt-1 text-sm text-neutral-500">Create your first class timetable to get started.</p>
+        <div class="mt-5">
+            <a href="/timetable/new" class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
+                </svg>
+                Create Timetable
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

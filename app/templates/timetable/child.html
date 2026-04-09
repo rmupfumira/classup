@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.first_name }}'s Timetable - {{ app_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+    nav, .sidebar, .bottom-nav, button, .no-print, .child-picker { display: none !important; }
+    .shadow-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    body { font-size: 11px; }
+}
+.tt-break { background-color: #f3f4f6; color: #9ca3af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">{{ student.first_name }} {{ student.last_name }}'s Timetable</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
+                {{ student.school_class.name if student.school_class else 'No class assigned' }}
+                {% if timetable %} · {{ timetable.name }}{% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            {% if children and children|length > 1 %}
+            <select onchange="window.location.href='/timetable/child/' + this.value"
+                    class="child-picker h-8 px-2.5 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                {% for child in children %}
+                <option value="{{ child.id }}" {% if child.id == student.id %}selected{% endif %}>
+                    {{ child.first_name }} {{ child.last_name }}
+                </option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <button onclick="window.print()"
+                    class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50 no-print">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                Print
+            </button>
+        </div>
+    </div>
+
+    {% if timetable and grid %}
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-x-auto">
+        <table class="min-w-full border-collapse">
+            <thead>
+                <tr class="bg-neutral-50 border-b border-neutral-200">
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider w-32">Period</th>
+                    {% for day in config.days %}
+                    <th class="px-3 py-2 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider">{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-100">
+                {% for period in config.periods %}
+                <tr>
+                    <td class="px-3 py-2 align-top border-r border-neutral-100 bg-neutral-50">
+                        <div class="text-xs font-semibold text-neutral-700">{{ period.label }}</div>
+                        <div class="text-xs text-neutral-400">{{ period.start_time }} - {{ period.end_time }}</div>
+                    </td>
+                    {% for day in config.days %}
+                    {% set cell = grid.get((day, period.index)) %}
+                    {% if period.is_break %}
+                    <td class="tt-break text-center text-xs border-l border-neutral-100">—</td>
+                    {% else %}
+                    <td class="p-2 border-l border-neutral-100">
+                        {% if cell %}
+                        <div class="text-xs font-medium text-neutral-800">{{ cell.subject_name }}</div>
+                        {% if cell.teacher_name %}
+                        <div class="text-xs text-neutral-500">{{ cell.teacher_name }}</div>
+                        {% endif %}
+                        {% else %}
+                        <div class="text-xs text-neutral-300 text-center">—</div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
+        <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h3 class="text-base font-semibold text-neutral-800">No timetable available</h3>
+        <p class="mt-1 text-sm text-neutral-500">The school hasn't published a timetable for this class yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

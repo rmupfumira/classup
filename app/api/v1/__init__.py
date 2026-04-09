@@ -20,6 +20,7 @@ from app.api.v1 import (
     reports,
     students,
     subscriptions,
+    timetable,
     users,
     webhooks,
     websocket,
@@ -44,6 +45,7 @@ api_router.include_router(photos.router, prefix="/photos", tags=["Photos"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 api_router.include_router(imports.router, prefix="/imports", tags=["Imports"])
 api_router.include_router(academic.router, prefix="/academic", tags=["Academic"])
+api_router.include_router(timetable.router, prefix="/timetable", tags=["Timetable"])
 api_router.include_router(grade_levels.router, prefix="/grade-levels", tags=["Grade Levels"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(subscriptions.router)
