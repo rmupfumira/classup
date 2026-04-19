@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +24,32 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:8000"
     app_debug: bool = False
     app_log_level: str = "INFO"
+
+    @field_validator("app_env", mode="before")
+    @classmethod
+    def _normalize_app_env(cls, v):
+        """Strip whitespace + lowercase — Railway env vars can sneak in a
+        trailing space that would otherwise fail the Literal check."""
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
+
+    @field_validator("app_base_url", mode="before")
+    @classmethod
+    def _normalize_app_base_url(cls, v):
+        """Strip whitespace + trailing slash from the base URL so email
+        links don't double-slash or contain hidden whitespace."""
+        if isinstance(v, str):
+            return v.strip().rstrip("/")
+        return v
+
+    @field_validator("app_log_level", mode="before")
+    @classmethod
+    def _normalize_app_log_level(cls, v):
+        """Strip whitespace + uppercase. Accepts 'info', 'INFO ', etc."""
+        if isinstance(v, str):
+            return v.strip().upper()
+        return v
 
     # Database
     database_url: str
