@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Help & Guides - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="text-center py-6">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-neutral-800">How can we help you?</h1>
+        <p class="mt-2 text-sm text-neutral-500">
+            Step-by-step guides for every feature you can use today.
+        </p>
+    </div>
+
+    {% for category, topics in grouped_topics.items() %}
+    <div class="space-y-3">
+        <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wider">
+            {{ category }}
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for t in topics %}
+            <a href="/help/{{ t.slug }}"
+               class="group block p-4 bg-white rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-md transition-all">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+                        {% include 'help/_icons.html' %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-sm font-semibold text-neutral-800 group-hover:text-primary-700">
+                            {{ t.title }}
+                        </h3>
+                        <p class="mt-1 text-xs text-neutral-500 line-clamp-3">
+                            {{ t.short }}
+                        </p>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Footer hint -->
+    <div class="pt-6 border-t border-neutral-100 text-center">
+        <p class="text-sm text-neutral-500">
+            Can't find what you need? Contact your school administrator or
+            <a href="mailto:support@classup.co.za" class="text-primary-600 hover:underline">support@classup.co.za</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}

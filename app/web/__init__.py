@@ -11,6 +11,7 @@ from app.web import (
     classes,
     dashboard,
     documents,
+    help as help_web,
     imports,
     invitations,
     messages,
@@ -49,6 +50,7 @@ web_router.include_router(messages.router)
 web_router.include_router(teachers.router)
 web_router.include_router(subscription.router)
 web_router.include_router(super_admin.router)
+web_router.include_router(help_web.router)
 
 # Must be registered LAST — /{slug} is a catch-all that matches any
 # top-level path not claimed by another route. Keep it at the bottom.

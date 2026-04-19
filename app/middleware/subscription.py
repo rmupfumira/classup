@@ -48,6 +48,7 @@ EXEMPT_PREFIXES = (
     "/api/v1/subscription",  # Subscription management endpoints
     "/api/v1/plans",    # Public plans listing
     "/api/v1/paystack", # Paystack webhooks
+    "/help",            # User guides — always accessible
 )
 
 
