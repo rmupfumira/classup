@@ -23,6 +23,7 @@ EXEMPT_PATHS = {
     "/logout",
     "/forgot-password",
     "/reset-password",
+    "/profile",
     "/health",
     "/subscription",
     "/api/docs",
@@ -31,7 +32,6 @@ EXEMPT_PATHS = {
     "/api/v1/auth/login",
     "/api/v1/auth/register",
     "/api/v1/auth/logout",
-    "/api/v1/auth/me",
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
     "/api/v1/invitations/verify",
@@ -44,6 +44,7 @@ EXEMPT_PREFIXES = (
     "/favicon",
     "/admin",           # Super admin pages always accessible
     "/api/v1/admin",    # Super admin API always accessible
+    "/api/v1/auth/me",  # Profile + change-password — always accessible
     "/api/v1/subscription",  # Subscription management endpoints
     "/api/v1/plans",    # Public plans listing
     "/api/v1/paystack", # Paystack webhooks

@@ -6,7 +6,7 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -54,7 +54,7 @@ def _require_auth(request: Request):
 @router.get("", response_class=HTMLResponse)
 async def students_list(
     request: Request,
-    class_id: uuid.UUID | None = None,
+    class_id: str | None = None,
     grade_level_id: str | None = None,
     search: str | None = None,
     page: int = Query(1, ge=1),
@@ -74,7 +74,14 @@ async def students_list(
     if not permissions.can_manage_students() and user.role != Role.PARENT.value:
         raise ForbiddenException("You don't have permission to view students")
 
-    # Sanitize grade_level_id: empty string → None, valid UUID string → UUID
+    # Sanitize class_id and grade_level_id: empty string → None, valid UUID → UUID
+    parsed_class_id = None
+    if class_id and class_id.strip():
+        try:
+            parsed_class_id = uuid.UUID(class_id)
+        except ValueError:
+            pass
+
     parsed_grade_level_id = None
     if grade_level_id and grade_level_id.strip():
         try:
@@ -89,8 +96,8 @@ async def students_list(
     teacher_ctx = {}
     if user.role == Role.TEACHER.value:
         teacher_ctx = await get_teacher_class_context(request, db)
-        if class_id is None and teacher_ctx.get("selected_class_id"):
-            class_id = teacher_ctx["selected_class_id"]
+        if parsed_class_id is None and teacher_ctx.get("selected_class_id"):
+            parsed_class_id = teacher_ctx["selected_class_id"]
 
     # Parents see their own children
     if user.role == Role.PARENT.value:
@@ -100,7 +107,7 @@ async def students_list(
     else:
         students, total = await student_service.get_students(
             db,
-            class_id=class_id,
+            class_id=parsed_class_id,
             grade_level_id=parsed_grade_level_id,
             search=search,
             page=page,
@@ -113,10 +120,10 @@ async def students_list(
 
     # Build export query string from current filters
     export_parts = []
-    if class_id:
-        export_parts.append(f"class_id={class_id}")
-    if grade_level_id and grade_level_id.strip():
-        export_parts.append(f"grade_level_id={grade_level_id}")
+    if parsed_class_id:
+        export_parts.append(f"class_id={parsed_class_id}")
+    if parsed_grade_level_id:
+        export_parts.append(f"grade_level_id={parsed_grade_level_id}")
     if search:
         export_parts.append(f"search={search}")
     export_query = "&".join(export_parts)
@@ -126,8 +133,8 @@ async def students_list(
         "user": user,
         "students": students,
         "classes": classes,
-        "current_class_id": class_id,
-        "current_grade_level_id": str(grade_level_id) if grade_level_id else None,
+        "current_class_id": parsed_class_id,
+        "current_grade_level_id": str(parsed_grade_level_id) if parsed_grade_level_id else None,
         "search": search,
         "page": page,
         "total_pages": total_pages,
@@ -179,7 +186,7 @@ async def student_create_form(
 @router.get("/export/csv")
 async def students_export_csv(
     request: Request,
-    class_id: uuid.UUID | None = None,
+    class_id: str | None = None,
     grade_level_id: str | None = None,
     search: str | None = None,
     db: AsyncSession = Depends(get_db),
@@ -197,6 +204,13 @@ async def students_export_csv(
     if not permissions.can_manage_students():
         raise ForbiddenException("You don't have permission to export students")
 
+    parsed_class_id = None
+    if class_id and class_id.strip():
+        try:
+            parsed_class_id = uuid.UUID(class_id)
+        except ValueError:
+            pass
+
     parsed_grade_level_id = None
     if grade_level_id and grade_level_id.strip():
         try:
@@ -206,7 +220,7 @@ async def students_export_csv(
 
     student_service = get_student_service()
     students, _ = await student_service.get_students(
-        db, class_id=class_id, grade_level_id=parsed_grade_level_id,
+        db, class_id=parsed_class_id, grade_level_id=parsed_grade_level_id,
         search=search, page=1, page_size=5000,
     )
 
@@ -237,7 +251,7 @@ async def students_export_csv(
 @router.get("/export/pdf")
 async def students_export_pdf(
     request: Request,
-    class_id: uuid.UUID | None = None,
+    class_id: str | None = None,
     grade_level_id: str | None = None,
     search: str | None = None,
     db: AsyncSession = Depends(get_db),
@@ -257,6 +271,13 @@ async def students_export_pdf(
     if not permissions.can_manage_students():
         raise ForbiddenException("You don't have permission to export students")
 
+    parsed_class_id = None
+    if class_id and class_id.strip():
+        try:
+            parsed_class_id = uuid.UUID(class_id)
+        except ValueError:
+            pass
+
     parsed_grade_level_id = None
     if grade_level_id and grade_level_id.strip():
         try:
@@ -266,7 +287,7 @@ async def students_export_pdf(
 
     student_service = get_student_service()
     students, total = await student_service.get_students(
-        db, class_id=class_id, grade_level_id=parsed_grade_level_id,
+        db, class_id=parsed_class_id, grade_level_id=parsed_grade_level_id,
         search=search, page=1, page_size=5000,
     )
 
@@ -312,12 +333,18 @@ async def students_export_pdf(
             pdf.cell(col_widths[i], 7, str(val)[:30], border=1)
         pdf.ln()
 
-    pdf_bytes = pdf.output()
+    # fpdf2 returns bytearray; normalize to bytes and return as a single
+    # Response (StreamingResponse iterating a bytearray can corrupt the file
+    # on some middleware combinations).
+    pdf_bytes = bytes(pdf.output())
     today = date.today().isoformat()
-    return StreamingResponse(
-        iter([pdf_bytes]),
+    return Response(
+        content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=students_{today}.pdf"},
+        headers={
+            "Content-Disposition": f'attachment; filename="students_{today}.pdf"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
     )
 
 

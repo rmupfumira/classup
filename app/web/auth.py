@@ -318,3 +318,36 @@ async def reset_password_page(request: Request, token: str | None = None):
             "current_language": get_current_language(),
         },
     )
+
+
+@router.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Render the current user's profile page (edit details + change password)."""
+    from app.utils.security import decode_access_token
+    from app.utils.tenant_context import get_current_user_id_or_none
+
+    token = request.cookies.get("access_token")
+    payload = decode_access_token(token) if token else None
+    if not payload:
+        response = RedirectResponse(url="/login", status_code=302)
+        response.delete_cookie("access_token")
+        return response
+
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    auth_service = get_auth_service()
+    try:
+        user = await auth_service.get_current_user(db, user_id)
+    except Exception:
+        return RedirectResponse(url="/login", status_code=302)
+
+    return templates.TemplateResponse(
+        "auth/profile.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+        },
+    )

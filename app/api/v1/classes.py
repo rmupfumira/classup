@@ -238,18 +238,27 @@ async def update_class(
     )
 
 
-@router.delete("/{class_id}", response_model=APIResponse[None])
+@router.delete("/{class_id}", response_model=APIResponse[dict])
 @require_role(Role.SCHOOL_ADMIN)
 async def delete_class(
     class_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Soft delete a class (school admin only)."""
+    """Soft delete a class (school admin only).
+
+    Students in the class are preserved and unassigned (their class_id is set
+    to NULL) so admins can reassign them to another class afterwards.
+    """
     service = get_class_service()
-    await service.delete_class(db, class_id)
+    result = await service.delete_class(db, class_id)
     await db.commit()
 
-    return APIResponse(message="Class deleted successfully")
+    count = result.get("students_unassigned", 0)
+    if count > 0:
+        msg = f"Class deleted. {count} student(s) unassigned — please reassign them to another class."
+    else:
+        msg = "Class deleted successfully"
+    return APIResponse(data=result, message=msg)
 
 
 @router.get("/{class_id}/students", response_model=APIResponse[list[StudentBasicInfo]])

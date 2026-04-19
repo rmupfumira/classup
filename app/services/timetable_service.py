@@ -138,6 +138,7 @@ class TimetableService:
                 selectinload(Timetable.entries).selectinload(TimetableEntry.subject),
                 selectinload(Timetable.entries).selectinload(TimetableEntry.teacher),
             )
+            .execution_options(populate_existing=True)
         )
         timetable = result.scalar_one_or_none()
         if not timetable:
@@ -162,6 +163,7 @@ class TimetableService:
                 selectinload(Timetable.entries).selectinload(TimetableEntry.subject),
                 selectinload(Timetable.entries).selectinload(TimetableEntry.teacher),
             )
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
 
@@ -412,6 +414,13 @@ class TimetableService:
         # is stacked consecutively. Distribute across days evenly.
         fill_queue: list[uuid.UUID] = []
         per_day_cap: dict[tuple[str, uuid.UUID], int] = defaultdict(int)
+        # Adaptive per-day cap: ceil(quota / num_days) so the subject can
+        # actually be fully placed even if the quota > 2*days
+        num_days = max(1, len(days))
+        subject_day_cap: dict[uuid.UUID, int] = {
+            sid: max(2, -(-quota // num_days))  # ceil division
+            for sid, quota in subject_quotas.items()
+        }
         # Round-robin: each round adds 1 of each subject that still has quota
         remaining = dict(subject_quotas)
         while any(v > 0 for v in remaining.values()):
@@ -425,6 +434,9 @@ class TimetableService:
         entries_created = 0
         slot_idx = 0
         unfilled_subjects: list[uuid.UUID] = []
+        # Track claimed slots in-memory (pending adds don't appear in SELECT
+        # until flushed, so we must track ourselves)
+        claimed_slots: set[tuple[str, int]] = set()
 
         for subject_id in fill_queue:
             placed = False
@@ -436,24 +448,17 @@ class TimetableService:
                 slot_idx += 1
                 attempts += 1
 
-                # Skip if slot already used for this timetable (shouldn't happen after clear but safety)
+                # Skip if slot already claimed in this run
+                if (day, period_index) in claimed_slots:
+                    continue
+
                 # Skip if teacher is booked elsewhere at this slot
                 if default_teacher and (default_teacher.id, day, period_index) in busy_key:
                     continue
 
-                # Prefer to avoid stacking the same subject twice on the same day
-                if per_day_cap[(day, subject_id)] >= 2:
-                    continue
-
-                # Check if slot already taken in this run
-                slot_occupied = await db.execute(
-                    select(TimetableEntry).where(
-                        TimetableEntry.timetable_id == timetable_id,
-                        TimetableEntry.day == day,
-                        TimetableEntry.period_index == period_index,
-                    )
-                )
-                if slot_occupied.scalar_one_or_none():
+                # Prefer to avoid stacking the same subject more than the
+                # adaptive cap per day (so subjects spread across days).
+                if per_day_cap[(day, subject_id)] >= subject_day_cap.get(subject_id, 2):
                     continue
 
                 # Place it
@@ -468,6 +473,7 @@ class TimetableService:
                 db.add(entry)
                 entries_created += 1
                 per_day_cap[(day, subject_id)] += 1
+                claimed_slots.add((day, period_index))
                 placed = True
                 break
 

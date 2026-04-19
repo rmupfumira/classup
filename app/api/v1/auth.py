@@ -7,6 +7,7 @@ from app.config import settings
 from app.database import get_db
 from app.exceptions import UnauthorizedException
 from app.schemas.auth import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
@@ -25,7 +26,12 @@ from app.schemas.common import APIResponse
 from app.services.auth_service import get_auth_service
 from app.services.email_service import get_email_service
 from app.services.user_service import get_user_service
-from app.utils.security import create_password_reset_token, decode_password_reset_token, hash_password
+from app.utils.security import (
+    create_password_reset_token,
+    decode_password_reset_token,
+    hash_password,
+    verify_password,
+)
 from app.rate_limit import limiter
 from app.utils.tenant_context import get_current_user_id_or_none
 
@@ -241,6 +247,29 @@ async def update_profile(
         data=UserProfile.model_validate(user),
         message="Profile updated successfully",
     )
+
+
+@router.put("/me/password", response_model=APIResponse[None])
+@limiter.limit("10/hour")
+async def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Change the current user's password (requires current password)."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        raise UnauthorizedException("Not authenticated")
+
+    auth_service = get_auth_service()
+    user = await auth_service.get_current_user(db, user_id)
+
+    if not verify_password(body.current_password, user.password_hash):
+        raise UnauthorizedException("Current password is incorrect")
+
+    user.password_hash = hash_password(body.new_password)
+    await db.commit()
+    return APIResponse(message="Password changed successfully")
 
 
 @router.post("/invitations/verify", response_model=APIResponse[VerifyInvitationResponse])

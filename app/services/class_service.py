@@ -159,14 +159,37 @@ class ClassService:
         self,
         db: AsyncSession,
         class_id: uuid.UUID,
-    ) -> None:
-        """Soft delete a class."""
+    ) -> dict:
+        """Soft delete a class and unassign any students so their records are
+        preserved (class_id set to NULL). Returns a summary of what happened.
+        """
+        from sqlalchemy import update
+        from app.models import Student
+
         school_class = await self.get_class(db, class_id)
+        tenant_id = get_tenant_id()
+
+        # Unassign any active students so student records remain intact
+        unassign_result = await db.execute(
+            update(Student)
+            .where(
+                Student.tenant_id == tenant_id,
+                Student.class_id == class_id,
+                Student.deleted_at.is_(None),
+            )
+            .values(class_id=None)
+        )
+        students_unassigned = unassign_result.rowcount or 0
 
         school_class.deleted_at = datetime.utcnow()
         school_class.is_active = False
 
         await db.flush()
+
+        return {
+            "class_id": str(class_id),
+            "students_unassigned": students_unassigned,
+        }
 
     async def get_class_students(
         self,
