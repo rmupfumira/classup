@@ -167,6 +167,7 @@
     {% block head %}{% endblock %}
 </head>
 <body class="h-full bg-neutral-50 text-neutral-800 antialiased text-sm">
+    {% include 'components/_env_banner.html' %}
     {% if user %}
         <!-- Authenticated Layout -->
         {% include 'components/_navbar.html' %}
