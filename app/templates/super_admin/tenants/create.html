@@ -43,15 +43,15 @@
                             URL Slug
                         </label>
                         <div class="flex items-center">
-                            <span class="px-3 py-2 text-sm text-neutral-500 bg-neutral-100 border border-r-0 border-neutral-300 rounded-l-md">
-                                classup.co.za/
+                            <span class="px-3 py-2 text-sm text-neutral-500 bg-neutral-100 border border-r-0 border-neutral-300 rounded-l-md truncate max-w-[60%]">
+                                {{ settings.app_base_url.replace('http://', '').replace('https://', '').rstrip('/') }}/
                             </span>
                             <input type="text" id="slug" name="slug"
                                    placeholder="sunshine-daycare"
                                    pattern="^[a-z0-9-]+$"
                                    class="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-r-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                         </div>
-                        <p class="mt-1 text-xs text-neutral-500">Leave blank to auto-generate from name. Use lowercase letters, numbers, and hyphens only.</p>
+                        <p class="mt-1 text-xs text-neutral-500">Parents use this URL to reach your school's login page. Leave blank to auto-generate from name. Lowercase letters, numbers, and hyphens only.</p>
                     </div>
 
                     <!-- Education Type -->

@@ -163,9 +163,14 @@
                     <dt class="text-sm text-neutral-500">Tenant ID</dt>
                     <dd class="text-sm text-neutral-800 font-mono text-xs">{{ tenant.id }}</dd>
                 </div>
-                <div class="flex justify-between">
-                    <dt class="text-sm text-neutral-500">Slug</dt>
-                    <dd class="text-sm text-neutral-800">{{ tenant.slug }}</dd>
+                <div class="flex justify-between items-start gap-2">
+                    <dt class="text-sm text-neutral-500 flex-shrink-0">Login URL</dt>
+                    <dd class="text-sm text-right">
+                        <a href="{{ settings.app_base_url }}/{{ tenant.slug }}" target="_blank"
+                           class="text-primary-600 hover:underline break-all">
+                            {{ settings.app_base_url.replace('http://', '').replace('https://', '').rstrip('/') }}/{{ tenant.slug }}
+                        </a>
+                    </dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-sm text-neutral-500">Created</dt>

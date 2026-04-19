@@ -124,6 +124,7 @@ async def update_tenant(
         db,
         tenant_id,
         name=request.name,
+        slug=request.slug,
         email=request.email,
         phone=request.phone,
         address=request.address,

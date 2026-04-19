@@ -128,9 +128,18 @@ class TenantService:
         slug: str | None = None,
     ) -> Tenant:
         """Create a new tenant."""
+        from app.utils.reserved_slugs import is_reserved_slug
+
         # Generate slug if not provided
         if not slug:
             slug = self._generate_slug(name)
+
+        # Reject reserved slugs (clashes with app routes)
+        if is_reserved_slug(slug):
+            from app.exceptions import ValidationException
+            raise ValidationException([
+                {"field": "slug", "message": f"'{slug}' is a reserved URL and cannot be used. Pick a different slug."}
+            ])
 
         # Check if slug already exists
         existing = await self.get_tenant_by_slug(db, slug)
@@ -181,10 +190,14 @@ class TenantService:
         email: str | None = None,
         phone: str | None = None,
         address: str | None = None,
+        slug: str | None = None,
         is_active: bool | None = None,
         settings: dict | None = None,
     ) -> Tenant:
         """Update a tenant."""
+        from app.exceptions import ValidationException
+        from app.utils.reserved_slugs import is_reserved_slug
+
         tenant = await self.get_tenant(db, tenant_id)
 
         if name is not None:
@@ -195,6 +208,28 @@ class TenantService:
             tenant.phone = phone
         if address is not None:
             tenant.address = address
+        if slug is not None and slug != tenant.slug:
+            # Slug change: validate and ensure uniqueness
+            new_slug = slug.strip().lower()
+            if not new_slug:
+                raise ValidationException([
+                    {"field": "slug", "message": "Slug cannot be empty."}
+                ])
+            import re
+            if not re.fullmatch(r"[a-z0-9-]+", new_slug):
+                raise ValidationException([
+                    {"field": "slug", "message": "Slug may only contain lowercase letters, numbers, and hyphens."}
+                ])
+            if is_reserved_slug(new_slug):
+                raise ValidationException([
+                    {"field": "slug", "message": f"'{new_slug}' is a reserved URL and cannot be used."}
+                ])
+            existing = await self.get_tenant_by_slug(db, new_slug)
+            if existing and existing.id != tenant.id:
+                raise ValidationException([
+                    {"field": "slug", "message": f"Slug '{new_slug}' is already taken by another tenant."}
+                ])
+            tenant.slug = new_slug
         if is_active is not None:
             tenant.is_active = is_active
         if settings is not None:

@@ -320,6 +320,53 @@ async def reset_password_page(request: Request, token: str | None = None):
     )
 
 
+@router.get("/t/{slug}", response_class=HTMLResponse)
+async def tenant_landing_prefixed(
+    request: Request, slug: str, db: AsyncSession = Depends(get_db)
+):
+    """Tenant landing page via the `/t/{slug}` prefix.
+
+    This is the canonical form; /{slug} also works as a fallback.
+    """
+    return await _render_tenant_landing(request, slug, db)
+
+
+async def _render_tenant_landing(
+    request: Request, slug: str, db: AsyncSession
+) -> HTMLResponse:
+    """Resolve a tenant by slug and render the login page with its branding."""
+    from fastapi import HTTPException
+
+    from app.services.tenant_service import get_tenant_service
+    from app.utils.reserved_slugs import is_reserved_slug
+    from app.utils.security import decode_access_token
+
+    # Already authenticated? Send them to the dashboard.
+    token = request.cookies.get("access_token")
+    if token and decode_access_token(token):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    slug_clean = slug.strip().lower()
+    if not slug_clean or is_reserved_slug(slug_clean):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    tenant_service = get_tenant_service()
+    tenant = await tenant_service.get_tenant_by_slug(db, slug_clean)
+    if not tenant or not tenant.is_active or tenant.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    return templates.TemplateResponse(
+        "auth/login.html",
+        {
+            "request": request,
+            "error": None,
+            "next": "/dashboard",
+            "tenant": tenant,
+            "current_language": get_current_language(),
+        },
+    )
+
+
 @router.get("/profile", response_class=HTMLResponse)
 async def profile_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Render the current user's profile page (edit details + change password)."""

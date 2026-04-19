@@ -23,6 +23,7 @@ class TenantUpdateRequest(BaseModel):
     """Schema for updating a tenant."""
 
     name: str | None = Field(None, min_length=2, max_length=255)
+    slug: str | None = Field(None, min_length=1, max_length=100, pattern=r"^[a-z0-9-]+$")
     email: EmailStr | None = None
     phone: str | None = Field(None, max_length=50)
     address: str | None = None

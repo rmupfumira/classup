@@ -22,6 +22,7 @@ from app.web import (
     subscription,
     super_admin,
     teachers,
+    tenant_slug,
     timetable,
 )
 
@@ -48,3 +49,7 @@ web_router.include_router(messages.router)
 web_router.include_router(teachers.router)
 web_router.include_router(subscription.router)
 web_router.include_router(super_admin.router)
+
+# Must be registered LAST — /{slug} is a catch-all that matches any
+# top-level path not claimed by another route. Keep it at the bottom.
+web_router.include_router(tenant_slug.router)
