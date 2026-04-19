@@ -1,8 +1,9 @@
 {#
-    Environment banner — shown on every page when running in a non-production
-    environment (staging or development). Hidden automatically in print.
+    Environment banner — shown ONLY when app_env is explicitly 'staging' or
+    'development'. Anything else (including missing/misconfigured values) is
+    treated as production and the banner stays hidden. Hidden in print.
 #}
-{% if settings.app_env != 'production' %}
+{% if settings.app_env in ('staging', 'development') %}
 {% set env = settings.app_env | upper %}
 {% set banner_colors = {
     'STAGING': 'bg-amber-500 text-amber-950',
