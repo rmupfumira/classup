@@ -126,19 +126,14 @@ def register_routers(app: FastAPI):
     from app.api.v1 import api_router
     from app.web import web_router
 
-    # API routes (versioned)
-    app.include_router(api_router, prefix="/api/v1")
-
-    # Web routes (HTML pages)
-    app.include_router(web_router)
-
-    # Health check endpoint
+    # Health check + root — MUST be registered BEFORE web_router,
+    # because web_router ends with a /{slug} catch-all that would
+    # otherwise shadow /health and make Railway's healthcheck fail.
     @app.get("/health", tags=["Health"])
     async def health_check():
         """Health check endpoint for load balancers and monitoring."""
         return {"status": "healthy", "app": settings.app_name, "env": settings.app_env}
 
-    # Root redirect
     @app.get("/", include_in_schema=False)
     async def root(request: Request):
         """Redirect root to login or dashboard based on auth status."""
@@ -156,6 +151,12 @@ def register_routers(app: FastAPI):
             response.delete_cookie("access_token")
             return response
         return RedirectResponse(url="/login", status_code=302)
+
+    # API routes (versioned)
+    app.include_router(api_router, prefix="/api/v1")
+
+    # Web routes (HTML pages) — includes /{slug} catch-all at the end
+    app.include_router(web_router)
 
 
 # Create the app instance
