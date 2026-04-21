@@ -599,13 +599,16 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
     # ==================== SUBSCRIPTION ====================
     "subscription": {
         "title": "Your Subscription",
-        "short": "View your plan, change plans, and manage payment.",
+        "short": "View your plan, change plans, and understand which features your plan unlocks.",
         "icon": "credit-card",
         "roles": ["school_admin"],
         "category": "Account",
         "overview": (
-            "ClassUp is a subscription service. New schools start on a 30-day free trial; pick a plan before the trial ends "
-            "or your access will be paused until you do."
+            "ClassUp is a subscription service. Each plan unlocks a specific set of features — "
+            "billing, photo sharing, document sharing, timetable, subjects & grading, and WhatsApp "
+            "notifications. Switching plans changes which features you can access immediately. "
+            "New schools start on a free trial; pick a plan before the trial ends or your access "
+            "will be paused until you do."
         ),
         "steps": [
             {
@@ -617,7 +620,17 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
                 "title": "Pick a plan",
                 "body": (
                     "Go to Subscription → browse the available plans → click Select on the one you want. "
-                    "If you're on a trial, you switch immediately without being charged; you'll be charged when the trial ends."
+                    "If you're on a trial, you switch immediately without being charged; you'll be charged when the trial ends. "
+                    "The features included in each plan are listed on the plan card — pick the one that has everything you need."
+                ),
+                "tip": "If you need just one more feature (e.g. billing), switch to a plan that includes it rather than asking support to 'turn it on' — plans are the source of truth.",
+            },
+            {
+                "title": "What happens when you switch plans",
+                "body": (
+                    "As soon as you activate a new plan, its features take effect. Features the new plan includes are enabled automatically, "
+                    "and features it doesn't include are hidden from your sidebar and blocked on the API. Existing data (invoices, photos, etc.) "
+                    "is preserved — you just can't create new entries for disabled features until you switch back to a plan that includes them."
                 ),
                 "tip": None,
             },
@@ -629,9 +642,94 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
                 ),
                 "tip": None,
             },
+            {
+                "title": "Why did a feature disappear?",
+                "body": (
+                    "If a menu item has vanished from your sidebar or a page shows the yellow 'not included in your current plan' banner, "
+                    "your current plan doesn't include that feature. Go to Subscription and switch to a plan that does."
+                ),
+                "tip": None,
+            },
         ],
-        "examples": [],
-        "related": [],
+        "examples": [
+            {
+                "title": "Example: needing the timetable module",
+                "body": (
+                    "Your school is on the Essentials plan but you realise you need to publish weekly timetables. "
+                    "Go to /subscription → see which plans include Timetable → select Professional. Timetable appears "
+                    "in the sidebar immediately, and teachers + parents can now see their schedules."
+                ),
+            }
+        ],
+        "related": ["locked-features", "settings"],
+    },
+    # ==================== LOCKED FEATURES (both roles) ====================
+    "locked-features": {
+        "title": "Locked Features & Plans",
+        "short": "Why some menu items are missing, and how plan gating works in ClassUp.",
+        "icon": "credit-card",
+        "roles": ["school_admin", "super_admin"],
+        "category": "Account",
+        "overview": (
+            "ClassUp controls access to premium features at the plan level. When you're subscribed to a "
+            "plan, only that plan's features are available to your staff and parents. If you try to use a "
+            "feature not in your plan, you'll be redirected to the Subscription page with a helpful banner."
+        ),
+        "steps": [
+            {
+                "title": "Core features are always available",
+                "body": (
+                    "No plan ever takes away the basics: attendance, messaging, announcements, reports, students, classes, "
+                    "teachers, invitations, settings, profile, and the help centre. These work regardless of subscription status."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Premium features are plan-controlled",
+                "body": (
+                    "Billing, Photo Sharing, Document Sharing, Timetable, Subjects & Grading, and WhatsApp are each unlocked by specific plans. "
+                    "A super admin configures which features each plan includes; school admins choose which plan fits their school."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "How enforcement works",
+                "body": (
+                    "Three layers keep locked features inaccessible:\n"
+                    "1. Sidebar and mobile nav hide the menu items automatically.\n"
+                    "2. Web pages redirect to /subscription with a banner explaining which feature is locked.\n"
+                    "3. API endpoints return 402 Payment Required with the feature name so front-end code can show an upgrade prompt."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Existing data is preserved",
+                "body": (
+                    "If you downgrade to a plan that doesn't include billing, your invoices aren't deleted — they just become inaccessible until "
+                    "you upgrade again. Same for photos, timetables, etc. You never lose historical data."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Super admin bypass",
+                "body": (
+                    "Super admins can access every feature on every tenant for support purposes, even if the tenant's plan doesn't include it. "
+                    "This is intentional — support needs full visibility."
+                ),
+                "tip": None,
+            },
+        ],
+        "examples": [
+            {
+                "title": "Example: a locked page",
+                "body": (
+                    "A teacher clicks Photos in an old bookmark. The page redirects to /subscription with the message "
+                    "\"Photo Sharing is not included in your current plan.\" The school admin sees the banner, picks a plan "
+                    "that includes Photo Sharing, and after activation the Photos link reappears in the sidebar."
+                ),
+            }
+        ],
+        "related": ["subscription", "settings", "subscription-plans"],
     },
     # ==================== SETTINGS ====================
     "settings": {
@@ -650,10 +748,13 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
             {
                 "title": "Feature toggles",
                 "body": (
-                    "Settings → Features. Turn individual features on or off (attendance, messaging, billing, etc). "
-                    "Features locked by your subscription plan are disabled with a 'Plan-managed' label."
+                    "Settings → Features. Some features are 'Plan-managed' — they're controlled by your subscription "
+                    "plan and show as locked with a 'Plan-managed' label. These include Billing, Photo Sharing, "
+                    "Document Sharing, Timetable, Subjects & Grading, and WhatsApp. To change them, go to Subscription "
+                    "and switch to a plan that matches what you need. The non-plan-managed toggles (like report section "
+                    "trackers: nap, bathroom, meals, etc.) you can flip yourself."
                 ),
-                "tip": None,
+                "tip": "If a toggle is locked and you need it on, switch plans — don't ask support to enable it. Plans are the source of truth.",
             },
             {
                 "title": "Branding",
@@ -742,26 +843,57 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
     },
     "subscription-plans": {
         "title": "Subscription Plans",
-        "short": "Create plans with feature toggles, extend trials, and manage pricing.",
+        "short": "Create plans with feature toggles that automatically enforce access per tenant.",
         "icon": "credit-card",
         "roles": ["super_admin"],
         "category": "Platform",
         "overview": (
-            "Plans define what features each tenant gets, at what price. You can have a free tier, essentials, professional, enterprise — whatever structure you want."
+            "Plans define what features each tenant gets, at what price. Ticking a feature on a plan doesn't just "
+            "document the tier — it automatically controls what tenants on that plan can actually access. The system "
+            "enforces every feature toggle across sidebar, pages, and API simultaneously."
         ),
         "steps": [
             {
                 "title": "Create a plan",
                 "body": (
-                    "Admin → Subscriptions → + Create Plan. Enter name, monthly + annual price, and tick the features you want enabled. "
-                    "The description is auto-generated from the features you've selected."
+                    "Admin → Subscriptions → + Create Plan. Enter name, monthly + annual price, trial days, and tick the features "
+                    "you want the plan to include. The description is auto-generated from the checked features."
                 ),
                 "tip": None,
             },
             {
+                "title": "Features that are plan-gated",
+                "body": (
+                    "These six features are strictly enforced by the plan:\n"
+                    "• Billing — invoices, payments, arrears reports\n"
+                    "• Photo Sharing — the /photos gallery and uploads\n"
+                    "• Document Sharing — the /documents library\n"
+                    "• Timetable — the full timetable module\n"
+                    "• Subjects & Grading — academic subjects + grading systems\n"
+                    "• WhatsApp Notifications — outbound WhatsApp send API\n\n"
+                    "Other toggles (attendance, messaging, announcements, reports, report section trackers) "
+                    "aren't plan-gated — they're always available to every tenant."
+                ),
+                "tip": "Keep core features (attendance, messaging, reports) always on — they're what every school needs regardless of tier.",
+            },
+            {
                 "title": "Edit a plan's features",
-                "body": "Click Edit on any plan card. Toggle features on/off. When a tenant activates this plan, their feature set updates automatically.",
-                "tip": "Features controlled by a plan are locked on the tenant's Settings page — they can't override.",
+                "body": (
+                    "Click Edit on any plan card. Toggle features on/off and save. Any tenant currently on that plan gets "
+                    "the updated feature set applied the next time their subscription is re-synced (typically on their next page load). "
+                    "New tenants selecting this plan get the current feature set immediately."
+                ),
+                "tip": "Features controlled by a plan are locked on the tenant's Settings page — they can't override. Plans are the single source of truth.",
+            },
+            {
+                "title": "How enforcement actually works",
+                "body": (
+                    "When a tenant activates a plan, ClassUp copies the plan's features dict into the tenant's settings. "
+                    "From then on, every request on that tenant runs through three enforcement layers: (1) sidebar + nav hides disabled items, "
+                    "(2) web routes for disabled features redirect to /subscription with an upgrade banner, (3) API endpoints return "
+                    "402 Payment Required JSON. Super admins bypass all three for support access."
+                ),
+                "tip": None,
             },
             {
                 "title": "Extend a tenant's trial",
@@ -781,12 +913,25 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
             {
                 "title": "Example: offering a Professional plan",
                 "body": (
-                    "Create a plan \"Professional\" at R999/month. Tick: attendance, messaging, daily reports, billing, WhatsApp, timetable. "
-                    "Leave API access off. When a school selects this plan, those features light up automatically."
+                    "Create a plan \"Professional\" at R999/month. Tick: Billing, Photo Sharing, Document Sharing, Timetable, "
+                    "Subjects & Grading, WhatsApp Notifications. When any school selects this plan, all six modules "
+                    "light up in their sidebar and become accessible to their teachers and parents. If they later downgrade "
+                    "to a cheaper plan that doesn't include Billing, the /billing menu item disappears and /billing URLs "
+                    "redirect to /subscription — but their existing invoices are preserved."
                 ),
-            }
+            },
+            {
+                "title": "Example: building a tiered structure",
+                "body": (
+                    "Free: (nothing premium ticked — just attendance, messaging, reports by default).\n"
+                    "Essentials R299/mo: + Photo Sharing + Document Sharing.\n"
+                    "Professional R999/mo: + Billing + Timetable + Subjects & Grading.\n"
+                    "Enterprise R2,499/mo: + WhatsApp + API access (when added).\n"
+                    "Each tier is strictly enforced — schools can only access what they're paying for."
+                ),
+            },
         ],
-        "related": ["tenants"],
+        "related": ["tenants", "locked-features"],
     },
     "email-settings": {
         "title": "Email Configuration",
