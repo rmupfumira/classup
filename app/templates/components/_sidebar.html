@@ -224,7 +224,9 @@
                 </a>
                 {% endif %}
 
-                {% if user.role == 'SCHOOL_ADMIN' %}
+                {% set _feat_tenant = tenant if tenant is defined and tenant else request.state.tenant %}
+                {% set _features = _feat_tenant.features if _feat_tenant else {} %}
+                {% if user.role == 'SCHOOL_ADMIN' and _features.get('billing', false) %}
                 <!-- Billing -->
                 <a href="/billing"
                    class="group flex items-center px-3 py-2.5 text-sm rounded-md
@@ -305,6 +307,9 @@
                     {{ t('nav.reports', current_language) }}
                 </a>
 
+                {% set _feat_tenant2 = tenant if tenant is defined and tenant else request.state.tenant %}
+                {% set _features2 = _feat_tenant2.features if _feat_tenant2 else {} %}
+                {% if _features2.get('photo_sharing', false) %}
                 <!-- Photos -->
                 <a href="/photos"
                    class="group flex items-center px-3 py-2.5 text-sm rounded-md
@@ -320,7 +325,9 @@
                     </svg>
                     {{ t('nav.photos', current_language) }}
                 </a>
+                {% endif %}
 
+                {% if _features2.get('document_sharing', false) %}
                 <!-- Documents -->
                 <a href="/documents"
                    class="group flex items-center px-3 py-2.5 text-sm rounded-md
@@ -336,6 +343,7 @@
                     </svg>
                     {{ t('nav.documents', current_language) }}
                 </a>
+                {% endif %}
 
                 <!-- Announcements -->
                 <a href="/announcements"
@@ -392,6 +400,9 @@
                     Report Templates
                 </a>
 
+                {% set _feat_tenant3 = tenant if tenant is defined and tenant else request.state.tenant %}
+                {% set _features3 = _feat_tenant3.features if _feat_tenant3 else {} %}
+                {% if _features3.get('subject_management', false) %}
                 <!-- Subjects -->
                 <a href="/settings/academic/subjects"
                    class="group flex items-center px-3 py-2.5 text-sm rounded-md
@@ -423,6 +434,7 @@
                     </svg>
                     Grading Systems
                 </a>
+                {% endif %}
 
                 <!-- Settings -->
                 <a href="/settings"

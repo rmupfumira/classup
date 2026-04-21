@@ -3,10 +3,16 @@
 from functools import wraps
 from typing import Callable
 
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_db
+from app.exceptions import FeatureLockedException
 from app.models.user import Role
-from app.utils.tenant_context import get_current_user_role
+from app.utils.tenant_context import (
+    get_current_user_role,
+    get_tenant_id_or_none,
+)
 
 
 def require_role(*allowed_roles: Role | str) -> Callable:
@@ -57,6 +63,66 @@ def require_role(*allowed_roles: Role | str) -> Callable:
 def require_super_admin() -> Callable:
     """Decorator that requires SUPER_ADMIN role."""
     return require_role(Role.SUPER_ADMIN)
+
+
+# ---------------------------------------------------------------------------
+# Feature-flag enforcement
+# ---------------------------------------------------------------------------
+
+# Human-readable labels for features (used in error messages + /subscription banner)
+FEATURE_LABELS: dict[str, str] = {
+    "billing": "Billing",
+    "photo_sharing": "Photo Sharing",
+    "document_sharing": "Document Sharing",
+    "timetable_management": "Timetable",
+    "subject_management": "Subjects & Grading",
+    "whatsapp_enabled": "WhatsApp Notifications",
+}
+
+
+def require_feature(feature: str) -> Callable:
+    """FastAPI dependency that enforces a plan-gated feature flag.
+
+    Usage:
+        @router.get(
+            "/fee-items",
+            dependencies=[Depends(require_feature("billing"))],
+        )
+        async def list_fee_items(...): ...
+
+    Behaviour:
+    - SUPER_ADMIN always passes (can access any tenant for support).
+    - Unauthenticated / missing tenant_id -> pass (other middleware handles).
+    - Loads tenant, checks tenant.settings.features[feature].
+    - Raises FeatureLockedException (402) if feature is disabled.
+      The global exception handler turns this into a 402 JSON for API calls
+      and a redirect to /subscription?locked=<feature> for web.
+    """
+
+    async def dependency(db: AsyncSession = Depends(get_db)) -> None:
+        # Super admin bypasses all feature checks (support access)
+        role = get_current_user_role()
+        if role == Role.SUPER_ADMIN.value:
+            return
+
+        tenant_id = get_tenant_id_or_none()
+        if not tenant_id:
+            # No tenant context — other middleware/auth will reject elsewhere
+            return
+
+        # Lazy import to avoid circular: Tenant model pulls in other models
+        from app.models import Tenant
+
+        tenant = await db.get(Tenant, tenant_id)
+        if not tenant:
+            return
+
+        features = (tenant.settings or {}).get("features", {})
+        if not features.get(feature, False):
+            label = FEATURE_LABELS.get(feature, feature.replace("_", " ").title())
+            raise FeatureLockedException(feature, label)
+
+    return dependency
 
 
 def require_school_admin() -> Callable:

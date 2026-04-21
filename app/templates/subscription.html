@@ -4,6 +4,23 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-6">
+    {% if locked_feature %}
+    <!-- Locked-feature banner (redirected from a gated page) -->
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+        <svg class="flex-shrink-0 w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+        </svg>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-amber-900">
+                {{ locked_feature_label }} is not included in your current plan
+            </p>
+            <p class="mt-1 text-sm text-amber-800">
+                To unlock {{ locked_feature_label }}, upgrade to a plan that includes it. Pick one from the plans below.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Header -->
     <div>
         <h1 class="text-xl font-semibold text-neutral-800">Your Subscription</h1>

@@ -64,6 +64,18 @@ class TenantContextError(ClassUpException):
         super().__init__(message, 400)
 
 
+class FeatureLockedException(ClassUpException):
+    """Raised when a tenant tries to access a feature not included in their plan."""
+
+    def __init__(self, feature: str, label: str | None = None):
+        self.feature = feature
+        self.feature_label = label or feature.replace("_", " ").title()
+        super().__init__(
+            f"The {self.feature_label} feature is not included in your current plan.",
+            402,  # Payment Required
+        )
+
+
 class UserContextError(ClassUpException):
     """User context not set error."""
 
@@ -83,8 +95,36 @@ def wants_json(request: Request) -> bool:
 def create_exception_handlers(templates: Jinja2Templates):
     """Create exception handlers that use the provided templates."""
 
+    async def feature_locked_exception_handler(request: Request, exc: FeatureLockedException):
+        """Handle feature-locked errors: 402 JSON for API, redirect for web."""
+        logger.info(
+            f"FeatureLocked on {request.method} {request.url.path}: feature='{exc.feature}'"
+        )
+
+        if wants_json(request):
+            return JSONResponse(
+                status_code=402,
+                content={
+                    "status": "error",
+                    "message": exc.message,
+                    "feature": exc.feature,
+                    "redirect_url": "/subscription",
+                },
+            )
+
+        # Web request — redirect to the subscription page with a hint so it
+        # can show a banner explaining which feature is locked.
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(
+            url=f"/subscription?locked={exc.feature}",
+            status_code=302,
+        )
+
     async def classup_exception_handler(request: Request, exc: ClassUpException):
         """Handle ClassUp custom exceptions."""
+        # FeatureLockedException has its own dedicated handler
+        if isinstance(exc, FeatureLockedException):
+            return await feature_locked_exception_handler(request, exc)
         logger.warning(f"ClassUpException on {request.method} {request.url.path}: {exc.message} (status={exc.status_code})")
 
         if wants_json(request):
@@ -179,6 +219,7 @@ def create_exception_handlers(templates: Jinja2Templates):
             )
 
     return {
+        FeatureLockedException: feature_locked_exception_handler,
         ClassUpException: classup_exception_handler,
         ValidationException: validation_exception_handler,
         Exception: generic_exception_handler,

@@ -247,6 +247,9 @@
                 {{ t('nav.reports', current_language) }}
             </a>
 
+            {% set _mtenant1 = tenant if tenant is defined and tenant else request.state.tenant %}
+            {% set _mfeat1 = _mtenant1.features if _mtenant1 else {} %}
+            {% if _mfeat1.get('photo_sharing', false) %}
             <a href="/photos" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
                 <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -254,7 +257,9 @@
                 </svg>
                 {{ t('nav.photos', current_language) }}
             </a>
+            {% endif %}
 
+            {% if _mfeat1.get('document_sharing', false) %}
             <a href="/documents" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
                 <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -262,6 +267,7 @@
                 </svg>
                 {{ t('nav.documents', current_language) }}
             </a>
+            {% endif %}
 
             <a href="/announcements" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
                 <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,6 +323,8 @@
             </a>
             {% endif %}
 
+            {% set _mfeat2 = _tenant.features if _tenant else {} %}
+            {% if _mfeat2.get('photo_sharing', false) %}
             <a href="/photos" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
                 <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -324,7 +332,9 @@
                 </svg>
                 {{ t('nav.photos', current_language) }}
             </a>
+            {% endif %}
 
+            {% if _mfeat2.get('document_sharing', false) %}
             <a href="/documents" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
                 <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -332,6 +342,7 @@
                 </svg>
                 {{ t('nav.documents', current_language) }}
             </a>
+            {% endif %}
 
             <a href="/announcements" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
                 <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

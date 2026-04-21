@@ -103,6 +103,12 @@ def create_app() -> FastAPI:
     from app.middleware.subscription import SubscriptionMiddleware
     app.add_middleware(SubscriptionMiddleware)
 
+    # Add tenant context middleware — sets request.state.tenant so templates
+    # (sidebar, mobile nav, banners) can check feature flags. Must run AFTER
+    # AuthMiddleware populates tenant_id, so register it before Auth (LIFO).
+    from app.middleware.tenant import TenantMiddleware
+    app.add_middleware(TenantMiddleware)
+
     # Add authentication middleware
     from app.middleware.auth import AuthMiddleware
     app.add_middleware(AuthMiddleware)

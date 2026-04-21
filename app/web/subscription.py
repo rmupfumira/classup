@@ -20,9 +20,14 @@ router = APIRouter(tags=["subscription"])
 @router.get("/subscription", response_class=HTMLResponse)
 async def subscription_page(
     request: Request,
+    locked: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Render the subscription management page for school admins."""
+    """Render the subscription management page for school admins.
+
+    If ?locked=<feature> is present (e.g. redirected from a gated page),
+    shows a banner explaining which feature needs an upgrade.
+    """
     user_id = get_current_user_id_or_none()
     if not user_id:
         return RedirectResponse(url="/login", status_code=302)
@@ -33,11 +38,19 @@ async def subscription_page(
     except Exception:
         return RedirectResponse(url="/login", status_code=302)
 
+    # Resolve friendly label for the locked feature (if any)
+    locked_label: str | None = None
+    if locked:
+        from app.utils.permissions import FEATURE_LABELS
+        locked_label = FEATURE_LABELS.get(locked, locked.replace("_", " ").title())
+
     return templates.TemplateResponse(
         "subscription.html",
         {
             "request": request,
             "user": user,
+            "locked_feature": locked,
+            "locked_feature_label": locked_label,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(get_current_user_role()),
         },
