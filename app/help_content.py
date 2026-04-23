@@ -663,6 +663,72 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         ],
         "related": ["locked-features", "settings"],
     },
+    # ==================== EFT PAYMENT (school admin) ====================
+    "eft-payment": {
+        "title": "Pay by EFT",
+        "short": "An alternative to Paystack — pay by bank transfer and upload proof of payment.",
+        "icon": "credit-card",
+        "roles": ["school_admin"],
+        "category": "Account",
+        "overview": (
+            "If you prefer not to use Paystack (card or their inline EFT), you can pay your subscription "
+            "by direct bank transfer. Upload your proof of payment and super admin will review and "
+            "activate your subscription, usually within 1 business day."
+        ),
+        "steps": [
+            {
+                "title": "Go to the EFT payment page",
+                "body": "From /subscription, click 'Pay by EFT →' on the right of the two payment options.",
+                "tip": None,
+            },
+            {
+                "title": "Get the banking details",
+                "body": (
+                    "The page shows ClassUp's bank name, account holder, account number, branch code, and any "
+                    "reference instructions. Click 'Copy details' to grab them all at once. Make the payment from your bank, "
+                    "using the reference format you've been asked to use (typically your school name and the month/period)."
+                ),
+                "tip": "Use your school name in the reference so we can identify the payment quickly.",
+            },
+            {
+                "title": "Upload the proof of payment",
+                "body": (
+                    "Back on the EFT page, fill in the amount you paid, the reference you used, and upload the PDF "
+                    "or screenshot of the bank transfer. Add optional notes if there's anything we should know. Submit."
+                ),
+                "tip": "PDF or image (JPG/PNG). Max 10MB.",
+            },
+            {
+                "title": "Wait for approval",
+                "body": (
+                    "Super admin will review and either approve (your subscription activates immediately) or reject "
+                    "with a reason (e.g. wrong amount). You'll get an in-app notification either way. "
+                    "Your submission status (PENDING / APPROVED / REJECTED) is visible in the 'Your EFT submissions' table on the same page."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Resubmit if rejected",
+                "body": (
+                    "If your payment was rejected, the reason is shown on your submissions table. "
+                    "Fix the issue (re-do the transfer, use the right reference, etc.) and upload a new proof of payment."
+                ),
+                "tip": None,
+            },
+        ],
+        "examples": [
+            {
+                "title": "Example: monthly subscription by EFT",
+                "body": (
+                    "Your school is on the Professional plan at R999/mo. On the 1st of the month you do an EFT of "
+                    "R999 to ClassUp's account using reference 'SUNSHINE-APR26'. You then go to /subscription/eft, "
+                    "enter R999, the reference, and upload the payment confirmation PDF. Within a business day you "
+                    "get a notification: 'Payment approved — subscription active.' Your account is paid up for another 30 days."
+                ),
+            }
+        ],
+        "related": ["subscription", "locked-features"],
+    },
     # ==================== LOCKED FEATURES (both roles) ====================
     "locked-features": {
         "title": "Locked Features & Plans",
@@ -932,6 +998,84 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
             },
         ],
         "related": ["tenants", "locked-features"],
+    },
+    "eft-payments-admin": {
+        "title": "EFT Payments (Manual Approval)",
+        "short": "Set banking details and approve tenant EFT proofs of payment.",
+        "icon": "credit-card",
+        "roles": ["super_admin"],
+        "category": "Platform",
+        "overview": (
+            "Tenants who prefer bank transfer over Paystack can pay by EFT and upload their proof of payment. "
+            "You review their submissions in the EFT queue and approve or reject each one. Approving activates "
+            "the tenant's subscription and extends their billing period; rejecting sends them a reason."
+        ),
+        "steps": [
+            {
+                "title": "Set the platform's banking details (do this first)",
+                "body": (
+                    "Admin → Platform Banking. Fill in bank name, account holder, account number, branch code, "
+                    "account type (Cheque/Current), SWIFT/BIC, and reference instructions. Save. These details "
+                    "are what tenants see when they choose Pay by EFT."
+                ),
+                "tip": "Make the reference instructions clear, e.g. 'Use your school name followed by the month, e.g. SUNSHINE-APR26'.",
+            },
+            {
+                "title": "Find pending submissions",
+                "body": (
+                    "Admin → EFT Payments. The default view shows PENDING submissions. You'll see each row with "
+                    "tenant, amount, reference, submission time, and a 'View PoP' link to open the uploaded file in a new tab."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Verify the payment in your bank statement",
+                "body": (
+                    "Open the tenant's proof of payment, then check your bank account to confirm the money actually landed. "
+                    "Match the amount and reference. Don't approve until you see the funds in your account."
+                ),
+                "tip": "PoPs can be faked easily — always reconcile with your own bank before approving.",
+            },
+            {
+                "title": "Approve",
+                "body": (
+                    "Click Approve on the submission. A modal asks how many days to extend the subscription (default 30). "
+                    "For monthly plans leave at 30; for quarterly use 90; for annual use 365. Submit. The tenant's "
+                    "subscription flips to ACTIVE immediately, their current_period_end moves forward, and a platform "
+                    "invoice is created (marked PAID, method=EFT) for revenue tracking."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Reject with a reason",
+                "body": (
+                    "If the payment doesn't match (wrong amount, bad reference, can't find it in your bank, etc.) click Reject "
+                    "and enter a clear reason. The tenant gets a notification with that exact reason so they know what to fix. "
+                    "They can then resubmit."
+                ),
+                "tip": "Keep reasons actionable — 'Amount paid was R500, but your plan is R999 — please top up and resubmit.'",
+            },
+            {
+                "title": "See history",
+                "body": (
+                    "Change the status filter to APPROVED or REJECTED to see past decisions. The 'Actions' column shows "
+                    "the date of the decision instead of buttons."
+                ),
+                "tip": None,
+            },
+        ],
+        "examples": [
+            {
+                "title": "Example: first-time monthly payment",
+                "body": (
+                    "Sunshine Daycare's trial ends today. Owner sees the 'Trial ended' banner and clicks Pay by EFT. "
+                    "They transfer R999 and upload the proof with reference 'SUNSHINE-APR26'. You see it in the queue, "
+                    "check your bank — yes, R999 arrived this morning with that reference. Click Approve, leave 30 days. "
+                    "Sunshine's subscription is now ACTIVE until May 26, and your platform invoice log shows R999 PAID via EFT."
+                ),
+            }
+        ],
+        "related": ["subscription-plans", "tenants"],
     },
     "email-settings": {
         "title": "Email Configuration",

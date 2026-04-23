@@ -10,14 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.subscription import (
+    EftPaymentStatus,
+    PlatformEftPayment,
     PlatformInvoice,
     PlatformInvoiceStatus,
     SubscriptionPlan,
     SubscriptionStatus,
     TenantSubscription,
 )
+from app.models.system_settings import SystemSettings
 from app.models.tenant import Tenant
 from app.services.paystack_service import get_paystack_service
+
+# Key under which platform banking details are stored in system_settings.
+PLATFORM_BANKING_KEY = "platform_banking"
 
 logger = logging.getLogger(__name__)
 
@@ -568,6 +574,236 @@ class SubscriptionService:
             await db.flush()
 
         return sub
+
+
+    # =========================================================================
+    # Platform banking details (for manual EFT payments)
+    # =========================================================================
+
+    async def get_platform_banking(self, db: AsyncSession) -> dict:
+        """Return the platform's banking details for tenants to pay into.
+
+        Empty dict if the super admin hasn't set them yet.
+        """
+        result = await db.execute(
+            select(SystemSettings).where(SystemSettings.key == PLATFORM_BANKING_KEY)
+        )
+        row = result.scalar_one_or_none()
+        return row.value if row and row.value else {}
+
+    async def update_platform_banking(
+        self, db: AsyncSession, banking: dict
+    ) -> dict:
+        """Update the platform's banking details (super admin)."""
+        # Whitelist of expected keys
+        allowed = {
+            "bank_name",
+            "account_holder",
+            "account_number",
+            "branch_code",
+            "account_type",
+            "swift_code",
+            "reference_instructions",
+            "notify_email",
+        }
+        clean = {k: v for k, v in banking.items() if k in allowed and v is not None}
+
+        result = await db.execute(
+            select(SystemSettings).where(SystemSettings.key == PLATFORM_BANKING_KEY)
+        )
+        row = result.scalar_one_or_none()
+        if row:
+            row.value = clean
+        else:
+            row = SystemSettings(key=PLATFORM_BANKING_KEY, value=clean)
+            db.add(row)
+        await db.flush()
+        await db.refresh(row)
+        return row.value
+
+    # =========================================================================
+    # Manual EFT payments
+    # =========================================================================
+
+    async def submit_eft_payment(
+        self,
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        amount: Decimal,
+        reference: str,
+        pop_file_id: uuid.UUID,
+        notes: str | None = None,
+        currency: str = "ZAR",
+    ) -> PlatformEftPayment:
+        """Tenant submits proof of payment. Status starts PENDING."""
+        if amount <= 0:
+            raise ValueError("Amount must be greater than zero")
+        if not reference or not reference.strip():
+            raise ValueError("Reference is required")
+
+        # Attach the tenant's current subscription if any
+        sub = await self.get_tenant_subscription(db, tenant_id)
+
+        payment = PlatformEftPayment(
+            tenant_id=tenant_id,
+            subscription_id=sub.id if sub else None,
+            amount=amount,
+            currency=currency or "ZAR",
+            reference=reference.strip(),
+            notes=notes,
+            pop_file_id=pop_file_id,
+            status=EftPaymentStatus.PENDING.value,
+        )
+        db.add(payment)
+        await db.flush()
+        await db.refresh(payment)
+        logger.info(
+            f"EFT payment submitted: tenant={tenant_id} amount={amount} ref={reference}"
+        )
+        return payment
+
+    async def get_eft_payment(
+        self, db: AsyncSession, payment_id: uuid.UUID
+    ) -> PlatformEftPayment | None:
+        result = await db.execute(
+            select(PlatformEftPayment).where(PlatformEftPayment.id == payment_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def list_eft_payments(
+        self,
+        db: AsyncSession,
+        tenant_id: uuid.UUID | None = None,
+        status: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[PlatformEftPayment], int]:
+        """List EFT payments with optional filters."""
+        stmt = select(PlatformEftPayment)
+        if tenant_id is not None:
+            stmt = stmt.where(PlatformEftPayment.tenant_id == tenant_id)
+        if status:
+            stmt = stmt.where(PlatformEftPayment.status == status.upper())
+
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = (await db.execute(count_stmt)).scalar() or 0
+
+        stmt = stmt.order_by(PlatformEftPayment.submitted_at.desc())
+        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+
+        result = await db.execute(stmt)
+        return list(result.scalars().all()), total
+
+    async def approve_eft_payment(
+        self,
+        db: AsyncSession,
+        payment_id: uuid.UUID,
+        reviewer_id: uuid.UUID,
+        extend_period_days: int | None = None,
+    ) -> PlatformEftPayment:
+        """Super admin approves an EFT payment.
+
+        Effects:
+        - Marks the payment APPROVED
+        - Activates the linked subscription and extends its period_end
+          by `extend_period_days` (defaults to plan cycle length, 30 days)
+        - Records a PlatformInvoice marked PAID for audit/revenue tracking
+        - Syncs plan features to the tenant settings
+        """
+        payment = await self.get_eft_payment(db, payment_id)
+        if not payment:
+            raise ValueError(f"EFT payment {payment_id} not found")
+        if payment.status != EftPaymentStatus.PENDING.value:
+            raise ValueError(
+                f"Cannot approve payment with status {payment.status}"
+            )
+
+        payment.status = EftPaymentStatus.APPROVED.value
+        payment.reviewed_at = datetime.now(timezone.utc)
+        payment.reviewed_by = reviewer_id
+
+        # Default to 30 days if not specified
+        days = extend_period_days or 30
+        payment.extend_period_days = days
+
+        # Activate / extend the subscription
+        sub = None
+        if payment.subscription_id:
+            sub = await db.get(TenantSubscription, payment.subscription_id)
+        if not sub:
+            sub = await self.get_tenant_subscription(db, payment.tenant_id)
+
+        period_end: date | None = None
+        if sub:
+            today = date.today()
+            base = sub.current_period_end if sub.current_period_end and sub.current_period_end > today else today
+            period_end = base + timedelta(days=days)
+
+            sub.status = SubscriptionStatus.ACTIVE.value
+            sub.current_period_start = today
+            sub.current_period_end = period_end
+            sub.failed_payment_count = 0
+            if sub.trial_end is None or sub.trial_end < today:
+                sub.trial_end = today  # end any residual trial
+
+            # Sync plan features to tenant settings (plan -> tenant)
+            if sub.plan:
+                await self.sync_tenant_features(db, payment.tenant_id, sub.plan)
+
+        # Record a platform invoice marked PAID (for revenue tracking)
+        invoice = PlatformInvoice(
+            tenant_id=payment.tenant_id,
+            subscription_id=sub.id if sub else None,
+            amount=payment.amount,
+            currency=payment.currency,
+            status=PlatformInvoiceStatus.PAID.value,
+            billing_period_start=date.today(),
+            billing_period_end=period_end or (date.today() + timedelta(days=days)),
+            paid_at=datetime.now(timezone.utc),
+            payment_method="EFT",
+        )
+        db.add(invoice)
+        await db.flush()
+        await db.refresh(invoice)
+
+        payment.platform_invoice_id = invoice.id
+        await db.flush()
+        await db.refresh(payment)
+
+        logger.info(
+            f"EFT payment {payment_id} APPROVED by {reviewer_id}; "
+            f"subscription extended {days} days"
+        )
+        return payment
+
+    async def reject_eft_payment(
+        self,
+        db: AsyncSession,
+        payment_id: uuid.UUID,
+        reviewer_id: uuid.UUID,
+        reason: str,
+    ) -> PlatformEftPayment:
+        """Super admin rejects an EFT payment with a reason."""
+        if not reason or not reason.strip():
+            raise ValueError("Rejection reason is required")
+
+        payment = await self.get_eft_payment(db, payment_id)
+        if not payment:
+            raise ValueError(f"EFT payment {payment_id} not found")
+        if payment.status != EftPaymentStatus.PENDING.value:
+            raise ValueError(
+                f"Cannot reject payment with status {payment.status}"
+            )
+
+        payment.status = EftPaymentStatus.REJECTED.value
+        payment.reviewed_at = datetime.now(timezone.utc)
+        payment.reviewed_by = reviewer_id
+        payment.rejection_reason = reason.strip()
+        await db.flush()
+        await db.refresh(payment)
+
+        logger.info(f"EFT payment {payment_id} REJECTED: {reason[:100]}")
+        return payment
 
 
 def get_subscription_service() -> SubscriptionService:

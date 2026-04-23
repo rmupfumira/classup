@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}EFT Payments - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <a href="/admin" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Admin</a>
+            <h1 class="mt-2 text-xl font-semibold text-neutral-800">EFT Payments Queue</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Review tenant-submitted proofs of payment and approve or reject them.
+            </p>
+        </div>
+        <a href="/admin/platform-banking"
+           class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
+            Banking details
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl border border-neutral-200">
+        <div class="px-6 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-neutral-800">Submissions</h2>
+            <select id="status-filter" onchange="load()"
+                    class="text-sm border-neutral-300 rounded focus:ring-primary-500 focus:border-primary-500">
+                <option value="PENDING" selected>Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="">All</option>
+            </select>
+        </div>
+        <div id="body" class="p-4 text-sm">
+            <p class="text-center text-neutral-400 py-6">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Modal -->
+<dialog id="approve-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+    <div class="p-6">
+        <h3 class="text-lg font-semibold text-neutral-800 mb-2">Approve payment</h3>
+        <p class="text-sm text-neutral-600 mb-4" id="approve-summary"></p>
+        <form onsubmit="submitApprove(event)">
+            <input type="hidden" id="approve-id">
+            <label class="block text-sm font-medium text-neutral-700 mb-1">Extend subscription by (days)</label>
+            <input type="number" id="approve-days" min="1" max="3650" value="30"
+                   class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            <p class="mt-1 text-xs text-neutral-400">Defaults to 30 days. Adjust for quarterly / annual plans.</p>
+            <div class="flex justify-end gap-2 mt-5">
+                <button type="button" onclick="document.getElementById('approve-modal').close()"
+                        class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm text-white bg-green-600 rounded hover:bg-green-700">Approve</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<!-- Reject Modal -->
+<dialog id="reject-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+    <div class="p-6">
+        <h3 class="text-lg font-semibold text-neutral-800 mb-2">Reject payment</h3>
+        <p class="text-sm text-neutral-600 mb-4" id="reject-summary"></p>
+        <form onsubmit="submitReject(event)">
+            <input type="hidden" id="reject-id">
+            <label class="block text-sm font-medium text-neutral-700 mb-1">Reason</label>
+            <textarea id="reject-reason" required rows="3"
+                      placeholder="e.g. Amount doesn't match invoice. Please re-upload with correct reference."
+                      class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+            <p class="mt-1 text-xs text-neutral-400">The tenant will see this reason in their notification.</p>
+            <div class="flex justify-end gap-2 mt-5">
+                <button type="button" onclick="document.getElementById('reject-modal').close()"
+                        class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700">Reject</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+const STATUS_COLOURS = {
+    PENDING: 'bg-amber-100 text-amber-800',
+    APPROVED: 'bg-green-100 text-green-800',
+    REJECTED: 'bg-red-100 text-red-800',
+};
+
+async function load() {
+    const status = document.getElementById('status-filter').value;
+    const el = document.getElementById('body');
+    el.innerHTML = '<p class="text-center text-neutral-400 py-6">Loading...</p>';
+
+    try {
+        const url = '/api/v1/admin/eft-payments' + (status ? `?status=${status}` : '');
+        const res = await ClassUp.fetch(url);
+        const items = res.data || [];
+        if (!items.length) {
+            el.innerHTML = `<p class="text-neutral-400 text-center py-8">No ${(status || 'submissions').toLowerCase()} to show.</p>`;
+            return;
+        }
+
+        el.innerHTML = `
+            <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="border-b border-neutral-100 bg-neutral-50">
+                        <th class="text-left px-3 py-2 text-xs font-medium text-neutral-500 uppercase">Tenant</th>
+                        <th class="text-left px-3 py-2 text-xs font-medium text-neutral-500 uppercase">Amount</th>
+                        <th class="text-left px-3 py-2 text-xs font-medium text-neutral-500 uppercase">Reference</th>
+                        <th class="text-left px-3 py-2 text-xs font-medium text-neutral-500 uppercase">Submitted</th>
+                        <th class="text-left px-3 py-2 text-xs font-medium text-neutral-500 uppercase">PoP</th>
+                        <th class="text-left px-3 py-2 text-xs font-medium text-neutral-500 uppercase">Status</th>
+                        <th class="text-right px-3 py-2 text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    ${items.map(p => `
+                        <tr class="hover:bg-neutral-50">
+                            <td class="px-3 py-2 font-medium text-neutral-800">${p.tenant_name || 'Unknown'}</td>
+                            <td class="px-3 py-2 text-neutral-800">${p.currency} ${p.amount.toFixed(2)}</td>
+                            <td class="px-3 py-2 text-neutral-600">${p.reference}</td>
+                            <td class="px-3 py-2 text-neutral-600 text-xs">${new Date(p.submitted_at).toLocaleString()}</td>
+                            <td class="px-3 py-2">
+                                ${p.pop_file_id ? `<a href="/api/v1/files/${p.pop_file_id}/url" target="_blank" class="text-primary-600 hover:underline text-xs" onclick="viewPop(event, '${p.pop_file_id}')">View PoP</a>` : '-'}
+                            </td>
+                            <td class="px-3 py-2">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLOURS[p.status] || 'bg-neutral-100'}">${p.status}</span>
+                                ${p.rejection_reason ? `<div class="text-xs text-red-600 mt-1">${p.rejection_reason}</div>` : ''}
+                            </td>
+                            <td class="px-3 py-2 text-right">
+                                ${p.status === 'PENDING' ? `
+                                    <button onclick="openApprove('${p.id}', '${p.tenant_name || 'Unknown'}', ${p.amount}, '${p.currency}')"
+                                            class="px-2 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700">Approve</button>
+                                    <button onclick="openReject('${p.id}', '${p.tenant_name || 'Unknown'}', ${p.amount}, '${p.currency}')"
+                                            class="px-2 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700">Reject</button>
+                                ` : `
+                                    <span class="text-xs text-neutral-400">${p.reviewed_at ? new Date(p.reviewed_at).toLocaleDateString() : ''}</span>
+                                `}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            </div>
+        `;
+    } catch (err) {
+        el.innerHTML = `<p class="text-red-600 text-center py-6">Could not load submissions: ${err.message}</p>`;
+    }
+}
+
+async function viewPop(e, fileId) {
+    e.preventDefault();
+    try {
+        const res = await ClassUp.fetch(`/api/v1/files/${fileId}/url`);
+        const url = res.data?.url;
+        if (url) window.open(url, '_blank');
+    } catch (err) {
+        ClassUp.toast('Could not open PoP', 'error');
+    }
+}
+
+function openApprove(id, tenant, amount, currency) {
+    document.getElementById('approve-id').value = id;
+    document.getElementById('approve-summary').textContent = `${tenant} — ${currency} ${amount.toFixed(2)}`;
+    document.getElementById('approve-days').value = 30;
+    document.getElementById('approve-modal').showModal();
+}
+
+function openReject(id, tenant, amount, currency) {
+    document.getElementById('reject-id').value = id;
+    document.getElementById('reject-summary').textContent = `${tenant} — ${currency} ${amount.toFixed(2)}`;
+    document.getElementById('reject-reason').value = '';
+    document.getElementById('reject-modal').showModal();
+}
+
+async function submitApprove(e) {
+    e.preventDefault();
+    const id = document.getElementById('approve-id').value;
+    const days = parseInt(document.getElementById('approve-days').value);
+    try {
+        await ClassUp.fetch(`/api/v1/admin/eft-payments/${id}/approve`, {
+            method: 'POST',
+            body: JSON.stringify({ extend_period_days: days }),
+        });
+        document.getElementById('approve-modal').close();
+        ClassUp.toast('Payment approved', 'success');
+        load();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Approve failed', 'error');
+    }
+}
+
+async function submitReject(e) {
+    e.preventDefault();
+    const id = document.getElementById('reject-id').value;
+    const reason = document.getElementById('reject-reason').value.trim();
+    if (!reason) return;
+    try {
+        await ClassUp.fetch(`/api/v1/admin/eft-payments/${id}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason }),
+        });
+        document.getElementById('reject-modal').close();
+        ClassUp.toast('Payment rejected', 'success');
+        load();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Reject failed', 'error');
+    }
+}
+
+load();
+</script>
+{% endblock %}

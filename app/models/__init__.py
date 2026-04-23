@@ -48,8 +48,10 @@ from app.models.subscription import (
     SubscriptionPlan,
     TenantSubscription,
     PlatformInvoice,
+    PlatformEftPayment,
     SubscriptionStatus,
     PlatformInvoiceStatus,
+    EftPaymentStatus,
 )
 from app.models.timetable import (
     TimetableConfig,
@@ -154,8 +156,10 @@ __all__ = [
     "SubscriptionPlan",
     "TenantSubscription",
     "PlatformInvoice",
+    "PlatformEftPayment",
     "SubscriptionStatus",
     "PlatformInvoiceStatus",
+    "EftPaymentStatus",
     # Timetable
     "TimetableConfig",
     "Timetable",

@@ -247,6 +247,61 @@ async def subscriptions_page(
     )
 
 
+@router.get("/platform-banking", response_class=HTMLResponse)
+async def platform_banking_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Super admin page to configure the platform's banking details
+    (for tenants paying by EFT)."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    _require_super_admin()
+
+    return templates.TemplateResponse(
+        "super_admin/platform_banking.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
+@router.get("/eft-payments", response_class=HTMLResponse)
+async def eft_payments_queue(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Super admin page with the pending EFT payments queue."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    _require_super_admin()
+
+    return templates.TemplateResponse(
+        "super_admin/eft_payments.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
 @router.get("/email-settings", response_class=HTMLResponse)
 async def email_settings(
     request: Request,

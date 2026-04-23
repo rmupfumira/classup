@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Pay by EFT - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <!-- Header -->
+    <div>
+        <a href="/subscription" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Back to Subscription</a>
+        <h1 class="mt-2 text-xl font-semibold text-neutral-800">Pay by EFT</h1>
+        <p class="mt-1 text-sm text-neutral-500">
+            Transfer the amount into our bank account and upload your proof of payment below.
+            Super admin will review and confirm — usually within 1 business day.
+        </p>
+    </div>
+
+    <!-- Banking details card -->
+    <div class="bg-white rounded-xl border border-neutral-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-neutral-800">Banking details</h2>
+            <button type="button" onclick="copyBanking()"
+                    class="text-xs text-primary-600 hover:underline hidden" id="copy-btn">
+                Copy details
+            </button>
+        </div>
+        <div id="banking-body" class="text-sm text-neutral-600">
+            <p class="text-center text-neutral-400 py-8">Loading banking details...</p>
+        </div>
+    </div>
+
+    <!-- Upload PoP form -->
+    <div class="bg-white rounded-xl border border-neutral-200 p-6">
+        <h2 class="text-lg font-semibold text-neutral-800 mb-4">Upload Proof of Payment</h2>
+        <form id="pop-form" class="space-y-4" enctype="multipart/form-data">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        Amount paid (ZAR) <span class="text-error-500">*</span>
+                    </label>
+                    <input type="number" step="0.01" min="0.01" name="amount" id="amount" required
+                           placeholder="999.00"
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        Payment reference <span class="text-error-500">*</span>
+                    </label>
+                    <input type="text" name="reference" id="reference" required
+                           placeholder="e.g. SCHOOL-NAME-APR26"
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                    <p class="mt-1 text-xs text-neutral-400">The reference you used on the EFT transfer.</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">
+                    Proof of payment <span class="text-error-500">*</span>
+                </label>
+                <input type="file" name="pop" id="pop" required
+                       accept="application/pdf,image/jpeg,image/png,image/webp"
+                       class="block w-full text-sm text-neutral-700 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 file:cursor-pointer">
+                <p class="mt-1 text-xs text-neutral-400">PDF or image. Max 10MB.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Notes (optional)</label>
+                <textarea name="notes" id="notes" rows="2"
+                          placeholder="Anything we should know about this payment..."
+                          class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0"></textarea>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button type="submit" id="submit-btn"
+                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600 disabled:opacity-60">
+                    Submit for approval
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Submission history -->
+    <div class="bg-white rounded-xl border border-neutral-200">
+        <div class="px-6 py-4 border-b border-neutral-200">
+            <h2 class="text-base font-semibold text-neutral-800">Your EFT submissions</h2>
+        </div>
+        <div id="history-body" class="p-6 text-sm">
+            <p class="text-center text-neutral-400">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const STATUS_COLOURS = {
+    PENDING: 'bg-amber-100 text-amber-800',
+    APPROVED: 'bg-green-100 text-green-800',
+    REJECTED: 'bg-red-100 text-red-800',
+};
+
+let bankingCache = null;
+
+async function loadBanking() {
+    const el = document.getElementById('banking-body');
+    try {
+        const res = await ClassUp.fetch('/api/v1/subscription/banking');
+        const b = res.data;
+        if (!b || Object.keys(b).length === 0) {
+            el.innerHTML = `<p class="text-amber-700 text-center py-6">The platform's banking details haven't been configured yet.<br>Please contact support before submitting payment.</p>`;
+            return;
+        }
+        bankingCache = b;
+        document.getElementById('copy-btn').classList.remove('hidden');
+
+        const rows = [
+            ['Bank', b.bank_name],
+            ['Account holder', b.account_holder],
+            ['Account number', b.account_number],
+            ['Branch code', b.branch_code],
+            ['Account type', b.account_type],
+            ['SWIFT code', b.swift_code],
+        ].filter(r => r[1]);
+
+        el.innerHTML = `
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${rows.map(([k, v]) => `
+                    <div>
+                        <dt class="text-xs uppercase tracking-wider text-neutral-500">${k}</dt>
+                        <dd class="text-sm font-medium text-neutral-800 mt-0.5 break-all">${v}</dd>
+                    </div>
+                `).join('')}
+            </dl>
+            ${b.reference_instructions ? `
+                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                    <strong>Reference instructions:</strong> ${b.reference_instructions}
+                </div>` : ''}
+        `;
+    } catch (err) {
+        el.innerHTML = `<p class="text-red-600 text-center py-6">Could not load banking details.</p>`;
+    }
+}
+
+function copyBanking() {
+    if (!bankingCache) return;
+    const text = Object.entries(bankingCache)
+        .filter(([k, v]) => v && k !== 'notify_email')
+        .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+        .join('\n');
+    navigator.clipboard.writeText(text);
+    ClassUp.toast('Banking details copied', 'success');
+}
+
+async function loadHistory() {
+    const el = document.getElementById('history-body');
+    try {
+        const res = await ClassUp.fetch('/api/v1/subscription/eft-payments');
+        const items = res.data || [];
+        if (!items.length) {
+            el.innerHTML = `<p class="text-neutral-400 text-center py-4">No EFT submissions yet.</p>`;
+            return;
+        }
+        el.innerHTML = `
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b border-neutral-100">
+                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Submitted</th>
+                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Amount</th>
+                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Reference</th>
+                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    ${items.map(p => `
+                        <tr>
+                            <td class="py-2 text-neutral-600">${new Date(p.submitted_at).toLocaleString()}</td>
+                            <td class="py-2 text-neutral-800">${p.currency} ${p.amount.toFixed(2)}</td>
+                            <td class="py-2 text-neutral-600">${p.reference}</td>
+                            <td class="py-2">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLOURS[p.status] || 'bg-neutral-100'}">
+                                    ${p.status}
+                                </span>
+                                ${p.rejection_reason ? `<div class="text-xs text-red-600 mt-0.5">${p.rejection_reason}</div>` : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (err) {
+        el.innerHTML = `<p class="text-red-600 text-center">Could not load history.</p>`;
+    }
+}
+
+document.getElementById('pop-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+
+    const form = e.target;
+    const fd = new FormData();
+    fd.append('amount', form.amount.value);
+    fd.append('reference', form.reference.value);
+    fd.append('pop', form.pop.files[0]);
+    if (form.notes.value) fd.append('notes', form.notes.value);
+
+    try {
+        const res = await fetch('/api/v1/subscription/eft-payment', { method: 'POST', body: fd, credentials: 'same-origin' });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.message || body.detail || 'Upload failed');
+        ClassUp.toast(body.message || 'Submitted for approval', 'success');
+        form.reset();
+        loadHistory();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Failed to submit', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit for approval';
+    }
+});
+
+loadBanking();
+loadHistory();
+</script>
+{% endblock %}

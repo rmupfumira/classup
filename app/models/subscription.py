@@ -196,3 +196,92 @@ class PlatformInvoice(Base, TimestampMixin):
     # Relationships
     tenant = relationship("Tenant", lazy="selectin")
     subscription = relationship("TenantSubscription", back_populates="invoices", lazy="selectin")
+
+
+class EftPaymentStatus(str, Enum):
+    """Status of a manual EFT payment submission."""
+
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class PlatformEftPayment(Base, TimestampMixin):
+    """A manual EFT payment submitted by a tenant for super-admin approval.
+
+    Flow:
+    1. Tenant uploads proof of payment (PoP) + amount + reference
+    2. Status starts as PENDING
+    3. Super admin reviews and approves or rejects
+    4. On APPROVED: linked TenantSubscription is activated / extended,
+       and a PlatformInvoice is marked PAID
+    """
+
+    __tablename__ = "platform_eft_payments"
+    __table_args__ = (
+        Index("idx_platform_eft_tenant", "tenant_id"),
+        Index("idx_platform_eft_status", "status"),
+        Index("idx_platform_eft_submitted", "submitted_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    subscription_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenant_subscriptions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    platform_invoice_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("platform_invoices.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(precision=12, scale=2), nullable=False
+    )
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="ZAR", server_default="ZAR"
+    )
+    reference: Mapped[str] = mapped_column(String(100), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Proof of payment file (in file_entities)
+    pop_file_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("file_entities.id", ondelete="SET NULL"),
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=EftPaymentStatus.PENDING.value,
+        server_default=EftPaymentStatus.PENDING.value,
+    )
+    submitted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extend_period_days: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+
+    # Relationships
+    tenant = relationship("Tenant", lazy="selectin")
+    subscription = relationship("TenantSubscription", lazy="selectin")
+    pop_file = relationship("FileEntity", lazy="selectin", foreign_keys=[pop_file_id])
+    reviewer = relationship("User", lazy="selectin", foreign_keys=[reviewed_by])

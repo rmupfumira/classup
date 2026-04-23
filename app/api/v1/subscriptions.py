@@ -4,15 +4,18 @@ import hashlib
 import hmac
 import logging
 import uuid
+from decimal import Decimal, InvalidOperation
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.subscription import SubscriptionStatus
+from app.models.file_entity import FileCategory
+from app.models.subscription import EftPaymentStatus, SubscriptionStatus
 from app.schemas.common import APIResponse, PaginationMeta
+from app.services.file_service import get_file_service
 from app.services.paystack_service import get_paystack_service
 from app.services.subscription_service import get_subscription_service
 from app.utils.permissions import require_role, require_super_admin
@@ -672,3 +675,373 @@ async def paystack_webhook(request: Request, db: AsyncSession = Depends(get_db))
                 await db.commit()
 
     return {"status": "ok"}
+
+
+# ─────────────────────────────────────────────────────────────────
+# Manual EFT payment flow
+# ─────────────────────────────────────────────────────────────────
+
+
+class PlatformBankingUpdate(BaseModel):
+    bank_name: str | None = None
+    account_holder: str | None = None
+    account_number: str | None = None
+    branch_code: str | None = None
+    account_type: str | None = None
+    swift_code: str | None = None
+    reference_instructions: str | None = None
+    notify_email: str | None = None
+
+
+class ApproveEftPayment(BaseModel):
+    extend_period_days: int | None = Field(
+        None, ge=1, le=3650,
+        description="Days to extend the subscription (defaults to 30)"
+    )
+
+
+class RejectEftPayment(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=1000)
+
+
+def _eft_payment_to_dict(p) -> dict:
+    """Serialise a PlatformEftPayment for API responses."""
+    return {
+        "id": str(p.id),
+        "tenant_id": str(p.tenant_id),
+        "tenant_name": p.tenant.name if p.tenant else None,
+        "subscription_id": str(p.subscription_id) if p.subscription_id else None,
+        "platform_invoice_id": (
+            str(p.platform_invoice_id) if p.platform_invoice_id else None
+        ),
+        "amount": float(p.amount),
+        "currency": p.currency,
+        "reference": p.reference,
+        "notes": p.notes,
+        "status": p.status,
+        "pop_file_id": str(p.pop_file_id) if p.pop_file_id else None,
+        "pop_file_name": p.pop_file.original_name if p.pop_file else None,
+        "submitted_at": p.submitted_at.isoformat() if p.submitted_at else None,
+        "reviewed_at": p.reviewed_at.isoformat() if p.reviewed_at else None,
+        "reviewed_by": str(p.reviewed_by) if p.reviewed_by else None,
+        "reviewer_name": (
+            f"{p.reviewer.first_name} {p.reviewer.last_name}"
+            if p.reviewer
+            else None
+        ),
+        "rejection_reason": p.rejection_reason,
+        "extend_period_days": p.extend_period_days,
+    }
+
+
+# ── Super admin: banking details ─────────────────────────────
+
+
+@router.get("/admin/platform-banking")
+@require_super_admin()
+async def get_platform_banking(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Return the platform's banking details (super admin)."""
+    service = get_subscription_service()
+    banking = await service.get_platform_banking(db)
+    return APIResponse(status="success", data=banking)
+
+
+@router.put("/admin/platform-banking")
+@require_super_admin()
+async def update_platform_banking(
+    body: PlatformBankingUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Update the platform's banking details (super admin)."""
+    service = get_subscription_service()
+    clean = {k: v for k, v in body.model_dump().items() if v is not None}
+    saved = await service.update_platform_banking(db, clean)
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message="Banking details updated",
+        data=saved,
+    )
+
+
+# ── Tenant: view banking + submit EFT ────────────────────────
+
+
+@router.get("/subscription/banking")
+@require_role("SCHOOL_ADMIN")
+async def get_banking_for_tenant(
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Tenant fetches the platform's banking details to pay into."""
+    service = get_subscription_service()
+    banking = await service.get_platform_banking(db)
+    if not banking:
+        return APIResponse(
+            status="success",
+            data=None,
+            message="The platform's banking details haven't been configured yet. Contact support.",
+        )
+    return APIResponse(status="success", data=banking)
+
+
+@router.post("/subscription/eft-payment")
+@require_role("SCHOOL_ADMIN")
+async def submit_eft_payment(
+    amount: str = Form(..., description="Amount paid in ZAR"),
+    reference: str = Form(..., description="Payment reference used on the transfer"),
+    pop: UploadFile = File(..., description="Proof of payment (PDF or image)"),
+    notes: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """School admin submits an EFT payment with proof (multipart form)."""
+    # Parse amount
+    try:
+        amount_decimal = Decimal(amount.strip())
+    except (InvalidOperation, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid amount")
+
+    if amount_decimal <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be > 0")
+
+    tenant_id = get_tenant_id()
+
+    # Upload PoP file
+    file_service = get_file_service()
+    try:
+        file_entity = await file_service.upload_file(
+            db, pop, FileCategory.DOCUMENT, entity_id=tenant_id
+        )
+    except Exception as e:
+        logger.exception("Failed to upload PoP file")
+        raise HTTPException(status_code=400, detail=f"Could not upload PoP: {e}")
+
+    await db.flush()
+    await db.refresh(file_entity)
+
+    service = get_subscription_service()
+    try:
+        payment = await service.submit_eft_payment(
+            db,
+            tenant_id=tenant_id,
+            amount=amount_decimal,
+            reference=reference,
+            pop_file_id=file_entity.id,
+            notes=notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await db.commit()
+
+    # Notify super admin(s) via notification service
+    try:
+        from app.services.notification_service import get_notification_service
+        from app.models.user import Role, User
+        from sqlalchemy import select
+        q = await db.execute(
+            select(User.id).where(
+                User.role == Role.SUPER_ADMIN.value,
+                User.is_active == True,  # noqa: E712
+                User.deleted_at.is_(None),
+            )
+        )
+        admin_ids = [row[0] for row in q.all()]
+        if admin_ids:
+            notif_service = get_notification_service()
+            await notif_service.create_bulk_notifications(
+                db=db,
+                user_ids=admin_ids,
+                title="EFT payment awaiting approval",
+                body=(
+                    f"A tenant submitted an EFT payment of {payment.currency} "
+                    f"{payment.amount:.2f} (ref: {payment.reference})."
+                ),
+                notification_type="PAYMENT_RECEIVED",
+                reference_type="eft_payment",
+                reference_id=payment.id,
+            )
+            await db.commit()
+    except Exception:
+        logger.exception("Failed to send super-admin notification for EFT submission")
+
+    return APIResponse(
+        status="success",
+        message="EFT payment submitted. We'll review and confirm within 1 business day.",
+        data=_eft_payment_to_dict(payment),
+    )
+
+
+@router.get("/subscription/eft-payments")
+@require_role("SCHOOL_ADMIN")
+async def list_my_eft_payments(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Tenant lists their own EFT payment history."""
+    tenant_id = get_tenant_id()
+    service = get_subscription_service()
+    items, total = await service.list_eft_payments(
+        db, tenant_id=tenant_id, page=page, page_size=page_size
+    )
+    total_pages = (total + page_size - 1) // page_size
+    return APIResponse(
+        status="success",
+        data=[_eft_payment_to_dict(p) for p in items],
+        pagination=PaginationMeta(
+            page=page, page_size=page_size, total_items=total,
+            total_pages=total_pages,
+            has_next=page < total_pages, has_prev=page > 1,
+        ),
+    )
+
+
+# ── Super admin: EFT queue ───────────────────────────────────
+
+
+@router.get("/admin/eft-payments")
+@require_super_admin()
+async def list_eft_payments_admin(
+    status: str | None = Query(None, description="Filter by status (PENDING/APPROVED/REJECTED)"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Super admin lists all EFT payment submissions."""
+    service = get_subscription_service()
+    items, total = await service.list_eft_payments(
+        db, status=status, page=page, page_size=page_size
+    )
+    total_pages = (total + page_size - 1) // page_size
+    return APIResponse(
+        status="success",
+        data=[_eft_payment_to_dict(p) for p in items],
+        pagination=PaginationMeta(
+            page=page, page_size=page_size, total_items=total,
+            total_pages=total_pages,
+            has_next=page < total_pages, has_prev=page > 1,
+        ),
+    )
+
+
+@router.post("/admin/eft-payments/{payment_id}/approve")
+@require_super_admin()
+async def approve_eft_payment(
+    payment_id: uuid.UUID,
+    body: ApproveEftPayment,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Super admin approves an EFT payment and activates the subscription."""
+    reviewer_id = get_current_user_id()
+    service = get_subscription_service()
+    try:
+        payment = await service.approve_eft_payment(
+            db,
+            payment_id=payment_id,
+            reviewer_id=reviewer_id,
+            extend_period_days=body.extend_period_days,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await db.commit()
+
+    # Notify tenant admins of approval
+    try:
+        from app.services.notification_service import get_notification_service
+        from app.models.user import Role, User
+        from sqlalchemy import select
+        q = await db.execute(
+            select(User.id).where(
+                User.tenant_id == payment.tenant_id,
+                User.role == Role.SCHOOL_ADMIN.value,
+                User.is_active == True,  # noqa: E712
+                User.deleted_at.is_(None),
+            )
+        )
+        admin_ids = [row[0] for row in q.all()]
+        if admin_ids:
+            notif_service = get_notification_service()
+            await notif_service.create_bulk_notifications(
+                db=db,
+                user_ids=admin_ids,
+                title="Payment approved — subscription active",
+                body=(
+                    f"Your EFT payment of {payment.currency} {payment.amount:.2f} "
+                    f"has been approved. Your subscription is now active."
+                ),
+                notification_type="PAYMENT_RECEIVED",
+                reference_type="eft_payment",
+                reference_id=payment.id,
+            )
+            await db.commit()
+    except Exception:
+        logger.exception("Failed to notify tenant admins on EFT approval")
+
+    return APIResponse(
+        status="success",
+        message="Payment approved and subscription activated",
+        data=_eft_payment_to_dict(payment),
+    )
+
+
+@router.post("/admin/eft-payments/{payment_id}/reject")
+@require_super_admin()
+async def reject_eft_payment(
+    payment_id: uuid.UUID,
+    body: RejectEftPayment,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Super admin rejects an EFT payment with a reason."""
+    reviewer_id = get_current_user_id()
+    service = get_subscription_service()
+    try:
+        payment = await service.reject_eft_payment(
+            db,
+            payment_id=payment_id,
+            reviewer_id=reviewer_id,
+            reason=body.reason,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await db.commit()
+
+    # Notify tenant
+    try:
+        from app.services.notification_service import get_notification_service
+        from app.models.user import Role, User
+        from sqlalchemy import select
+        q = await db.execute(
+            select(User.id).where(
+                User.tenant_id == payment.tenant_id,
+                User.role == Role.SCHOOL_ADMIN.value,
+                User.is_active == True,  # noqa: E712
+                User.deleted_at.is_(None),
+            )
+        )
+        admin_ids = [row[0] for row in q.all()]
+        if admin_ids:
+            notif_service = get_notification_service()
+            await notif_service.create_bulk_notifications(
+                db=db,
+                user_ids=admin_ids,
+                title="EFT payment was not approved",
+                body=(
+                    f"Your EFT payment of {payment.currency} {payment.amount:.2f} "
+                    f"(ref: {payment.reference}) was not approved. "
+                    f"Reason: {payment.rejection_reason}"
+                ),
+                notification_type="PAYMENT_RECEIVED",
+                reference_type="eft_payment",
+                reference_id=payment.id,
+            )
+            await db.commit()
+    except Exception:
+        logger.exception("Failed to notify tenant admins on EFT rejection")
+
+    return APIResponse(
+        status="success",
+        message="Payment rejected; tenant has been notified",
+        data=_eft_payment_to_dict(payment),
+    )

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Platform Banking - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div>
+        <a href="/admin" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Admin</a>
+        <h1 class="mt-2 text-xl font-semibold text-neutral-800">Platform Banking Details</h1>
+        <p class="mt-1 text-sm text-neutral-500">
+            These details are shown to tenants when they choose to pay by EFT.
+            Keep them accurate — tenants transfer money directly into this account.
+        </p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-neutral-200 p-6">
+        <form id="banking-form" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Bank name</label>
+                    <input type="text" id="bank_name" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Account holder</label>
+                    <input type="text" id="account_holder" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Account number</label>
+                    <input type="text" id="account_number" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Branch code</label>
+                    <input type="text" id="branch_code" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Account type</label>
+                    <input type="text" id="account_type" placeholder="Cheque / Current" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">SWIFT / BIC</label>
+                    <input type="text" id="swift_code" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Reference instructions</label>
+                <textarea id="reference_instructions" rows="2" placeholder="e.g. Use your school name followed by INV-YYYY-NN"
+                          class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0"></textarea>
+                <p class="mt-1 text-xs text-neutral-400">Shown to tenants on the EFT payment page to help them use the right reference.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Notification email (optional)</label>
+                <input type="email" id="notify_email" placeholder="finance@classup.co.za"
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded focus:border-primary-500 focus:ring-0">
+                <p class="mt-1 text-xs text-neutral-400">Future: email this address when a tenant submits proof of payment.</p>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">
+                    Save banking details
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const FIELDS = ['bank_name','account_holder','account_number','branch_code','account_type','swift_code','reference_instructions','notify_email'];
+
+async function load() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/platform-banking');
+        const b = res.data || {};
+        for (const f of FIELDS) document.getElementById(f).value = b[f] || '';
+    } catch (err) {
+        ClassUp.toast('Could not load existing banking details', 'error');
+    }
+}
+
+document.getElementById('banking-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {};
+    for (const f of FIELDS) {
+        const v = document.getElementById(f).value.trim();
+        body[f] = v || null;
+    }
+    try {
+        await ClassUp.fetch('/api/v1/admin/platform-banking', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+        ClassUp.toast('Banking details saved', 'success');
+    } catch (err) {
+        ClassUp.toast(err.message || 'Failed to save', 'error');
+    }
+});
+
+load();
+</script>
+{% endblock %}
