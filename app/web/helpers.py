@@ -53,18 +53,37 @@ async def get_teacher_class_context(
 
     # If no valid selection, pick primary class or first class
     if selected_class is None:
-        # Look for a primary assignment
+        # Look for a primary assignment. Use .first() rather than
+        # scalar_one_or_none() because data can occasionally have more
+        # than one primary per teacher (e.g. migrated data or older
+        # versions that didn't enforce uniqueness) and we should not
+        # 500 the whole dashboard over it.
+        import logging
+
         from app.models.school_class import TeacherClass
         from app.utils.tenant_context import get_current_user_id
         from sqlalchemy import select
 
+        logger = logging.getLogger(__name__)
+
         user_id = get_current_user_id()
-        primary_query = select(TeacherClass).where(
-            TeacherClass.teacher_id == user_id,
-            TeacherClass.is_primary == True,
+        primary_query = (
+            select(TeacherClass)
+            .where(
+                TeacherClass.teacher_id == user_id,
+                TeacherClass.is_primary == True,  # noqa: E712
+            )
+            .order_by(TeacherClass.assigned_at.asc())
         )
         result = await db.execute(primary_query)
-        primary_assignment = result.scalar_one_or_none()
+        primary_rows = list(result.scalars().all())
+        if len(primary_rows) > 1:
+            logger.warning(
+                "Teacher %s has %d primary class assignments — picking the earliest. "
+                "Consider cleaning up duplicates.",
+                user_id, len(primary_rows),
+            )
+        primary_assignment = primary_rows[0] if primary_rows else None
 
         if primary_assignment:
             for cls in my_classes:
