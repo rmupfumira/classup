@@ -47,6 +47,19 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI):
         """Application lifespan events."""
         logger.info(f"Starting {settings.app_name} in {settings.app_env} mode")
+
+        # Opportunistic audit log cleanup on startup — respect retention config
+        try:
+            from app.database import get_db_context
+            from app.services.audit_service import get_audit_service
+            async with get_db_context() as db:
+                deleted = await get_audit_service().purge_old(db)
+                await db.commit()
+                if deleted:
+                    logger.info(f"Startup audit purge removed {deleted} old rows")
+        except Exception:
+            logger.exception("Startup audit purge failed (non-fatal)")
+
         yield
         logger.info(f"Shutting down {settings.app_name}")
         await close_db()
@@ -102,6 +115,12 @@ def create_app() -> FastAPI:
     # Add subscription enforcement middleware (runs after auth)
     from app.middleware.subscription import SubscriptionMiddleware
     app.add_middleware(SubscriptionMiddleware)
+
+    # Audit middleware — records user actions. Must run AFTER auth populates
+    # the user/tenant context, so register it BEFORE auth (LIFO). Also runs
+    # BEFORE subscription so 402 responses get logged as permission-denied.
+    from app.middleware.audit import AuditMiddleware
+    app.add_middleware(AuditMiddleware)
 
     # Add tenant context middleware — sets request.state.tenant so templates
     # (sidebar, mobile nav, banners) can check feature flags. Must run AFTER

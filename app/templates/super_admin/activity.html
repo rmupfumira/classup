@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Live Activity - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <a href="/admin" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Admin</a>
+            <h1 class="mt-2 text-xl font-semibold text-neutral-800 flex items-center gap-2">
+                Live Activity
+                <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Live"></span>
+            </h1>
+            <p class="mt-1 text-sm text-neutral-500">Who's online right now and what they're doing. Auto-refreshes every 3 seconds.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/admin/audit"
+               class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
+                Full audit log
+            </a>
+            <button id="pause-btn" onclick="togglePause()"
+                    class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
+                Pause
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Online users panel -->
+        <div class="lg:col-span-1 bg-white rounded-xl border border-neutral-200">
+            <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-neutral-800">
+                    Online now <span id="online-count" class="text-neutral-400 ml-1">(…)</span>
+                </h2>
+                <select id="online-window"
+                        class="text-xs border-neutral-300 rounded h-7 px-2"
+                        onchange="refreshOnline()">
+                    <option value="5">Last 5 min</option>
+                    <option value="15">Last 15 min</option>
+                    <option value="30">Last 30 min</option>
+                    <option value="60">Last 60 min</option>
+                </select>
+            </div>
+            <div id="online-body" class="divide-y divide-neutral-100">
+                <p class="text-center text-neutral-400 py-8 text-sm">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Event stream panel -->
+        <div class="lg:col-span-2 bg-white rounded-xl border border-neutral-200">
+            <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-neutral-800">Recent events</h2>
+                <span id="stream-meta" class="text-xs text-neutral-400">—</span>
+            </div>
+            <div id="stream-body" class="divide-y divide-neutral-100 max-h-[70vh] overflow-y-auto">
+                <p class="text-center text-neutral-400 py-8 text-sm">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const POLL_MS = 3000;
+let paused = false;
+let lastLoadedAt = null;
+let seenIds = new Set();
+
+function togglePause() {
+    paused = !paused;
+    document.getElementById('pause-btn').textContent = paused ? 'Resume' : 'Pause';
+}
+
+function timeAgo(iso) {
+    if (!iso) return '';
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60) return Math.round(diff) + 's ago';
+    if (diff < 3600) return Math.round(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.round(diff / 3600) + 'h ago';
+    return Math.round(diff / 86400) + 'd ago';
+}
+
+const STATUS_COLOUR = {
+    2: 'bg-green-100 text-green-700',
+    3: 'bg-blue-100 text-blue-700',
+    4: 'bg-amber-100 text-amber-800',
+    5: 'bg-red-100 text-red-700',
+};
+
+function roleBadge(role) {
+    if (!role) return '';
+    const colour = {
+        'SUPER_ADMIN': 'bg-purple-100 text-purple-700',
+        'SCHOOL_ADMIN': 'bg-primary-50 text-primary-700',
+        'TEACHER': 'bg-blue-100 text-blue-700',
+        'PARENT': 'bg-neutral-100 text-neutral-700',
+    }[role] || 'bg-neutral-100 text-neutral-600';
+    return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${colour}">${role}</span>`;
+}
+
+async function refreshOnline() {
+    const mins = document.getElementById('online-window').value || 5;
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/online-users?threshold_minutes=' + mins);
+        const users = res.data || [];
+        document.getElementById('online-count').textContent = `(${users.length})`;
+        const body = document.getElementById('online-body');
+        if (!users.length) {
+            body.innerHTML = '<p class="text-center text-neutral-400 py-8 text-sm">No users active in this window.</p>';
+            return;
+        }
+        body.innerHTML = users.map(u => `
+            <div class="px-4 py-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-neutral-800 truncate">
+                            ${u.user_name || 'Unknown'}
+                            ${roleBadge(u.user_role)}
+                        </p>
+                        <p class="text-xs text-neutral-500 truncate">${u.user_email || ''}</p>
+                        ${u.tenant_name ? `<p class="text-xs text-neutral-400 mt-0.5">${u.tenant_name}</p>` : ''}
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <p class="text-xs font-medium text-green-700">${timeAgo(u.last_seen_at)}</p>
+                        <p class="text-[10px] text-neutral-400">${u.event_count} event${u.event_count === 1 ? '' : 's'}</p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        // swallow
+    }
+}
+
+async function refreshStream() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/audit-events?page=1&page_size=50&since_minutes=60');
+        const items = res.data || [];
+        const body = document.getElementById('stream-body');
+        if (!items.length) {
+            body.innerHTML = '<p class="text-center text-neutral-400 py-8 text-sm">No activity in the last hour.</p>';
+            document.getElementById('stream-meta').textContent = '0 events';
+            return;
+        }
+        body.innerHTML = items.map(e => {
+            const isNew = !seenIds.has(e.id);
+            seenIds.add(e.id);
+            const colour = STATUS_COLOUR[Math.floor((e.status_code || 0) / 100)] || 'bg-neutral-100 text-neutral-600';
+            return `
+                <div class="px-4 py-2.5 hover:bg-neutral-50 ${isNew ? 'animate-highlight' : ''}">
+                    <div class="flex items-start gap-2">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${colour}">${e.status_code || '—'}</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-mono text-neutral-800">${e.action}</span>
+                                ${e.method ? `<span class="text-[10px] text-neutral-500">${e.method}</span>` : ''}
+                                <span class="text-xs text-neutral-500 truncate">${e.path || ''}</span>
+                            </div>
+                            <div class="text-xs text-neutral-500 mt-0.5 truncate">
+                                ${e.user_name || 'Anonymous'}
+                                ${e.tenant_name ? `· <span class="text-neutral-400">${e.tenant_name}</span>` : ''}
+                                ${roleBadge(e.user_role)}
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0 text-[10px] text-neutral-400" title="${e.created_at || ''}">
+                            ${timeAgo(e.created_at)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        document.getElementById('stream-meta').textContent = `${items.length} of ${res.pagination?.total_items || 0} events · last hour`;
+    } catch (err) {
+        // swallow
+    }
+}
+
+async function tick() {
+    if (paused) return;
+    await Promise.all([refreshOnline(), refreshStream()]);
+}
+
+refreshOnline();
+refreshStream();
+setInterval(tick, POLL_MS);
+</script>
+
+<style>
+@keyframes highlight { from { background-color: #fef3c7; } to { background-color: transparent; } }
+.animate-highlight { animation: highlight 1.5s ease-out; }
+</style>
+{% endblock %}

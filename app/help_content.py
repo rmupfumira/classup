@@ -1077,6 +1077,92 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         ],
         "related": ["subscription-plans", "tenants"],
     },
+    "audit-log": {
+        "title": "Audit Log & Live Activity",
+        "short": "Who did what across the platform, with live view of online users.",
+        "icon": "chart",
+        "roles": ["super_admin"],
+        "category": "Platform",
+        "overview": (
+            "ClassUp records every significant user action so you can see who did what, from where, "
+            "and when. The audit log is configurable — you choose how aggressive the logging is and "
+            "how long records are kept. There's also a live view that polls every 3 seconds to show "
+            "who's online and what they're doing right now."
+        ),
+        "steps": [
+            {
+                "title": "Open the audit log",
+                "body": (
+                    "Admin → Audit Log. You'll see a filterable, paginated table of every recorded "
+                    "event: when it happened, which user, which tenant, the action, method, path, "
+                    "status code, and source IP address. Filter by action, search by user/tenant/path, "
+                    "or restrict to the last hour / 24 hours / 7 days."
+                ),
+                "tip": "Use the CSV button to export the currently filtered view for spreadsheets or compliance reports.",
+            },
+            {
+                "title": "Configure aggressiveness",
+                "body": (
+                    "Three levels, saved under Audit Configuration on the same page:\n"
+                    "• MINIMAL — auth events (login/logout/failed-login/password change), permission denials "
+                    "(401/402/403), and super-admin write operations. Use for low-volume audit trails.\n"
+                    "• STANDARD (default) — all of the above PLUS every POST/PUT/DELETE across the platform. "
+                    "The 'who changed what' level. Good for most deployments.\n"
+                    "• VERBOSE — all of the above PLUS every GET request. View tracking — 'who saw what'. "
+                    "Very high volume; only use if you need strict compliance logging."
+                ),
+                "tip": "Start at STANDARD and only escalate if you have a specific need. VERBOSE can generate millions of rows.",
+            },
+            {
+                "title": "Configure retention",
+                "body": (
+                    "Set retention_days on the same page (default 90, range 1-3650). Events older than this "
+                    "are deleted. Purging happens automatically on every app restart, and you can also trigger "
+                    "it manually with the 'Purge old events now' button."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Live activity view",
+                "body": (
+                    "Admin → Live Activity. Left panel: online users (anyone with audit activity in the last 5 min, "
+                    "configurable to 60). Right panel: stream of the last hour's events with auto-refresh every 3 seconds. "
+                    "New events highlight briefly so you can see them arrive. Pause the feed with the Pause button."
+                ),
+                "tip": "Leave this page open on a second monitor during a demo or onboarding session to watch what the new school is clicking.",
+            },
+            {
+                "title": "Pause or disable logging",
+                "body": (
+                    "Set 'Enabled' to No on the config panel to stop writing new audit events without changing "
+                    "retention or losing existing history. Useful during maintenance, backups, or if you want to "
+                    "temporarily minimise DB writes."
+                ),
+                "tip": None,
+            },
+        ],
+        "examples": [
+            {
+                "title": "Example: investigating a suspicious access",
+                "body": (
+                    "A school calls to say someone deleted a student. Open Audit Log, filter by the tenant name "
+                    "and the action 'students.:id.delete', restrict to the last 24 hours. You see the entry — "
+                    "user email, role, IP address, and exact timestamp. Drill into the user's other recent events "
+                    "to see whether they did it accidentally while cleaning up, or something more concerning."
+                ),
+            },
+            {
+                "title": "Example: watching an onboarding session",
+                "body": (
+                    "A new school admin is doing their first login. Open Live Activity — their email appears under "
+                    "'Online now' as they log in. The right panel shows every page they visit (dashboard, students, "
+                    "classes, add-student form, save, etc.). If they get stuck, you can see exactly where and "
+                    "follow up."
+                ),
+            },
+        ],
+        "related": ["tenants", "subscription-plans"],
+    },
     "email-settings": {
         "title": "Email Configuration",
         "short": "Configure the email provider — SMTP or Resend — used for all platform emails.",

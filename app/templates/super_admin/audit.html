@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Log - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <a href="/admin" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Admin</a>
+            <h1 class="mt-2 text-xl font-semibold text-neutral-800">Audit Log</h1>
+            <p class="mt-1 text-sm text-neutral-500">Every logged user action across the platform.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/admin/activity"
+               class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
+                Live activity
+            </a>
+        </div>
+    </div>
+
+    <!-- Config card -->
+    <div class="bg-white rounded-xl border border-neutral-200 p-5">
+        <h2 class="text-sm font-semibold text-neutral-800 mb-3">Audit Configuration</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Enabled</label>
+                <select id="cfg-enabled" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                    <option value="true">Yes — record audit events</option>
+                    <option value="false">No — pause logging</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Aggressiveness</label>
+                <select id="cfg-level" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                    <option value="MINIMAL">MINIMAL — auth + permission denials + admin writes</option>
+                    <option value="STANDARD">STANDARD — + all writes</option>
+                    <option value="VERBOSE">VERBOSE — + all reads (view tracking)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Retention (days)</label>
+                <input type="number" id="cfg-retention" min="1" max="3650"
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+            </div>
+        </div>
+        <div class="mt-3 flex items-center justify-between">
+            <p class="text-xs text-neutral-500">Events older than the retention period are purged on app startup. You can also purge manually.</p>
+            <div class="flex gap-2">
+                <button onclick="purgeNow()"
+                        class="px-3 py-1.5 text-xs text-neutral-600 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
+                    Purge old events now
+                </button>
+                <button onclick="saveConfig()"
+                        class="px-3 py-1.5 text-xs text-white bg-primary-500 rounded hover:bg-primary-600">
+                    Save config
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl border border-neutral-200 p-4">
+        <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Search</label>
+                <input type="text" id="search" placeholder="email, name, action, path..."
+                       class="block w-full h-8 px-2.5 text-sm border border-neutral-300 rounded bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Action contains</label>
+                <input type="text" id="action" placeholder="e.g. students.create"
+                       class="block w-full h-8 px-2.5 text-sm border border-neutral-300 rounded bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Since</label>
+                <select id="since-minutes" class="block w-full h-8 px-2 text-sm border border-neutral-300 rounded bg-white">
+                    <option value="">All time</option>
+                    <option value="60">Last hour</option>
+                    <option value="1440">Last 24 hours</option>
+                    <option value="10080">Last 7 days</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="h-8 px-3 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Filter</button>
+                <button type="button" onclick="exportCsv()"
+                        class="h-8 px-3 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">CSV</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Events table -->
+    <div class="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+                <thead>
+                    <tr class="bg-neutral-50 border-b border-neutral-200">
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">When</th>
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">User</th>
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">Tenant</th>
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">Action</th>
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">Method</th>
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">Path</th>
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">Status</th>
+                        <th class="px-3 py-2 text-left font-medium text-neutral-500 uppercase">IP</th>
+                    </tr>
+                </thead>
+                <tbody id="events-body" class="divide-y divide-neutral-100">
+                    <tr><td colspan="8" class="text-center text-neutral-400 py-8">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="px-4 py-2 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
+            <span id="page-info"></span>
+            <div class="flex items-center gap-1">
+                <button id="prev-btn" onclick="prevPage()" class="px-2 py-1 border border-neutral-300 rounded hover:bg-neutral-50 disabled:opacity-40" disabled>&larr; Prev</button>
+                <button id="next-btn" onclick="nextPage()" class="px-2 py-1 border border-neutral-300 rounded hover:bg-neutral-50 disabled:opacity-40" disabled>Next &rarr;</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const STATUS_COLOURS = {
+    2: 'text-green-700',
+    3: 'text-blue-700',
+    4: 'text-amber-700',
+    5: 'text-red-700',
+};
+let page = 1;
+const pageSize = 50;
+let lastTotal = 0;
+
+function buildUrl(p = page, ps = pageSize) {
+    const q = new URLSearchParams();
+    q.set('page', p);
+    q.set('page_size', ps);
+    const search = document.getElementById('search').value.trim();
+    if (search) q.set('search', search);
+    const action = document.getElementById('action').value.trim();
+    if (action) q.set('action', action);
+    const since = document.getElementById('since-minutes').value;
+    if (since) q.set('since_minutes', since);
+    return '/api/v1/admin/audit-events?' + q.toString();
+}
+
+async function loadConfig() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/audit-config');
+        const c = res.data || {};
+        document.getElementById('cfg-enabled').value = c.enabled === false ? 'false' : 'true';
+        document.getElementById('cfg-level').value = c.level || 'STANDARD';
+        document.getElementById('cfg-retention').value = c.retention_days || 90;
+    } catch (err) {}
+}
+
+async function saveConfig() {
+    const body = {
+        enabled: document.getElementById('cfg-enabled').value === 'true',
+        level: document.getElementById('cfg-level').value,
+        retention_days: parseInt(document.getElementById('cfg-retention').value),
+    };
+    try {
+        await ClassUp.fetch('/api/v1/admin/audit-config', {method: 'PUT', body: JSON.stringify(body)});
+        ClassUp.toast('Config saved', 'success');
+    } catch (err) {
+        ClassUp.toast(err.message || 'Save failed', 'error');
+    }
+}
+
+async function purgeNow() {
+    if (!(await ClassUp.confirm('Delete all audit events older than the retention period?', {danger: true, confirmText: 'Purge'}))) return;
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/audit-events/purge', {method: 'POST', body: JSON.stringify({})});
+        ClassUp.toast(res.message || 'Purged', 'success');
+        load();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Purge failed', 'error');
+    }
+}
+
+async function load() {
+    const tbody = document.getElementById('events-body');
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-neutral-400 py-8">Loading...</td></tr>';
+    try {
+        const res = await ClassUp.fetch(buildUrl());
+        const items = res.data || [];
+        lastTotal = res.pagination?.total_items || 0;
+        if (!items.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-neutral-400 py-8">No events match your filters.</td></tr>';
+        } else {
+            tbody.innerHTML = items.map(e => {
+                const dt = e.created_at ? new Date(e.created_at).toLocaleString() : '';
+                const colour = STATUS_COLOURS[Math.floor((e.status_code || 0) / 100)] || 'text-neutral-600';
+                return `
+                    <tr class="hover:bg-neutral-50">
+                        <td class="px-3 py-2 whitespace-nowrap text-neutral-500">${dt}</td>
+                        <td class="px-3 py-2 whitespace-nowrap">
+                            ${e.user_name ? `<div class="font-medium text-neutral-800">${e.user_name}</div>` : '<span class="text-neutral-400">Anonymous</span>'}
+                            ${e.user_email ? `<div class="text-neutral-500">${e.user_email}${e.user_role ? ' · ' + e.user_role : ''}</div>` : ''}
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${e.tenant_name || '-'}</td>
+                        <td class="px-3 py-2 whitespace-nowrap font-mono text-neutral-800">${e.action}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${e.method || '-'}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${e.path || '-'}</td>
+                        <td class="px-3 py-2 whitespace-nowrap font-medium ${colour}">${e.status_code || '-'}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-neutral-500">${e.ip_address || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        const totalPages = res.pagination?.total_pages || 1;
+        document.getElementById('page-info').textContent = `Page ${page} of ${totalPages} · ${lastTotal} events`;
+        document.getElementById('prev-btn').disabled = page <= 1;
+        document.getElementById('next-btn').disabled = page >= totalPages;
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-red-600 py-8">${err.message || 'Failed to load'}</td></tr>`;
+    }
+}
+
+function prevPage() { if (page > 1) { page--; load(); } }
+function nextPage() { page++; load(); }
+
+document.getElementById('filter-form').addEventListener('submit', (e) => { e.preventDefault(); page = 1; load(); });
+
+function exportCsv() {
+    const rows = Array.from(document.querySelectorAll('#events-body tr')).map(tr =>
+        Array.from(tr.querySelectorAll('td')).map(td => '"' + (td.innerText || '').replace(/"/g, '""').replace(/\n/g, ' ') + '"').join(','),
+    );
+    const header = '"When","User","Tenant","Action","Method","Path","Status","IP"';
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+loadConfig();
+load();
+</script>
+{% endblock %}

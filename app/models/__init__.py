@@ -60,6 +60,7 @@ from app.models.timetable import (
     DEFAULT_DAYS,
     get_default_periods,
 )
+from app.models.audit import AuditLog, AuditLevel
 
 __all__ = [
     # Base
@@ -166,4 +167,7 @@ __all__ = [
     "TimetableEntry",
     "DEFAULT_DAYS",
     "get_default_periods",
+    # Audit
+    "AuditLog",
+    "AuditLevel",
 ]
