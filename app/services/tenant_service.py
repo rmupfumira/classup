@@ -177,6 +177,12 @@ class TenantService:
             db, tenant.id, education_type.value
         )
 
+        # Seed default chart of accounts + a default bank account so the
+        # accounting module is usable from day 1.
+        from app.services.accounting_service import get_accounting_service
+        accounting_service = get_accounting_service()
+        await accounting_service.seed_defaults_for_tenant(db, tenant.id)
+
         await db.commit()
         await db.refresh(tenant)
 

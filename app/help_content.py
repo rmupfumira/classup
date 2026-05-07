@@ -433,7 +433,110 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
                 ),
             }
         ],
-        "related": ["students"],
+        "related": ["students", "accounting"],
+    },
+    # ==================== ACCOUNTING ====================
+    "accounting": {
+        "title": "Accounting",
+        "short": "A simple in-house bookkeeping module — record income, expenses, transfers, and run P&L reports.",
+        "icon": "currency",
+        "roles": ["school_admin"],
+        "category": "Finance",
+        "overview": (
+            "Accounting lets your school do basic bookkeeping without a separate package like Sage or QuickBooks. "
+            "Track every cent in and out, manage multiple bank accounts, see your monthly profit and loss, and "
+            "watch your cash position in real time. Tuition payments recorded in Billing flow into Accounting "
+            "automatically, so you don't have to capture them twice."
+        ),
+        "steps": [
+            {
+                "title": "Open the Accounting module",
+                "body": (
+                    "Click Accounting in the sidebar. The Dashboard shows this-month's income, expenses, "
+                    "net profit, and total cash across all bank accounts. The sub-navigation bar lets you "
+                    "jump to Expenses, Income, Vendors, Banks, Chart of Accounts, or Reports."
+                ),
+                "tip": "Accounting only appears in the sidebar if your plan includes it. If it's missing, contact your administrator.",
+            },
+            {
+                "title": "Set up your bank accounts",
+                "body": (
+                    "Go to Accounting → Banks → + Add bank. Enter the bank name (e.g. FNB, Standard Bank), "
+                    "your account number, branch code, and current opening balance. Tick Default for the account "
+                    "you use most — it'll be pre-selected on every transaction form. The Operating Account is "
+                    "created automatically when your school is set up."
+                ),
+                "tip": "Opening balance should be the balance on the day you start using ClassUp. All future income/expenses build from there.",
+            },
+            {
+                "title": "Review your chart of accounts",
+                "body": (
+                    "Go to Accounting → Chart of Accounts. You'll see a sensible default list (Tuition Fees, "
+                    "Salaries, Rent, Utilities, etc.), grouped by Income, Expense, Asset, and Liability. "
+                    "Click + Add account to add your own categories. You can deactivate categories you don't use, "
+                    "but the system Tuition Fees account is protected — billing payments link to it."
+                ),
+                "tip": "Use account codes that match your existing bookkeeping if you've got an accountant — they'll thank you.",
+            },
+            {
+                "title": "Record an expense",
+                "body": (
+                    "Click Accounting → Expenses → + Record expense. Enter the date, amount, category (e.g. Stationery), "
+                    "the bank account it was paid from, an optional vendor, and a description. Save. The transaction "
+                    "appears in the table immediately, and your bank balance drops by that amount on the dashboard."
+                ),
+                "tip": "Add vendors first (Accounting → Vendors) if you want a dropdown of suppliers to pick from.",
+            },
+            {
+                "title": "Record income (non-tuition)",
+                "body": (
+                    "Use Accounting → Income → + Record income for grants, donations, fundraising proceeds, or "
+                    "anything that isn't an invoiced fee. Tuition payments captured in Billing show up here "
+                    "automatically with a blue Billing badge — you can't delete those (they'll re-link if you do)."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Run reports",
+                "body": (
+                    "Go to Accounting → Reports. Pick a date range (or click This month / This quarter / YTD), "
+                    "then Run reports. You get three at once: Profit & Loss (income vs expenses with totals + net), "
+                    "Expenses by Category (with percentage share), and Cash Position (live balances across all banks). "
+                    "Click Print for a paper copy or PDF (use \"Save as PDF\" from the print dialog)."
+                ),
+                "tip": "Print reports monthly and email them to your accountant or board members.",
+            },
+        ],
+        "examples": [
+            {
+                "title": "Example: paying the electricity bill",
+                "body": (
+                    "Eskom invoices you R8,200 on 15 May. Go to Expenses → + Record expense. "
+                    "Date: 2026-05-15, Amount: 8200, Category: Utilities, Bank: Operating Account, "
+                    "Vendor: (add Eskom if not yet there), Description: \"May 2026 electricity\". Save. "
+                    "On the dashboard, May expenses jump by R8,200 and Operating Account drops by R8,200."
+                ),
+            },
+            {
+                "title": "Example: a parent pays tuition via EFT",
+                "body": (
+                    "A parent EFTs R3,500 for their child's monthly tuition. You record the payment on the "
+                    "invoice in Billing as usual. Behind the scenes, ClassUp creates an INCOME transaction "
+                    "in Accounting against the Tuition Fees account. Your bank balance and P&L update with no "
+                    "double-capture needed."
+                ),
+            },
+            {
+                "title": "Example: monthly board report",
+                "body": (
+                    "First of every month, go to Reports → click This month → Run reports → Print. "
+                    "You get a one-page summary: total income (broken down by source), total expenses "
+                    "(broken down by category with percentages), net profit, and current cash position. "
+                    "Email it to your board or save as PDF for the records."
+                ),
+            },
+        ],
+        "related": ["billing", "students"],
     },
     # ==================== TIMETABLE ====================
     "timetable": {

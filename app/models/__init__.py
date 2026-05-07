@@ -61,6 +61,15 @@ from app.models.timetable import (
     get_default_periods,
 )
 from app.models.audit import AuditLog, AuditLevel
+from app.models.accounting import (
+    AccountType,
+    AccountingTransaction,
+    BankAccount,
+    BankAccountType,
+    ChartAccount,
+    TransactionType,
+    Vendor,
+)
 
 __all__ = [
     # Base
@@ -170,4 +179,12 @@ __all__ = [
     # Audit
     "AuditLog",
     "AuditLevel",
+    # Accounting
+    "AccountType",
+    "AccountingTransaction",
+    "BankAccount",
+    "BankAccountType",
+    "ChartAccount",
+    "TransactionType",
+    "Vendor",
 ]

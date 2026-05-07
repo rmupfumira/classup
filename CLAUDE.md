@@ -2,6 +2,12 @@
 
 > Single source of truth for building ClassUp. Multi-tenant SaaS for schools/daycares.
 > Last Updated: 2026-03-09
+## Testing Requirements
+- Every new feature must have unit tests before marking complete
+- Integration tests required for all API endpoints
+- Test coverage must not drop below 80%
+- Run tests before considering any task done
+- Tests must be green — never leave failing tests
 
 ## Design Principles
 
@@ -69,7 +75,7 @@ Email provider config stored in `system_settings` DB table (not env vars), switc
 
 **tenants**: id, name, slug (unique), email, phone, address, logo_path, education_type (DAYCARE|PRIMARY_SCHOOL|HIGH_SCHOOL|K12|COMBINED), settings (JSONB), is_active, onboarding_completed, timestamps, deleted_at
 
-**tenants.settings JSONB**: `{education_type, enabled_grade_levels[], features{attendance_tracking, messaging, photo_sharing, document_sharing, daily_reports, parent_communication, nap_tracking, bathroom_tracking, fluid_tracking, meal_tracking, diaper_tracking, homework_tracking, grade_tracking, behavior_tracking, timetable_management, subject_management, exam_management, disciplinary_records, whatsapp_enabled, billing}, terminology{student, students, teacher, teachers, class, classes, parent, parents}, report_config{default_report_type, enabled_sections[]}, whatsapp{enabled, phone_number_id, send_attendance_alerts, send_report_notifications, send_announcements}, branding{primary_color, secondary_color}, billing_currency, billing_banking_details, billing_payment_instructions, billing_overdue_reminders_enabled, billing_overdue_reminder_interval_days, timezone, language}`
+**tenants.settings JSONB**: `{education_type, enabled_grade_levels[], features{attendance_tracking, messaging, photo_sharing, document_sharing, daily_reports, parent_communication, nap_tracking, bathroom_tracking, fluid_tracking, meal_tracking, diaper_tracking, homework_tracking, grade_tracking, behavior_tracking, timetable_management, subject_management, exam_management, disciplinary_records, whatsapp_enabled, billing, accounting}, terminology{student, students, teacher, teachers, class, classes, parent, parents}, report_config{default_report_type, enabled_sections[]}, whatsapp{enabled, phone_number_id, send_attendance_alerts, send_report_notifications, send_announcements}, branding{primary_color, secondary_color}, billing_currency, billing_banking_details, billing_payment_instructions, billing_overdue_reminders_enabled, billing_overdue_reminder_interval_days, timezone, language}`
 
 **users**: id, tenant_id (NULL for SUPER_ADMIN), email, password_hash, first_name, last_name, phone, role (SUPER_ADMIN|SCHOOL_ADMIN|TEACHER|PARENT), avatar_path, is_active, language, whatsapp_phone (E.164), whatsapp_opted_in, last_login_at, timestamps, deleted_at. Unique: (email, tenant_id) WHERE deleted_at IS NULL.
 
@@ -127,19 +133,30 @@ Email provider config stored in `system_settings` DB table (not env vars), switc
 
 **billing_payments**: id, tenant_id, invoice_id FK CASCADE, student_id FK CASCADE, amount (Numeric 12,2), payment_method (CASH|BANK_TRANSFER|EFT|CARD|CHEQUE|OTHER), reference_number, payment_date, notes, recorded_by FK, deleted_at, timestamps
 
+**chart_accounts**: id, tenant_id, code (unique per tenant), name, type (INCOME|EXPENSE|ASSET|LIABILITY), description, is_active, is_system (protects code 4000 Tuition Fees from edits/delete), display_order, deleted_at, timestamps. Default chart seeded on tenant create.
+
+**bank_accounts**: id, tenant_id, name, bank_name, account_number, branch_code, account_type (OPERATING|SAVINGS|PETTY_CASH|OTHER), currency (default ZAR), opening_balance (Numeric 14,2), opening_balance_date, is_default (only one per tenant), is_active, deleted_at, timestamps
+
+**vendors**: id, tenant_id, name, contact_person, email, phone, address, vat_number, banking_details (JSONB), notes, is_active, deleted_at, timestamps
+
+**accounting_transactions**: id, tenant_id, date, type (INCOME|EXPENSE|TRANSFER), amount (Numeric 14,2), currency (default ZAR), account_id FK chart_accounts, bank_account_id FK bank_accounts, transfer_to_bank_account_id FK bank_accounts (for TRANSFER), vendor_id FK vendors, student_id FK students, billing_payment_id FK billing_payments (UNIQUE — for idempotent auto-link), description, reference, vat_amount, vat_rate, receipt_file_id FK file_entities, created_by FK users, deleted_at, timestamps. Single-entry: one row = one money movement. P&L / cash position derived by aggregating these rows.
+
 ### ER Summary
 
 ```
 tenants → users, students, school_classes, attendance_records, messages,
           daily_reports, report_templates, file_entities, parent_invitations,
           teacher_invitations, notifications, webhook_endpoints, bulk_import_jobs,
-          subjects, grading_systems, billing_fee_items, billing_invoices, billing_payments
+          subjects, grading_systems, billing_fee_items, billing_invoices, billing_payments,
+          chart_accounts, bank_accounts, vendors, accounting_transactions
 students ←→ users (via parent_students)
 school_classes ←→ users (via teacher_classes)
 school_classes ←→ subjects (via class_subjects)
 messages → message_recipients, message_attachments → file_entities
 billing_invoices → billing_invoice_items, billing_payments
 billing_invoices → students (student_id)
+billing_payments → accounting_transactions (auto-link, idempotent)
+accounting_transactions → chart_accounts, bank_accounts, vendors, students, file_entities
 ```
 
 ## Multi-Tenancy
@@ -229,6 +246,8 @@ Shared DB, row-level isolation. TenantMiddleware extracts tenant_id from JWT →
 
 **Academic** `/api/v1/academic`: CRUD /subjects; GET/POST /classes/{cid}/subjects; PUT/DELETE /classes/{cid}/subjects/{sid}; POST /classes/{cid}/subjects/bulk; CRUD /grading-systems; POST /setup-defaults
 
+**Accounting** `/api/v1/accounting` (gated by `accounting` feature): CRUD /accounts, /banks, /vendors; POST /expenses, /income, /transfers; GET /transactions; PUT/DELETE /transactions/{id}; GET /dashboard, /reports/profit-loss, /reports/expenses-by-category, /reports/cash-position
+
 **WhatsApp** `/api/v1/whatsapp`: GET/POST /webhook (Meta); POST /send
 
 **WebSocket**: `/api/v1/ws/{token}` — JWT in URL path
@@ -274,7 +293,29 @@ Tenant-scoped emails use tenant name as sender display name. Service loads confi
 
 ## Billing
 
-Fee items define charges (amount, frequency MONTHLY|TERMLY|ANNUALLY|ONCE_OFF, applies to ALL or specific CLASS). Invoices generated per student with line items from fee items; auto-numbered INV-YYYY-NNNN. Lifecycle: DRAFT → SENT (triggers email to parents) → PARTIALLY_PAID/PAID/OVERDUE/CANCELLED. Payments recorded against invoices; balance auto-recalculated. Overdue detection runs on `/billing` dashboard load (`check_overdue_invoices()`). Recurring overdue reminders configurable via Settings > Billing (`billing_overdue_reminders_enabled`, `billing_overdue_reminder_interval_days` default 7, tracked by `last_reminder_sent_at`). Parents see invoices (non-draft), statements, and balances for their children. Settings stored in `tenant.settings` JSONB: `billing_currency`, `billing_banking_details`, `billing_payment_instructions`.
+Fee items define charges (amount, frequency MONTHLY|TERMLY|ANNUALLY|ONCE_OFF, applies to ALL or specific CLASS). Invoices generated per student with line items from fee items; auto-numbered INV-YYYY-NNNN. Lifecycle: DRAFT → SENT (triggers email to parents) → PARTIALLY_PAID/PAID/OVERDUE/CANCELLED. Payments recorded against invoices; balance auto-recalculated. Overdue detection runs on `/billing` dashboard load (`check_overdue_invoices()`). Recurring overdue reminders configurable via Settings > Billing (`billing_overdue_reminders_enabled`, `billing_overdue_reminder_interval_days` default 7, tracked by `last_reminder_sent_at`). Parents see invoices (non-draft), statements, and balances for their children. Settings stored in `tenant.settings` JSONB: `billing_currency`, `billing_banking_details`, `billing_payment_instructions`. Recording a payment auto-creates a matching INCOME accounting transaction (see Accounting).
+
+## Accounting
+
+In-house single-entry bookkeeping for schools — eliminates the need for a separate package like Sage. One transaction row = one money movement. Gated by `tenant.settings.features.accounting`.
+
+**Defaults seeded on tenant create**: chart of accounts (7 income + 13 expense + 1 asset + 2 liability), one default Operating Account bank. The Tuition Fees account (code `4000`) is `is_system=True` — protected from delete/deactivate, used as the auto-link target for billing payments.
+
+**Concepts**:
+- **Chart of accounts** — buckets for income (4xxx), expenses (5xxx), assets (1xxx), liabilities (2xxx). Admins add custom categories.
+- **Bank accounts** — physical school bank accounts. Live balance = opening_balance + INCOME + transfers in − EXPENSE − transfers out (up to as_of date).
+- **Vendors** — suppliers (optional on expense entry).
+- **Transactions** — INCOME, EXPENSE, or TRANSFER. Each row references one account + one bank.
+
+**Auto-link from Billing**: when `BillingPayment` is recorded, `accounting_service.link_billing_payment()` creates a matching INCOME transaction against the Tuition Fees account on the default bank. Idempotent — guarded by UNIQUE on `accounting_transactions.billing_payment_id`. Auto-linked rows can't be edited or deleted directly (must remove the source payment).
+
+**Reports**:
+- **Profit & Loss** — income & expense aggregates by account + totals + net, for a date range.
+- **Expenses by Category** — sum + count per expense account, sorted desc, with percentage shares.
+- **Cash Position** — live balance per bank as of a date, with grand total.
+- **Dashboard summary** — this-month income/expense/net + cash total + per-bank balances.
+
+UI: `/accounting` (admin only when feature enabled). Sub-nav: Dashboard, Expenses, Income, Vendors, Banks, Chart of Accounts, Reports. Print-friendly CSS on Reports page.
 
 ## WhatsApp Integration
 

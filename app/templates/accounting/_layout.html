@@ -1,0 +1,19 @@
+{# Sub-navigation for the accounting module — included on every page. #}
+<nav class="bg-white rounded-lg shadow-card border border-neutral-200 p-1 flex flex-wrap items-center gap-1 text-sm">
+    {% set items = [
+        ('/accounting', 'Dashboard'),
+        ('/accounting/expenses', 'Expenses'),
+        ('/accounting/income', 'Income'),
+        ('/accounting/vendors', 'Vendors'),
+        ('/accounting/banks', 'Banks'),
+        ('/accounting/accounts', 'Chart of Accounts'),
+        ('/accounting/reports', 'Reports'),
+    ] %}
+    {% for url, label in items %}
+    {% set active = (url == '/accounting' and request.url.path == '/accounting') or (url != '/accounting' and request.url.path.startswith(url)) %}
+    <a href="{{ url }}"
+       class="px-3 py-1.5 rounded-md transition-colors {% if active %}bg-primary-100 text-primary-700 font-medium{% else %}text-neutral-600 hover:bg-neutral-50{% endif %}">
+        {{ label }}
+    </a>
+    {% endfor %}
+</nav>

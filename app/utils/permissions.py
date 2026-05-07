@@ -77,6 +77,7 @@ FEATURE_LABELS: dict[str, str] = {
     "timetable_management": "Timetable",
     "subject_management": "Subjects & Grading",
     "whatsapp_enabled": "WhatsApp Notifications",
+    "accounting": "Accounting",
 }
 
 

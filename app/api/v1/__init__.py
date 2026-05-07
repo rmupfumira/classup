@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.v1 import (
     academic,
+    accounting,
     admin,
     announcements,
     attendance,
@@ -81,4 +82,10 @@ api_router.include_router(
     prefix="/timetable",
     tags=["Timetable"],
     dependencies=[Depends(require_feature("timetable_management"))],
+)
+api_router.include_router(
+    accounting.router,
+    prefix="/accounting",
+    tags=["Accounting"],
+    dependencies=[Depends(require_feature("accounting"))],
 )

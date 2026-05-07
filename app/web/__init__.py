@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from app.utils.permissions import require_feature
 from app.web import (
     academic,
+    accounting,
     announcements,
     attendance,
     auth,
@@ -68,6 +69,10 @@ web_router.include_router(
 web_router.include_router(
     timetable.router,
     dependencies=[Depends(require_feature("timetable_management"))],
+)
+web_router.include_router(
+    accounting.router,
+    dependencies=[Depends(require_feature("accounting"))],
 )
 
 # Must be registered LAST — /{slug} is a catch-all that matches any

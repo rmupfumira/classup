@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Vendors - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Vendors</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">Suppliers and service providers the school pays.</p>
+        </div>
+        <button onclick="openVendor()" class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
+            + Add vendor
+        </button>
+    </div>
+
+    {% include 'accounting/_layout.html' %}
+
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <table class="min-w-full text-sm">
+            <thead class="bg-neutral-50 border-b border-neutral-200">
+                <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Name</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Contact</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Phone</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Email</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">VAT</th>
+                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="body" class="divide-y divide-neutral-100">
+                <tr><td colspan="6" class="text-center text-neutral-400 py-8">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<dialog id="vendor-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+    <form class="p-6" onsubmit="submitVendor(event)">
+        <h3 class="text-lg font-semibold text-neutral-800 mb-4" id="vendor-title">Add vendor</h3>
+        <input type="hidden" id="v-id">
+        <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-2">
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Name</label>
+                <input type="text" id="v-name" required maxlength="200" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Contact person</label>
+                <input type="text" id="v-contact" maxlength="150" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Phone</label>
+                <input type="tel" id="v-phone" maxlength="50" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Email</label>
+                <input type="email" id="v-email" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">VAT number</label>
+                <input type="text" id="v-vat" maxlength="40" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Address</label>
+                <textarea id="v-address" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Banking details / payment notes</label>
+                <textarea id="v-banking" rows="2" placeholder="e.g. ABSA, account 123456789, branch 632005" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-5">
+            <button type="button" onclick="document.getElementById('vendor-modal').close()"
+                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+async function load() {
+    const res = await ClassUp.fetch('/api/v1/accounting/vendors');
+    const items = res.data || [];
+    const body = document.getElementById('body');
+    if (!items.length) {
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-neutral-400 py-8">No vendors yet.</td></tr>';
+        return;
+    }
+    body.innerHTML = items.map(v => `
+        <tr class="hover:bg-neutral-50">
+            <td class="px-3 py-2 font-medium text-neutral-800">${v.name}</td>
+            <td class="px-3 py-2 text-neutral-600">${v.contact_person || '—'}</td>
+            <td class="px-3 py-2 text-neutral-600">${v.phone || '—'}</td>
+            <td class="px-3 py-2 text-neutral-600">${v.email || '—'}</td>
+            <td class="px-3 py-2 text-neutral-600">${v.vat_number || '—'}</td>
+            <td class="px-3 py-2 text-right">
+                <button onclick='openVendor(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="text-xs text-primary-600 hover:underline mr-2">Edit</button>
+                <button onclick="deleteVendor('${v.id}')" class="text-xs text-danger-600 hover:underline">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openVendor(v) {
+    const isEdit = v && v.id;
+    document.getElementById('vendor-title').textContent = isEdit ? 'Edit vendor' : 'Add vendor';
+    document.getElementById('v-id').value = isEdit ? v.id : '';
+    document.getElementById('v-name').value = isEdit ? v.name || '' : '';
+    document.getElementById('v-contact').value = isEdit ? v.contact_person || '' : '';
+    document.getElementById('v-phone').value = isEdit ? v.phone || '' : '';
+    document.getElementById('v-email').value = isEdit ? v.email || '' : '';
+    document.getElementById('v-vat').value = isEdit ? v.vat_number || '' : '';
+    document.getElementById('v-address').value = isEdit ? v.address || '' : '';
+    document.getElementById('v-banking').value = isEdit ? v.banking_details || '' : '';
+    document.getElementById('vendor-modal').showModal();
+}
+
+async function submitVendor(e) {
+    e.preventDefault();
+    const id = document.getElementById('v-id').value;
+    const body = {
+        name: document.getElementById('v-name').value,
+        contact_person: document.getElementById('v-contact').value || null,
+        phone: document.getElementById('v-phone').value || null,
+        email: document.getElementById('v-email').value || null,
+        vat_number: document.getElementById('v-vat').value || null,
+        address: document.getElementById('v-address').value || null,
+        banking_details: document.getElementById('v-banking').value || null,
+    };
+    try {
+        if (id) {
+            await ClassUp.fetch('/api/v1/accounting/vendors/' + id, { method: 'PUT', body: JSON.stringify(body) });
+        } else {
+            await ClassUp.fetch('/api/v1/accounting/vendors', { method: 'POST', body: JSON.stringify(body) });
+        }
+        document.getElementById('vendor-modal').close();
+        ClassUp.toast(id ? 'Vendor updated' : 'Vendor added', 'success');
+        load();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Save failed', 'error');
+    }
+}
+
+async function deleteVendor(id) {
+    if (!(await ClassUp.confirm('Deactivate this vendor?', { danger: true, confirmText: 'Deactivate' }))) return;
+    await ClassUp.fetch('/api/v1/accounting/vendors/' + id, { method: 'DELETE' });
+    ClassUp.toast('Deactivated', 'success');
+    load();
+}
+
+load();
+</script>
+{% endblock %}

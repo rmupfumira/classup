@@ -487,6 +487,14 @@ class BillingService:
         except Exception:
             logger.exception("Failed to notify parents for payment on invoice %s", invoice.id)
 
+        # Auto-link to the accounting module (single-entry INCOME transaction)
+        # so the P&L picks it up. Best-effort — never block the payment.
+        try:
+            from app.services.accounting_service import get_accounting_service
+            await get_accounting_service().link_billing_payment(db, payment)
+        except Exception:
+            logger.exception("Failed to auto-link payment %s to accounting", payment.id)
+
         await db.refresh(payment)
         return payment
 

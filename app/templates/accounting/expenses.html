@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Expenses - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Expenses</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">Money paid to vendors and operating expenses.</p>
+        </div>
+        <button onclick="openExpense()"
+                class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
+            + Record expense
+        </button>
+    </div>
+
+    {% include 'accounting/_layout.html' %}
+
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <table class="min-w-full text-sm">
+            <thead class="bg-neutral-50 border-b border-neutral-200">
+                <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Category</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Vendor</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Description</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bank</th>
+                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Amount</th>
+                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tx-body" class="divide-y divide-neutral-100">
+                <tr><td colspan="7" class="text-center text-neutral-400 py-8">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<dialog id="exp-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+    <form class="p-6" onsubmit="submitExpense(event)">
+        <h3 class="text-lg font-semibold text-neutral-800 mb-4">Record an expense</h3>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Date</label>
+                <input type="date" id="f-date" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Amount (ZAR)</label>
+                <input type="number" id="f-amount" step="0.01" min="0.01" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Category</label>
+                <select id="f-account" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                    <option value="">—</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Bank account</label>
+                <select id="f-bank" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                    <option value="">—</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Vendor (optional)</label>
+                <select id="f-vendor" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                    <option value="">—</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Reference (optional)</label>
+                <input type="text" id="f-ref" maxlength="100" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Description</label>
+                <textarea id="f-desc" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-5">
+            <button type="button" onclick="document.getElementById('exp-modal').close()"
+                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+async function load() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/accounting/transactions?type=EXPENSE&page_size=100');
+        const items = res.data || [];
+        const body = document.getElementById('tx-body');
+        if (!items.length) {
+            body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">No expenses yet. Record your first one →</td></tr>';
+            return;
+        }
+        body.innerHTML = items.map(t => `
+            <tr class="hover:bg-neutral-50">
+                <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.date}</td>
+                <td class="px-3 py-2 whitespace-nowrap font-medium text-neutral-800">${t.account_name || '—'}</td>
+                <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.vendor_name || '—'}</td>
+                <td class="px-3 py-2 text-neutral-600">${t.description || ''}${t.reference ? `<div class="text-xs text-neutral-400">Ref: ${t.reference}</div>` : ''}</td>
+                <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.bank_account_name || '—'}</td>
+                <td class="px-3 py-2 whitespace-nowrap text-right font-medium text-warning-700">-${fmt(t.amount)}</td>
+                <td class="px-3 py-2 whitespace-nowrap text-right">
+                    <button onclick="deleteTx('${t.id}')" class="text-xs text-danger-600 hover:underline">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        ClassUp.toast(err.message || 'Could not load', 'error');
+    }
+}
+
+let _accounts = [], _banks = [], _vendors = [];
+async function loadOptions() {
+    try {
+        const [acctRes, bankRes, venRes] = await Promise.all([
+            ClassUp.fetch('/api/v1/accounting/accounts?type=EXPENSE&active_only=true'),
+            ClassUp.fetch('/api/v1/accounting/banks?active_only=true'),
+            ClassUp.fetch('/api/v1/accounting/vendors?active_only=true'),
+        ]);
+        _accounts = acctRes.data || [];
+        _banks = bankRes.data || [];
+        _vendors = venRes.data || [];
+        document.getElementById('f-account').innerHTML = '<option value="">—</option>' +
+            _accounts.map(a => `<option value="${a.id}">${a.code} — ${a.name}</option>`).join('');
+        document.getElementById('f-bank').innerHTML = '<option value="">—</option>' +
+            _banks.map(b => `<option value="${b.id}" ${b.is_default ? 'selected' : ''}>${b.name}</option>`).join('');
+        document.getElementById('f-vendor').innerHTML = '<option value="">—</option>' +
+            _vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+    } catch (err) { /* ignore */ }
+}
+
+function openExpense() {
+    document.getElementById('f-date').valueAsDate = new Date();
+    document.getElementById('f-amount').value = '';
+    document.getElementById('f-account').value = '';
+    if (_banks.length) document.getElementById('f-bank').value = (_banks.find(b => b.is_default) || _banks[0]).id;
+    document.getElementById('f-vendor').value = '';
+    document.getElementById('f-ref').value = '';
+    document.getElementById('f-desc').value = '';
+    document.getElementById('exp-modal').showModal();
+}
+
+async function submitExpense(e) {
+    e.preventDefault();
+    const body = {
+        date: document.getElementById('f-date').value,
+        amount: parseFloat(document.getElementById('f-amount').value),
+        account_id: document.getElementById('f-account').value,
+        bank_account_id: document.getElementById('f-bank').value,
+        vendor_id: document.getElementById('f-vendor').value || null,
+        description: document.getElementById('f-desc').value || null,
+        reference: document.getElementById('f-ref').value || null,
+    };
+    try {
+        await ClassUp.fetch('/api/v1/accounting/expenses', { method: 'POST', body: JSON.stringify(body) });
+        document.getElementById('exp-modal').close();
+        ClassUp.toast('Expense recorded', 'success');
+        load();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Save failed', 'error');
+    }
+}
+
+async function deleteTx(id) {
+    if (!(await ClassUp.confirm('Delete this expense?', { danger: true, confirmText: 'Delete' }))) return;
+    try {
+        await ClassUp.fetch('/api/v1/accounting/transactions/' + id, { method: 'DELETE' });
+        ClassUp.toast('Deleted', 'success');
+        load();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Delete failed', 'error');
+    }
+}
+
+loadOptions();
+load();
+</script>
+{% endblock %}

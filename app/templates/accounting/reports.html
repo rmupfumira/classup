@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}Accounting Reports - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <div>
+        <h1 class="text-xl font-semibold text-neutral-800">Reports</h1>
+        <p class="mt-0.5 text-sm text-neutral-500">Profit &amp; loss, expenses by category, and cash position.</p>
+    </div>
+
+    {% include 'accounting/_layout.html' %}
+
+    <!-- Date range picker -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">From</label>
+                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">To</label>
+                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This month</button>
+                <button onclick="setRange('quarter')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This quarter</button>
+                <button onclick="setRange('year')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This year</button>
+                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">YTD</button>
+            </div>
+            <button onclick="loadAll()" class="ml-auto inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
+                Run reports
+            </button>
+            <button onclick="window.print()" class="inline-flex items-center px-3 py-1.5 bg-neutral-100 text-neutral-700 text-sm rounded hover:bg-neutral-200">
+                Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Profit & Loss -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-neutral-100">
+            <h2 class="text-sm font-semibold text-neutral-800">Profit &amp; Loss</h2>
+            <p class="text-xs text-neutral-500" id="pl-period">—</p>
+        </div>
+        <div id="pl-body" class="p-4">
+            <p class="text-center text-neutral-400 py-6 text-sm">Choose a date range and click "Run reports".</p>
+        </div>
+    </div>
+
+    <!-- Expenses by category -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-neutral-100">
+            <h2 class="text-sm font-semibold text-neutral-800">Expenses by category</h2>
+        </div>
+        <div id="cat-body" class="p-4">
+            <p class="text-center text-neutral-400 py-6 text-sm">—</p>
+        </div>
+    </div>
+
+    <!-- Cash position -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-neutral-100">
+            <h2 class="text-sm font-semibold text-neutral-800">Cash position</h2>
+            <p class="text-xs text-neutral-500" id="cash-as-of">—</p>
+        </div>
+        <div id="cash-body" class="p-4">
+            <p class="text-center text-neutral-400 py-6 text-sm">—</p>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    nav, aside, header, .no-print, button { display: none !important; }
+    body { background: white; }
+    .shadow-card { box-shadow: none !important; }
+    .border { border-color: #e5e7eb !important; }
+}
+</style>
+
+<script>
+function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+
+function setRange(kind) {
+    const today = new Date();
+    let from, to;
+    if (kind === 'month') {
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+        to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (kind === 'quarter') {
+        const q = Math.floor(today.getMonth() / 3);
+        from = new Date(today.getFullYear(), q * 3, 1);
+        to = new Date(today.getFullYear(), q * 3 + 3, 0);
+    } else if (kind === 'year') {
+        from = new Date(today.getFullYear(), 0, 1);
+        to = new Date(today.getFullYear(), 11, 31);
+    } else if (kind === 'ytd') {
+        from = new Date(today.getFullYear(), 0, 1);
+        to = today;
+    }
+    document.getElementById('from-date').value = isoDate(from);
+    document.getElementById('to-date').value = isoDate(to);
+    loadAll();
+}
+
+async function loadPL(from, to) {
+    const wrap = document.getElementById('pl-body');
+    wrap.innerHTML = '<p class="text-center text-neutral-400 py-4 text-sm">Loading...</p>';
+    document.getElementById('pl-period').textContent = `${from} to ${to}`;
+    try {
+        const res = await ClassUp.fetch(`/api/v1/accounting/reports/profit-loss?from_date=${from}&to_date=${to}`);
+        const d = res.data;
+
+        const rowHtml = (r) => `
+            <tr class="border-t border-neutral-100">
+                <td class="px-3 py-2 font-mono text-xs text-neutral-500 w-20">${r.code}</td>
+                <td class="px-3 py-2 text-neutral-800">${r.name}</td>
+                <td class="px-3 py-2 text-right font-medium">${fmt(r.total)}</td>
+            </tr>`;
+
+        const incRows = d.income.length ? d.income.map(rowHtml).join('') :
+            '<tr><td colspan="3" class="px-3 py-3 text-center text-neutral-400 text-sm">No income in range.</td></tr>';
+        const expRows = d.expense.length ? d.expense.map(rowHtml).join('') :
+            '<tr><td colspan="3" class="px-3 py-3 text-center text-neutral-400 text-sm">No expenses in range.</td></tr>';
+
+        wrap.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="text-xs font-semibold text-success-700 uppercase tracking-wider mb-2">Income</h3>
+                    <table class="min-w-full text-sm">
+                        <tbody>${incRows}</tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-neutral-300 bg-success-50">
+                                <td colspan="2" class="px-3 py-2 font-semibold text-neutral-800">Total income</td>
+                                <td class="px-3 py-2 text-right font-semibold text-success-700">${fmt(d.income_total)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div>
+                    <h3 class="text-xs font-semibold text-warning-700 uppercase tracking-wider mb-2">Expenses</h3>
+                    <table class="min-w-full text-sm">
+                        <tbody>${expRows}</tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-neutral-300 bg-warning-50">
+                                <td colspan="2" class="px-3 py-2 font-semibold text-neutral-800">Total expenses</td>
+                                <td class="px-3 py-2 text-right font-semibold text-warning-700">${fmt(d.expense_total)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-neutral-200 flex items-center justify-between">
+                <p class="text-sm font-semibold text-neutral-800">Net profit / (loss)</p>
+                <p class="text-lg font-semibold ${d.net_profit >= 0 ? 'text-success-700' : 'text-danger-700'}">${fmt(d.net_profit)}</p>
+            </div>
+        `;
+    } catch (err) {
+        wrap.innerHTML = `<p class="text-center text-danger-600 text-sm py-4">${err.message || 'Failed to load report'}</p>`;
+    }
+}
+
+async function loadCategories(from, to) {
+    const wrap = document.getElementById('cat-body');
+    wrap.innerHTML = '<p class="text-center text-neutral-400 py-4 text-sm">Loading...</p>';
+    try {
+        const res = await ClassUp.fetch(`/api/v1/accounting/reports/expenses-by-category?from_date=${from}&to_date=${to}`);
+        const rows = res.data || [];
+        if (!rows.length) {
+            wrap.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">No expenses in range.</p>';
+            return;
+        }
+        const grand = rows.reduce((s, r) => s + Number(r.total || 0), 0);
+        wrap.innerHTML = `
+            <table class="min-w-full text-sm">
+                <thead class="bg-neutral-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Code</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Category</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Entries</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Total</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Share</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    ${rows.map(r => {
+                        const pct = grand > 0 ? (Number(r.total) / grand * 100) : 0;
+                        return `
+                            <tr>
+                                <td class="px-3 py-2 font-mono text-xs text-neutral-500 w-20">${r.code}</td>
+                                <td class="px-3 py-2 text-neutral-800">${r.name}</td>
+                                <td class="px-3 py-2 text-right text-neutral-600">${r.count}</td>
+                                <td class="px-3 py-2 text-right font-medium">${fmt(r.total)}</td>
+                                <td class="px-3 py-2 text-right">
+                                    <div class="inline-flex items-center gap-2">
+                                        <div class="w-16 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="bg-warning-500 h-full" style="width: ${pct}%"></div>
+                                        </div>
+                                        <span class="text-xs text-neutral-500 w-10 text-right">${pct.toFixed(1)}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-neutral-300 bg-neutral-50">
+                        <td colspan="3" class="px-3 py-2 font-semibold text-neutral-800">Total</td>
+                        <td class="px-3 py-2 text-right font-semibold">${fmt(grand)}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+    } catch (err) {
+        wrap.innerHTML = `<p class="text-center text-danger-600 text-sm py-4">${err.message || 'Failed to load report'}</p>`;
+    }
+}
+
+async function loadCash() {
+    const wrap = document.getElementById('cash-body');
+    wrap.innerHTML = '<p class="text-center text-neutral-400 py-4 text-sm">Loading...</p>';
+    try {
+        const res = await ClassUp.fetch('/api/v1/accounting/reports/cash-position');
+        const d = res.data;
+        document.getElementById('cash-as-of').textContent = `As of ${d.as_of}`;
+        if (!d.banks.length) {
+            wrap.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">No bank accounts yet.</p>';
+            return;
+        }
+        wrap.innerHTML = `
+            <table class="min-w-full text-sm">
+                <thead class="bg-neutral-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Account</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bank</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Type</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    ${d.banks.map(b => `
+                        <tr class="${b.is_active ? '' : 'opacity-50'}">
+                            <td class="px-3 py-2 font-medium text-neutral-800">
+                                ${b.name}
+                                ${b.is_default ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-primary-100 text-primary-700 ml-1">Default</span>' : ''}
+                                ${!b.is_active ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-700 ml-1">Inactive</span>' : ''}
+                            </td>
+                            <td class="px-3 py-2 text-neutral-600">${b.bank_name || '—'}</td>
+                            <td class="px-3 py-2 text-neutral-600">${b.account_type}</td>
+                            <td class="px-3 py-2 text-right font-medium ${Number(b.balance) >= 0 ? 'text-neutral-800' : 'text-danger-700'}">${fmt(b.balance)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-neutral-300 bg-primary-50">
+                        <td colspan="3" class="px-3 py-2 font-semibold text-neutral-800">Total cash on hand</td>
+                        <td class="px-3 py-2 text-right font-semibold text-primary-700">${fmt(d.total)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+    } catch (err) {
+        wrap.innerHTML = `<p class="text-center text-danger-600 text-sm py-4">${err.message || 'Failed to load cash position'}</p>`;
+    }
+}
+
+async function loadAll() {
+    const from = document.getElementById('from-date').value;
+    const to = document.getElementById('to-date').value;
+    if (!from || !to) {
+        ClassUp.toast('Please pick both a from and to date', 'error');
+        return;
+    }
+    if (from > to) {
+        ClassUp.toast('"From" date must be before or equal to "To" date', 'error');
+        return;
+    }
+    await Promise.all([loadPL(from, to), loadCategories(from, to), loadCash()]);
+}
+
+// Default to "this month" on page load
+setRange('month');
+</script>
+{% endblock %}

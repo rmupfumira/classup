@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Accounting - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <div>
+        <h1 class="text-xl font-semibold text-neutral-800">Accounting</h1>
+        <p class="mt-0.5 text-sm text-neutral-500">Track income, expenses, and your bank balances.</p>
+    </div>
+
+    {% include 'accounting/_layout.html' %}
+
+    <!-- This-month summary cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="summary-cards">
+        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">This month — Income</p>
+            <p class="mt-1 text-lg font-semibold text-success-600" id="card-income">—</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">This month — Expenses</p>
+            <p class="mt-1 text-lg font-semibold text-warning-600" id="card-expense">—</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">This month — Net</p>
+            <p class="mt-1 text-lg font-semibold" id="card-net">—</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">Cash Position</p>
+            <p class="mt-1 text-lg font-semibold text-primary-600" id="card-cash">—</p>
+        </div>
+    </div>
+
+    <!-- Bank balances -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-neutral-800">Bank balances</h2>
+            <a href="/accounting/banks" class="text-xs text-primary-600 hover:underline">Manage banks</a>
+        </div>
+        <div id="banks-body" class="divide-y divide-neutral-100">
+            <p class="text-center text-neutral-400 py-8 text-sm">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <a href="/accounting/expenses" class="bg-white rounded-lg shadow-card border border-neutral-200 p-4 hover:border-primary-300 hover:shadow-md transition-all">
+            <p class="text-sm font-semibold text-neutral-800">Record an expense →</p>
+            <p class="text-xs text-neutral-500 mt-1">Bills, salaries, supplies</p>
+        </a>
+        <a href="/accounting/income" class="bg-white rounded-lg shadow-card border border-neutral-200 p-4 hover:border-primary-300 hover:shadow-md transition-all">
+            <p class="text-sm font-semibold text-neutral-800">Record income →</p>
+            <p class="text-xs text-neutral-500 mt-1">Donations, grants, fundraising</p>
+        </a>
+        <a href="/accounting/reports" class="bg-white rounded-lg shadow-card border border-neutral-200 p-4 hover:border-primary-300 hover:shadow-md transition-all">
+            <p class="text-sm font-semibold text-neutral-800">Reports →</p>
+            <p class="text-xs text-neutral-500 mt-1">P&amp;L, expenses by category, cash position</p>
+        </a>
+    </div>
+</div>
+
+<script>
+function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+async function load() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/accounting/dashboard');
+        const d = res.data;
+        document.getElementById('card-income').textContent = fmt(d.income_this_month);
+        document.getElementById('card-expense').textContent = fmt(d.expense_this_month);
+        const netEl = document.getElementById('card-net');
+        netEl.textContent = fmt(d.net_this_month);
+        netEl.className = 'mt-1 text-lg font-semibold ' + (d.net_this_month >= 0 ? 'text-success-600' : 'text-danger-600');
+        document.getElementById('card-cash').textContent = fmt(d.cash_total);
+
+        const body = document.getElementById('banks-body');
+        if (!d.banks.length) {
+            body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">No bank accounts yet. <a href="/accounting/banks" class="text-primary-600 hover:underline">Add one →</a></p>';
+            return;
+        }
+        body.innerHTML = d.banks.map(b => `
+            <div class="px-4 py-3 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-neutral-800">${b.name}${b.is_default ? ' <span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-primary-100 text-primary-700 ml-1">Default</span>' : ''}</p>
+                    <p class="text-xs text-neutral-500">${b.bank_name || '—'} · ${b.account_type}</p>
+                </div>
+                <p class="text-sm font-semibold ${b.balance >= 0 ? 'text-neutral-800' : 'text-danger-600'}">${fmt(b.balance)}</p>
+            </div>
+        `).join('');
+    } catch (err) {
+        ClassUp.toast(err.message || 'Could not load summary', 'error');
+    }
+}
+
+load();
+</script>
+{% endblock %}

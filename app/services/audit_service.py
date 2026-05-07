@@ -102,6 +102,9 @@ class AuditService:
                 return None
             return s[:n]
 
+        # Use Python-side timestamp (microsecond precision) instead of the
+        # server_default 'now()' which returns transaction start time and
+        # makes rapid inserts within the same txn share a timestamp.
         entry = AuditLog(
             action=action[:80],
             user_id=user_id,
@@ -118,6 +121,7 @@ class AuditService:
             ip_address=clip(ip_address, 45),
             user_agent=clip(user_agent, 500),
             details=details,
+            created_at=datetime.now(timezone.utc),
         )
         db.add(entry)
         await db.flush()

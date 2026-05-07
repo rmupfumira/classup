@@ -15,6 +15,13 @@ from app.utils.security import hash_password
 class TestAuditConfig:
     async def test_default_config_returned_when_none_stored(self, db: AsyncSession):
         service = get_audit_service()
+        # Clean any existing audit_config row so we test the true default
+        from sqlalchemy import delete
+        from app.models import SystemSettings
+        from app.services.audit_service import AUDIT_CONFIG_KEY
+        await db.execute(delete(SystemSettings).where(SystemSettings.key == AUDIT_CONFIG_KEY))
+        await db.commit()
+
         cfg = await service.get_config(db)
         assert cfg["enabled"] is True
         assert cfg["level"] == "STANDARD"
