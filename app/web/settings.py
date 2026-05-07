@@ -198,6 +198,7 @@ async def settings_features_save(
             "disciplinary_records",
             "whatsapp_enabled",
             "billing",
+            "accounting",
         ]
 
         # Check plan-locked features
