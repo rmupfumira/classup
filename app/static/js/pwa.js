@@ -121,7 +121,12 @@
 
   /**
    * Trigger the native install prompt (Chrome/Edge/Android) or show the iOS
-   * Add-to-Home-Screen sheet.
+   * Add-to-Home-Screen banner.
+   *
+   * On iOS Chrome/Firefox/Edge the install path is a dead-end (those
+   * browsers can't add a real PWA), so we show the banner only on iOS
+   * Safari. Calling installApp() on a non-Safari iOS browser will tell the
+   * user to switch to Safari instead.
    *
    * @returns {Promise<'accepted'|'dismissed'|'unavailable'>}
    */
@@ -133,9 +138,12 @@
       document.body.classList.remove('pwa-install-available');
       return result.outcome;
     }
-    // iOS — there's no install API, only a manual flow
     if (isIOS() && !isStandalone) {
-      showIosInstallSheet();
+      if (isIOSSafari()) {
+        showIosInstallBanner({ force: true });
+      } else if (window.ClassUp && ClassUp.toast) {
+        ClassUp.toast('To install, open ClassUp in Safari and try again.', 'info');
+      }
       return 'unavailable';
     }
     if (window.ClassUp && ClassUp.toast) {
@@ -144,89 +152,176 @@
     return 'unavailable';
   };
 
-  window.ClassUp.canInstall = () => deferredInstallPrompt !== null || (isIOS() && !isStandalone);
+  // canInstall: true on Android with a deferred prompt OR on iOS Safari that
+  // isn't already in standalone. Hide the install button everywhere else.
+  window.ClassUp.canInstall = () =>
+    deferredInstallPrompt !== null || (isIOSSafari() && !isStandalone);
   window.ClassUp.isStandalone = () => isStandalone;
 
+  // ---------------------------------------------------------------------------
+  // Platform detection — iOS includes iPadOS, which lies and reports MacIntel
+  // ---------------------------------------------------------------------------
+
+  /** Any iOS device, including iPadOS 13+ which spoofs as MacIntel. */
   function isIOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const ua = navigator.userAgent;
+    if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) return true;
+    // iPadOS 13+ on iPad Pro masquerades as macOS — distinguish via touch points
+    if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
+    return false;
+  }
+
+  /** Real Safari on iOS — not Chrome (CriOS), Firefox (FxiOS), Edge (EdgiOS),
+   *  or Opera (OPiOS). Only Safari can install a PWA on iOS; everything else
+   *  is a WebKit wrapper that will *say* "Add to Home Screen" but produce a
+   *  bookmark, not a real PWA — so we don't nag those users. */
+  function isIOSSafari() {
+    if (!isIOS()) return false;
+    const ua = navigator.userAgent;
+    return !/CriOS|FxiOS|EdgiOS|OPiOS|YaBrowser|UCBrowser/i.test(ua);
   }
 
   // ---------------------------------------------------------------------------
-  // iOS install hint sheet — shown manually via ClassUp.installApp() OR
-  // automatically once after 3 visits (so users discover the feature)
+  // iOS install banner — bottom-anchored, three illustrated steps, two-tier
+  // dismiss. Shown:
+  //   - manually via ClassUp.installApp() (force=true bypasses snooze)
+  //   - automatically on the user's 3rd visit, then snoozed if dismissed
   // ---------------------------------------------------------------------------
-  const IOS_HINT_DISMISSED_KEY = 'classup_ios_hint_dismissed';
-  const IOS_HINT_VISITS_KEY = 'classup_ios_visits';
 
-  function showIosInstallSheet() {
-    if (document.getElementById('ios-install-sheet')) return;
-    const sheet = document.createElement('div');
-    sheet.id = 'ios-install-sheet';
-    sheet.className =
-      'fixed inset-0 z-[300] flex items-end md:items-center justify-center ' +
-      'bg-black/40 px-4 pb-safe';
-    sheet.innerHTML = `
-      <div class="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-sm p-6 shadow-2xl"
-           role="dialog" aria-modal="true" aria-labelledby="ios-install-title">
-        <div class="flex items-center justify-between mb-4">
-          <h3 id="ios-install-title" class="text-base font-semibold text-neutral-800">Install ClassUp</h3>
-          <button id="ios-install-close" class="text-neutral-400 hover:text-neutral-600 -m-2 p-2" aria-label="Close">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <p class="text-sm text-neutral-600 mb-5">
-          Add ClassUp to your home screen for fullscreen access and an app-like experience.
-        </p>
-        <ol class="space-y-3 text-sm text-neutral-700">
-          <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-medium text-xs">1</span>
-            <span>Tap the <strong>Share</strong> button
-              <svg class="inline w-4 h-4 align-text-bottom mx-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25" />
+  // Storage keys — namespaced so a future "wipe all PWA prefs" is easy
+  const HINT_SNOOZED_UNTIL = 'classup_ios_hint_snoozed_until'; // unix ms
+  const HINT_NEVER = 'classup_ios_hint_never';                  // '1' once set
+  const HINT_VISITS = 'classup_ios_visits';
+  const SNOOZE_DAYS = 14;
+  const AUTO_SHOW_VISIT = 3;
+
+  function isHintSilenced() {
+    try {
+      if (localStorage.getItem(HINT_NEVER) === '1') return true;
+      const until = parseInt(localStorage.getItem(HINT_SNOOZED_UNTIL) || '0', 10);
+      if (until && Date.now() < until) return true;
+    } catch (e) { /* private browsing — fall through */ }
+    return false;
+  }
+
+  function snoozeHint(days) {
+    try {
+      const until = Date.now() + days * 24 * 60 * 60 * 1000;
+      localStorage.setItem(HINT_SNOOZED_UNTIL, String(until));
+    } catch (e) {}
+  }
+
+  function silenceHintForever() {
+    try { localStorage.setItem(HINT_NEVER, '1'); } catch (e) {}
+  }
+
+  /**
+   * @param {{force?: boolean}} opts - force=true bypasses the snooze + never
+   *        flags (used when the user explicitly taps "Install ClassUp").
+   */
+  function showIosInstallBanner(opts) {
+    opts = opts || {};
+    if (document.getElementById('ios-install-banner')) return;
+    if (!opts.force && isHintSilenced()) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'ios-install-banner';
+    banner.setAttribute('role', 'dialog');
+    banner.setAttribute('aria-modal', 'false');
+    banner.setAttribute('aria-labelledby', 'ios-install-title');
+    // Sits above the mobile bottom nav (z-50) but below toasts (z-100)
+    banner.className =
+      'fixed left-0 right-0 z-[60] px-3 pointer-events-none ' +
+      // Sit above the bottom nav (h-14) on mobile, otherwise float above the
+      // home indicator. Desktop mode (md:) is unlikely on iOS but handle it.
+      'bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-4';
+    banner.innerHTML = `
+      <div class="pointer-events-auto mx-auto max-w-md bg-white rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden animate-slide-up">
+        <div class="p-4">
+          <div class="flex items-start gap-3 mb-3">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center">
+              <img src="/static/img/icons/icon-192.png" alt="" class="w-8 h-8 rounded-md">
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 id="ios-install-title" class="text-sm font-semibold text-neutral-800">
+                Install ClassUp on your iPhone
+              </h3>
+              <p class="text-xs text-neutral-500 mt-0.5">
+                Add to your home screen for fullscreen access and faster loading.
+              </p>
+            </div>
+            <button id="ios-banner-close" type="button"
+                    class="flex-shrink-0 -m-1.5 p-1.5 text-neutral-400 hover:text-neutral-600"
+                    aria-label="Dismiss">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-              at the bottom of Safari.</span>
-          </li>
-          <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-medium text-xs">2</span>
-            <span>Scroll down and tap <strong>"Add to Home Screen"</strong>.</span>
-          </li>
-          <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-medium text-xs">3</span>
-            <span>Tap <strong>Add</strong> in the top-right corner.</span>
-          </li>
-        </ol>
-        <button id="ios-install-dismiss"
-                class="mt-5 w-full px-4 py-2.5 text-sm text-neutral-600 bg-neutral-100 rounded-lg hover:bg-neutral-200">
-          Maybe later
-        </button>
+            </button>
+          </div>
+
+          <ol class="space-y-2 text-xs text-neutral-700 pl-1">
+            <li class="flex items-center gap-2">
+              <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">1</span>
+              <span>Tap the
+                <svg class="inline w-3.5 h-3.5 align-text-bottom mx-0.5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25" />
+                </svg>
+                <strong>Share</strong> icon below.
+              </span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">2</span>
+              <span>Tap <strong>Add to Home Screen</strong>
+                <svg class="inline w-3.5 h-3.5 align-text-bottom mx-0.5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>.
+              </span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">3</span>
+              <span>Tap <strong>Add</strong> in the top-right.</span>
+            </li>
+          </ol>
+
+          <div class="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2">
+            <button id="ios-banner-snooze" type="button"
+                    class="flex-1 px-3 py-2 text-xs font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200">
+              Not now
+            </button>
+            <button id="ios-banner-never" type="button"
+                    class="flex-1 px-3 py-2 text-xs font-medium text-neutral-500 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50">
+              Don't show again
+            </button>
+          </div>
+        </div>
       </div>
     `;
-    document.body.appendChild(sheet);
-    const close = () => {
-      sheet.remove();
-      try { localStorage.setItem(IOS_HINT_DISMISSED_KEY, '1'); } catch (e) {}
+    document.body.appendChild(banner);
+
+    const remove = () => banner.remove();
+    banner.querySelector('#ios-banner-close').onclick = () => {
+      snoozeHint(SNOOZE_DAYS);
+      remove();
     };
-    sheet.querySelector('#ios-install-close').onclick = close;
-    sheet.querySelector('#ios-install-dismiss').onclick = close;
-    sheet.onclick = (e) => { if (e.target === sheet) close(); };
+    banner.querySelector('#ios-banner-snooze').onclick = () => {
+      snoozeHint(SNOOZE_DAYS);
+      remove();
+    };
+    banner.querySelector('#ios-banner-never').onclick = () => {
+      silenceHintForever();
+      remove();
+    };
   }
 
-  // Auto-prompt iOS users after their 3rd visit, if not already installed
-  if (isIOS() && !isStandalone) {
+  // Auto-show on iOS Safari only — never iOS Chrome (would be a dead-end)
+  if (isIOSSafari() && !isStandalone && !isHintSilenced()) {
     try {
-      const dismissed = localStorage.getItem(IOS_HINT_DISMISSED_KEY) === '1';
-      if (!dismissed) {
-        const visits = parseInt(localStorage.getItem(IOS_HINT_VISITS_KEY) || '0', 10) + 1;
-        localStorage.setItem(IOS_HINT_VISITS_KEY, String(visits));
-        if (visits === 3) {
-          // Show after a short delay — let the page settle first
-          setTimeout(showIosInstallSheet, 1500);
-        }
+      const visits = parseInt(localStorage.getItem(HINT_VISITS) || '0', 10) + 1;
+      localStorage.setItem(HINT_VISITS, String(visits));
+      if (visits === AUTO_SHOW_VISIT) {
+        // Small delay so the page settles first
+        setTimeout(() => showIosInstallBanner(), 1500);
       }
-    } catch (e) {
-      // localStorage blocked (private browsing) — silently skip
-    }
+    } catch (e) { /* private browsing — silently skip */ }
   }
 })();
