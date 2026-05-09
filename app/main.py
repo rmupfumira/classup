@@ -159,6 +159,63 @@ def register_routers(app: FastAPI):
         """Health check endpoint for load balancers and monitoring."""
         return {"status": "healthy", "app": settings.app_name, "env": settings.app_env}
 
+    # ------------------------------------------------------------------
+    # PWA routes — must also dodge the /{slug} catch-all.
+    # The manifest needs the `application/manifest+json` content type, and
+    # the service worker MUST be served from / (not /static/) so its scope
+    # covers the whole app. We read these from disk on every request — they
+    # rarely change, and there's an HTTP cache header for the SW that
+    # browsers respect.
+    # ------------------------------------------------------------------
+    from fastapi.responses import FileResponse, Response
+
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    async def pwa_manifest():
+        """Web app manifest — registered at root for proper scope."""
+        return FileResponse(
+            STATIC_DIR / "manifest.webmanifest",
+            media_type="application/manifest+json",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
+
+    @app.get("/sw.js", include_in_schema=False)
+    async def pwa_service_worker():
+        """Service worker — must be served from / for full-app scope.
+        Browsers refuse to register a SW with a scope wider than its URL."""
+        return FileResponse(
+            STATIC_DIR / "sw.js",
+            media_type="application/javascript",
+            headers={
+                # Don't cache the service worker itself — clients need to
+                # check for updates on every page load
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Service-Worker-Allowed": "/",
+            },
+        )
+
+    @app.get("/offline", include_in_schema=False)
+    async def pwa_offline_fallback(request: Request):
+        """Offline fallback page — pre-cached by the SW on install."""
+        return templates.TemplateResponse(
+            "offline.html",
+            {
+                "request": request,
+                "app_name": settings.app_name,
+                "user": None,
+                "current_language": "en",
+            },
+        )
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        """Convenience: serve the favicon from root for browsers that
+        always look for /favicon.ico regardless of <link> tags."""
+        return FileResponse(
+            STATIC_DIR / "img" / "icons" / "favicon.ico",
+            media_type="image/x-icon",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
     @app.get("/", include_in_schema=False)
     async def root(request: Request):
         """Redirect root to login or dashboard based on auth status."""

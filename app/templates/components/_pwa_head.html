@@ -1,0 +1,89 @@
+{# ============================================================
+   PWA + iOS head tags
+   ============================================================
+   Drop into every layout's <head>. Wires:
+   - Web app manifest
+   - Theme color (controls the address bar tint on Chrome / Edge)
+   - Apple-specific tags so Safari Add-to-Home-Screen produces a
+     fullscreen, status-bar-styled, splash-screen-equipped install
+   - Favicon set (covers every browser fallback)
+   - viewport-fit=cover so safe-area-inset-* envs work on notched iPhones
+#}
+
+{# Viewport tuned for iOS notched devices. cover lets us paint into the
+   notch / home indicator areas, then we use env(safe-area-inset-*) in CSS
+   to keep content out of those zones. #}
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+
+{# Theme color for browser chrome. Two values cover light/dark systems. #}
+<meta name="theme-color" content="#1B3A6B" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0C192C" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light">
+
+{# PWA manifest #}
+<link rel="manifest" href="/manifest.webmanifest">
+
+{# Standard favicons #}
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/img/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/img/icons/favicon-16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+
+{# ====================== iOS-specific ====================== #}
+{# Required for Safari to treat the page as an installable app #}
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ClassUp">
+
+{# Apple touch icon (home-screen icon on iOS). 180x180 is the modern size;
+   older devices are happy to scale this down. #}
+<link rel="apple-touch-icon" href="/static/img/icons/apple-touch-icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/img/icons/apple-touch-icon-180.png">
+
+{# Apple splash screens — one per device so Safari shows the right one
+   when the app launches in standalone mode. Each link is gated by a media
+   query that matches the device's exact screen + pixel ratio. #}
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-640-1136.png"
+      media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-750-1334.png"
+      media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-828-1792.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1125-2436.png"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1170-2532.png"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1179-2556.png"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1242-2208.png"
+      media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1242-2688.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1284-2778.png"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1290-2796.png"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1488-2266.png"
+      media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1536-2048.png"
+      media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1620-2160.png"
+      media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1640-2360.png"
+      media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1668-2224.png"
+      media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-1668-2388.png"
+      media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/img/icons/apple-splash-2048-2732.png"
+      media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+
+{# Don't auto-detect phone numbers as links on iOS — interferes with our own
+   tap targets and looks ugly when it underlines a parent's phone in a list. #}
+<meta name="format-detection" content="telephone=no">
+
+{# Microsoft Tile (Edge / older Win) #}
+<meta name="msapplication-TileColor" content="#1B3A6B">
+<meta name="msapplication-TileImage" content="/static/img/icons/icon-192.png">

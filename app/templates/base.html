@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="{{ current_language | default('en') }}" class="h-full">
+<html lang="{{ current_language | default('en') }}" class="h-full {% if user %}has-navbar{% endif %}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
+
+    {# PWA head — viewport + manifest + apple touch + splash screens #}
+    {% include 'components/_pwa_head.html' %}
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -160,6 +162,75 @@
         tbody tr:hover {
             background-color: #f8fafc;
         }
+
+        /* ============================================================
+           PWA / native-mobile polish
+           ============================================================ */
+        html, body {
+            /* Disable bounce/overscroll on iOS standalone — feels more app-like */
+            overscroll-behavior-y: none;
+        }
+        /* Navy painted into the iOS notch / status-bar area so the navy
+           navbar visually extends to the top of the screen. The navbar
+           itself has padding-top:env(safe-area-inset-top), so it covers
+           the area; this <html> color is the fallback if a viewport
+           rubber-bands above the top. */
+        html.has-navbar { background-color: #1B3A6B; }
+        html:not(.has-navbar) { background-color: #f8fafc; }
+        body {
+            /* Momentum scrolling on iOS */
+            -webkit-overflow-scrolling: touch;
+            /* Stop iOS from changing text size on rotation */
+            -webkit-text-size-adjust: 100%;
+            /* No grey tap-highlight flash on touch — buttons handle their own
+               :active state via Tailwind */
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Inputs are styled by Tailwind, but iOS rounds them by default
+           and adds odd inner shadows. Reset. */
+        input, textarea, button, select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        /* Re-enable native checkbox / radio appearance — only the text inputs
+           above need flattening */
+        input[type="checkbox"], input[type="radio"] {
+            -webkit-appearance: auto;
+            -moz-appearance: auto;
+            appearance: auto;
+        }
+        /* iOS bumps font-size on focus if input is < 16px — prevent that */
+        @supports (-webkit-touch-callout: none) {
+            input, textarea, select {
+                font-size: max(16px, 1em);
+            }
+        }
+        /* ============================================================
+           Safe-area handling for notched / home-indicator devices
+           ============================================================ */
+        .safe-area-top    { padding-top:    env(safe-area-inset-top); }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .safe-area-left   { padding-left:   env(safe-area-inset-left); }
+        .safe-area-right  { padding-right:  env(safe-area-inset-right); }
+        /* Helper: extra bottom padding so floating-action / fixed bottom nav
+           doesn't sit on the home indicator */
+        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem); }
+
+        /* Hide elements only when running as installed PWA (Chrome / Android) */
+        @media (display-mode: standalone) {
+            .hide-in-standalone { display: none !important; }
+        }
+        /* iOS standalone uses a different env */
+        body.is-standalone .hide-in-standalone { display: none !important; }
+
+        /* Pull-to-refresh hint area — kept invisible, but lets browser know
+           we'll handle reload via JS. Setting overscroll-behavior: contain
+           on the main scroll area prevents the whole-page bounce. */
+        main { overscroll-behavior-y: contain; }
+
+        /* Native-feeling tap response on buttons + links */
+        button:active, a:active { transform: scale(0.98); transition: transform 0.05s; }
     </style>
 
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
@@ -177,8 +248,10 @@
             {% include 'components/_sidebar.html' %}
 
             <!-- Main Content -->
-            <main class="flex-1 overflow-y-auto">
-                <div class="p-6">
+            {# pb-24 + md:pb-0 keeps content above the mobile bottom nav.
+               pb-safe handles the iPhone home-indicator. #}
+            <main class="flex-1 overflow-y-auto pb-24 md:pb-0">
+                <div class="p-6 pb-safe md:pb-6">
                     <!-- Toast Container -->
                     <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3"></div>
 
@@ -198,6 +271,7 @@
 
     <!-- Global Scripts -->
     <script src="{{ url_for('static', path='js/app.js') }}?v=2"></script>
+    <script src="{{ url_for('static', path='js/pwa.js') }}?v=1" defer></script>
     <script>
     if (typeof ClassUp === 'undefined') {
         console.error('ClassUp: app.js failed to load, using fallback');

@@ -1,4 +1,6 @@
 <!-- Mobile Bottom Navigation - Ant Design Style -->
+{# `safe-area-bottom` adds padding-bottom: env(safe-area-inset-bottom)
+   so the home indicator on iPhones X+ doesn't overlap the icons. #}
 <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 z-50 safe-area-bottom">
     <div class="flex items-center justify-around h-14">
         {% if user.role == 'SUPER_ADMIN' %}
@@ -365,6 +367,20 @@
 
             <div class="my-2 h-px bg-neutral-100"></div>
 
+            {# Install ClassUp — hidden by default, revealed via JS once an
+               install path is available (Android beforeinstallprompt fires
+               OR we detect iOS Safari outside standalone mode). The button
+               also auto-hides on already-installed PWAs via `is-standalone`. #}
+            <button id="pwa-install-trigger" type="button"
+                    onclick="ClassUp.installApp && ClassUp.installApp()"
+                    class="hidden w-full text-left items-center px-3 py-2.5 text-sm text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+                <svg class="h-5 w-5 mr-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M12 4.5v15m0 0l-6.75-6.75M12 19.5l6.75-6.75M3.75 21h16.5" />
+                </svg>
+                <span>Install ClassUp app</span>
+            </button>
+
             <a href="/logout" class="flex items-center px-3 py-2.5 text-sm text-error-600 hover:bg-error-50 rounded transition-colors">
                 <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -425,6 +441,20 @@ function toggleMobileMenu() {
 
     menu.classList.toggle('hidden');
     overlay.classList.toggle('hidden');
+
+    // Show install option only when installable AND not already installed
+    const btn = document.getElementById('pwa-install-trigger');
+    if (btn && !menu.classList.contains('hidden')) {
+        const canInstall = window.ClassUp && ClassUp.canInstall && ClassUp.canInstall();
+        const standalone = window.ClassUp && ClassUp.isStandalone && ClassUp.isStandalone();
+        if (canInstall && !standalone) {
+            btn.classList.remove('hidden');
+            btn.classList.add('flex');
+        } else {
+            btn.classList.add('hidden');
+            btn.classList.remove('flex');
+        }
+    }
 }
 
 function toggleMobileClassSwitcher() {
