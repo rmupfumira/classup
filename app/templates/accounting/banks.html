@@ -98,11 +98,24 @@
 function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 async function load() {
-    const res = await ClassUp.fetch('/api/v1/accounting/banks?with_balance=true');
-    const items = res.data || [];
     const body = document.getElementById('body');
+    body.innerHTML = '<tr><td colspan="6" class="text-center text-neutral-400 py-8">Loading...</td></tr>';
+    let items;
+    try {
+        const res = await ClassUp.fetch('/api/v1/accounting/banks?with_balance=true');
+        items = (res && res.data) || [];
+    } catch (err) {
+        console.error('Failed to load bank accounts:', err);
+        body.innerHTML = `
+            <tr><td colspan="6" class="text-center py-8">
+                <p class="text-sm text-danger-600 mb-1">Couldn't load bank accounts.</p>
+                <p class="text-xs text-neutral-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            </td></tr>`;
+        return;
+    }
     if (!items.length) {
-        body.innerHTML = '<tr><td colspan="6" class="text-center text-neutral-400 py-8">No bank accounts yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-neutral-400 py-8">No bank accounts yet. Click <strong>+ Add bank</strong> to create one.</td></tr>';
         return;
     }
     body.innerHTML = items.map(b => `

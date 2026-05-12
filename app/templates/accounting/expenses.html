@@ -88,30 +88,39 @@
 function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 async function load() {
+    const body = document.getElementById('tx-body');
+    body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">Loading...</td></tr>';
+    let items;
     try {
         const res = await ClassUp.fetch('/api/v1/accounting/transactions?type=EXPENSE&page_size=100');
-        const items = res.data || [];
-        const body = document.getElementById('tx-body');
-        if (!items.length) {
-            body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">No expenses yet. Record your first one →</td></tr>';
-            return;
-        }
-        body.innerHTML = items.map(t => `
-            <tr class="hover:bg-neutral-50">
-                <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.date}</td>
-                <td class="px-3 py-2 whitespace-nowrap font-medium text-neutral-800">${t.account_name || '—'}</td>
-                <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.vendor_name || '—'}</td>
-                <td class="px-3 py-2 text-neutral-600">${t.description || ''}${t.reference ? `<div class="text-xs text-neutral-400">Ref: ${t.reference}</div>` : ''}</td>
-                <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.bank_account_name || '—'}</td>
-                <td class="px-3 py-2 whitespace-nowrap text-right font-medium text-warning-700">-${fmt(t.amount)}</td>
-                <td class="px-3 py-2 whitespace-nowrap text-right">
-                    <button onclick="deleteTx('${t.id}')" class="text-xs text-danger-600 hover:underline">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        items = (res && res.data) || [];
     } catch (err) {
-        ClassUp.toast(err.message || 'Could not load', 'error');
+        console.error('Failed to load expenses:', err);
+        body.innerHTML = `
+            <tr><td colspan="7" class="text-center py-8">
+                <p class="text-sm text-danger-600 mb-1">Couldn't load expenses.</p>
+                <p class="text-xs text-neutral-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            </td></tr>`;
+        return;
     }
+    if (!items.length) {
+        body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">No expenses recorded yet. Click <strong>+ Record expense</strong> to add one.</td></tr>';
+        return;
+    }
+    body.innerHTML = items.map(t => `
+        <tr class="hover:bg-neutral-50">
+            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.date}</td>
+            <td class="px-3 py-2 whitespace-nowrap font-medium text-neutral-800">${t.account_name || '—'}</td>
+            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.vendor_name || '—'}</td>
+            <td class="px-3 py-2 text-neutral-600">${t.description || ''}${t.reference ? `<div class="text-xs text-neutral-400">Ref: ${t.reference}</div>` : ''}</td>
+            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.bank_account_name || '—'}</td>
+            <td class="px-3 py-2 whitespace-nowrap text-right font-medium text-warning-700">-${fmt(t.amount)}</td>
+            <td class="px-3 py-2 whitespace-nowrap text-right">
+                <button onclick="deleteTx('${t.id}')" class="text-xs text-danger-600 hover:underline">Delete</button>
+            </td>
+        </tr>
+    `).join('');
 }
 
 let _accounts = [], _banks = [], _vendors = [];

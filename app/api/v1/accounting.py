@@ -15,9 +15,32 @@ from app.models.user import Role
 from app.schemas.common import APIResponse, PaginationMeta
 from app.services.accounting_service import get_accounting_service
 from app.utils.permissions import require_role
+from app.utils.tenant_context import get_tenant_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def _ensure_seeded(db: AsyncSession) -> None:
+    """Backfill the chart of accounts for tenants that existed before the
+    accounting module shipped. Idempotent — only runs if the tenant has zero
+    accounts. Called on the first dashboard hit so the user sees a populated
+    chart instead of an empty page on day one.
+    """
+    tenant_id = get_tenant_id()
+    if not tenant_id:
+        return
+    service = get_accounting_service()
+    existing = await service.list_chart_accounts(db, active_only=False)
+    if existing:
+        return  # Already seeded
+    try:
+        await service.seed_defaults_for_tenant(db, tenant_id)
+        await db.commit()
+        logger.info(f"Backfilled accounting defaults for tenant {tenant_id}")
+    except Exception:
+        logger.exception("Accounting backfill failed (non-fatal)")
+        await db.rollback()
 
 
 # ──────────────── Schemas ────────────────
@@ -451,6 +474,9 @@ async def delete_transaction(tx_id: uuid.UUID, db: AsyncSession = Depends(get_db
 @require_role(Role.SCHOOL_ADMIN)
 async def dashboard_summary(db: AsyncSession = Depends(get_db)):
     """This-month income/expense/net + cash position."""
+    # Backfill the default chart of accounts + Operating bank for tenants that
+    # existed before the accounting module shipped. No-op if already seeded.
+    await _ensure_seeded(db)
     summary = await get_accounting_service().dashboard_summary(db)
     return APIResponse(
         data={

@@ -62,10 +62,35 @@
 <script>
 function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+function setCardsError(msg) {
+    // Cards show R 0.00 on error so the page doesn't look broken — the
+    // banks list below carries the explicit error message + retry button
+    for (const id of ['card-income', 'card-expense', 'card-net', 'card-cash']) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '—';
+    }
+}
+
+function setCardsEmpty() {
+    document.getElementById('card-income').textContent = fmt(0);
+    document.getElementById('card-expense').textContent = fmt(0);
+    document.getElementById('card-net').textContent = fmt(0);
+    document.getElementById('card-cash').textContent = fmt(0);
+}
+
 async function load() {
+    const body = document.getElementById('banks-body');
+    body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">Loading...</p>';
     try {
         const res = await ClassUp.fetch('/api/v1/accounting/dashboard');
-        const d = res.data;
+        const d = res && res.data;
+        if (!d) {
+            // Should never happen, but don't leave the user stuck on Loading
+            setCardsEmpty();
+            body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">No data yet.</p>';
+            return;
+        }
+
         document.getElementById('card-income').textContent = fmt(d.income_this_month);
         document.getElementById('card-expense').textContent = fmt(d.expense_this_month);
         const netEl = document.getElementById('card-net');
@@ -73,8 +98,7 @@ async function load() {
         netEl.className = 'mt-1 text-lg font-semibold ' + (d.net_this_month >= 0 ? 'text-success-600' : 'text-danger-600');
         document.getElementById('card-cash').textContent = fmt(d.cash_total);
 
-        const body = document.getElementById('banks-body');
-        if (!d.banks.length) {
+        if (!d.banks || !d.banks.length) {
             body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">No bank accounts yet. <a href="/accounting/banks" class="text-primary-600 hover:underline">Add one →</a></p>';
             return;
         }
@@ -88,7 +112,14 @@ async function load() {
             </div>
         `).join('');
     } catch (err) {
-        ClassUp.toast(err.message || 'Could not load summary', 'error');
+        console.error('Accounting dashboard failed to load:', err);
+        setCardsError();
+        body.innerHTML = `
+            <div class="px-4 py-6 text-center">
+                <p class="text-sm text-danger-600 mb-2">Couldn't load accounting summary.</p>
+                <p class="text-xs text-neutral-500 mb-3">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            </div>`;
     }
 }
 
