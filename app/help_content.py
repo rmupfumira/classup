@@ -469,14 +469,36 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
                 "tip": "Opening balance should be the balance on the day you start using ClassUp. All future income/expenses build from there.",
             },
             {
-                "title": "Review your chart of accounts",
+                "title": "Understand your chart of accounts",
                 "body": (
-                    "Go to Accounting → Chart of Accounts. You'll see a sensible default list (Tuition Fees, "
-                    "Salaries, Rent, Utilities, etc.), grouped by Income, Expense, Asset, and Liability. "
-                    "Click + Add account to add your own categories. You can deactivate categories you don't use, "
-                    "but the system Tuition Fees account is protected — billing payments link to it."
+                    "The Chart of Accounts is the filing cabinet for every penny in and out of your school — "
+                    "every transaction gets dropped into one of these labelled folders, so when you run reports later "
+                    "you can see exactly where the money came from and where it went. Open Accounting → Chart of Accounts "
+                    "and you'll see four sections:\n\n"
+                    "• Income (4xxx) — money coming in: Tuition Fees, Donations, Government Grants, Fundraising.\n"
+                    "• Expense (5xxx) — money going out: Salaries, Rent, Utilities, Stationery, Maintenance.\n"
+                    "• Asset (1xxx) — things the school owns: Cash on Hand.\n"
+                    "• Liability (2xxx) — things the school owes: Loans Payable, Accrued Expenses.\n\n"
+                    "The codes (4000, 5010, etc.) are standard accounting conventions — the numbers don't matter "
+                    "functionally; they just keep things organised and please your accountant. ClassUp seeds these "
+                    "defaults the first time you open Accounting, so you can start recording right away."
                 ),
                 "tip": "Use account codes that match your existing bookkeeping if you've got an accountant — they'll thank you.",
+            },
+            {
+                "title": "Customise the chart for your school",
+                "body": (
+                    "The defaults cover most schools, but every school is different. On the Chart of Accounts page:\n\n"
+                    "• Click + Add account to create your own category (e.g. \"School Trip Fees\" under Income, or "
+                    "\"Music Equipment\" under Expense).\n"
+                    "• Click Edit on any account to rename it or change its description.\n"
+                    "• Click Deactivate on accounts you don't use — they'll stop appearing in the dropdowns when "
+                    "recording transactions, but historical data stays intact.\n\n"
+                    "One special account: Tuition Fees (code 4000) is marked System and protected from delete/deactivate. "
+                    "That's because every payment recorded in Billing automatically files itself under this account, "
+                    "and removing it would break that link. You can still rename it if you call tuition something different."
+                ),
+                "tip": "You don't need to be an accountant. If you're not sure where a transaction belongs, \"Other Income\" and \"Other Expenses\" are catch-all categories you can always use.",
             },
             {
                 "title": "Record an expense",
