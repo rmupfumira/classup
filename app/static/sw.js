@@ -17,7 +17,7 @@
  * refetch — do this on every meaningful UI/static asset change.
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const PRECACHE = `classup-precache-${CACHE_VERSION}`;
 const RUNTIME = `classup-runtime-${CACHE_VERSION}`;
 

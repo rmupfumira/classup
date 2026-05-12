@@ -235,6 +235,15 @@
 
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
 
+    {# Load app.js in <head> as a blocking script so window.ClassUp is
+       always defined BEFORE any inline <script> inside {% block content %}
+       runs. Putting it at the bottom of <body> races against inline scripts
+       in the content block, causing "ClassUp is not defined" errors on
+       any page that calls ClassUp.fetch() during parse-time (e.g. the
+       accounting pages auto-loading on mount). app.js is ~5KB so the
+       parse-blocking cost is negligible. #}
+    <script src="{{ url_for('static', path='js/app.js') }}?v=3"></script>
+
     {% block head %}{% endblock %}
 </head>
 <body class="h-full bg-neutral-50 text-neutral-800 antialiased text-sm">
@@ -270,9 +279,15 @@
     {% endif %}
 
     <!-- Global Scripts -->
-    <script src="{{ url_for('static', path='js/app.js') }}?v=2"></script>
+    {# app.js is loaded in <head> (above) so ClassUp is defined before any
+       content-block inline scripts run. pwa.js can be deferred — it doesn't
+       need to be available during initial parse. #}
     <script src="{{ url_for('static', path='js/pwa.js') }}?v=2" defer></script>
     <script>
+    // Last-resort fallback if app.js failed to load (e.g. network failure
+    // before the SW cached it). The head-loaded app.js should have already
+    // defined ClassUp by the time we reach here; this only fires if the
+    // browser failed to fetch /static/js/app.js entirely.
     if (typeof ClassUp === 'undefined') {
         console.error('ClassUp: app.js failed to load, using fallback');
         window.ClassUp = {
