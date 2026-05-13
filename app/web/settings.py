@@ -499,3 +499,35 @@ async def settings_grade_level_edit(
             "grade_level": grade_level,
         },
     )
+
+
+# ============================================================================
+# Notifications (per-user push preferences)
+# ============================================================================
+
+@router.get("/notifications", response_class=HTMLResponse)
+async def settings_notifications(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Push notification settings page — open to any authenticated user.
+
+    All roles (admin, teacher, parent) have devices and may want push, so
+    this isn't restricted to admins. The state-machine UI handles the
+    per-device subscription flow client-side.
+    """
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
+    return templates.TemplateResponse(
+        "settings/notifications.html",
+        {
+            "request": request,
+            "user": current_user,
+            "active_tab": "notifications",
+        },
+    )

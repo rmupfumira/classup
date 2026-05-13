@@ -17,7 +17,7 @@
  * refetch — do this on every meaningful UI/static asset change.
  */
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const PRECACHE = `classup-precache-${CACHE_VERSION}`;
 const RUNTIME = `classup-runtime-${CACHE_VERSION}`;
 
@@ -206,7 +206,89 @@ async function staleWhileRevalidate(request) {
 // Messaging — let the page tell us to skip waiting (used by "new version" UI)
 // ============================================================================
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (event.data === 'SKIP_WAITING' || (event.data && event.data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
   }
+});
+
+// ============================================================================
+// Web Push
+//
+// Servers send an encrypted payload via the user's push service (Apple/FCM/
+// Mozilla). The browser wakes the service worker and fires `push` even when
+// the app isn't open. We MUST call showNotification() inside the event;
+// silent push (where the SW does work without a visible notification) is
+// allowed on Chrome but iOS Safari penalises apps that do it and will
+// eventually revoke the push permission. So we always show something.
+//
+// Payload contract (what the server sends as JSON):
+// {
+//   "title":  string  (required-ish — falls back to "ClassUp")
+//   "body":   string  (the main message)
+//   "url":    string  (where notificationclick should navigate)
+//   "tag":    string  (collapse-key — same tag replaces previous notification)
+//   "icon":   string  (URL; defaults to /static/img/icons/icon-192.png)
+// }
+// ============================================================================
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    // Server sent text/plain — wrap as a body so we still show something
+    try { data = { title: 'ClassUp', body: event.data ? event.data.text() : '' }; }
+    catch (_) { data = {}; }
+  }
+
+  const title = data.title || 'ClassUp';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/static/img/icons/icon-192.png',
+    badge: '/static/img/icons/icon-192.png',
+    tag: data.tag || undefined,
+    // renotify=true makes a same-tag replacement still vibrate/sound; without
+    // it, replacements are silent (good for "unread count goes from 1 → 2")
+    renotify: !!data.tag,
+    data: { url: data.url || '/' },
+    // requireInteraction keeps the notification on screen until tapped on
+    // Chrome desktop; iOS ignores this. Leave it false so the user isn't
+    // forced to interact with every routine message.
+    requireInteraction: false,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Clicking a notification — focus an existing window if it's already on the
+// target URL, otherwise open a new one. Always close the notification first.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        try {
+          // Match by pathname so query strings don't prevent reuse
+          const clientPath = new URL(client.url).pathname;
+          const targetPath = new URL(targetUrl, self.location.origin).pathname;
+          if (clientPath === targetPath && 'focus' in client) {
+            return client.focus();
+          }
+        } catch (e) { /* malformed URL — fall through to openWindow */ }
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
+});
+
+// Push service may revoke a subscription (expired auth, user reset, etc.).
+// `pushsubscriptionchange` fires when that happens; we'd re-subscribe + tell
+// the server. For now just log — the next regular subscribe call (from the
+// notifications settings page) will refresh the row.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  // Best-effort: re-subscribe using the old applicationServerKey and POST
+  // the new endpoint to the server. The page-level fallback handles this
+  // better since it knows the auth context.
+  console.warn('[SW] pushsubscriptionchange — page will refresh subscription on next visit');
 });

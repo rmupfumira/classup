@@ -40,6 +40,15 @@ h11==0.14.0
 aiosmtplib>=3.0.0
 resend>=2.0.0
 
+# Web Push notifications (PWA)
+# pywebpush handles the encryption + delivery to FCM / APNs / Mozilla.
+# py_vapid is its dependency for VAPID signing — we use Vapid02 directly
+# because pywebpush.webpush() mishandles PEM strings (treats them as raw
+# base64url bytes). cryptography provides the EC key primitives.
+pywebpush>=2.0.0
+py_vapid>=1.9.0
+cryptography>=43.0.0
+
 # File Storage (S3/R2)
 boto3==1.35.86
 botocore==1.35.86

@@ -283,6 +283,11 @@
        content-block inline scripts run. pwa.js can be deferred — it doesn't
        need to be available during initial parse. #}
     <script src="{{ url_for('static', path='js/pwa.js') }}?v=2" defer></script>
+    {# push.js depends on ClassUp.fetch (defined in head-loaded app.js) so
+       it can defer-load alongside pwa.js. Loaded everywhere because:
+       (a) the SW push handler needs no help from this file but (b) the
+       Notifications settings page uses ClassUpPush.* helpers. #}
+    <script src="{{ url_for('static', path='js/push.js') }}?v=1" defer></script>
     <script>
     // Last-resort fallback if app.js failed to load (e.g. network failure
     // before the SW cached it). The head-loaded app.js should have already

@@ -19,6 +19,7 @@ from app.api.v1 import (
     invitations,
     messages,
     photos,
+    push,
     reports,
     students,
     subscriptions,
@@ -51,6 +52,7 @@ api_router.include_router(admin.router)
 api_router.include_router(audit.router)
 api_router.include_router(websocket.router)
 api_router.include_router(whatsapp.router)  # Public webhook inside — individual /send endpoint gated below
+api_router.include_router(push.router)  # Web Push — platform capability, not plan-gated
 
 # Plan-gated routers — blocked (402) if the tenant's plan doesn't include the feature
 api_router.include_router(

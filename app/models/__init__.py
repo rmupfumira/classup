@@ -70,6 +70,7 @@ from app.models.accounting import (
     TransactionType,
     Vendor,
 )
+from app.models.push_subscription import PushSubscription
 
 __all__ = [
     # Base
@@ -187,4 +188,6 @@ __all__ = [
     "ChartAccount",
     "TransactionType",
     "Vendor",
+    # Push notifications
+    "PushSubscription",
 ]

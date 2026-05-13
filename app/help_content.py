@@ -1355,6 +1355,127 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         "examples": [],
         "related": ["subscription-plans"],
     },
+    # ==================== PUSH NOTIFICATIONS (end-user) ====================
+    "notifications": {
+        "title": "Push notifications",
+        "short": "Get instant alerts on your phone — messages, attendance, reports — even when ClassUp isn't open.",
+        "icon": "bell",
+        "roles": ["school_admin"],
+        "category": "Daily Operations",
+        "overview": (
+            "Push notifications wake your phone/laptop when something happens in ClassUp — a parent replies "
+            "to a message, a teacher marks your child absent, a report is finalised. You enable them once "
+            "per device under Settings → Notifications. They work in the background even when the browser "
+            "is closed, but they only fire for things meant for you."
+        ),
+        "steps": [
+            {
+                "title": "Open the Notifications settings",
+                "body": (
+                    "Click Settings in the sidebar → Notifications tab. The page shows the current status "
+                    "of push for this device — one of: On, Off, Install first (iPhone only), Blocked, "
+                    "or Not configured."
+                ),
+                "tip": "Each device is enrolled separately — your phone, tablet, and laptop all need to be enabled on their own.",
+            },
+            {
+                "title": "Enable on Android / desktop",
+                "body": (
+                    "Tap Enable on this device. Your browser will ask permission — tap Allow. The button "
+                    "switches to On and the device appears in the Enrolled devices list. Done."
+                ),
+                "tip": "If you accidentally click Block, you'll need to re-enable Notifications for this site in your browser's site settings; we can't re-prompt automatically.",
+            },
+            {
+                "title": "Enable on iPhone (extra step)",
+                "body": (
+                    "Apple only allows push notifications for installed PWAs, not for Safari tabs. If the "
+                    "page says \"Install first\":\n\n"
+                    "1. Tap the Share button in Safari (square with up arrow)\n"
+                    "2. Scroll down → Add to Home Screen\n"
+                    "3. Open ClassUp from the home screen icon\n"
+                    "4. Come back to Settings → Notifications and tap Enable\n\n"
+                    "Once installed, ClassUp runs without Safari chrome and push works like any other iOS app."
+                ),
+                "tip": "iOS Chrome/Firefox/Edge can't install PWAs — they're WebKit wrappers and would produce a useless bookmark. Use Safari for the install step.",
+            },
+            {
+                "title": "Send a test notification",
+                "body": (
+                    "After enabling, tap Send test notification. A notification will pop on every device "
+                    "you've enrolled. If it doesn't arrive within a few seconds, check that the device's "
+                    "system notification settings allow notifications from your browser."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Turn off on a specific device",
+                "body": (
+                    "On any device with push enabled, go to Settings → Notifications and tap "
+                    "\"Turn off on this device.\" The other enrolled devices keep working."
+                ),
+                "tip": None,
+            },
+        ],
+        "examples": [
+            {
+                "title": "What you'll get pushed",
+                "body": (
+                    "Notifications fire for actual events affecting you: a new direct message, an attendance "
+                    "absence alert for your child, a report finalised, an invoice issued. We don't send "
+                    "marketing pushes or general announcements unless you explicitly opted in."
+                ),
+            },
+        ],
+        "related": [],
+    },
+    # ==================== VAPID SETUP (super admin) ====================
+    "push-setup": {
+        "title": "Set up push notifications (admin)",
+        "short": "Generate VAPID keys once so the platform can send web push notifications.",
+        "icon": "bell",
+        "roles": ["super_admin"],
+        "category": "Platform",
+        "overview": (
+            "Web Push uses VAPID — a signed JWT that authenticates the server to push services like FCM "
+            "and Apple's APNs. You generate one keypair per platform, store it in system_settings, and use "
+            "it for every push send. Without this, the Notifications settings page shows \"Not configured\" "
+            "for everyone."
+        ),
+        "steps": [
+            {
+                "title": "Generate the keypair",
+                "body": (
+                    "From a server shell with the app's Python environment:\n\n"
+                    "    python scripts/generate_vapid_keys.py --subject mailto:admin@your-domain.com\n\n"
+                    "This writes a P-256 keypair to system_settings.vapid_config: the public key (base64url, "
+                    "given to browsers), the private key (SEC1 PEM, kept on the server), and a contact email "
+                    "the push services can reach you on."
+                ),
+                "tip": "The private key MUST be SEC1 PEM (starts with -----BEGIN EC PRIVATE KEY-----). The generator produces this format; do NOT replace it with a PKCS8 key — py_vapid will reject it.",
+            },
+            {
+                "title": "Verify it took",
+                "body": (
+                    "Hit GET /api/v1/push/public-key with a logged-in browser. The response should include "
+                    "configured: true and a non-empty key. The Notifications settings page for any user "
+                    "should now show Off (ready to enable) instead of Not configured."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Roll the keys (rare)",
+                "body": (
+                    "If a private key leaks or you want to start over, run the generator with --force. This "
+                    "invalidates every existing subscription — affected users will see their device drop to "
+                    "Off and need to re-enable. No automatic re-subscribe."
+                ),
+                "tip": "Only do this in an actual emergency. Key rotation is disruptive — most schools should generate once and never touch it again.",
+            },
+        ],
+        "examples": [],
+        "related": [],
+    },
 }
 
 

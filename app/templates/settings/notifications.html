@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-neutral-900">Settings</h1>
+        <p class="mt-1 text-sm text-neutral-500">Notification preferences for this device.</p>
+    </div>
+
+    <!-- Tabs (mirroring settings/features.html) -->
+    <div class="border-b border-neutral-200 mb-6">
+        <nav class="-mb-px flex space-x-8 overflow-x-auto">
+            <a href="/settings/general"   class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">General</a>
+            <a href="/settings/features"  class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Features</a>
+            <a href="/settings/notifications" class="border-primary-500 text-primary-600 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Notifications</a>
+            <a href="/settings/billing"   class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Billing</a>
+            <a href="/settings/webhooks"  class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Webhooks</a>
+        </nav>
+    </div>
+
+    <!-- Push state card -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6 mb-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-lg font-semibold text-neutral-800">Push notifications on this device</h2>
+                <p class="text-sm text-neutral-500 mt-0.5">Get instant alerts for new messages, attendance updates, and reports — even when ClassUp isn't open.</p>
+            </div>
+            <span id="push-state-badge"
+                  class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
+                Checking…
+            </span>
+        </div>
+
+        <!-- ====================================================
+             State panels — exactly one is visible at a time
+             ==================================================== -->
+
+        <div id="state-unsupported" class="hidden p-4 rounded-md bg-warning-50 border border-warning-200">
+            <p class="text-sm text-warning-800">
+                <strong>This browser doesn't support push notifications.</strong> Try Chrome, Edge, Firefox, or Safari 16.4+.
+            </p>
+        </div>
+
+        <div id="state-ios-need-install" class="hidden p-4 rounded-md bg-info-50 border border-info-200">
+            <p class="text-sm text-info-800 mb-2">
+                <strong>iOS requires the app to be installed before push notifications work.</strong>
+            </p>
+            <ol class="text-sm text-info-800 space-y-1 ml-5 list-decimal">
+                <li>Tap the <strong>Share</strong> button in Safari (square with up arrow)</li>
+                <li>Scroll down → <strong>Add to Home Screen</strong></li>
+                <li>Open ClassUp from the home screen icon</li>
+                <li>Come back here and enable notifications</li>
+            </ol>
+        </div>
+
+        <div id="state-server-not-configured" class="hidden p-4 rounded-md bg-neutral-50 border border-neutral-200">
+            <p class="text-sm text-neutral-700">
+                <strong>Push not set up yet.</strong> Push notifications haven't been configured by an administrator. They need to run the VAPID key setup before push can be enabled.
+            </p>
+        </div>
+
+        <div id="state-denied" class="hidden p-4 rounded-md bg-danger-50 border border-danger-200">
+            <p class="text-sm text-danger-800 mb-2">
+                <strong>Notifications are blocked for this site.</strong>
+            </p>
+            <p class="text-xs text-danger-700">
+                Re-enable them in your browser settings:<br>
+                <em>Site settings → Notifications → Allow</em>, then refresh this page.
+            </p>
+        </div>
+
+        <div id="state-ready" class="hidden">
+            <p class="text-sm text-neutral-600 mb-3">
+                You'll only get notifications for things meant for you — messages from teachers, attendance alerts for your child, that sort of thing. No marketing, no spam.
+            </p>
+            <button id="btn-enable" type="button"
+                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 disabled:opacity-50">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                </svg>
+                Enable on this device
+            </button>
+        </div>
+
+        <div id="state-subscribed" class="hidden">
+            <div class="flex items-start gap-3 p-3 rounded-md bg-success-50 border border-success-200 mb-4">
+                <svg class="flex-shrink-0 w-5 h-5 text-success-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div class="text-sm text-success-800">
+                    <strong>Push notifications are on for this device.</strong>
+                    <p class="text-xs text-success-700 mt-0.5">Send a test message below to make sure delivery works end-to-end.</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="btn-test" type="button"
+                        class="inline-flex items-center px-3 py-1.5 bg-white text-primary-700 text-sm rounded-md border border-primary-300 hover:bg-primary-50 disabled:opacity-50">
+                    Send test notification
+                </button>
+                <button id="btn-disable" type="button"
+                        class="inline-flex items-center px-3 py-1.5 bg-white text-neutral-700 text-sm rounded-md border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50">
+                    Turn off on this device
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Devices list -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-neutral-100">
+            <h3 class="text-sm font-semibold text-neutral-800">Enrolled devices</h3>
+            <p class="text-xs text-neutral-500 mt-0.5">All devices where you've enabled push notifications.</p>
+        </div>
+        <div id="devices-body" class="divide-y divide-neutral-100">
+            <p class="px-6 py-8 text-center text-sm text-neutral-400">Loading…</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// State → badge label + colour + panel id
+const STATE_META = {
+    'unsupported':            { label: 'Not supported',  cls: 'bg-warning-100 text-warning-800' },
+    'ios-need-install':       { label: 'Install first',  cls: 'bg-info-100 text-info-800' },
+    'server-not-configured':  { label: 'Not configured', cls: 'bg-neutral-100 text-neutral-700' },
+    'denied':                 { label: 'Blocked',        cls: 'bg-danger-100 text-danger-800' },
+    'ready':                  { label: 'Off',            cls: 'bg-neutral-100 text-neutral-700' },
+    'subscribed':             { label: 'On',             cls: 'bg-success-100 text-success-800' },
+};
+const PANEL_IDS = Object.keys(STATE_META).map(s => 'state-' + s);
+
+function showPanel(state) {
+    for (const id of PANEL_IDS) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    }
+    const active = document.getElementById('state-' + state);
+    if (active) active.classList.remove('hidden');
+
+    const meta = STATE_META[state] || STATE_META['unsupported'];
+    const badge = document.getElementById('push-state-badge');
+    badge.textContent = meta.label;
+    badge.className = 'flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ' + meta.cls;
+}
+
+function deviceLabel(ua) {
+    if (!ua) return 'Unknown device';
+    // Cheap, opinionated parsing — full UA strings are huge + useless
+    if (/iPhone/.test(ua)) return 'iPhone (Safari)';
+    if (/iPad/.test(ua)) return 'iPad (Safari)';
+    if (/Android/.test(ua) && /Chrome/.test(ua)) return 'Android (Chrome)';
+    if (/Android/.test(ua)) return 'Android';
+    if (/Edg\//.test(ua)) return 'Edge (desktop)';
+    if (/Chrome\//.test(ua)) return 'Chrome (desktop)';
+    if (/Firefox\//.test(ua)) return 'Firefox';
+    if (/Safari\//.test(ua)) return 'Safari';
+    return ua.slice(0, 60) + (ua.length > 60 ? '...' : '');
+}
+
+function formatTimestamp(iso) {
+    if (!iso) return '—';
+    try {
+        const d = new Date(iso);
+        return d.toLocaleString();
+    } catch (e) { return iso; }
+}
+
+async function renderDevices() {
+    const body = document.getElementById('devices-body');
+    const subs = await ClassUpPush.listSubscriptions();
+    if (!subs.length) {
+        body.innerHTML = '<p class="px-6 py-8 text-center text-sm text-neutral-400">No devices enrolled yet.</p>';
+        return;
+    }
+    body.innerHTML = subs.map(s => `
+        <div class="px-6 py-3 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-sm font-medium text-neutral-800">${ClassUp.escapeHtml(deviceLabel(s.user_agent || ''))}</p>
+                <p class="text-xs text-neutral-500 mt-0.5">
+                    Last seen: ${ClassUp.escapeHtml(formatTimestamp(s.last_seen_at))}
+                    ${s.last_failed_at ? '· <span class="text-danger-600">Last failure: ' + ClassUp.escapeHtml(formatTimestamp(s.last_failed_at)) + '</span>' : ''}
+                </p>
+                ${s.last_error ? '<p class="text-xs text-danger-500 mt-0.5">' + ClassUp.escapeHtml(s.last_error) + '</p>' : ''}
+                <p class="text-[10px] text-neutral-400 mt-0.5 font-mono">${ClassUp.escapeHtml(s.endpoint_preview)}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function refresh() {
+    const state = await ClassUpPush.detectState();
+    showPanel(state);
+    await renderDevices();
+}
+
+document.getElementById('btn-enable').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Enabling…';
+    try {
+        const result = await ClassUpPush.subscribe();
+        if (result.ok) {
+            ClassUp.toast('Notifications enabled on this device.', 'success');
+        } else {
+            const msg = ({
+                'denied': 'Notifications were blocked. Re-enable them in your browser settings.',
+                'server-not-configured': 'Push not set up by the administrator yet.',
+                'unsupported': 'This browser does not support push notifications.',
+                'server-error': result.error || 'Could not register on the server.',
+            })[result.reason] || (result.error || 'Could not enable notifications.');
+            ClassUp.toast(msg, 'error');
+        }
+    } catch (err) {
+        ClassUp.toast(err.message || 'Something went wrong.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>Enable on this device';
+        await refresh();
+    }
+});
+
+document.getElementById('btn-disable').addEventListener('click', async (e) => {
+    if (!(await ClassUp.confirm('Turn off push notifications on this device?', { confirmText: 'Turn off' }))) return;
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Turning off…';
+    try {
+        const result = await ClassUpPush.unsubscribe();
+        if (result.ok) {
+            ClassUp.toast('Notifications turned off on this device.', 'success');
+        } else {
+            ClassUp.toast(result.error || 'Could not turn off notifications.', 'error');
+        }
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Turn off on this device';
+        await refresh();
+    }
+});
+
+document.getElementById('btn-test').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+        const result = await ClassUpPush.sendTest();
+        if (result.ok) {
+            const n = (result.data && result.data.sent) || 0;
+            ClassUp.toast(`Test sent to ${n} device${n === 1 ? '' : 's'}. Check your screen.`, 'success');
+        } else {
+            ClassUp.toast(result.error || 'Could not send test.', 'error');
+        }
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send test notification';
+    }
+});
+
+refresh();
+</script>
+{% endblock %}
