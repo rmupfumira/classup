@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Platform Settings - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/admin"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Platform Settings</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Defaults that every new tenant inherits at signup. Existing tenants are not affected.
+            </p>
+        </div>
+    </div>
+
+    <!-- Identity card -->
+    <form id="platform-form" class="space-y-6">
+
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <h2 class="text-base font-semibold text-neutral-800 mb-1">Platform identity</h2>
+            <p class="text-sm text-neutral-500 mb-4">
+                Shown in emails, help docs, and super-admin pages. Use the brand name you sell as.
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label for="platform_name" class="block text-sm font-medium text-neutral-700 mb-1">Platform name</label>
+                    <input type="text" id="platform_name" required maxlength="120"
+                           class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="support_email" class="block text-sm font-medium text-neutral-700 mb-1">Support email</label>
+                        <input type="email" id="support_email" maxlength="255"
+                               placeholder="support@your-platform.com"
+                               class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                        <p class="text-xs text-neutral-500 mt-1">Where tenants email when stuck. Used in welcome emails.</p>
+                    </div>
+                    <div>
+                        <label for="support_phone" class="block text-sm font-medium text-neutral-700 mb-1">Support phone</label>
+                        <input type="tel" id="support_phone" maxlength="40"
+                               placeholder="+27 11 555 0000"
+                               class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                        <p class="text-xs text-neutral-500 mt-1">Optional. Leave blank if you don't offer phone support.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Locale & money card -->
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <h2 class="text-base font-semibold text-neutral-800 mb-1">Defaults for new tenants</h2>
+            <p class="text-sm text-neutral-500 mb-4">
+                These pre-fill on a new school's signup. Each school can override its own settings later.
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="default_currency" class="block text-sm font-medium text-neutral-700 mb-1">Currency</label>
+                    <select id="default_currency" required
+                            class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg bg-white"></select>
+                    <p class="text-xs text-neutral-500 mt-1">Default for invoices, payments, and accounting.</p>
+                </div>
+                <div>
+                    <label for="default_country" class="block text-sm font-medium text-neutral-700 mb-1">Country</label>
+                    <select id="default_country" required
+                            class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg bg-white"></select>
+                    <p class="text-xs text-neutral-500 mt-1">Used for phone-number formatting and date display.</p>
+                </div>
+                <div>
+                    <label for="default_language" class="block text-sm font-medium text-neutral-700 mb-1">Language</label>
+                    <select id="default_language" required
+                            class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg bg-white"></select>
+                    <p class="text-xs text-neutral-500 mt-1">UI language. Parents and teachers can override per-user.</p>
+                </div>
+                <div>
+                    <label for="default_timezone" class="block text-sm font-medium text-neutral-700 mb-1">Timezone</label>
+                    <input list="tz-list" id="default_timezone" required maxlength="64"
+                           class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg bg-white">
+                    <datalist id="tz-list"></datalist>
+                    <p class="text-xs text-neutral-500 mt-1">IANA name (e.g. <code class="text-xs">Africa/Johannesburg</code>). Used to render dates and schedule jobs.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save button -->
+        <div class="flex items-center justify-end gap-3">
+            <button type="button" onclick="loadSettings()"
+                    class="px-4 py-2 bg-white text-neutral-700 text-sm font-medium rounded-md border border-neutral-300 hover:bg-neutral-50">
+                Revert
+            </button>
+            <button type="submit"
+                    class="px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 disabled:opacity-50">
+                Save platform settings
+            </button>
+        </div>
+    </form>
+
+    <p class="text-xs text-neutral-400 text-center pt-2">
+        Heads up: editing these values doesn't migrate existing tenants. They keep whatever values they had at signup.
+    </p>
+</div>
+
+<script>
+let _reference = null;  // dropdown contents from the API
+
+async function loadSettings() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/platform-settings');
+        const d = res.data;
+        _reference = d;
+        render(d);
+    } catch (err) {
+        ClassUp.toast(err.message || 'Could not load platform settings', 'error');
+    }
+}
+
+function renderDropdown(selectId, items, valueField, labelField, selected) {
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = items.map(item => {
+        const value = item[valueField];
+        const label = item[labelField];
+        const isSelected = value === selected ? 'selected' : '';
+        return `<option value="${value}" ${isSelected}>${label}</option>`;
+    }).join('');
+}
+
+function render(d) {
+    const s = d.settings || {};
+
+    // Text fields
+    document.getElementById('platform_name').value = s.platform_name || '';
+    document.getElementById('support_email').value = s.support_email || '';
+    document.getElementById('support_phone').value = s.support_phone || '';
+    document.getElementById('default_timezone').value = s.default_timezone || 'UTC';
+
+    // Dropdowns
+    renderDropdown('default_currency', d.currencies, 'code', 'name', s.default_currency);
+    renderDropdown('default_country',  d.countries,  'code', 'name', s.default_country);
+    renderDropdown('default_language', d.languages,  'code', 'name', s.default_language);
+
+    // Timezone datalist
+    const tzList = document.getElementById('tz-list');
+    tzList.innerHTML = (d.timezones || []).map(tz => `<option value="${tz}">`).join('');
+}
+
+document.getElementById('platform-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Saving…';
+
+    const body = {
+        platform_name: document.getElementById('platform_name').value.trim(),
+        support_email: document.getElementById('support_email').value.trim(),
+        support_phone: document.getElementById('support_phone').value.trim(),
+        default_currency: document.getElementById('default_currency').value,
+        default_country: document.getElementById('default_country').value,
+        default_language: document.getElementById('default_language').value,
+        default_timezone: document.getElementById('default_timezone').value.trim(),
+    };
+
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/platform-settings', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+        ClassUp.toast(res.message || 'Saved.', 'success');
+    } catch (err) {
+        // Error toast fired by ClassUp.fetch
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+
+loadSettings();
+</script>
+{% endblock %}

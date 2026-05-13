@@ -152,8 +152,17 @@ class TenantService:
                 existing = await self.get_tenant_by_slug(db, slug)
                 counter += 1
 
-        # Get default settings for education type
-        settings = get_default_tenant_settings(education_type)
+        # Get platform defaults (currency, country, language, timezone, ...)
+        # so the super admin's choices propagate to new tenants. Lazy import
+        # to avoid circular reference: tenant_service is imported during app
+        # startup before all services are wired.
+        from app.services.platform_service import get_defaults as get_platform_defaults
+        platform = await get_platform_defaults(db)
+
+        # Get default settings for education type, seeded with platform values
+        settings = get_default_tenant_settings(
+            education_type, platform_defaults=platform.to_dict()
+        )
 
         tenant = Tenant(
             name=name,

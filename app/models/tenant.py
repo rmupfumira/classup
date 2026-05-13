@@ -121,8 +121,20 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
         return self.settings.get("language", "en")
 
 
-def get_default_tenant_settings(education_type: EducationType) -> dict:
-    """Get default settings based on education type."""
+def get_default_tenant_settings(
+    education_type: EducationType,
+    *,
+    platform_defaults: dict | None = None,
+) -> dict:
+    """Get default settings for a new tenant.
+
+    ``platform_defaults`` (optional) lets the super admin's
+    Platform Settings page (timezone, language, currency, etc.)
+    seed sensible values for new tenants. When omitted, falls back
+    to the hard-coded ZAR / Africa/Johannesburg / en defaults so
+    existing callers and tests are unaffected.
+    """
+    pd = platform_defaults or {}
     base_features = {
         "attendance_tracking": True,
         "messaging": True,
@@ -244,9 +256,10 @@ def get_default_tenant_settings(education_type: EducationType) -> dict:
             "primary_color": "#1B3A6B",
             "secondary_color": "#C9962A",
         },
-        "timezone": "Africa/Johannesburg",
-        "language": "en",
-        "billing_currency": "ZAR",
+        "timezone": pd.get("default_timezone", "Africa/Johannesburg"),
+        "language": pd.get("default_language", "en"),
+        "billing_currency": pd.get("default_currency", "ZAR"),
+        "country": pd.get("default_country", "ZA"),
         "billing_banking_details": "",
         "billing_payment_instructions": "",
     }

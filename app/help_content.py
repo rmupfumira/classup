@@ -1429,6 +1429,69 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         ],
         "related": [],
     },
+    # ==================== PLATFORM SETTINGS (super admin) ====================
+    "platform-settings": {
+        "title": "Platform settings (admin)",
+        "short": "Configure platform defaults that new tenants inherit on signup — currency, country, language, timezone, support email.",
+        "icon": "settings",
+        "roles": ["super_admin"],
+        "category": "Platform",
+        "overview": (
+            "Platform Settings is the place where you, as the platform operator, set the defaults every "
+            "new tenant will start with. A school in Lagos shouldn't have to change ZAR to NGN as its "
+            "first task — set NGN as the platform default and every new school you onboard signs up "
+            "with the right currency from the first click.\n\n"
+            "These defaults DO NOT migrate existing tenants. Schools already on the platform keep "
+            "whatever they signed up with. The settings only affect tenants created after you save."
+        ),
+        "steps": [
+            {
+                "title": "Open Platform Settings",
+                "body": (
+                    "Sign in as super admin → sidebar → <strong>Platform Settings</strong>. You'll see "
+                    "two cards:\n\n"
+                    "• Platform identity — the brand name, support email, and phone shown in emails and "
+                    "help docs.\n"
+                    "• Defaults for new tenants — currency, country, language, timezone."
+                ),
+                "tip": "If you're running ClassUp under a white-label brand, this is where you set the visible name. The platform name is used in welcome emails and the help pages.",
+            },
+            {
+                "title": "Set the defaults that match your market",
+                "body": (
+                    "For South Africa: ZAR / ZA / English / Africa/Johannesburg.\n"
+                    "For Kenya: KES / KE / English / Africa/Nairobi.\n"
+                    "For UK: GBP / GB / English / Europe/London.\n\n"
+                    "Pick from the dropdowns. The timezone field accepts any IANA name — the dropdown "
+                    "lists the common ones for the African + global markets we support."
+                ),
+                "tip": "Currency uses the ISO 4217 code (3 letters). Country uses ISO 3166 alpha-2 (2 letters). Language must be one of the languages translations are available for (currently English and Afrikaans).",
+            },
+            {
+                "title": "Save and confirm",
+                "body": (
+                    "Tap <strong>Save platform settings</strong>. A success toast confirms it landed. "
+                    "From now on, when you create a new tenant from <em>Admin → Tenants → + Add</em>, "
+                    "the new school's settings page will show these as the pre-selected values. The "
+                    "school admin can still change them on their own settings page."
+                ),
+                "tip": None,
+            },
+        ],
+        "examples": [
+            {
+                "title": "Migrating an existing tenant to the new default",
+                "body": (
+                    "Platform Settings only affect new tenants. If a school signed up two months ago "
+                    "with ZAR and you need them on USD, edit the tenant directly: Admin → Tenants → "
+                    "click the school → Edit Settings. There's no bulk-migrate button (intentional — "
+                    "changing currency on a tenant with existing invoices is risky and should be a "
+                    "deliberate decision per school)."
+                ),
+            },
+        ],
+        "related": ["push-setup"],
+    },
     # ==================== VAPID SETUP (super admin) ====================
     "push-setup": {
         "title": "Set up push notifications (admin)",

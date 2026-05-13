@@ -499,3 +499,62 @@ async def update_push_subject(
         message="Subject updated.",
         data={"subject": new_subject},
     )
+
+
+# ============================================================================
+# Platform defaults — super-admin settings new tenants inherit on signup
+# ============================================================================
+
+class PlatformDefaultsRequest(BaseModel):
+    platform_name: str = Field(..., min_length=1, max_length=120)
+    support_email: str = Field("", max_length=255)
+    support_phone: str = Field("", max_length=40)
+    default_currency: str = Field(..., min_length=3, max_length=3)
+    default_country: str = Field(..., min_length=2, max_length=2)
+    default_language: str = Field(..., min_length=2, max_length=10)
+    default_timezone: str = Field(..., min_length=1, max_length=64)
+
+
+@router.get("/platform-settings")
+@require_super_admin()
+async def get_platform_settings(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Current platform defaults + reference data for the UI dropdowns."""
+    from app.services import platform_service
+
+    defaults = await platform_service.get_defaults(db)
+    return APIResponse(
+        status="success",
+        data={
+            "settings": defaults.to_dict(),
+            "currencies": platform_service.SUPPORTED_CURRENCIES,
+            "countries": platform_service.SUPPORTED_COUNTRIES,
+            "languages": platform_service.SUPPORTED_LANGUAGES,
+            "timezones": platform_service.COMMON_TIMEZONES,
+        },
+    )
+
+
+@router.put("/platform-settings")
+@require_super_admin()
+async def update_platform_settings(
+    body: PlatformDefaultsRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Write platform defaults. Affects:
+
+      - New tenants created from this point on (inherit these values)
+      - Pages that read platform-level fallbacks (emails sent before tenant
+        assignment, super-admin reports showing platform-wide totals, etc.)
+
+    Existing tenants are unaffected — they keep whatever was set in their own
+    tenant.settings JSONB.
+    """
+    from app.services import platform_service
+
+    updated = await platform_service.update_defaults(db, body.model_dump())
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message="Platform settings saved. New tenants will inherit these defaults.",
+        data={"settings": updated.to_dict()},
+    )

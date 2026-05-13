@@ -78,6 +78,22 @@
                     Email Settings
                 </a>
 
+                <!-- Platform Settings -->
+                <a href="/admin/platform-settings"
+                   class="group flex items-center px-3 py-2.5 text-sm rounded-md
+                          {% if '/admin/platform-settings' in request.url.path %}
+                          bg-primary-50 text-primary-600 font-medium
+                          {% else %}
+                          text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900
+                          {% endif %}">
+                    <svg class="mr-3 h-4 w-4 {% if '/admin/platform-settings' in request.url.path %}text-primary-500{% else %}text-neutral-400 group-hover:text-neutral-600{% endif %}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
+                    </svg>
+                    Platform Settings
+                </a>
+
                 <!-- Push Settings -->
                 <a href="/admin/push-settings"
                    class="group flex items-center px-3 py-2.5 text-sm rounded-md
