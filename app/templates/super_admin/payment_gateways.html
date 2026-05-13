@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Gateways - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/admin"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Payment Gateways</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Configure how tenants pay subscription invoices on this ClassUp instance.
+            </p>
+        </div>
+    </div>
+
+    <!-- Info banner -->
+    <div class="rounded-lg bg-info-50 border border-info-200 p-4 text-sm text-info-800">
+        <p>
+            One gateway per instance — pick the one most popular in this market. Tenants can always
+            fall back to the manual EFT-with-POP flow regardless of what's configured here.
+        </p>
+    </div>
+
+    <!-- Active state badge + summary -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h2 class="text-base font-semibold text-neutral-800">Current configuration</h2>
+                <p class="text-sm text-neutral-500" id="current-summary">Loading…</p>
+            </div>
+            <span id="status-badge"
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                Loading…
+            </span>
+        </div>
+    </div>
+
+    <!-- Provider picker + credentials form -->
+    <form id="gateway-form" class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-5">
+
+        <!-- Provider selector — radios -->
+        <div>
+            <h2 class="text-base font-semibold text-neutral-800 mb-3">Provider</h2>
+            <div class="space-y-2" id="provider-options">
+                <!-- Filled in by JS -->
+            </div>
+            <p class="text-xs text-neutral-500 mt-2">
+                Pick <em>None</em> to disable card payments and require all tenants to use manual EFT.
+            </p>
+        </div>
+
+        <!-- Credentials — rendered dynamically based on selected provider -->
+        <div id="credentials-section" class="hidden border-t border-neutral-100 pt-5">
+            <h2 class="text-base font-semibold text-neutral-800 mb-3">Credentials</h2>
+            <div id="credential-fields" class="space-y-4">
+                <!-- Filled in by JS based on chosen provider's credential_fields -->
+            </div>
+            <p class="text-xs text-neutral-500 mt-3">
+                Credentials are stored in the platform's system settings. Secret values are masked
+                when read back — leave them as-is to keep the saved value, or enter a fresh value
+                to replace it.
+            </p>
+        </div>
+
+        <!-- Enabled checkbox -->
+        <div id="enabled-section" class="hidden border-t border-neutral-100 pt-5">
+            <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" id="is_enabled" checked
+                       class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <span class="font-medium text-neutral-700">Enabled</span>
+            </label>
+            <p class="text-xs text-neutral-500 mt-1">
+                Untick to pause card payments without deleting the credentials.
+            </p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex flex-wrap justify-between gap-3 pt-3 border-t border-neutral-100">
+            <button type="button" id="btn-test"
+                    class="hidden px-3 py-1.5 bg-white text-neutral-700 text-sm font-medium rounded-md border border-neutral-300 hover:bg-neutral-50">
+                Test connection
+            </button>
+            <div class="ml-auto flex gap-2">
+                <button type="button" onclick="loadConfig()"
+                        class="px-3 py-1.5 bg-white text-neutral-600 text-sm rounded-md border border-neutral-300 hover:bg-neutral-50">
+                    Revert
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 disabled:opacity-50">
+                    Save
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Webhook URL panel -->
+    <div id="webhook-panel" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <h2 class="text-base font-semibold text-neutral-800 mb-1">Webhook URL</h2>
+        <p class="text-sm text-neutral-500 mb-3">
+            Paste this URL into the gateway's dashboard so payment events reach ClassUp:
+        </p>
+        <div class="flex items-center gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-md">
+            <code class="flex-1 text-xs font-mono text-neutral-700 break-all" id="webhook-url">—</code>
+            <button type="button" id="btn-copy-webhook"
+                    class="flex-shrink-0 px-2 py-1 bg-white text-xs text-neutral-700 border border-neutral-300 rounded hover:bg-neutral-100">
+                Copy
+            </button>
+        </div>
+        <p class="text-xs text-neutral-500 mt-2" id="webhook-help">—</p>
+    </div>
+
+    <p class="text-xs text-neutral-400 text-center pt-2">
+        Manual EFT-with-POP flow is always available. Tenants choose between gateway and EFT on /subscription.
+    </p>
+</div>
+
+<script>
+let _state = null;
+
+async function loadConfig() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/payment-gateways');
+        _state = res.data;
+        render();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Could not load configuration', 'error');
+    }
+}
+
+function render() {
+    const cur = _state.current || {};
+    const providers = _state.providers || [];
+
+    // Provider radio list — None + each registered provider
+    const opts = document.getElementById('provider-options');
+    const radios = [
+        { id: '', name: 'None (manual EFT only)', desc: 'Tenants pay platform invoices via EFT-with-POP only.' },
+        ...providers.map(p => ({ id: p.provider_id, name: p.display_name, desc: p.description })),
+    ];
+    opts.innerHTML = radios.map(r => `
+        <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                      ${cur.provider_id === r.id ? 'border-primary-400 bg-primary-50' : 'border-neutral-200 hover:bg-neutral-50'}">
+            <input type="radio" name="provider_id" value="${r.id}"
+                   ${cur.provider_id === r.id ? 'checked' : ''}
+                   class="mt-0.5 text-primary-600 focus:ring-primary-500">
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-neutral-800">${r.name}</p>
+                <p class="text-xs text-neutral-500 mt-0.5">${r.desc}</p>
+            </div>
+        </label>
+    `).join('');
+    // Listen for changes
+    opts.querySelectorAll('input[name="provider_id"]').forEach(r => {
+        r.addEventListener('change', () => onProviderChange(r.value));
+    });
+
+    // Render credential fields for the current selection
+    onProviderChange(cur.provider_id || '');
+
+    document.getElementById('is_enabled').checked = cur.is_enabled !== false;
+
+    // Status badge + summary
+    const badge = document.getElementById('status-badge');
+    const summary = document.getElementById('current-summary');
+    if (!cur.provider_id) {
+        badge.textContent = 'Not configured';
+        badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700';
+        summary.textContent = 'Card payments are disabled. Tenants must use EFT-with-POP.';
+    } else if (!cur.is_enabled) {
+        const p = providers.find(p => p.provider_id === cur.provider_id);
+        badge.textContent = 'Paused';
+        badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-warning-100 text-warning-800';
+        summary.textContent = `${p ? p.display_name : cur.provider_id} is configured but paused.`;
+    } else {
+        const p = providers.find(p => p.provider_id === cur.provider_id);
+        badge.textContent = 'Active';
+        badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-success-100 text-success-800';
+        summary.textContent = `${p ? p.display_name : cur.provider_id} is live — tenants can pay subscriptions by card.`;
+    }
+}
+
+function onProviderChange(providerId) {
+    const credentialsSection = document.getElementById('credentials-section');
+    const enabledSection = document.getElementById('enabled-section');
+    const fieldsWrap = document.getElementById('credential-fields');
+    const btnTest = document.getElementById('btn-test');
+    const webhookPanel = document.getElementById('webhook-panel');
+
+    if (!providerId) {
+        credentialsSection.classList.add('hidden');
+        enabledSection.classList.add('hidden');
+        btnTest.classList.add('hidden');
+        webhookPanel.classList.add('hidden');
+        return;
+    }
+    const p = (_state.providers || []).find(x => x.provider_id === providerId);
+    if (!p) {
+        credentialsSection.classList.add('hidden');
+        enabledSection.classList.add('hidden');
+        btnTest.classList.add('hidden');
+        webhookPanel.classList.add('hidden');
+        return;
+    }
+    credentialsSection.classList.remove('hidden');
+    enabledSection.classList.remove('hidden');
+    btnTest.classList.remove('hidden');
+    webhookPanel.classList.remove('hidden');
+
+    const savedCreds = (_state.current && _state.current.provider_id === providerId
+        ? (_state.current.credentials || {})
+        : {});
+    fieldsWrap.innerHTML = p.credential_fields.map(f => `
+        <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">${f.label}</label>
+            <input type="${f.type === 'password' ? 'password' : 'text'}"
+                   name="cred_${f.key}"
+                   placeholder="${f.placeholder || ''}"
+                   value="${(savedCreds[f.key] || '').replace(/"/g, '&quot;')}"
+                   class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+            ${f.help ? `<p class="text-xs text-neutral-500 mt-1">${f.help}</p>` : ''}
+        </div>
+    `).join('');
+
+    // Webhook URL hint
+    const baseUrl = window.location.origin;
+    const webhookUrl = `${baseUrl}/api/v1/${providerId}/webhook`;
+    document.getElementById('webhook-url').textContent = webhookUrl;
+    const helpMap = {
+        yoco: 'In Yoco Business Portal → Developer → Webhooks, register this URL for the events payment.succeeded and payment.failed.',
+        paynow: 'In Paynow Sellers Dashboard → Receive Payments, set this as the Result URL for the integration.',
+    };
+    document.getElementById('webhook-help').textContent = helpMap[providerId] || 'Register this URL with the gateway as the destination for payment events.';
+}
+
+document.getElementById('btn-copy-webhook').addEventListener('click', () => {
+    const url = document.getElementById('webhook-url').textContent;
+    navigator.clipboard.writeText(url).then(
+        () => ClassUp.toast('Webhook URL copied to clipboard.', 'success'),
+        () => ClassUp.toast('Could not copy. Select and copy manually.', 'error'),
+    );
+});
+
+document.getElementById('btn-test').addEventListener('click', async (e) => {
+    const providerId = document.querySelector('input[name="provider_id"]:checked').value;
+    if (!providerId) return;
+    const p = (_state.providers || []).find(x => x.provider_id === providerId);
+    if (!p) return;
+    const creds = {};
+    p.credential_fields.forEach(f => {
+        creds[f.key] = document.querySelector(`input[name="cred_${f.key}"]`).value;
+    });
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Testing…';
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/payment-gateways/test', {
+            method: 'POST',
+            body: JSON.stringify({ provider_id: providerId, credentials: creds }),
+        });
+        ClassUp.toast(res.message || 'Connection OK', 'success');
+    } catch (err) {
+        // error toast already fired
+    } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+    }
+});
+
+document.getElementById('gateway-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const providerId = document.querySelector('input[name="provider_id"]:checked').value;
+    const isEnabled = document.getElementById('is_enabled').checked;
+    let creds = {};
+    if (providerId) {
+        const p = (_state.providers || []).find(x => x.provider_id === providerId);
+        if (p) {
+            p.credential_fields.forEach(f => {
+                creds[f.key] = document.querySelector(`input[name="cred_${f.key}"]`).value;
+            });
+        }
+    }
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Saving…';
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/payment-gateways', {
+            method: 'PUT',
+            body: JSON.stringify({
+                provider_id: providerId,
+                is_enabled: isEnabled,
+                credentials: creds,
+            }),
+        });
+        ClassUp.toast(res.message || 'Saved', 'success');
+        await loadConfig();
+    } catch (err) {
+        // error toast already fired
+    } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+    }
+});
+
+loadConfig();
+</script>
+{% endblock %}

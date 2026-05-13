@@ -49,14 +49,19 @@
 
     <!-- Payment methods -->
     <div class="grid md:grid-cols-2 gap-4">
-        <div class="bg-neutral-50 rounded-xl border border-neutral-200 p-5">
+        {# Card-payment option — only shown when a gateway is enabled on this
+           instance. Filled in by JS once /api/v1/subscription/gateway returns. #}
+        <div id="card-payment-card" class="hidden bg-neutral-50 rounded-xl border border-neutral-200 p-5">
             <div class="flex gap-3">
                 <svg class="w-5 h-5 text-primary-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
                 <div>
-                    <p class="text-sm font-semibold text-neutral-800">Pay instantly with Paystack</p>
-                    <p class="text-xs text-neutral-500 mt-1">Card or EFT via Paystack's checkout. Your subscription activates immediately on payment.</p>
+                    <p class="text-sm font-semibold text-neutral-800">Pay by card with <span id="gateway-display-name">—</span></p>
+                    <p class="text-xs text-neutral-500 mt-1">
+                        Use the Pay button next to any pending invoice below to complete payment instantly.
+                        Subscription activates as soon as the payment confirms.
+                    </p>
                 </div>
             </div>
         </div>
@@ -288,6 +293,44 @@ async function selectPlan(planId, planName) {
     }
 }
 
+// Gateway state — used to decide whether to render a Pay button on
+// pending invoices. null = not yet loaded, false = no gateway configured.
+let _gatewayState = null;
+
+async function loadGateway() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/subscription/gateway');
+        _gatewayState = res.data;
+        if (_gatewayState.configured) {
+            document.getElementById('card-payment-card').classList.remove('hidden');
+            document.getElementById('gateway-display-name').textContent = _gatewayState.display_name;
+        }
+    } catch (e) {
+        _gatewayState = { configured: false };
+    }
+}
+
+async function payInvoice(invoiceId, btn) {
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Redirecting…';
+    try {
+        const res = await ClassUp.fetch(`/api/v1/subscription/invoices/${invoiceId}/pay`, {
+            method: 'POST',
+        });
+        if (res.data && res.data.redirect_url) {
+            window.location.href = res.data.redirect_url;
+            return;  // navigation in progress
+        }
+        ClassUp.toast('Gateway did not return a redirect URL', 'error');
+    } catch (e) {
+        // error toast already fired
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
 async function loadInvoices() {
     const section = document.getElementById('invoices-section');
     try {
@@ -296,6 +339,7 @@ async function loadInvoices() {
             section.innerHTML = '<p class="text-center text-neutral-400 py-4">No payment history yet.</p>';
             return;
         }
+        const showPay = _gatewayState && _gatewayState.configured;
         section.innerHTML = `
             <table class="min-w-full divide-y divide-neutral-200">
                 <thead>
@@ -304,6 +348,7 @@ async function loadInvoices() {
                         <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Amount</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-neutral-200">
@@ -318,6 +363,11 @@ async function loadInvoices() {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-neutral-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
+                            <td class="px-4 py-3 text-sm text-right">
+                                ${(inv.status === 'PENDING' && showPay)
+                                    ? `<button onclick="payInvoice('${inv.id}', this)" class="px-3 py-1 bg-primary-500 text-white text-xs font-medium rounded-md hover:bg-primary-600">Pay by card</button>`
+                                    : '<span class="text-xs text-neutral-400">—</span>'}
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -374,6 +424,8 @@ async function cancelSubscription() {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSubscription();
     loadPlans();
+    // Gateway must resolve before invoices so the Pay buttons render correctly
+    await loadGateway();
     loadInvoices();
 });
 </script>

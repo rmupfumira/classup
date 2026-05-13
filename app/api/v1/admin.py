@@ -558,3 +558,96 @@ async def update_platform_settings(
         message="Platform settings saved. New tenants will inherit these defaults.",
         data={"settings": updated.to_dict()},
     )
+
+
+# ============================================================================
+# Payment gateways — instance-level singleton (one provider per ClassUp
+# deployment; admin picks the country's gateway: Yoco for SA, Paynow for Zim,
+# etc. Manual EFT-with-POP remains as the universal fallback)
+# ============================================================================
+
+class GatewayConfigRequest(BaseModel):
+    provider_id: str = Field(..., description="Provider slug, e.g. 'yoco' or 'paynow'. Empty string clears the config.")
+    is_enabled: bool = Field(True)
+    credentials: dict = Field(default_factory=dict)
+
+
+class GatewayTestRequest(BaseModel):
+    provider_id: str = Field(..., min_length=1)
+    credentials: dict = Field(default_factory=dict)
+
+
+@router.get("/payment-gateways")
+@require_super_admin()
+async def get_payment_gateway(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Return the current gateway config (secrets masked) + the catalogue of
+    providers the UI can offer."""
+    from app.services import gateway_service
+
+    cfg = await gateway_service.get_config(db)
+    return APIResponse(
+        status="success",
+        data={
+            "current": cfg.with_masked_secrets(),
+            "providers": gateway_service.list_providers(),
+        },
+    )
+
+
+@router.put("/payment-gateways")
+@require_super_admin()
+async def update_payment_gateway(
+    body: GatewayConfigRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Save the chosen provider + credentials. MASKED placeholders preserve
+    the existing secret (so the admin doesn't have to re-enter the key just
+    to toggle is_enabled)."""
+    from app.services import gateway_service
+
+    # Allow empty provider_id to clear the config — turns off gateway,
+    # falling back to EFT-with-POP only
+    if body.provider_id and body.provider_id not in gateway_service.PROVIDER_REGISTRY:
+        return APIResponse(
+            status="error",
+            message=f"Unknown provider: {body.provider_id}",
+        )
+
+    try:
+        updated = await gateway_service.save_config(
+            db,
+            provider_id=body.provider_id or "",
+            is_enabled=body.is_enabled,
+            credentials=body.credentials or {},
+        )
+    except ValueError as e:
+        return APIResponse(status="error", message=str(e))
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message=(
+            "Payment gateway disabled. Tenants will see EFT-only on /subscription."
+            if not body.provider_id else
+            f"Saved. Tenants can now pay subscriptions via {body.provider_id}."
+        ),
+        data=updated.with_masked_secrets(),
+    )
+
+
+@router.post("/payment-gateways/test")
+@require_super_admin()
+async def test_payment_gateway(
+    body: GatewayTestRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Send a low-impact request to verify the credentials work BEFORE the
+    admin saves them. MASKED secrets are hydrated from the stored config."""
+    from app.services import gateway_service
+
+    ok, message = await gateway_service.test_config(
+        db, provider_id=body.provider_id, credentials=body.credentials or {}
+    )
+    return APIResponse(
+        status="success" if ok else "error",
+        message=message,
+    )

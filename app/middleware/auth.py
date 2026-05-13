@@ -39,6 +39,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/api/v1/invitations/verify",
         "/api/v1/whatsapp/webhook",
         "/api/v1/paystack/webhook",
+        # Payment gateway webhooks — gateway posts here, no JWT possible.
+        # Each provider's route does its own HMAC signature check.
+        "/api/v1/yoco/webhook",
+        "/api/v1/paynow/webhook",
         "/api/v1/plans",
         "/api/v1/auth/trial-signup",
     }

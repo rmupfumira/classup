@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.file_entity import FileCategory
-from app.models.subscription import EftPaymentStatus, SubscriptionStatus
+from app.models.subscription import EftPaymentStatus, PlatformInvoice, SubscriptionStatus
 from app.schemas.common import APIResponse, PaginationMeta
 from app.services.file_service import get_file_service
 from app.services.paystack_service import get_paystack_service
@@ -1044,4 +1044,96 @@ async def reject_eft_payment(
         status="success",
         message="Payment rejected; tenant has been notified",
         data=_eft_payment_to_dict(payment),
+    )
+
+
+# ============================================================================
+# Gateway-based payment for a specific platform invoice
+# ============================================================================
+
+@router.get("/subscription/gateway")
+@require_role("SCHOOL_ADMIN")
+async def get_active_gateway_for_subscription(
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Tell the /subscription page whether card payments are available on
+    this instance so it can show or hide the Pay-by-card option."""
+    from app.services import gateway_service
+
+    cfg = await gateway_service.get_config(db)
+    if not cfg.configured:
+        return APIResponse(
+            status="success",
+            data={"configured": False, "provider_id": "", "display_name": ""},
+        )
+    cls = gateway_service.PROVIDER_REGISTRY.get(cfg.provider_id)
+    return APIResponse(
+        status="success",
+        data={
+            "configured": True,
+            "provider_id": cfg.provider_id,
+            "display_name": cls.display_name if cls else cfg.provider_id,
+        },
+    )
+
+
+
+
+@router.post("/subscription/invoices/{invoice_id}/pay")
+@require_role("SCHOOL_ADMIN")
+async def pay_platform_invoice_via_gateway(
+    invoice_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Create a hosted-checkout session for the active payment gateway and
+    return the redirect URL. The school admin's browser then loads that URL
+    to complete the payment on the gateway's hosted page.
+
+    EFT-with-POP flow remains separate (POST /subscription/eft-payments).
+    """
+    from app.config import get_settings as get_app_settings
+    from app.models.subscription import PlatformInvoiceStatus
+    from app.services import gateway_service
+
+    tenant_id = get_tenant_id()
+
+    # Load the invoice and confirm it belongs to this tenant
+    invoice = await db.get(PlatformInvoice, invoice_id)
+    if not invoice or invoice.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if invoice.status == PlatformInvoiceStatus.PAID.value:
+        raise HTTPException(status_code=400, detail="Invoice is already paid")
+
+    provider = await gateway_service.get_active_provider(db)
+    if provider is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Card payments aren't enabled on this platform. Use EFT instead.",
+        )
+
+    app_settings = get_app_settings()
+    base = app_settings.app_base_url.rstrip("/")
+    return_url = f"{base}/subscription?paid=1"
+    cancel_url = f"{base}/subscription?cancelled=1"
+
+    try:
+        result = await provider.create_checkout(
+            invoice, return_url=return_url, cancel_url=cancel_url
+        )
+    except Exception as e:
+        logger.exception("Gateway checkout creation failed")
+        raise HTTPException(status_code=502, detail=str(e))
+
+    # Persist the provider reference so we can reconcile later if needed
+    invoice.paystack_reference = result.reference
+    await db.commit()
+
+    return APIResponse(
+        status="success",
+        message="Redirecting to payment page…",
+        data={
+            "redirect_url": result.redirect_url,
+            "reference": result.reference,
+            "provider_id": provider.provider_id,
+        },
     )

@@ -1429,6 +1429,111 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         ],
         "related": [],
     },
+    # ==================== PAYMENT GATEWAYS (super admin) ====================
+    "payment-gateways": {
+        "title": "Payment gateways (admin)",
+        "short": "Pick + configure the card/EFT payment gateway for this country's instance — Yoco for SA, Paynow for Zim.",
+        "icon": "currency",
+        "roles": ["super_admin"],
+        "category": "Platform",
+        "overview": (
+            "Each ClassUp deployment is country-specific, so each instance runs ONE payment gateway "
+            "appropriate for its market. South African instance uses Yoco; Zimbabwean instance uses "
+            "Paynow; you can add more providers as you deploy to new countries. The manual EFT-with-POP "
+            "flow always remains as a universal fallback regardless of what's configured here."
+        ),
+        "steps": [
+            {
+                "title": "Open Payment Gateways",
+                "body": (
+                    "Sign in as super admin → sidebar → <strong>Payment Gateways</strong>. The status "
+                    "card shows the currently active provider (or 'Not configured' on first visit), "
+                    "plus a provider picker below."
+                ),
+                "tip": "On a fresh deployment, no gateway is active — tenants can only pay via EFT-with-POP until you finish this setup.",
+            },
+            {
+                "title": "Pick the provider",
+                "body": (
+                    "Click the radio for the gateway you want to enable:\n\n"
+                    "• <strong>Yoco</strong> — South African card payments. Cards, instant EFT (Ozow), "
+                    "mobile wallets (SnapScan). Per-transaction pricing, no monthly fee.\n"
+                    "• <strong>Paynow (Zimbabwe)</strong> — EcoCash, OneMoney, ZIPIT, Visa/MasterCard. "
+                    "Required for Zim instance because EcoCash is the dominant payment method.\n"
+                    "• <strong>None</strong> — disables card payments entirely. Tenants only see EFT-with-POP."
+                ),
+                "tip": "Picking 'None' is the right choice if you're spinning up a new instance and don't have the gateway credentials yet. EFT keeps working in the meantime.",
+            },
+            {
+                "title": "Enter credentials",
+                "body": (
+                    "Each provider has its own credential form:\n\n"
+                    "<strong>Yoco</strong> needs two fields, both from the Yoco Business Portal:\n"
+                    "• Secret key — from <em>Developer → API Keys</em>. Starts with <code>sk_live_</code> "
+                    "or <code>sk_test_</code>.\n"
+                    "• Webhook secret — generated when you register the webhook URL "
+                    "in <em>Developer → Webhooks</em>. Starts with <code>whsec_</code>.\n\n"
+                    "<strong>Paynow</strong> needs the Integration ID and Integration Key from your "
+                    "Paynow Sellers Dashboard → <em>Receive Payments → 3rd Party API</em>."
+                ),
+                "tip": "Use TEST keys (sk_test_ for Yoco) until you've verified the flow end-to-end. Switch to LIVE keys before going to production.",
+            },
+            {
+                "title": "Register the webhook URL",
+                "body": (
+                    "Below the credentials, the page shows a webhook URL like "
+                    "<code>https://your-instance.com/api/v1/yoco/webhook</code>. Copy it, then in the "
+                    "gateway's dashboard:\n\n"
+                    "• <strong>Yoco</strong>: Developer → Webhooks → Add endpoint → paste URL → "
+                    "subscribe to <em>payment.succeeded</em> and <em>payment.failed</em>.\n"
+                    "• <strong>Paynow</strong>: Receive Payments → set this as the Result URL.\n\n"
+                    "Without the webhook, payments still happen but ClassUp never finds out — the "
+                    "platform invoice stays PENDING forever."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Test the connection",
+                "body": (
+                    "Click <strong>Test connection</strong> before saving. ClassUp sends a "
+                    "low-impact API call (an intentionally-invalid checkout request that just "
+                    "verifies the secret key is accepted) and reports success or failure."
+                ),
+                "tip": "If the test fails with 401, the secret key is wrong. If it times out, check your firewall isn't blocking outbound HTTPS to the gateway.",
+            },
+            {
+                "title": "Save and verify end-to-end",
+                "body": (
+                    "Click <strong>Save</strong>. Status badge turns green (<em>Active</em>). Then "
+                    "as a SCHOOL_ADMIN test user, go to /subscription — the Pay-by-card option "
+                    "should now show. Click <em>Pay by card</em> on any pending invoice, complete "
+                    "the gateway checkout, and watch the invoice flip to PAID automatically once "
+                    "the webhook fires (a few seconds)."
+                ),
+                "tip": "If you don't have a pending invoice for testing, create a new tenant under Admin → Tenants → Add Tenant — they get a trial subscription with a pending invoice you can pay through.",
+            },
+        ],
+        "examples": [
+            {
+                "title": "Pausing card payments without deleting credentials",
+                "body": (
+                    "Open Payment Gateways → untick 'Enabled' → Save. The provider stays selected "
+                    "and credentials are preserved, but tenants only see EFT on /subscription. Useful "
+                    "for short maintenance windows or if you suspect the gateway is having problems."
+                ),
+            },
+            {
+                "title": "Switching providers (e.g. Yoco → Stripe later)",
+                "body": (
+                    "Pick the new provider's radio → fill in the new credentials → Save. The old "
+                    "provider's credentials are dropped on switch. Any in-flight checkouts started "
+                    "with the old provider will still complete and webhook through, but new "
+                    "payments use the new provider."
+                ),
+            },
+        ],
+        "related": ["platform-settings"],
+    },
     # ==================== PLATFORM SETTINGS (super admin) ====================
     "platform-settings": {
         "title": "Platform settings (admin)",
