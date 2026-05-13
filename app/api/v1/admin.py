@@ -501,6 +501,90 @@ async def update_push_subject(
     )
 
 
+class SendTestPushRequest(BaseModel):
+    """Super admin sends a test push to a specific user (by email).
+
+    Useful for verifying the platform-wide push pipeline without first
+    having to enable push on the admin's own browser. Also useful when a
+    user reports "I'm not getting notifications" — admin can fire a test
+    and observe whether their devices receive it.
+    """
+    email: str = Field(..., min_length=3, max_length=255)
+    title: str | None = Field(None, max_length=120)
+    body: str | None = Field(None, max_length=500)
+
+
+@router.post("/push-settings/send-test")
+@require_super_admin()
+async def send_test_push(
+    body: SendTestPushRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Send a hello-world push to every device belonging to the named user.
+
+    Useful for verifying:
+      1. VAPID is configured (returns 503 if not)
+      2. The target user has any subscriptions at all
+      3. End-to-end delivery to FCM/APNs/Mozilla
+      4. The user's specific device is actually receiving pushes
+    """
+    from app.models.user import User
+    from app.services import push_service
+
+    cfg = await push_service.get_vapid_config(db)
+    if not cfg.configured:
+        return APIResponse(
+            status="error",
+            message="VAPID is not configured. Generate a keypair before sending test pushes.",
+        )
+
+    # Find the user (case-insensitive; users may be in any tenant)
+    email = body.email.strip().lower()
+    result = await db.execute(
+        select(User).where(User.email == email, User.is_active.is_(True))
+    )
+    user = result.scalars().first()
+    if not user:
+        return APIResponse(
+            status="error",
+            message=f"No active user found with email '{email}'.",
+        )
+
+    payload = {
+        "title": body.title or "ClassUp admin test",
+        "body": body.body or "This is a test push from the platform admin. If you can see this, push is working on this device.",
+        "url": "/dashboard",
+        "tag": "classup-admin-test",
+    }
+    send_result = await push_service.send_to_user(db, user.id, payload)
+    await db.commit()
+
+    if send_result.sent == 0 and send_result.deleted_dead == 0:
+        return APIResponse(
+            status="error",
+            message=(
+                f"User {email} has no active push subscriptions yet. "
+                f"Ask them to open Settings → Notifications and tap Enable."
+            ),
+        )
+
+    return APIResponse(
+        status="success",
+        message=(
+            f"Sent to {send_result.sent} device(s). "
+            f"{send_result.deleted_dead} dead subscription(s) cleaned up. "
+            f"{send_result.failed} send(s) failed (see server logs)."
+        ),
+        data={
+            "user_email": email,
+            "user_id": str(user.id),
+            "sent": send_result.sent,
+            "deleted_dead": send_result.deleted_dead,
+            "failed": send_result.failed,
+        },
+    )
+
+
 # ============================================================================
 # Platform defaults — super-admin settings new tenants inherit on signup
 # ============================================================================

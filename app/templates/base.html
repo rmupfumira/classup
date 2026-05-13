@@ -292,7 +292,7 @@
        it can defer-load alongside pwa.js. Loaded everywhere because:
        (a) the SW push handler needs no help from this file but (b) the
        Notifications settings page uses ClassUpPush.* helpers. #}
-    <script src="{{ url_for('static', path='js/push.js') }}?v=1" defer></script>
+    <script src="{{ url_for('static', path='js/push.js') }}?v=2" defer></script>
     <script>
     // Last-resort fallback if app.js failed to load (e.g. network failure
     // before the SW cached it). The head-loaded app.js should have already

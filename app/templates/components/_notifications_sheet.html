@@ -114,6 +114,35 @@
             </div>
         </div>
 
+        {# Last-attempt error — shown after a failed subscribe so the user
+           sees the actual problem instead of a transient toast that fades #}
+        <div id="ns-last-error" class="hidden p-3 rounded-md bg-danger-50 border border-danger-200 text-xs text-danger-800">
+            <p class="font-medium mb-0.5">Last attempt failed</p>
+            <p id="ns-last-error-msg" class="font-mono break-all">—</p>
+        </div>
+
+        {# Diagnostics — collapsed by default, useful when subscribe fails or
+           when a user reports "I'm not getting any notifications".
+           Surfaces every signal the state machine looks at so we can
+           debug without a console. #}
+        <details class="border-t border-neutral-100 pt-2">
+            <summary class="text-xs text-neutral-400 hover:text-neutral-600 cursor-pointer select-none">
+                Diagnostics
+            </summary>
+            <dl id="ns-diagnostics" class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-mono">
+                <dt class="text-neutral-500">State</dt>             <dd id="diag-state" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">SW supported</dt>      <dd id="diag-sw" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">SW registered</dt>     <dd id="diag-sw-reg" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">Push API</dt>          <dd id="diag-push" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">Notification perm</dt> <dd id="diag-perm" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">VAPID configured</dt>  <dd id="diag-vapid" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">Has subscription</dt>  <dd id="diag-sub" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">iOS</dt>               <dd id="diag-ios" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">Standalone</dt>        <dd id="diag-standalone" class="text-neutral-700">—</dd>
+                <dt class="text-neutral-500">HTTPS</dt>             <dd id="diag-https" class="text-neutral-700">—</dd>
+            </dl>
+        </details>
+
         <!-- "Manage all devices" link — only relevant for school admins -->
         <a href="/settings/notifications"
            class="block text-center text-xs text-neutral-500 hover:text-neutral-700 pt-2 border-t border-neutral-100">
@@ -156,9 +185,90 @@
         const sub = document.getElementById('ns-state-subtitle');
         if (sub) sub.textContent = meta.subtitle;
 
+        // Update diagnostics panel — runs whenever state is re-evaluated so
+        // the user sees fresh values even if nothing else changes on screen
+        updateDiagnostics(state).catch(() => {});
+
         // Tell anyone listening (soft prompt, menu entry) that state changed
         document.dispatchEvent(new CustomEvent('classup:push-state-changed', { detail: { state } }));
         return state;
+    }
+
+    // Best-effort diagnostics. Every check is wrapped so the rest still
+    // populates if one check throws.
+    async function updateDiagnostics(state) {
+        const set = (id, value, ok) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = value;
+            // Highlight OK = green, problem = amber/red
+            if (ok === true) el.className = 'text-success-700';
+            else if (ok === false) el.className = 'text-danger-600';
+            else el.className = 'text-neutral-700';
+        };
+
+        set('diag-state', state);
+
+        const swSupported = 'serviceWorker' in navigator;
+        set('diag-sw', swSupported ? 'yes' : 'no', swSupported);
+
+        let swRegistered = false;
+        if (swSupported) {
+            try {
+                const reg = await navigator.serviceWorker.getRegistration('/');
+                swRegistered = !!reg;
+            } catch (_) {}
+        }
+        set('diag-sw-reg', swRegistered ? 'yes' : 'no', swRegistered);
+
+        const pushSupported = 'PushManager' in window;
+        set('diag-push', pushSupported ? 'yes' : 'no', pushSupported);
+
+        const perm = ('Notification' in window) ? Notification.permission : 'unavailable';
+        set('diag-perm', perm, perm === 'granted' ? true : perm === 'denied' ? false : null);
+
+        // VAPID — fetch + cache result for the lifetime of the sheet
+        try {
+            const res = await ClassUp.fetch('/api/v1/push/public-key');
+            const ok = !!(res && res.data && res.data.configured);
+            set('diag-vapid', ok ? 'yes' : 'NO — admin must configure', ok);
+        } catch (_) {
+            set('diag-vapid', 'request failed', false);
+        }
+
+        // Active sub on this browser
+        let hasSub = false;
+        if (swRegistered) {
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                hasSub = !!(await reg.pushManager.getSubscription());
+            } catch (_) {}
+        }
+        set('diag-sub', hasSub ? 'yes' : 'no', hasSub);
+
+        const ios = ClassUpPush.isIOS();
+        set('diag-ios', ios ? 'yes' : 'no');
+
+        const standalone = ClassUpPush.isStandalone();
+        // Only flag iOS-without-standalone as a problem — non-iOS doesn't
+        // need standalone mode for push to work
+        const standaloneOk = ios ? standalone : null;
+        set('diag-standalone', standalone ? 'yes' : (ios ? 'NO — install required' : 'no'), standaloneOk);
+
+        const https = location.protocol === 'https:' || location.hostname === 'localhost';
+        set('diag-https', https ? 'yes' : 'NO — push requires HTTPS', https);
+    }
+
+    function showLastError(message) {
+        const wrap = document.getElementById('ns-last-error');
+        const body = document.getElementById('ns-last-error-msg');
+        if (!wrap || !body) return;
+        if (!message) {
+            wrap.classList.add('hidden');
+            return;
+        }
+        body.textContent = message;
+        wrap.classList.remove('hidden');
     }
 
     // ====================================================================
@@ -191,21 +301,36 @@
         btn.disabled = true;
         const originalText = btn.textContent;
         btn.textContent = 'Enabling…';
+        showLastError(null);  // clear any previous error
         try {
             const result = await ClassUpPush.subscribe();
             if (result.ok) {
+                showLastError(null);
                 if (window.ClassUp && ClassUp.toast) {
                     ClassUp.toast('Notifications enabled on this device.', 'success');
                 }
             } else {
-                const msg = ({
+                const friendly = ({
                     'denied': 'Notifications were blocked. Re-enable in your browser settings.',
-                    'server-not-configured': 'Push hasn\'t been set up by an admin yet.',
-                    'unsupported': 'This browser doesn\'t support push notifications.',
-                    'server-error': result.error || 'Could not register on the server.',
-                })[result.reason] || (result.error || 'Could not enable notifications.');
-                if (window.ClassUp && ClassUp.toast) ClassUp.toast(msg, 'error');
+                    'server-not-configured': "Push hasn't been set up by an admin yet — VAPID keys are missing.",
+                    'unsupported': "This browser doesn't support push notifications.",
+                    'failed': 'The browser rejected the subscription request.',
+                    'server-error': 'The server refused to record the subscription.',
+                })[result.reason] || 'Could not enable notifications.';
+
+                // Build a detailed message: friendly text + the specific
+                // reason code + any error from the browser/server
+                const detail = `${friendly} [reason: ${result.reason}${result.error ? '; ' + result.error : ''}]`;
+                showLastError(detail);
+                if (window.ClassUp && ClassUp.toast) {
+                    ClassUp.toast(friendly, 'error');
+                }
+                console.error('[notifications] subscribe failed:', result);
             }
+        } catch (err) {
+            // Unexpected exception, not a structured failure result
+            showLastError(`Unexpected error: ${err && err.message}`);
+            console.error('[notifications] subscribe threw:', err);
         } finally {
             btn.disabled = false;
             btn.textContent = originalText;

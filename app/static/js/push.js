@@ -141,10 +141,26 @@
         applicationServerKey: urlBase64ToUint8Array(key),
       });
     } catch (err) {
-      console.error('[push] subscribe failed:', err);
-      // iOS often surfaces as NotAllowedError if the PWA isn't installed
-      const reason = (err && err.name === 'NotAllowedError') ? 'denied' : 'failed';
-      return { ok: false, reason, error: err && err.message };
+      console.error('[push] pushManager.subscribe() failed:', err);
+      // Classify based on the DOM exception name so the UI can show the
+      // right copy:
+      //  - NotAllowedError → permission denied OR iOS PWA not installed
+      //  - InvalidStateError → already subscribed with a different key
+      //                        (happens after VAPID rotation)
+      //  - AbortError → user cancelled OR network failed mid-request
+      //  - NotSupportedError → applicationServerKey rejected
+      const name = (err && err.name) || 'Error';
+      const reason = ({
+        NotAllowedError: 'denied',
+        InvalidStateError: 'stale-subscription',
+        NotSupportedError: 'failed',
+        AbortError: 'failed',
+      })[name] || 'failed';
+      return {
+        ok: false,
+        reason,
+        error: `${name}: ${err && err.message ? err.message : 'unknown'}`,
+      };
     }
 
     try {
@@ -157,7 +173,11 @@
       // Roll back the browser-side subscription so we don't end up with a
       // sub the server doesn't know about
       try { await sub.unsubscribe(); } catch (_) {}
-      return { ok: false, reason: 'server-error', error: err && err.message };
+      return {
+        ok: false,
+        reason: 'server-error',
+        error: err && err.message ? err.message : 'unknown server error',
+      };
     }
 
     return { ok: true };

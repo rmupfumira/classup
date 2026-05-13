@@ -94,6 +94,48 @@
         </form>
     </div>
 
+    <!-- Send test push (when configured) -->
+    <div id="card-test" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <h2 class="text-base font-semibold text-neutral-800 mb-1">Send a test push</h2>
+        <p class="text-sm text-neutral-500 mb-4">
+            Fires a notification to every device belonging to the named user. Use this to verify the
+            push pipeline end-to-end without enabling push on your own browser, or when a user reports
+            "I'm not getting notifications" — you can confirm whether their devices receive it.
+        </p>
+        <form id="test-push-form" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Recipient email</label>
+                <input type="email" id="test-email" required maxlength="255"
+                       placeholder="parent@example.com"
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                <p class="text-xs text-neutral-500 mt-1">
+                    Any active user account on this platform. Searches across all tenants.
+                </p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-700 mb-1">Title (optional)</label>
+                    <input type="text" id="test-title" maxlength="120"
+                           placeholder="ClassUp admin test"
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-neutral-700 mb-1">Body (optional)</label>
+                    <input type="text" id="test-body" maxlength="500"
+                           placeholder="If you see this, push is working."
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-2">
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 disabled:opacity-50">
+                    Send test push
+                </button>
+            </div>
+            <div id="test-result" class="hidden p-3 rounded-md text-sm">—</div>
+        </form>
+    </div>
+
     <!-- Update subject + Rotate (when configured) -->
     <div id="card-configured" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-6">
         <div>
@@ -201,13 +243,53 @@ function render() {
     if (d.configured) {
         document.getElementById('card-generate').classList.add('hidden');
         document.getElementById('card-configured').classList.remove('hidden');
+        document.getElementById('card-test').classList.remove('hidden');
         document.getElementById('subject-input').value = d.subject || '';
         document.getElementById('rotate-subject-email').value = d.subject || '';
     } else {
         document.getElementById('card-generate').classList.remove('hidden');
         document.getElementById('card-configured').classList.add('hidden');
+        document.getElementById('card-test').classList.add('hidden');
     }
 }
+
+// Send test push handler
+document.getElementById('test-push-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('test-email').value.trim();
+    const title = document.getElementById('test-title').value.trim() || null;
+    const body = document.getElementById('test-body').value.trim() || null;
+    const resultEl = document.getElementById('test-result');
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Sending…';
+    resultEl.classList.add('hidden');
+
+    // Build payload — exclude null fields so the server picks defaults
+    const payload = { email };
+    if (title) payload.title = title;
+    if (body) payload.body = body;
+
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/push-settings/send-test', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+        resultEl.textContent = res.message || 'Sent.';
+        resultEl.className = 'p-3 rounded-md text-sm bg-success-50 border border-success-200 text-success-800';
+        resultEl.classList.remove('hidden');
+        ClassUp.toast(res.message || 'Test push sent.', 'success');
+    } catch (err) {
+        const msg = err && err.message ? err.message : 'Could not send test push.';
+        resultEl.textContent = msg;
+        resultEl.className = 'p-3 rounded-md text-sm bg-danger-50 border border-danger-200 text-danger-800';
+        resultEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
 
 // Generate
 document.getElementById('generate-form').addEventListener('submit', async (e) => {
