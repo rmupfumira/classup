@@ -87,6 +87,113 @@ class TestVapidConfig:
         assert callable(getattr(instance, "sign", None))
 
 
+class TestKeyManagement:
+    """The admin-UI key-generation path. Mirrors what the
+    /api/v1/admin/push-settings endpoints invoke."""
+
+    async def test_generate_writes_sec1_pem(self, db: AsyncSession):
+        # Start with no config
+        await db.execute(SystemSettings.__table__.delete().where(
+            SystemSettings.key == push_service.VAPID_SETTINGS_KEY
+        ))
+        await db.commit()
+
+        result = await push_service.generate_and_store_keypair(
+            db, subject="mailto:test@example.com"
+        )
+        await db.commit()
+
+        assert result["public_key_b64url"]
+        assert result["subject"] == "mailto:test@example.com"
+        # Read the row back to confirm SEC1 PEM, not PKCS8
+        cfg = await push_service.get_vapid_config(db)
+        assert cfg.configured
+        assert cfg.private_pem.startswith("-----BEGIN EC PRIVATE KEY-----")
+        # Should NOT be PKCS8 (which would start with "BEGIN PRIVATE KEY")
+        assert "BEGIN PRIVATE KEY" not in cfg.private_pem
+
+    async def test_generate_rejects_when_already_configured(self, db: AsyncSession):
+        await db.execute(SystemSettings.__table__.delete().where(
+            SystemSettings.key == push_service.VAPID_SETTINGS_KEY
+        ))
+        await db.commit()
+        await push_service.generate_and_store_keypair(
+            db, subject="mailto:first@example.com"
+        )
+        await db.commit()
+        # Second call without force should refuse
+        with pytest.raises(ValueError, match="already exists"):
+            await push_service.generate_and_store_keypair(
+                db, subject="mailto:second@example.com", force=False
+            )
+
+    async def test_rotate_overwrites_with_force(self, db: AsyncSession):
+        await db.execute(SystemSettings.__table__.delete().where(
+            SystemSettings.key == push_service.VAPID_SETTINGS_KEY
+        ))
+        await db.commit()
+        first = await push_service.generate_and_store_keypair(
+            db, subject="mailto:first@example.com"
+        )
+        await db.commit()
+        second = await push_service.generate_and_store_keypair(
+            db, subject="mailto:second@example.com", force=True
+        )
+        await db.commit()
+        assert first["public_key_b64url"] != second["public_key_b64url"]
+
+    async def test_invalid_subject_rejected(self, db: AsyncSession):
+        with pytest.raises(ValueError, match="mailto"):
+            await push_service.generate_and_store_keypair(
+                db, subject="no-at-sign-here"
+            )
+
+    async def test_update_subject_keeps_key(self, db: AsyncSession):
+        await db.execute(SystemSettings.__table__.delete().where(
+            SystemSettings.key == push_service.VAPID_SETTINGS_KEY
+        ))
+        await db.commit()
+        await push_service.generate_and_store_keypair(
+            db, subject="mailto:before@example.com"
+        )
+        await db.commit()
+        before = await push_service.get_vapid_config(db)
+
+        await push_service.update_subject(db, "mailto:after@example.com")
+        await db.commit()
+        after = await push_service.get_vapid_config(db)
+
+        # Key unchanged, subject updated
+        assert after.public_key_b64url == before.public_key_b64url
+        assert after.private_pem == before.private_pem
+        assert after.subject == "mailto:after@example.com"
+
+    async def test_update_subject_requires_existing_config(self, db: AsyncSession):
+        await db.execute(SystemSettings.__table__.delete().where(
+            SystemSettings.key == push_service.VAPID_SETTINGS_KEY
+        ))
+        await db.commit()
+        with pytest.raises(ValueError, match="Generate a keypair"):
+            await push_service.update_subject(db, "mailto:x@y.com")
+
+    async def test_count_subscriptions(
+        self, db: AsyncSession, test_tenant: Tenant, test_admin: User
+    ):
+        await push_service.upsert_subscription(
+            db, tenant_id=test_tenant.id, user_id=test_admin.id,
+            endpoint="https://fcm.test/count-1", p256dh="x", auth="y",
+        )
+        await push_service.upsert_subscription(
+            db, tenant_id=test_tenant.id, user_id=test_admin.id,
+            endpoint="https://fcm.test/count-2", p256dh="x", auth="y",
+        )
+        await db.commit()
+        stats = await push_service.count_subscriptions(db)
+        assert stats["total"] >= 2
+        assert stats["tenants_with_subscriptions"] >= 1
+        assert stats["currently_failing"] >= 0
+
+
 class TestSubscriptionUpsert:
     async def test_creates_new_subscription(
         self, db: AsyncSession, test_tenant: Tenant, test_admin: User

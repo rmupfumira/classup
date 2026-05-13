@@ -32,11 +32,15 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+import base64
+
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from py_vapid import Vapid02
 from pywebpush import WebPushException, webpush
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import PushSubscription, SystemSettings
@@ -327,3 +331,136 @@ async def list_user_subscriptions(
         .order_by(PushSubscription.last_seen_at.desc())
     )
     return list(result.scalars().all())
+
+
+# ============================================================================
+# Super-admin key management — mirrors scripts/generate_vapid_keys.py so it
+# can be called from a UI route instead of requiring shell access.
+# ============================================================================
+
+def _generate_keypair(subject: str) -> dict[str, str]:
+    """Produce a fresh P-256 keypair in the exact formats pywebpush + browsers
+    expect. Pure function — no DB write. See scripts/generate_vapid_keys.py
+    for the canonical comments on why SEC1 / X9.62 is the right encoding.
+    """
+    priv = ec.generate_private_key(ec.SECP256R1(), default_backend())
+
+    pub_bytes = priv.public_key().public_bytes(
+        encoding=serialization.Encoding.X962,
+        format=serialization.PublicFormat.UncompressedPoint,
+    )
+    public_b64url = base64.urlsafe_b64encode(pub_bytes).rstrip(b"=").decode("ascii")
+
+    private_pem = priv.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("ascii")
+
+    return {
+        "public_key_b64url": public_b64url,
+        "private_pem": private_pem,
+        "subject": subject,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def generate_and_store_keypair(
+    db: AsyncSession,
+    *,
+    subject: str,
+    force: bool = False,
+) -> dict[str, str]:
+    """Create a VAPID keypair and persist to system_settings.vapid_config.
+
+    Args:
+        subject: VAPID `sub` claim, e.g. ``mailto:admin@your-domain.com``.
+                 Push services use this to contact you about delivery issues.
+        force:   When True, overwrites an existing keypair. This INVALIDATES
+                 every existing push subscription — affected users see their
+                 device drop to "Off" and must re-enable.
+
+    Raises:
+        ValueError: keypair already exists and force=False.
+
+    Returns:
+        The stored config dict (without secrets — the PEM stays in the DB).
+    """
+    if not subject or "@" not in subject:
+        raise ValueError("Subject must look like 'mailto:user@host'")
+
+    result = await db.execute(
+        select(SystemSettings).where(SystemSettings.key == VAPID_SETTINGS_KEY)
+    )
+    row = result.scalar_one_or_none()
+
+    if row and row.value and (row.value.get("public_key_b64url") or "").strip() and not force:
+        raise ValueError(
+            "A VAPID keypair already exists. Use rotate=True to overwrite "
+            "(invalidates every existing subscription)."
+        )
+
+    config = _generate_keypair(subject)
+
+    if row:
+        row.value = config
+    else:
+        db.add(SystemSettings(key=VAPID_SETTINGS_KEY, value=config))
+
+    await db.flush()
+    reset_cache()  # next send refreshes from the new keypair
+
+    logger.info(
+        f"VAPID keypair {'rotated' if force else 'generated'} "
+        f"(subject={subject}, public_key={config['public_key_b64url'][:16]}...)"
+    )
+
+    # Return WITHOUT the private PEM — admin UI never needs to display it
+    return {
+        "public_key_b64url": config["public_key_b64url"],
+        "subject": config["subject"],
+        "generated_at": config["generated_at"],
+    }
+
+
+async def update_subject(db: AsyncSession, subject: str) -> str:
+    """Change just the VAPID subject (contact email) without rotating keys."""
+    if not subject or "@" not in subject:
+        raise ValueError("Subject must look like 'mailto:user@host'")
+    result = await db.execute(
+        select(SystemSettings).where(SystemSettings.key == VAPID_SETTINGS_KEY)
+    )
+    row = result.scalar_one_or_none()
+    if not row or not row.value:
+        raise ValueError("Generate a keypair first before setting the subject.")
+    new_value = dict(row.value)
+    new_value["subject"] = subject
+    row.value = new_value
+    await db.flush()
+    reset_cache()
+    return subject
+
+
+async def count_subscriptions(db: AsyncSession) -> dict[str, int]:
+    """Platform-wide subscription stats for the admin dashboard."""
+    total = await db.execute(
+        select(func.count(PushSubscription.id)).where(
+            PushSubscription.deleted_at.is_(None)
+        )
+    )
+    by_tenant = await db.execute(
+        select(func.count(func.distinct(PushSubscription.tenant_id))).where(
+            PushSubscription.deleted_at.is_(None)
+        )
+    )
+    failing = await db.execute(
+        select(func.count(PushSubscription.id)).where(
+            PushSubscription.deleted_at.is_(None),
+            PushSubscription.last_failed_at.is_not(None),
+        )
+    )
+    return {
+        "total": int(total.scalar() or 0),
+        "tenants_with_subscriptions": int(by_tenant.scalar() or 0),
+        "currently_failing": int(failing.scalar() or 0),
+    }

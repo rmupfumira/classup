@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Push Settings - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/admin"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Push Notification Settings</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Platform-wide VAPID keypair. Required before any tenant can use Web Push.
+            </p>
+        </div>
+    </div>
+
+    <!-- Status card -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-base font-semibold text-neutral-800">Current configuration</h2>
+                <p class="text-xs text-neutral-500 mt-0.5">One keypair per platform — shared across every tenant.</p>
+            </div>
+            <span id="status-badge"
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                Loading…
+            </span>
+        </div>
+
+        <dl class="space-y-3 text-sm">
+            <div class="flex items-start gap-3">
+                <dt class="text-neutral-500 w-32 flex-shrink-0">Public key</dt>
+                <dd id="pk-display" class="font-mono text-xs text-neutral-700 break-all">—</dd>
+            </div>
+            <div class="flex items-start gap-3">
+                <dt class="text-neutral-500 w-32 flex-shrink-0">Subject</dt>
+                <dd id="subject-display" class="text-neutral-700">—</dd>
+            </div>
+            <div class="flex items-start gap-3">
+                <dt class="text-neutral-500 w-32 flex-shrink-0">Generated</dt>
+                <dd id="generated-display" class="text-neutral-700">—</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Stats card -->
+    <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">Subscriptions</p>
+            <p class="mt-1 text-2xl font-semibold text-neutral-800" id="stat-total">—</p>
+            <p class="text-xs text-neutral-400 mt-0.5">across all tenants</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">Tenants</p>
+            <p class="mt-1 text-2xl font-semibold text-neutral-800" id="stat-tenants">—</p>
+            <p class="text-xs text-neutral-400 mt-0.5">with active devices</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">Failing</p>
+            <p class="mt-1 text-2xl font-semibold" id="stat-failing">—</p>
+            <p class="text-xs text-neutral-400 mt-0.5">last send errored</p>
+        </div>
+    </div>
+
+    <!-- Generate (first time) -->
+    <div id="card-generate" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <h2 class="text-base font-semibold text-neutral-800 mb-1">Generate keypair</h2>
+        <p class="text-sm text-neutral-500 mb-4">
+            One-time setup. Creates a fresh P-256 keypair and stores it in <code class="text-xs bg-neutral-100 px-1 rounded">system_settings.vapid_config</code>.
+            After this, any user can enable push from <strong>Settings → Notifications</strong>.
+        </p>
+        <form id="generate-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Contact email</label>
+                <input type="email" id="gen-subject-email" required
+                       placeholder="admin@your-school-platform.co.za"
+                       value="admin@classup.co.za"
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                <p class="text-xs text-neutral-500 mt-1">
+                    Push services (FCM, APNs, Mozilla) use this if they need to reach you about delivery issues.
+                    Stored as <code class="text-xs">mailto:&lt;email&gt;</code> in the VAPID JWT.
+                </p>
+            </div>
+            <button type="submit"
+                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 disabled:opacity-50">
+                Generate keypair
+            </button>
+        </form>
+    </div>
+
+    <!-- Update subject + Rotate (when configured) -->
+    <div id="card-configured" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-6">
+        <div>
+            <h2 class="text-base font-semibold text-neutral-800 mb-1">Update contact email</h2>
+            <p class="text-sm text-neutral-500 mb-3">
+                Change the subject email without rotating keys — existing subscriptions keep working.
+            </p>
+            <form id="subject-form" class="flex flex-wrap gap-2 items-end">
+                <div class="flex-1 min-w-[200px]">
+                    <input type="email" id="subject-input" required
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                </div>
+                <button type="submit"
+                        class="px-3 py-1.5 bg-white border border-neutral-300 text-neutral-700 text-sm font-medium rounded-md hover:bg-neutral-50">
+                    Save
+                </button>
+            </form>
+        </div>
+
+        <div class="border-t border-neutral-100 pt-6">
+            <h2 class="text-base font-semibold text-danger-700 mb-1">Danger zone — rotate keypair</h2>
+            <p class="text-sm text-neutral-600 mb-3">
+                Replaces the existing keypair with a brand new one. <strong>Every existing push subscription
+                becomes unusable</strong> — affected users will see their device drop to "Off" in
+                Settings → Notifications and must re-enable on each device. Only do this if the private
+                key has been compromised.
+            </p>
+            <form id="rotate-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-700 mb-1">Contact email for new keypair</label>
+                    <input type="email" id="rotate-subject-email" required
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                </div>
+                <label class="flex items-start gap-2 text-sm text-neutral-700">
+                    <input type="checkbox" id="rotate-confirm" class="mt-0.5">
+                    <span>I understand this will invalidate every existing subscription (<span id="rotate-count">0</span> currently active).</span>
+                </label>
+                <button type="submit" id="rotate-btn" disabled
+                        class="inline-flex items-center px-3 py-1.5 bg-danger-600 text-white text-sm font-medium rounded-md hover:bg-danger-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Rotate keypair
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer note -->
+    <p class="text-xs text-neutral-400 text-center pt-2">
+        Push notifications are platform-wide. Per-tenant settings live under each school's
+        <em>Settings → Notifications</em> page (per device, per user).
+    </p>
+</div>
+
+<script>
+let _state = null;  // last fetched config — drives the form layout
+
+function formatDate(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString(); } catch (e) { return iso; }
+}
+
+function preview(key) {
+    if (!key) return '—';
+    if (key.length <= 32) return key;
+    return key.slice(0, 16) + '…' + key.slice(-8);
+}
+
+async function refresh() {
+    try {
+        const res = await ClassUp.fetch('/api/v1/admin/push-settings');
+        _state = res.data;
+        render();
+    } catch (err) {
+        ClassUp.toast(err.message || 'Could not load push settings', 'error');
+    }
+}
+
+function render() {
+    const d = _state || {};
+    const badge = document.getElementById('status-badge');
+
+    // Status badge
+    if (d.configured) {
+        badge.textContent = 'Configured';
+        badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-success-100 text-success-800';
+    } else {
+        badge.textContent = 'Not configured';
+        badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-warning-100 text-warning-800';
+    }
+
+    // Status fields
+    document.getElementById('pk-display').textContent = preview(d.public_key_b64url);
+    document.getElementById('subject-display').textContent = d.subject || '—';
+    document.getElementById('generated-display').textContent = formatDate(d.generated_at);
+
+    // Stats
+    const s = d.stats || {};
+    document.getElementById('stat-total').textContent = (s.total ?? 0).toLocaleString();
+    document.getElementById('stat-tenants').textContent = (s.tenants_with_subscriptions ?? 0).toLocaleString();
+    const failingEl = document.getElementById('stat-failing');
+    failingEl.textContent = (s.currently_failing ?? 0).toLocaleString();
+    failingEl.className = 'mt-1 text-2xl font-semibold ' + ((s.currently_failing ?? 0) > 0 ? 'text-danger-700' : 'text-neutral-800');
+    document.getElementById('rotate-count').textContent = (s.total ?? 0).toLocaleString();
+
+    // Which card to show
+    if (d.configured) {
+        document.getElementById('card-generate').classList.add('hidden');
+        document.getElementById('card-configured').classList.remove('hidden');
+        document.getElementById('subject-input').value = d.subject || '';
+        document.getElementById('rotate-subject-email').value = d.subject || '';
+    } else {
+        document.getElementById('card-generate').classList.remove('hidden');
+        document.getElementById('card-configured').classList.add('hidden');
+    }
+}
+
+// Generate
+document.getElementById('generate-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('gen-subject-email').value.trim();
+    if (!email) return;
+    const subject = email.startsWith('mailto:') ? email : 'mailto:' + email;
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Generating…';
+    try {
+        await ClassUp.fetch('/api/v1/admin/push-settings/generate', {
+            method: 'POST',
+            body: JSON.stringify({ subject }),
+        });
+        ClassUp.toast('VAPID keypair created. Users can now enable push.', 'success');
+        await refresh();
+    } catch (err) {
+        // Error toast already fired by ClassUp.fetch
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+
+// Update subject
+document.getElementById('subject-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('subject-input').value.trim();
+    if (!email) return;
+    const subject = email.startsWith('mailto:') ? email : 'mailto:' + email;
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Saving…';
+    try {
+        await ClassUp.fetch('/api/v1/admin/push-settings/subject', {
+            method: 'PUT',
+            body: JSON.stringify({ subject }),
+        });
+        ClassUp.toast('Contact email updated.', 'success');
+        await refresh();
+    } catch (err) {} finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+
+// Rotate confirm toggle
+document.getElementById('rotate-confirm').addEventListener('change', (e) => {
+    document.getElementById('rotate-btn').disabled = !e.target.checked;
+});
+
+// Rotate
+document.getElementById('rotate-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('rotate-subject-email').value.trim();
+    if (!email) return;
+    const subject = email.startsWith('mailto:') ? email : 'mailto:' + email;
+    const ok = await ClassUp.confirm(
+        'Rotating will invalidate every active push subscription. Users will need to re-enable on each device. Continue?',
+        { danger: true, confirmText: 'Rotate keypair' }
+    );
+    if (!ok) return;
+    const btn = document.getElementById('rotate-btn');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Rotating…';
+    try {
+        await ClassUp.fetch('/api/v1/admin/push-settings/rotate', {
+            method: 'POST',
+            body: JSON.stringify({ subject, confirm: true }),
+        });
+        ClassUp.toast('Keypair rotated. All previous subscriptions are now invalid.', 'success');
+        document.getElementById('rotate-confirm').checked = false;
+        await refresh();
+    } catch (err) {} finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+
+refresh();
+</script>
+{% endblock %}

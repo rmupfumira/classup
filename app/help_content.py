@@ -1438,42 +1438,83 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         "category": "Platform",
         "overview": (
             "Web Push uses VAPID — a signed JWT that authenticates the server to push services like FCM "
-            "and Apple's APNs. You generate one keypair per platform, store it in system_settings, and use "
-            "it for every push send. Without this, the Notifications settings page shows \"Not configured\" "
-            "for everyone."
+            "and Apple's APNs. You generate one keypair per platform (not per tenant), and it's used for "
+            "every push send across every school. Without this, every user's Settings → Notifications page "
+            "shows \"Not configured\"."
         ),
         "steps": [
             {
-                "title": "Generate the keypair",
+                "title": "Generate the keypair (UI)",
                 "body": (
-                    "From a server shell with the app's Python environment:\n\n"
-                    "    python scripts/generate_vapid_keys.py --subject mailto:admin@your-domain.com\n\n"
-                    "This writes a P-256 keypair to system_settings.vapid_config: the public key (base64url, "
-                    "given to browsers), the private key (SEC1 PEM, kept on the server), and a contact email "
-                    "the push services can reach you on."
+                    "Sign in as super admin → click <strong>Push Settings</strong> in the sidebar. You'll see "
+                    "the current status (Not configured on first visit) and a card with a single field — your "
+                    "contact email (something like admin@your-platform.co.za).\n\n"
+                    "Type the email → tap <strong>Generate keypair</strong>. The page refreshes with status "
+                    "<em>Configured</em>, shows the public key prefix, and your subscription counters (0 at "
+                    "this point). Done — every user can now enable push from their own Notifications settings."
                 ),
-                "tip": "The private key MUST be SEC1 PEM (starts with -----BEGIN EC PRIVATE KEY-----). The generator produces this format; do NOT replace it with a PKCS8 key — py_vapid will reject it.",
+                "tip": "The contact email is what push services (FCM, APNs, Mozilla) use if they need to reach you about delivery issues. It's stored in the VAPID JWT as `mailto:<email>`.",
+            },
+            {
+                "title": "Generate the keypair (CLI alternative)",
+                "body": (
+                    "If you'd rather use a shell — say, automating tenant provisioning — there's a script that "
+                    "does exactly what the UI does:\n\n"
+                    "    python scripts/generate_vapid_keys.py --subject mailto:admin@your-domain.com\n\n"
+                    "The CLI and the UI both write to the same row (system_settings.vapid_config) so they're "
+                    "interchangeable. Pick whichever is more convenient."
+                ),
+                "tip": "The private key MUST be SEC1 PEM (starts with -----BEGIN EC PRIVATE KEY-----). Both the UI and CLI produce this format. Do NOT replace it with a PKCS8 key — py_vapid will reject it.",
             },
             {
                 "title": "Verify it took",
                 "body": (
-                    "Hit GET /api/v1/push/public-key with a logged-in browser. The response should include "
-                    "configured: true and a non-empty key. The Notifications settings page for any user "
-                    "should now show Off (ready to enable) instead of Not configured."
+                    "On the Push Settings page after generation:\n"
+                    "• Status badge shows <strong>Configured</strong>\n"
+                    "• Public key shows a base64url prefix\n"
+                    "• Generated timestamp shows just now\n\n"
+                    "Then have any tenant user open Settings → Notifications. The page should show "
+                    "<em>Off — tap Enable</em> instead of <em>Not configured</em>."
                 ),
                 "tip": None,
             },
             {
-                "title": "Roll the keys (rare)",
+                "title": "Change the contact email",
                 "body": (
-                    "If a private key leaks or you want to start over, run the generator with --force. This "
-                    "invalidates every existing subscription — affected users will see their device drop to "
-                    "Off and need to re-enable. No automatic re-subscribe."
+                    "If your contact email changes, you can update it without rotating the keypair. On "
+                    "Push Settings → <strong>Update contact email</strong>, type the new address and Save. "
+                    "Existing subscriptions keep working — only the VAPID JWT's `sub` claim changes on "
+                    "future sends."
                 ),
-                "tip": "Only do this in an actual emergency. Key rotation is disruptive — most schools should generate once and never touch it again.",
+                "tip": None,
+            },
+            {
+                "title": "Rotate the keypair (rare, destructive)",
+                "body": (
+                    "Push Settings → <strong>Danger zone — rotate keypair</strong>. The page shows the count "
+                    "of active subscriptions that will be invalidated and a checkbox you must tick to enable "
+                    "the rotate button. Tap Rotate → confirm dialog → done.\n\n"
+                    "Every affected user's device drops to Off on their Notifications page and they have to "
+                    "tap Enable again on each device. No automatic re-subscribe — the public key changed, so "
+                    "the old subscription record is meaningless."
+                ),
+                "tip": "Only rotate if the private key has been compromised or you're consolidating from a test deployment. Routine rotation has no security benefit and just annoys your users.",
             },
         ],
-        "examples": [],
+        "examples": [
+            {
+                "title": "First-time setup, end to end",
+                "body": (
+                    "1. Sign in as super admin.\n"
+                    "2. Sidebar → Push Settings.\n"
+                    "3. Enter your contact email (admin@your-platform.co.za) → Generate keypair.\n"
+                    "4. As a test user (parent or teacher), open Settings → Notifications → Enable on this device → Allow.\n"
+                    "5. Back as super admin, refresh Push Settings — Subscriptions counter is now 1.\n"
+                    "6. As the test user, tap Send test notification. The notification fires.\n"
+                    "Total time: under 2 minutes."
+                ),
+            },
+        ],
         "related": [],
     },
 }

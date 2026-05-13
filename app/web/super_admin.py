@@ -382,3 +382,25 @@ async def email_settings(
             "permissions": PermissionChecker(user.role),
         },
     )
+
+
+@router.get("/push-settings", response_class=HTMLResponse)
+async def push_settings_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Super admin page: generate / rotate VAPID keypair, view subscription stats."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    _require_super_admin()
+
+    return templates.TemplateResponse(
+        "super_admin/push_settings.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )

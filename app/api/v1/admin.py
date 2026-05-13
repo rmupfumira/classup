@@ -370,3 +370,132 @@ async def test_email_settings(
         status="error",
         message="Failed to send test email. Check settings and server logs.",
     )
+
+
+# ============================================================================
+# Web Push — platform-wide VAPID keypair management
+# ============================================================================
+
+class PushSettingsResponse(BaseModel):
+    configured: bool
+    public_key_b64url: str
+    subject: str
+    generated_at: str | None
+    stats: dict
+
+
+class GenerateKeysRequest(BaseModel):
+    subject: str = Field(..., min_length=4, max_length=255, description="VAPID sub claim, e.g. mailto:admin@example.com")
+
+
+class RotateKeysRequest(BaseModel):
+    subject: str = Field(..., min_length=4, max_length=255)
+    confirm: bool = Field(False, description="Must be true — rotating invalidates all existing subscriptions")
+
+
+class UpdateSubjectRequest(BaseModel):
+    subject: str = Field(..., min_length=4, max_length=255)
+
+
+@router.get("/push-settings")
+@require_super_admin()
+async def get_push_settings(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Current VAPID config + platform-wide subscription stats."""
+    from app.services import push_service
+
+    cfg = await push_service.get_vapid_config(db)
+    stats = await push_service.count_subscriptions(db)
+
+    # Look up generated_at separately because get_vapid_config doesn't return it
+    generated_at = None
+    row = await db.execute(
+        select(SystemSettings).where(SystemSettings.key == push_service.VAPID_SETTINGS_KEY)
+    )
+    s = row.scalar_one_or_none()
+    if s and s.value:
+        generated_at = s.value.get("generated_at")
+
+    return APIResponse(
+        status="success",
+        data=PushSettingsResponse(
+            configured=cfg.configured,
+            public_key_b64url=cfg.public_key_b64url,
+            subject=cfg.subject,
+            generated_at=generated_at,
+            stats=stats,
+        ).model_dump(),
+    )
+
+
+@router.post("/push-settings/generate")
+@require_super_admin()
+async def generate_push_keys(
+    body: GenerateKeysRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """First-time keypair creation. Fails (409) if a keypair already exists —
+    use /rotate to overwrite."""
+    from app.services import push_service
+
+    try:
+        result = await push_service.generate_and_store_keypair(
+            db, subject=body.subject.strip(), force=False
+        )
+    except ValueError as e:
+        return APIResponse(status="error", message=str(e))
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message="VAPID keypair created. Users can now enable push notifications.",
+        data=result,
+    )
+
+
+@router.post("/push-settings/rotate")
+@require_super_admin()
+async def rotate_push_keys(
+    body: RotateKeysRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Destructive: overwrites the existing keypair. Every active push
+    subscription becomes useless; users must re-enable on each device."""
+    from app.services import push_service
+
+    if not body.confirm:
+        return APIResponse(
+            status="error",
+            message="confirm=true is required to rotate — this invalidates every existing subscription.",
+        )
+    try:
+        result = await push_service.generate_and_store_keypair(
+            db, subject=body.subject.strip(), force=True
+        )
+    except ValueError as e:
+        return APIResponse(status="error", message=str(e))
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message="VAPID keypair rotated. All existing subscriptions are now invalid.",
+        data=result,
+    )
+
+
+@router.put("/push-settings/subject")
+@require_super_admin()
+async def update_push_subject(
+    body: UpdateSubjectRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Change just the VAPID subject (contact mailto:) without rotating keys."""
+    from app.services import push_service
+
+    try:
+        new_subject = await push_service.update_subject(db, body.subject.strip())
+    except ValueError as e:
+        return APIResponse(status="error", message=str(e))
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message="Subject updated.",
+        data={"subject": new_subject},
+    )
