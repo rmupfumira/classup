@@ -271,6 +271,11 @@
 
         <!-- Mobile Navigation -->
         {% include 'components/_mobile_nav.html' %}
+
+        {# Push notifications modal — opens via ClassUp.openNotificationsSheet().
+           Lives in base.html so it's available from any authenticated page
+           (dashboard soft-prompt card, mobile More menu, sidebar). #}
+        {% include 'components/_notifications_sheet.html' %}
     {% else %}
         <!-- Unauthenticated Layout -->
         <main class="min-h-screen bg-neutral-50">

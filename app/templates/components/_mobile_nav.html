@@ -367,6 +367,30 @@
 
             <div class="my-2 h-px bg-neutral-100"></div>
 
+            {# Notifications — always visible (works for every role).
+               Subtitle shows current push state so users can check their
+               status at a glance without opening the sheet. The JS in
+               _notifications_sheet.html dispatches `classup:push-state-changed`
+               whenever state flips, and the handler below keeps the subtitle
+               in sync. #}
+            <button id="menu-notifications" type="button"
+                    onclick="ClassUp.openNotificationsSheet && ClassUp.openNotificationsSheet()"
+                    class="w-full flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
+                <div class="w-8 h-8 mr-3 rounded-lg bg-warning-50 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                    </svg>
+                </div>
+                <div class="flex-1 text-left min-w-0">
+                    <div class="text-sm font-medium">Notifications</div>
+                    <div class="text-[11px] text-neutral-500" id="menu-notifications-subtitle">Checking…</div>
+                </div>
+                <svg class="w-4 h-4 text-neutral-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+
             {# Install ClassUp — hidden by default, revealed via JS once an
                install path is available (Android beforeinstallprompt fires
                OR we detect iOS Safari outside standalone mode). The button
@@ -465,6 +489,29 @@ function toggleMobileClassSwitcher() {
         overlay.classList.toggle('hidden');
     }
 }
+
+// Keep the Notifications menu subtitle in sync with the push state. The
+// _notifications_sheet.html partial emits `classup:push-state-changed`
+// whenever state is re-evaluated (initial load, after subscribe, after
+// unsubscribe, etc.), so we just listen and update the label.
+(function () {
+    const STATUS_LABELS = {
+        loading: 'Checking…',
+        unsupported: 'Not available on this browser',
+        'ios-need-install': 'Install to home screen first',
+        'server-not-configured': 'Not yet configured',
+        denied: 'Blocked — open settings to allow',
+        ready: 'Off — tap to enable',
+        subscribed: 'On for this device',
+    };
+    function update(state) {
+        const el = document.getElementById('menu-notifications-subtitle');
+        if (el) el.textContent = STATUS_LABELS[state] || STATUS_LABELS.loading;
+    }
+    document.addEventListener('classup:push-state-changed', (e) => {
+        update(e.detail && e.detail.state);
+    });
+})();
 </script>
 
 <style>

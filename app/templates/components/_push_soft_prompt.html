@@ -1,0 +1,131 @@
+{# ============================================================
+   Push notifications soft-prompt — dashboard card
+
+   Visibility rules (handled entirely in JS so we don't render
+   a flicker on first paint then hide it):
+
+     SHOW when push CAN work AND user hasn't opted in yet:
+       - state is 'ready'  → on a supported device, just hasn't enabled
+       - state is 'ios-need-install' → iPhone Safari, not yet installed.
+         Tapping the card opens the sheet which then shows install steps.
+
+     HIDE when:
+       - state is 'subscribed' (already in — NEVER show again)
+       - state is 'unsupported' (nothing they can do)
+       - state is 'denied' (only resolvable in OS settings; menu entry
+         still surfaces this)
+       - state is 'server-not-configured' (admin's problem)
+       - localStorage 'push-prompt-never' === '1'
+       - localStorage 'push-prompt-snoozed-at' is within last 14 days
+
+   NOT a modal. NOT a blocking overlay. Just a dismissible card the
+   user can ignore.
+   ============================================================ #}
+<section id="push-soft-prompt"
+         class="hidden bg-warning-50 border border-warning-200 rounded-2xl p-4">
+    <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xl shadow-sm flex-shrink-0">
+            🔔
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="font-semibold text-sm text-warning-900">Stay in the loop</p>
+            <p class="text-xs text-warning-800 mt-0.5">
+                Get notified about new announcements, messages from teachers, attendance updates for your
+                child, and finalised reports — even when ClassUp isn't open.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+                <button id="psp-enable" type="button"
+                        class="px-3 py-1.5 bg-warning-700 text-white text-xs font-semibold rounded-lg hover:bg-warning-800">
+                    Enable notifications
+                </button>
+                <button id="psp-snooze" type="button"
+                        class="px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-800">
+                    Maybe later
+                </button>
+                <button id="psp-never" type="button"
+                        class="px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-600">
+                    Don't show again
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+(function () {
+    'use strict';
+
+    const PROMPT_NEVER_KEY = 'push-prompt-never';
+    const PROMPT_SNOOZED_KEY = 'push-prompt-snoozed-at';
+    const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+    const VISIBLE_STATES = ['ready', 'ios-need-install'];
+
+    const card = document.getElementById('push-soft-prompt');
+    if (!card) return;
+
+    function snoozed() {
+        try {
+            if (localStorage.getItem(PROMPT_NEVER_KEY) === '1') return true;
+            const t = parseInt(localStorage.getItem(PROMPT_SNOOZED_KEY) || '0', 10);
+            if (t && (Date.now() - t) < SNOOZE_MS) return true;
+        } catch (e) { /* private browsing — fall through */ }
+        return false;
+    }
+
+    /**
+     * Compute visibility from the latest push state + storage flags.
+     * Called: on page load, when state changes, after the user dismisses.
+     */
+    async function refresh(stateOverride) {
+        const state = stateOverride
+            || (window.ClassUpPush ? await ClassUpPush.detectState() : 'unsupported');
+        const eligible = VISIBLE_STATES.includes(state);
+        if (eligible && !snoozed()) {
+            card.classList.remove('hidden');
+        } else {
+            card.classList.add('hidden');
+        }
+    }
+
+    function recordSnooze() {
+        try { localStorage.setItem(PROMPT_SNOOZED_KEY, String(Date.now())); } catch (e) {}
+    }
+    function recordNever() {
+        try { localStorage.setItem(PROMPT_NEVER_KEY, '1'); } catch (e) {}
+    }
+
+    document.getElementById('psp-enable').addEventListener('click', () => {
+        // Snooze immediately so we don't double-prompt this session even if
+        // they bail out of the permission dialog. They can come back via
+        // the menu entry if they change their mind.
+        recordSnooze();
+        if (window.ClassUp && ClassUp.openNotificationsSheet) {
+            ClassUp.openNotificationsSheet();
+        }
+        refresh();  // hide the card behind the sheet
+    });
+    document.getElementById('psp-snooze').addEventListener('click', () => {
+        recordSnooze();
+        refresh();
+    });
+    document.getElementById('psp-never').addEventListener('click', () => {
+        recordNever();
+        refresh();
+    });
+
+    // Listen for state changes from the sheet (subscribe/unsubscribe). When
+    // someone enables push, this hides the card automatically. When someone
+    // turns off, it'll only reappear if the 14d snooze has elapsed.
+    document.addEventListener('classup:push-state-changed', (e) => {
+        refresh(e.detail && e.detail.state);
+    });
+
+    // Initial render — slight delay so push.js has loaded
+    if (window.ClassUpPush) {
+        refresh();
+    } else {
+        // push.js is `defer`ed; wait for DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => setTimeout(refresh, 100));
+    }
+})();
+</script>

@@ -1,0 +1,275 @@
+{# ============================================================
+   Notifications sheet — reusable modal/bottom-sheet for the
+   push state machine, opened from:
+     - the dashboard soft-prompt card
+     - the mobile More menu "Notifications" entry
+     - the desktop sidebar (future)
+     - anywhere via `ClassUp.openNotificationsSheet()`
+
+   Renders exactly ONE state panel at a time — no fallback,
+   no overlapping content. The same logic as the dedicated
+   /settings/notifications page but in a transient modal.
+   ============================================================ #}
+<dialog id="notifications-sheet"
+        class="rounded-t-2xl md:rounded-2xl border border-neutral-200 shadow-2xl p-0 w-full max-w-md backdrop:bg-black/40 mb-0 md:mb-auto md:mt-auto">
+    <div class="p-5 space-y-4">
+        <!-- Header -->
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-semibold text-neutral-800">Notifications</h2>
+                    <p class="text-xs text-neutral-500" id="ns-state-subtitle">Checking…</p>
+                </div>
+            </div>
+            <button type="button" onclick="document.getElementById('notifications-sheet').close()"
+                    class="text-neutral-400 hover:text-neutral-600 -m-1.5 p-1.5" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- ====================================================
+             State panels — exactly ONE visible at a time.
+             No fallback / default block.
+             ==================================================== -->
+
+        {# ───────── unsupported — amber, no CTA ───────── #}
+        <div id="ns-state-unsupported" class="hidden p-4 rounded-lg bg-warning-50 border border-warning-200">
+            <p class="text-sm text-warning-800">
+                Your browser doesn't support push notifications. Try Chrome, Edge, Firefox, or install the
+                PWA on iOS/Android.
+            </p>
+        </div>
+
+        {# ───────── ios-need-install — amber, install steps ───────── #}
+        <div id="ns-state-ios-need-install" class="hidden p-4 rounded-lg bg-warning-50 border border-warning-200">
+            <p class="font-semibold text-sm text-warning-900 mb-2">
+                Almost there — install first
+            </p>
+            <p class="text-sm text-warning-800 mb-3">
+                Apple only allows notifications for installed apps. Tap the
+                <svg class="inline w-4 h-4 align-text-bottom mx-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25"/>
+                </svg>
+                <strong>Share</strong> button → <strong>Add to Home Screen</strong>, then open ClassUp from your home screen and try again.
+            </p>
+        </div>
+
+        {# ───────── denied — red, explain how to unblock ───────── #}
+        <div id="ns-state-denied" class="hidden p-4 rounded-lg bg-danger-50 border border-danger-200">
+            <p class="font-semibold text-sm text-danger-900 mb-2">Notifications blocked</p>
+            <p class="text-sm text-danger-800">
+                You previously declined notifications. To re-enable, open your device's app settings (or
+                browser site permissions) and allow notifications, then come back to this screen.
+            </p>
+        </div>
+
+        {# ───────── server-not-configured — grey ───────── #}
+        <div id="ns-state-server-not-configured" class="hidden p-4 rounded-lg bg-neutral-50 border border-neutral-200">
+            <p class="text-sm text-neutral-700">
+                Notifications haven't been switched on by an admin yet. Please ask an admin to configure VAPID
+                in the platform settings.
+            </p>
+        </div>
+
+        {# ───────── ready — pink/amber CTA ───────── #}
+        <div id="ns-state-ready" class="hidden">
+            <p class="text-sm text-neutral-700 mb-3">
+                Get a tap on the shoulder when there's a new announcement, message from a teacher,
+                attendance update for your child, or a finalised report — even when ClassUp isn't open.
+            </p>
+            <button id="ns-btn-enable" type="button"
+                    class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-lg hover:bg-accent-600 transition-colors disabled:opacity-50">
+                Enable notifications
+            </button>
+        </div>
+
+        {# ───────── subscribed — emerald success ───────── #}
+        <div id="ns-state-subscribed" class="hidden">
+            <div class="flex items-start gap-3 p-3 rounded-lg bg-success-50 border border-success-200 mb-3">
+                <svg class="flex-shrink-0 w-5 h-5 text-success-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p class="text-sm text-success-800">
+                    Notifications are on for this device. Send a test to confirm delivery.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="ns-btn-test" type="button"
+                        class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-white text-primary-700 text-xs font-medium rounded-md border border-primary-300 hover:bg-primary-50 disabled:opacity-50">
+                    Send test
+                </button>
+                <button id="ns-btn-disable" type="button"
+                        class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-white text-neutral-700 text-xs font-medium rounded-md border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50">
+                    Turn off on this device
+                </button>
+            </div>
+        </div>
+
+        <!-- "Manage all devices" link — only relevant for school admins -->
+        <a href="/settings/notifications"
+           class="block text-center text-xs text-neutral-500 hover:text-neutral-700 pt-2 border-t border-neutral-100">
+            Manage all enrolled devices →
+        </a>
+    </div>
+</dialog>
+
+<script>
+(function () {
+    'use strict';
+
+    // ====================================================================
+    // Single source of truth for state — re-evaluated at every entry point
+    // so we never render stale UI from a cached state value.
+    // ====================================================================
+
+    const STATE_PANELS = {
+        unsupported: { panel: 'ns-state-unsupported', subtitle: 'Not available on this browser' },
+        'ios-need-install': { panel: 'ns-state-ios-need-install', subtitle: 'Install to home screen first' },
+        'server-not-configured': { panel: 'ns-state-server-not-configured', subtitle: 'Not yet configured' },
+        denied: { panel: 'ns-state-denied', subtitle: 'Blocked — open settings to allow' },
+        ready: { panel: 'ns-state-ready', subtitle: 'Off — tap Enable below' },
+        subscribed: { panel: 'ns-state-subscribed', subtitle: 'On for this device' },
+    };
+
+    async function refreshState() {
+        if (!window.ClassUpPush) return 'unsupported';
+        const state = await ClassUpPush.detectState();
+
+        // Hide all panels, then show the one matching state
+        for (const meta of Object.values(STATE_PANELS)) {
+            const el = document.getElementById(meta.panel);
+            if (el) el.classList.add('hidden');
+        }
+        const meta = STATE_PANELS[state] || STATE_PANELS.unsupported;
+        const active = document.getElementById(meta.panel);
+        if (active) active.classList.remove('hidden');
+
+        const sub = document.getElementById('ns-state-subtitle');
+        if (sub) sub.textContent = meta.subtitle;
+
+        // Tell anyone listening (soft prompt, menu entry) that state changed
+        document.dispatchEvent(new CustomEvent('classup:push-state-changed', { detail: { state } }));
+        return state;
+    }
+
+    // ====================================================================
+    // Open / close (exposed on ClassUp global)
+    // ====================================================================
+
+    async function openSheet() {
+        const sheet = document.getElementById('notifications-sheet');
+        if (!sheet) return;
+        await refreshState();  // re-evaluate before showing — they may have installed in another tab
+        try { sheet.showModal(); } catch (e) { sheet.setAttribute('open', ''); }
+    }
+
+    function closeSheet() {
+        const sheet = document.getElementById('notifications-sheet');
+        if (sheet) sheet.close();
+    }
+
+    // ====================================================================
+    // Button handlers — Enable / Test / Disable
+    // ====================================================================
+
+    function on(id, handler) {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', handler);
+    }
+
+    on('ns-btn-enable', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = 'Enabling…';
+        try {
+            const result = await ClassUpPush.subscribe();
+            if (result.ok) {
+                if (window.ClassUp && ClassUp.toast) {
+                    ClassUp.toast('Notifications enabled on this device.', 'success');
+                }
+            } else {
+                const msg = ({
+                    'denied': 'Notifications were blocked. Re-enable in your browser settings.',
+                    'server-not-configured': 'Push hasn\'t been set up by an admin yet.',
+                    'unsupported': 'This browser doesn\'t support push notifications.',
+                    'server-error': result.error || 'Could not register on the server.',
+                })[result.reason] || (result.error || 'Could not enable notifications.');
+                if (window.ClassUp && ClassUp.toast) ClassUp.toast(msg, 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            await refreshState();  // permission flipped, sub created — re-evaluate
+        }
+    });
+
+    on('ns-btn-test', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        try {
+            const r = await ClassUpPush.sendTest();
+            if (r.ok && window.ClassUp && ClassUp.toast) {
+                const n = (r.data && r.data.sent) || 0;
+                ClassUp.toast(`Test sent to ${n} device${n === 1 ? '' : 's'}.`, 'success');
+            } else if (window.ClassUp && ClassUp.toast) {
+                ClassUp.toast(r.error || 'Could not send test.', 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send test';
+        }
+    });
+
+    on('ns-btn-disable', async (e) => {
+        if (window.ClassUp && ClassUp.confirm) {
+            const ok = await ClassUp.confirm('Turn off push notifications on this device?', { confirmText: 'Turn off' });
+            if (!ok) return;
+        }
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = 'Turning off…';
+        try {
+            const r = await ClassUpPush.unsubscribe();
+            if (r.ok && window.ClassUp && ClassUp.toast) {
+                ClassUp.toast('Notifications turned off on this device.', 'success');
+            } else if (!r.ok && window.ClassUp && ClassUp.toast) {
+                ClassUp.toast(r.error || 'Could not turn off notifications.', 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            await refreshState();  // subscribed → ready
+        }
+    });
+
+    // ====================================================================
+    // Expose globals + emit initial state event for soft-prompt / menu
+    // ====================================================================
+
+    window.ClassUp = window.ClassUp || {};
+    window.ClassUp.openNotificationsSheet = openSheet;
+    window.ClassUp.closeNotificationsSheet = closeSheet;
+    window.ClassUp.refreshPushState = refreshState;
+
+    // Fire an initial state evaluation so the soft-prompt + menu subtitle
+    // can render correctly on page load.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', refreshState);
+    } else {
+        // base.html loads us late enough that DOMContentLoaded has fired
+        setTimeout(refreshState, 50);
+    }
+})();
+</script>
