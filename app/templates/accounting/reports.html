@@ -80,7 +80,8 @@
 </style>
 
 <script>
-function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+const CURRENCY_SYMBOL = {{ currency_symbol | tojson }};
+function fmt(n) { return CURRENCY_SYMBOL + ' ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function isoDate(d) { return d.toISOString().slice(0, 10); }
 
 function setRange(kind) {

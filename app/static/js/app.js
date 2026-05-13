@@ -65,7 +65,18 @@ const ClassUp = {
 
             // Handle error responses
             if (!response.ok) {
-                const errorMessage = data.message || 'Something went wrong';
+                // Prefer field-level errors when present — the generic
+                // top-level message is usually "Validation failed" which
+                // tells the user nothing. The errors array is where the
+                // actually-useful info lives (e.g. "Account code 5000
+                // already exists").
+                let errorMessage = data.message || 'Something went wrong';
+                if (Array.isArray(data.errors) && data.errors.length > 0) {
+                    const specific = data.errors
+                        .map(e => e && (e.message || e.msg))
+                        .filter(Boolean);
+                    if (specific.length) errorMessage = specific.join('; ');
+                }
                 ClassUp.toast(errorMessage, 'error');
                 throw new Error(errorMessage);
             }

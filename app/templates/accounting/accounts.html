@@ -38,6 +38,7 @@
                     <option value="EXPENSE">Expense</option>
                     <option value="ASSET">Asset</option>
                     <option value="LIABILITY">Liability</option>
+                    <option value="EQUITY">Equity</option>
                 </select>
             </div>
             <div class="col-span-2">
@@ -64,6 +65,7 @@ const TYPE_META = {
     EXPENSE: { label: 'Expense', colour: 'text-warning-700', bg: 'bg-warning-50' },
     ASSET: { label: 'Asset', colour: 'text-primary-700', bg: 'bg-primary-50' },
     LIABILITY: { label: 'Liability', colour: 'text-danger-700', bg: 'bg-danger-50' },
+    EQUITY: { label: 'Equity', colour: 'text-accent-700', bg: 'bg-accent-50' },
 };
 
 async function load() {
@@ -97,7 +99,7 @@ async function load() {
         groups[a.type].push(a);
     }
     wrap.innerHTML = '';
-    for (const type of ['INCOME', 'EXPENSE', 'ASSET', 'LIABILITY']) {
+    for (const type of ['INCOME', 'EXPENSE', 'ASSET', 'LIABILITY', 'EQUITY']) {
         const arr = groups[type] || [];
         if (!arr.length) continue;
         const meta = TYPE_META[type];

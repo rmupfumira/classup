@@ -46,7 +46,7 @@
                 <input type="date" id="f-date" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Amount (ZAR)</label>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Amount ({{ currency_code }})</label>
                 <input type="number" id="f-amount" step="0.01" min="0.01" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
             </div>
             <div>
@@ -85,7 +85,8 @@
 </dialog>
 
 <script>
-function fmt(n) { return 'R ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+const CURRENCY_SYMBOL = {{ currency_symbol | tojson }};
+function fmt(n) { return CURRENCY_SYMBOL + ' ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 async function load() {
     const body = document.getElementById('tx-body');

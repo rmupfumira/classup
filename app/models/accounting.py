@@ -32,12 +32,20 @@ from app.models.base import Base, TenantScopedModel, TimestampMixin, SoftDeleteM
 
 
 class AccountType(str, Enum):
-    """Top-level account categories."""
+    """Top-level account categories.
+
+    Five buckets, matching the standard accounting equation:
+        Assets = Liabilities + Equity
+        Equity = Capital + Retained (Income − Expense)
+    EQUITY covers both for-profit (Owner's Capital, Retained Earnings) and
+    non-profit (Net Assets — Unrestricted / Restricted) bookkeeping models.
+    """
 
     INCOME = "INCOME"
     EXPENSE = "EXPENSE"
     ASSET = "ASSET"
     LIABILITY = "LIABILITY"
+    EQUITY = "EQUITY"
 
 
 class TransactionType(str, Enum):

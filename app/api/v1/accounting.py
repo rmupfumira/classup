@@ -22,22 +22,17 @@ router = APIRouter()
 
 
 async def _ensure_seeded(db: AsyncSession) -> None:
-    """Backfill the chart of accounts for tenants that existed before the
-    accounting module shipped. Idempotent — only runs if the tenant has zero
-    accounts. Called on the first dashboard hit so the user sees a populated
-    chart instead of an empty page on day one.
+    """Backfill any missing default accounts (e.g. Equity accounts added
+    after the tenant was first seeded). The seed function is now idempotent
+    at the per-code level, so calling it every dashboard load is cheap —
+    only inserts what's missing, no-ops once fully seeded.
     """
     tenant_id = get_tenant_id()
     if not tenant_id:
         return
-    service = get_accounting_service()
-    existing = await service.list_chart_accounts(db, active_only=False)
-    if existing:
-        return  # Already seeded
     try:
-        await service.seed_defaults_for_tenant(db, tenant_id)
+        await get_accounting_service().seed_defaults_for_tenant(db, tenant_id)
         await db.commit()
-        logger.info(f"Backfilled accounting defaults for tenant {tenant_id}")
     except Exception:
         logger.exception("Accounting backfill failed (non-fatal)")
         await db.rollback()
@@ -64,7 +59,9 @@ class BankAccountIn(BaseModel):
     account_number: str | None = None
     branch_code: str | None = None
     account_type: str = Field("OPERATING")
-    currency: str = Field("ZAR")
+    # Optional — when omitted, the create endpoint falls back to the tenant's
+    # billing_currency setting (or ZAR as a final fallback).
+    currency: str | None = None
     opening_balance: Decimal = Field(default=Decimal("0"))
     opening_balance_date: date | None = None
     is_default: bool = False
@@ -310,7 +307,17 @@ async def list_banks(
 @router.post("/banks", response_model=APIResponse[dict])
 @require_role(Role.SCHOOL_ADMIN)
 async def create_bank(body: BankAccountIn, db: AsyncSession = Depends(get_db)):
-    b = await get_accounting_service().create_bank_account(db, **body.model_dump())
+    payload = body.model_dump()
+    # If the caller didn't supply a currency, default to the tenant's
+    # billing_currency so a school using USD doesn't get a ZAR-labelled bank.
+    if not payload.get("currency"):
+        from app.models import Tenant
+        tenant_id = get_tenant_id()
+        tenant = await db.get(Tenant, tenant_id) if tenant_id else None
+        payload["currency"] = (
+            (tenant.settings or {}).get("billing_currency", "ZAR") if tenant else "ZAR"
+        )
+    b = await get_accounting_service().create_bank_account(db, **payload)
     await db.commit()
     return APIResponse(data=_bank_dict(b), message="Bank account created")
 

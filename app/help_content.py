@@ -445,8 +445,13 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         "overview": (
             "Accounting lets your school do basic bookkeeping without a separate package like Sage or QuickBooks. "
             "Track every cent in and out, manage multiple bank accounts, see your monthly profit and loss, and "
-            "watch your cash position in real time. Tuition payments recorded in Billing flow into Accounting "
-            "automatically, so you don't have to capture them twice."
+            "watch your cash position in real time.\n\n"
+            "ClassUp uses cash-basis accounting: transactions are recorded when money actually moves, not when "
+            "an invoice is created. Sending an invoice in Billing does NOT post anything to your books — only "
+            "when a parent PAYS that invoice does the system automatically create an Income entry against the "
+            "Tuition Fees account on your default bank. This matches how most small/medium schools track money "
+            "and keeps the books simple. If you need accrual accounting (recognising revenue when invoiced "
+            "rather than when paid), you'll want a dedicated package like Sage — ClassUp won't do that."
         ),
         "steps": [
             {
@@ -474,11 +479,14 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
                     "The Chart of Accounts is the filing cabinet for every penny in and out of your school — "
                     "every transaction gets dropped into one of these labelled folders, so when you run reports later "
                     "you can see exactly where the money came from and where it went. Open Accounting → Chart of Accounts "
-                    "and you'll see four sections:\n\n"
+                    "and you'll see five sections:\n\n"
                     "• Income (4xxx) — money coming in: Tuition Fees, Donations, Government Grants, Fundraising.\n"
                     "• Expense (5xxx) — money going out: Salaries, Rent, Utilities, Stationery, Maintenance.\n"
                     "• Asset (1xxx) — things the school owns: Cash on Hand.\n"
-                    "• Liability (2xxx) — things the school owes: Loans Payable, Accrued Expenses.\n\n"
+                    "• Liability (2xxx) — things the school owes: Loans Payable, Accrued Expenses.\n"
+                    "• Equity (3xxx) — ownership / net worth. For-profit schools use Owner's Capital and "
+                    "Retained Earnings; non-profits use Net Assets (Unrestricted and Restricted). Pick the "
+                    "ones that match your structure and deactivate the rest.\n\n"
                     "The codes (4000, 5010, etc.) are standard accounting conventions — the numbers don't matter "
                     "functionally; they just keep things organised and please your accountant. ClassUp seeds these "
                     "defaults the first time you open Accounting, so you can start recording right away."
@@ -542,10 +550,14 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
             {
                 "title": "Example: a parent pays tuition via EFT",
                 "body": (
-                    "A parent EFTs R3,500 for their child's monthly tuition. You record the payment on the "
-                    "invoice in Billing as usual. Behind the scenes, ClassUp creates an INCOME transaction "
-                    "in Accounting against the Tuition Fees account. Your bank balance and P&L update with no "
-                    "double-capture needed."
+                    "1. You generate a monthly tuition invoice for R3,500 in Billing → nothing posts to "
+                    "Accounting yet (cash-basis: invoicing alone isn't a money movement).\n"
+                    "2. Parent EFTs R3,500. You open the invoice → Record Payment → enter R3,500, method "
+                    "EFT, today's date → save.\n"
+                    "3. Now Accounting kicks in automatically. ClassUp creates an INCOME transaction against "
+                    "the Tuition Fees account on your default bank, marked auto-linked.\n"
+                    "4. Your bank balance and P&L update immediately — no double-capture needed. If you ever "
+                    "delete the payment in Billing, the matching Accounting entry goes with it."
                 ),
             },
             {

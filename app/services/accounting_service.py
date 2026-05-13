@@ -69,6 +69,15 @@ DEFAULT_LIABILITY_ACCOUNTS: list[tuple[str, str, bool]] = [
     ("2000", "Loans Payable", False),
     ("2010", "Accrued Expenses", False),
 ]
+# 3xxx = Equity. Covers both for-profit ownership and non-profit fund
+# accounting so admins can pick what fits their model. They can deactivate
+# the ones they don't use rather than us guessing at tenant create time.
+DEFAULT_EQUITY_ACCOUNTS: list[tuple[str, str, bool]] = [
+    ("3000", "Retained Earnings", False),
+    ("3010", "Owner's Capital", False),
+    ("3020", "Net Assets — Unrestricted", False),
+    ("3030", "Net Assets — Restricted", False),
+]
 
 
 # Code that the system considers the "tuition" / default-income account
@@ -85,28 +94,40 @@ class AccountingService:
     async def seed_defaults_for_tenant(
         self, db: AsyncSession, tenant_id: uuid.UUID
     ) -> None:
-        """Idempotent: create the default chart of accounts + a default bank.
-
-        Safe to call repeatedly — only inserts what's missing.
+        """Idempotent: insert any default chart-of-accounts entries the
+        tenant doesn't already have, and create a default Operating bank if
+        none exists. Safe to call repeatedly — uses per-code dedup, not a
+        whole-tenant existence check, so adding a new default (e.g. EQUITY)
+        in code automatically backfills existing tenants on next call.
         """
-        existing = await db.execute(
-            select(func.count(ChartAccount.id)).where(
+        # Fetch every code the tenant already has so we can skip them
+        existing_codes_result = await db.execute(
+            select(ChartAccount.code).where(
                 ChartAccount.tenant_id == tenant_id,
                 ChartAccount.deleted_at.is_(None),
             )
         )
-        if (existing.scalar() or 0) > 0:
-            logger.debug(f"Tenant {tenant_id} already has accounts — skipping seed")
-            return
+        existing_codes = {row[0] for row in existing_codes_result.all()}
 
-        order = 0
+        # Figure out the next display_order across all types
+        max_order_result = await db.execute(
+            select(func.max(ChartAccount.display_order)).where(
+                ChartAccount.tenant_id == tenant_id,
+            )
+        )
+        order = (max_order_result.scalar() or 0) + 1
+
+        inserted = 0
         for type_, defaults in (
             (AccountType.INCOME, DEFAULT_INCOME_ACCOUNTS),
             (AccountType.EXPENSE, DEFAULT_EXPENSE_ACCOUNTS),
             (AccountType.ASSET, DEFAULT_ASSET_ACCOUNTS),
             (AccountType.LIABILITY, DEFAULT_LIABILITY_ACCOUNTS),
+            (AccountType.EQUITY, DEFAULT_EQUITY_ACCOUNTS),
         ):
             for code, name, is_system in defaults:
+                if code in existing_codes:
+                    continue  # Tenant already has this account
                 db.add(ChartAccount(
                     tenant_id=tenant_id,
                     code=code,
@@ -117,6 +138,7 @@ class AccountingService:
                     display_order=order,
                 ))
                 order += 1
+                inserted += 1
 
         # Seed a default operating bank account if none exists
         bank_count = await db.execute(
@@ -135,6 +157,11 @@ class AccountingService:
                 is_active=True,
             ))
 
+        if inserted:
+            logger.info(
+                f"Accounting seed for tenant {tenant_id}: inserted "
+                f"{inserted} new default account(s)"
+            )
         await db.flush()
 
     # ============================================================
