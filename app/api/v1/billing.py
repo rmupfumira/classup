@@ -271,15 +271,32 @@ async def generate_invoices(
     data: GenerateInvoicesRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Batch generate invoices for students."""
+    """Batch generate invoices for students.
+
+    Students without a registered parent get an invoice in the DB but no
+    email or in-app notification (there's no recipient to send to). The
+    response message surfaces the count so the admin knows.
+    """
     service = get_billing_service()
     invoices = await service.generate_invoices(db, data)
+
+    # Read the transient counter the service stashed on the first invoice
+    no_parent = getattr(invoices[0], "_students_without_parents", 0) if invoices else 0
+    if no_parent:
+        message = (
+            f"{len(invoices)} invoice(s) generated. {no_parent} student(s) "
+            f"have no parent registered — invoices exist but no email/notification sent. "
+            f"Invite their parents to enable notifications on future invoices."
+        )
+    else:
+        message = f"{len(invoices)} invoice(s) generated."
+
     return APIResponse(
         data=GenerateInvoicesResponse(
             invoices_created=len(invoices),
             invoice_ids=[i.id for i in invoices],
         ),
-        message=f"{len(invoices)} invoices generated",
+        message=message,
     )
 
 
@@ -389,7 +406,16 @@ async def record_payment(
     """Record a payment against an invoice."""
     service = get_billing_service()
     payment = await service.record_payment(db, data)
-    return APIResponse(data=_build_payment_response(payment), message="Payment recorded")
+
+    # Surface whether the income was auto-posted so the school admin gets
+    # explicit feedback — no surprises later when they go to Accounting.
+    linked = getattr(payment, "accounting_linked", False)
+    message = (
+        "Payment recorded. Income posted to Accounting (Tuition Fees)."
+        if linked else
+        "Payment recorded."
+    )
+    return APIResponse(data=_build_payment_response(payment), message=message)
 
 
 @router.delete("/payments/{payment_id}", response_model=APIResponse)

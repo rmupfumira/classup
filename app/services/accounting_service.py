@@ -857,6 +857,12 @@ class AccountingService:
 
         Idempotent — does nothing if a transaction already exists for the
         same billing_payment_id.
+
+        Backfill behaviour: if the tenant hasn't been seeded yet (no chart
+        of accounts, no bank), we seed them HERE so the first ever payment
+        already produces an accounting record. This matters because the
+        billing flow can fire before anyone has visited the accounting
+        dashboard (which is the other place the seed runs).
         """
         # Already linked?
         existing = await db.execute(
@@ -868,15 +874,36 @@ class AccountingService:
         if existing.scalar_one_or_none():
             return None
 
+        tenant_id = get_tenant_id()
+
         # Find the system Tuition Fees account
         income_acct = await self.get_account_by_code(db, SYSTEM_TUITION_CODE)
         if not income_acct:
-            # Tenant has no chart of accounts seeded — skip silently
-            return None
+            # First payment on a tenant who hasn't opened the accounting
+            # module yet. Seed the defaults so the link can land, then
+            # re-fetch the account.
+            if tenant_id:
+                try:
+                    await self.seed_defaults_for_tenant(db, tenant_id)
+                    income_acct = await self.get_account_by_code(db, SYSTEM_TUITION_CODE)
+                except Exception:
+                    logger.exception(
+                        f"Failed to backfill accounting defaults for tenant {tenant_id}"
+                    )
+            if not income_acct:
+                logger.warning(
+                    f"Payment {billing_payment.id} not linked: Tuition Fees account "
+                    f"missing for tenant {tenant_id} (chart of accounts not seeded)"
+                )
+                return None
 
         # Pick the default bank account, or any active one
         bank = await self.get_default_bank_account(db)
         if not bank:
+            logger.warning(
+                f"Payment {billing_payment.id} not linked: no default bank account "
+                f"for tenant {tenant_id}"
+            )
             return None
 
         tenant_id = get_tenant_id()
@@ -902,6 +929,10 @@ class AccountingService:
         db.add(tx)
         await db.flush()
         await db.refresh(tx)
+        logger.info(
+            f"Auto-linked payment {billing_payment.id} ({amount} {bank.currency}) "
+            f"to accounting transaction {tx.id} on {income_acct.code} {income_acct.name}"
+        )
         return tx
 
     # ============================================================

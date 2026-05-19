@@ -388,8 +388,22 @@ class BillingService:
         for inv in invoices:
             await db.refresh(inv)
 
-        # Auto-send email and in-app notification to parents
+        # Auto-send email and in-app notification to parents. Wrapped per
+        # invoice so a failure on one student (e.g. no parents registered)
+        # never aborts generation for the rest. We track students with no
+        # parent registered + log at INFO so the school admin can find them
+        # in the audit log if they need to invite parents.
+        students_without_parents: int = 0
         for inv in invoices:
+            parent_ids = await self._get_parent_ids_for_student(db, inv.student_id)
+            if not parent_ids:
+                students_without_parents += 1
+                logger.info(
+                    f"Invoice {inv.invoice_number} created for student "
+                    f"{inv.student_id} who has no parent registered — "
+                    f"invoice exists in DB, no email/notification sent"
+                )
+                continue
             try:
                 await self._email_parents_invoice(db, inv)
             except Exception:
@@ -399,6 +413,10 @@ class BillingService:
             except Exception:
                 logger.exception("Failed to notify parents for invoice %s", inv.id)
 
+        # Stash on the first invoice so the API layer can read it back —
+        # lists themselves can't hold transient attrs, but ORM objects can.
+        if invoices and students_without_parents:
+            invoices[0]._students_without_parents = students_without_parents  # type: ignore[attr-defined]
         return invoices
 
     # =========================================================================
@@ -489,13 +507,21 @@ class BillingService:
 
         # Auto-link to the accounting module (single-entry INCOME transaction)
         # so the P&L picks it up. Best-effort — never block the payment.
+        # The result is stashed on the payment as a transient attribute so
+        # the API layer can surface it in the success message ("Payment
+        # recorded. Income posted to Accounting.") — the school admin gets
+        # explicit confirmation rather than wondering if the post happened.
+        accounting_tx_created = False
         try:
             from app.services.accounting_service import get_accounting_service
-            await get_accounting_service().link_billing_payment(db, payment)
+            tx = await get_accounting_service().link_billing_payment(db, payment)
+            accounting_tx_created = tx is not None
         except Exception:
             logger.exception("Failed to auto-link payment %s to accounting", payment.id)
 
         await db.refresh(payment)
+        # Stash the flag AFTER refresh — refresh wipes non-ORM attributes
+        payment.accounting_linked = accounting_tx_created  # type: ignore[attr-defined]
         return payment
 
     async def delete_payment(

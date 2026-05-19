@@ -243,6 +243,13 @@ class BillingPayment(TenantScopedModel):
     )
 
     # Relationships
-    invoice = relationship("BillingInvoice", back_populates="payments")
+    # lazy="selectin" on invoice is required — the /billing/payments
+    # template walks payment.invoice.invoice_number + payment.invoice.student
+    # and async sessions can't lazy-load on attribute access (MissingGreenlet
+    # → 500). The other two relationships were already set correctly; this
+    # one was the outlier.
+    invoice = relationship(
+        "BillingInvoice", back_populates="payments", lazy="selectin"
+    )
     student = relationship("Student", lazy="selectin")
     recorded_by_user = relationship("User", lazy="selectin")
