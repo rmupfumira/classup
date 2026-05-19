@@ -211,7 +211,20 @@
     "reference_number": "Verwysingsnommer",
     "payment_date": "Betaaldatum",
     "outstanding_fees": "Uitstaande Fooie",
-    "no_outstanding": "Geen uitstaande fooie nie"
+    "no_outstanding": "Geen uitstaande fooie nie",
+    "dashboard_subtitle": "Bestuur fooi-items, fakture en betalings vir jou skool.",
+    "manage_fee_items": "Definieer wat jy hef",
+    "view_all_invoices": "Alle uitgereikte fakture",
+    "view_all_payments": "Alle aangetekende betalings",
+    "view_all": "Sien alles",
+    "recent_invoices": "Onlangse Fakture",
+    "recent_payments": "Onlangse Betalings",
+    "no_invoices": "Nog geen fakture nie",
+    "no_invoices_desc": "Genereer fakture vanaf jou fooi-items om te begin.",
+    "no_payments": "Geen betalings aangeteken nie",
+    "no_payments_desc": "Betalings verskyn hier sodra hulle teen fakture aangeteken word.",
+    "arrears_report": "Agterstand Verslag",
+    "arrears_report_desc": "Veroudering & uitstaande balanse"
   },
   "terminology": {
     "student": "leerling",

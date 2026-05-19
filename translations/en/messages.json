@@ -211,7 +211,20 @@
     "reference_number": "Reference Number",
     "payment_date": "Payment Date",
     "outstanding_fees": "Outstanding Fees",
-    "no_outstanding": "No outstanding fees"
+    "no_outstanding": "No outstanding fees",
+    "dashboard_subtitle": "Manage fee items, invoices, and payments for your school.",
+    "manage_fee_items": "Define what you charge",
+    "view_all_invoices": "All issued invoices",
+    "view_all_payments": "All recorded payments",
+    "view_all": "View all",
+    "recent_invoices": "Recent Invoices",
+    "recent_payments": "Recent Payments",
+    "no_invoices": "No invoices yet",
+    "no_invoices_desc": "Generate invoices from your fee items to get started.",
+    "no_payments": "No payments recorded",
+    "no_payments_desc": "Payments will appear here once they are recorded against invoices.",
+    "arrears_report": "Arrears Report",
+    "arrears_report_desc": "Ageing & outstanding balances"
   },
   "terminology": {
     "student": "student",
