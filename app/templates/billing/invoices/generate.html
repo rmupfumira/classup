@@ -545,6 +545,9 @@ async function generateInvoices() {
         window.location.href = '/billing/invoices';
     } catch (error) {
         console.error('Error generating invoices:', error);
+        // ClassUp.fetch already fires a toast with the actual server message,
+        // so the user sees the real error. We just need to reset the button
+        // state and stay on the page so they can try again.
         btn.disabled = false;
         btn.innerHTML = originalText;
     }

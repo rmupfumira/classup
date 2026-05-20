@@ -346,9 +346,28 @@ class BillingService:
         if not fee_items:
             raise ValidationException("No valid fee items selected")
 
+        # Pre-allocate invoice numbers in a single batch. Calling
+        # _generate_invoice_number() inside the loop is wrong here: it does a
+        # COUNT(*) which only sees flushed rows, so every iteration before
+        # the post-loop flush sees the same count → every invoice gets the
+        # SAME number → UNIQUE constraint violation on flush → the entire
+        # batch fails with a 500. Counting once + incrementing locally is
+        # correct (and one query instead of N).
+        year = date.today().year
+        prefix = f"INV-{year}-"
+        count_query = (
+            select(func.count())
+            .select_from(BillingInvoice)
+            .where(
+                BillingInvoice.tenant_id == tenant_id,
+                BillingInvoice.invoice_number.like(f"{prefix}%"),
+            )
+        )
+        starting_count = (await db.execute(count_query)).scalar() or 0
+
         invoices = []
-        for student_id in data.student_ids:
-            invoice_number = await self._generate_invoice_number(db)
+        for i, student_id in enumerate(data.student_ids):
+            invoice_number = f"{prefix}{starting_count + i + 1:04d}"
 
             subtotal = Decimal("0.00")
             line_items = []
