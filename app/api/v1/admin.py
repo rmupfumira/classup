@@ -735,3 +735,184 @@ async def test_payment_gateway(
         status="success" if ok else "error",
         message=message,
     )
+
+
+# ============================================================================
+# WhatsApp — instance-level config (POC: prove the pipeline works, no bot yet)
+# ============================================================================
+
+class WhatsAppSettingsRequest(BaseModel):
+    """Any subset of the 5 fields. MASKED preserves existing secrets."""
+    phone_number_id: str | None = None
+    business_account_id: str | None = None
+    access_token: str | None = None
+    verify_token: str | None = None
+    app_secret: str | None = None
+
+
+class SendWhatsAppTestRequest(BaseModel):
+    to_phone: str = Field(..., min_length=8, max_length=32,
+                          description="E.164 with or without leading +")
+    template_name: str = Field("welcome", max_length=60,
+                               description="Which pre-approved template to fire")
+    school_name: str | None = Field(None, max_length=120,
+                                    description="Filled into template params where relevant")
+
+
+@router.get("/whatsapp-settings")
+@require_super_admin()
+async def get_whatsapp_settings(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Return the current WhatsApp config (secrets masked)."""
+    from app.services import whatsapp_service
+
+    cfg = await whatsapp_service.get_config(db)
+    return APIResponse(status="success", data=cfg.with_masked_secrets())
+
+
+@router.put("/whatsapp-settings")
+@require_super_admin()
+async def update_whatsapp_settings(
+    body: WhatsAppSettingsRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Save WhatsApp config. Fields sent as MASKED (********) preserve the
+    existing stored value — matches the email + push + gateway pattern."""
+    from app.services import whatsapp_service
+
+    # Filter None so the admin can update a single field without wiping others
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    cfg = await whatsapp_service.save_config(db, updates)
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message="WhatsApp settings saved.",
+        data=cfg.with_masked_secrets(),
+    )
+
+
+@router.post("/whatsapp-settings/test")
+@require_super_admin()
+async def test_whatsapp_settings(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Verify Meta credentials by fetching the phone number info from Graph API.
+
+    Doesn't send any actual message — cheapest possible way to know whether
+    the access_token + phone_number_id combination is valid.
+    """
+    from app.services import whatsapp_service
+
+    service = await whatsapp_service.get_whatsapp_service_from_db(db)
+    ok, message = await service.test_connection()
+    return APIResponse(
+        status="success" if ok else "error",
+        message=message,
+    )
+
+
+@router.post("/whatsapp-settings/send-test")
+@require_super_admin()
+async def send_whatsapp_test_message(
+    body: SendWhatsAppTestRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Fire an outbound WhatsApp template message to prove the send pipeline.
+
+    Uses a pre-approved template because outside the 24hr session window
+    Meta only lets templates through. The default `welcome` template exists
+    on our approved list — any other template name will fail Meta's check
+    if it hasn't been submitted + approved yet.
+    """
+    from app.services import whatsapp_service
+
+    service = await whatsapp_service.get_whatsapp_service_from_db(db)
+    if not service.is_configured:
+        return APIResponse(
+            status="error",
+            message="WhatsApp is not fully configured yet. Fill in the credentials + test connection first.",
+        )
+
+    result = await service.send_template_message(
+        to_phone=body.to_phone,
+        template_name=body.template_name,
+        language_code="en",
+        parameters=[body.school_name or "ClassUp", "https://classup.co.za"]
+        if body.template_name == "welcome"
+        else None,
+    )
+
+    if not result:
+        return APIResponse(
+            status="error",
+            message=(
+                "Meta rejected the send. Check the server logs — the most "
+                "common causes are: template not approved for this language, "
+                "recipient number outside the WhatsApp allowlist during "
+                "sandbox testing, or expired access token."
+            ),
+        )
+    msg_id = (result.get("messages") or [{}])[0].get("id", "")
+    return APIResponse(
+        status="success",
+        message=f"Template sent (Meta message id: {msg_id}). Check the recipient's WhatsApp.",
+        data={"meta_message_id": msg_id},
+    )
+
+
+@router.get("/whatsapp-messages")
+@require_super_admin()
+async def list_recent_whatsapp_messages(
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """The 'live view' — most recent inbound messages, newest first.
+
+    Powers the admin page's auto-refreshing table so you can literally
+    send a WhatsApp from your phone and watch it appear.
+    """
+    from app.models import Tenant, User, WhatsAppInboundMessage
+    from sqlalchemy import select as sa_select
+
+    result = await db.execute(
+        sa_select(WhatsAppInboundMessage)
+        .order_by(WhatsAppInboundMessage.created_at.desc())
+        .limit(limit)
+    )
+    rows = list(result.scalars().all())
+
+    # Batch-load user + tenant names for display
+    user_ids = {r.matched_user_id for r in rows if r.matched_user_id}
+    tenant_ids = {r.tenant_id for r in rows if r.tenant_id}
+    users_map: dict = {}
+    tenants_map: dict = {}
+    if user_ids:
+        users_res = await db.execute(
+            sa_select(User).where(User.id.in_(user_ids))
+        )
+        users_map = {u.id: u for u in users_res.scalars().all()}
+    if tenant_ids:
+        tenants_res = await db.execute(
+            sa_select(Tenant).where(Tenant.id.in_(tenant_ids))
+        )
+        tenants_map = {t.id: t for t in tenants_res.scalars().all()}
+
+    return APIResponse(
+        status="success",
+        data=[
+            {
+                "id": str(r.id),
+                "from_phone": r.from_phone,
+                "message_type": r.message_type,
+                "text": r.text,
+                "matched_user": (
+                    f"{users_map[r.matched_user_id].first_name} "
+                    f"{users_map[r.matched_user_id].last_name}"
+                ).strip()
+                if r.matched_user_id in users_map else None,
+                "tenant_name": tenants_map[r.tenant_id].name
+                if r.tenant_id in tenants_map else None,
+                "auto_replied": r.auto_replied,
+                "auto_reply_error": r.auto_reply_error,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ],
+    )

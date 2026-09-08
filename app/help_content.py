@@ -1598,6 +1598,120 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         "related": ["push-setup"],
     },
     # ==================== VAPID SETUP (super admin) ====================
+    "whatsapp-setup": {
+        "title": "WhatsApp bot setup (admin)",
+        "short": "Wire the Meta Cloud API to ClassUp so parents and teachers can interact with the platform over WhatsApp.",
+        "icon": "chat",
+        "roles": ["super_admin"],
+        "category": "Platform",
+        "overview": (
+            "This is the Phase 1 setup — proves the WhatsApp pipeline works end-to-end.\n\n"
+            "Once configured, every message a user sends to your business WhatsApp number will "
+            "arrive at ClassUp's webhook, get logged, and receive a canned auto-reply so the "
+            "sender knows the bot is alive. Real conversation flows (menus, balance queries, "
+            "log-an-absence) land in later phases. Nothing you set up here has to change when "
+            "those ship — this is the foundation."
+        ),
+        "steps": [
+            {
+                "title": "Prerequisites from Meta",
+                "body": (
+                    "Before opening ClassUp's UI, you need four things from your Meta Developer Console:\n\n"
+                    "1. A verified Business Portfolio (you have this — that's why we're on this page).\n"
+                    "2. A WhatsApp Business App inside that portfolio with a phone number registered.\n"
+                    "3. A permanent System User access token with the whatsapp_business_messaging + "
+                    "whatsapp_business_management permissions. Temporary tokens work for testing but "
+                    "expire in 24 hours — always use System User tokens in production.\n"
+                    "4. The App Secret from your Meta App → Settings → Basic."
+                ),
+                "tip": "System User tokens are made in Business Settings → System Users. Assign the token to your WhatsApp Business App with 'Manage' access.",
+            },
+            {
+                "title": "Fill in the four credentials",
+                "body": (
+                    "Sign in as super admin → sidebar → <strong>WhatsApp Settings</strong>. Fill in:\n\n"
+                    "• <strong>Phone number ID</strong> — Meta's internal ID for your WhatsApp phone number "
+                    "(from Developer Console → WhatsApp → API Setup). Not the actual +XX phone number.\n"
+                    "• <strong>Business account ID</strong> — the WABA ID from the same page (optional, "
+                    "used for template ops later).\n"
+                    "• <strong>Access token</strong> — the System User token you generated.\n"
+                    "• <strong>Verify token</strong> — pick any random string. You'll paste the same "
+                    "value into Meta's webhook config on the next step.\n"
+                    "• <strong>App secret</strong> — from Meta App → Settings → Basic. Used to verify "
+                    "the HMAC signature Meta signs every webhook payload with.\n\n"
+                    "Click <strong>Save</strong>. Status badge should turn green (<em>Configured</em>)."
+                ),
+                "tip": "You can later change the verify token, phone number ID, or business account ID without re-entering the secrets — leaving a password field as ******** preserves the existing value.",
+            },
+            {
+                "title": "Test the connection",
+                "body": (
+                    "Click <strong>Test connection</strong>. ClassUp fetches your phone number info "
+                    "from Meta's Graph API — cheap, safe, doesn't send a message. On success you'll "
+                    "see something like <em>\"OK — connected to +27 82 123 4567 (ClassUp)\"</em>.\n\n"
+                    "Common failures:\n"
+                    "• <strong>401 Unauthorised</strong> — access token wrong or expired. Regenerate.\n"
+                    "• <strong>404 Not found</strong> — phone number ID wrong.\n"
+                    "• <strong>Timeout</strong> — firewall or network issue reaching graph.facebook.com."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Register the webhook with Meta",
+                "body": (
+                    "On the WhatsApp Settings page, copy the two values from the <strong>Webhook URL</strong> panel:\n\n"
+                    "1. Copy the <strong>Callback URL</strong> — it looks like "
+                    "<code>https://your-instance.com/api/v1/whatsapp/webhook</code>.\n"
+                    "2. Copy the <strong>Verify token</strong>.\n\n"
+                    "In Meta Developer Console → WhatsApp → Configuration → Webhook → <strong>Edit</strong>:\n"
+                    "• Paste the Callback URL.\n"
+                    "• Paste the Verify token (same value in both places).\n"
+                    "• Click <strong>Verify and Save</strong>. Meta calls our webhook — should turn green.\n"
+                    "• Under Webhook Fields, <strong>Subscribe</strong> to the <code>messages</code> field."
+                ),
+                "tip": "If \"Verify and Save\" fails: check that the two verify tokens match exactly (case-sensitive), and that your ClassUp instance is publicly reachable from the internet (not localhost).",
+            },
+            {
+                "title": "Send a test message",
+                "body": (
+                    "On the WhatsApp Settings page, scroll to <strong>Send a test message</strong>. "
+                    "Enter a recipient phone number in E.164 format (e.g. +27821234567), pick the "
+                    "<code>welcome</code> template, and click <strong>Send test</strong>.\n\n"
+                    "The recipient should get the WhatsApp within a few seconds.\n\n"
+                    "<strong>Sandbox note</strong>: during Meta's sandbox mode (before you request "
+                    "production access), only phone numbers on your allow-list can receive messages. "
+                    "Add test numbers in Meta Developer Console → WhatsApp → API Setup."
+                ),
+                "tip": None,
+            },
+            {
+                "title": "Verify inbound (the real proof)",
+                "body": (
+                    "Now the fun part — <strong>send a WhatsApp from your phone to your business "
+                    "number</strong>. Within a few seconds:\n\n"
+                    "1. You'll see the message appear in the <strong>Recent inbound messages</strong> "
+                    "table on the WhatsApp Settings page (auto-refreshes every 10 seconds).\n"
+                    "2. Your phone will receive an auto-reply: <em>\"Hi &lt;your name&gt;, ClassUp "
+                    "received your message. Full WhatsApp features are on the way…\"</em>\n\n"
+                    "That's the whole POC. Pipeline verified in both directions. Real bot flows "
+                    "(menus, balance queries, log-an-absence, etc.) will build on this in later phases."
+                ),
+                "tip": "If your number is registered as a user in ClassUp (users.whatsapp_phone), the auto-reply greets you by name. Otherwise it says 'Hi there!' — still confirms the pipeline works, just means the sender isn't linked to a ClassUp account.",
+            },
+        ],
+        "examples": [
+            {
+                "title": "Adding a test phone number to Meta's allow-list",
+                "body": (
+                    "Meta Developer Console → WhatsApp → API Setup → Recipient phone numbers → "
+                    "Add phone number → enter in E.164 → verify with the code Meta sends. "
+                    "Repeat for every test number. Once you request production access + Meta approves, "
+                    "the allow-list disappears and you can message anyone."
+                ),
+            },
+        ],
+        "related": ["push-setup"],
+    },
     "push-setup": {
         "title": "Set up push notifications (admin)",
         "short": "Generate VAPID keys once so the platform can send web push notifications.",

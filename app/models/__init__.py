@@ -71,6 +71,7 @@ from app.models.accounting import (
     Vendor,
 )
 from app.models.push_subscription import PushSubscription
+from app.models.whatsapp_inbound import WhatsAppInboundMessage
 
 __all__ = [
     # Base
@@ -190,4 +191,5 @@ __all__ = [
     "Vendor",
     # Push notifications
     "PushSubscription",
+    "WhatsAppInboundMessage",
 ]

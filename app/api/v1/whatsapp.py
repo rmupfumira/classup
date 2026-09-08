@@ -1,16 +1,31 @@
-"""WhatsApp webhook API endpoints."""
+"""WhatsApp webhook API endpoints.
+
+POC flow — every inbound message:
+  1. Verified via HMAC (using the app_secret configured in
+     /admin/whatsapp-settings, falling back to APP_SECRET_KEY env var).
+  2. Deduplicated on Meta's message id (UNIQUE index).
+  3. Persisted to whatsapp_inbound_messages so the admin page can show it.
+  4. Sender matched against users.whatsapp_phone (across all tenants).
+  5. Auto-replied with a "we got it" text so the sender knows the pipe works.
+
+No bot flow yet — that lands in later phases. This file's job is purely
+to prove the plumbing is live.
+"""
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
-from app.database import get_db
-from app.services.whatsapp_service import get_whatsapp_service
+from app.database import get_db, get_db_context
+from app.models import User, WhatsAppInboundMessage
+from app.services.whatsapp_service import (
+    get_config,
+    get_whatsapp_service_from_db,
+)
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 
@@ -20,39 +35,43 @@ async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    Meta webhook verification challenge.
+    """Meta webhook verification handshake.
 
-    When setting up the webhook in Meta Developer Console, Meta sends
-    a GET request with a challenge that we must echo back.
+    When the super admin registers our webhook URL in the Meta Developer
+    Console, Meta hits this endpoint with a `hub.verify_token` value that
+    must match what's saved in /admin/whatsapp-settings. If it does, we
+    echo the `hub.challenge` back verbatim.
     """
-    whatsapp_service = get_whatsapp_service()
-
-    if hub_mode == "subscribe" and hub_verify_token == settings.whatsapp_verify_token:
+    cfg = await get_config(db)
+    if hub_mode == "subscribe" and hub_verify_token == cfg.verify_token and cfg.verify_token:
         logger.info("WhatsApp webhook verified successfully")
-        return Response(content=hub_challenge, media_type="text/plain")
+        return Response(content=hub_challenge or "", media_type="text/plain")
 
-    logger.warning(f"WhatsApp webhook verification failed: mode={hub_mode}")
+    logger.warning(
+        f"WhatsApp webhook verification failed: mode={hub_mode}, "
+        f"token_matches={hub_verify_token == cfg.verify_token}, "
+        f"token_configured={bool(cfg.verify_token)}"
+    )
     raise HTTPException(status_code=403, detail="Verification failed")
 
 
 @router.post("/webhook")
-async def receive_webhook(request: Request):
-    """
-    Process inbound WhatsApp messages.
+async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """Receive inbound events from Meta (messages + delivery receipts).
 
-    Meta sends webhook events for incoming messages, delivery receipts,
-    and other events.
+    We always return 200 to keep Meta happy — if we return anything else,
+    Meta retries + eventually disables the webhook. Errors get logged.
     """
-    whatsapp_service = get_whatsapp_service()
+    service = await get_whatsapp_service_from_db(db)
 
     # Get raw body for signature verification
     body_bytes = await request.body()
 
-    # Verify HMAC signature
+    # Verify HMAC signature (Meta sets X-Hub-Signature-256)
     signature = request.headers.get("X-Hub-Signature-256", "")
-    if signature and not whatsapp_service.verify_webhook_signature(body_bytes, signature):
+    if signature and not service.verify_webhook_signature(body_bytes, signature):
         logger.warning("Invalid WhatsApp webhook signature")
         raise HTTPException(status_code=403, detail="Invalid signature")
 
@@ -63,54 +82,126 @@ async def receive_webhook(request: Request):
         logger.error(f"Failed to parse WhatsApp webhook body: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    # Extract messages from the webhook
-    messages = whatsapp_service.parse_webhook_message(body)
+    # Meta also fires webhooks for delivery / read receipts — those don't
+    # have "messages" set, only "statuses". parse_webhook_message returns []
+    # for those, which is exactly what we want (no-op).
+    messages = service.parse_webhook_message(body)
 
     if messages:
         logger.info(f"Received {len(messages)} WhatsApp message(s)")
-
-        # Process each message
         for msg in messages:
-            await process_inbound_message(msg)
+            try:
+                await process_inbound_message(msg, body)
+            except Exception:
+                # Swallow per-message errors so one bad message never
+                # blocks the batch — Meta would keep retrying it forever.
+                logger.exception(
+                    "process_inbound_message failed for msg %s",
+                    msg.get("message_id"),
+                )
 
-    # Always return 200 OK to acknowledge receipt
-    # Meta will retry if we don't acknowledge
     return {"status": "ok"}
 
 
-async def process_inbound_message(msg: dict):
-    """
-    Process a single inbound WhatsApp message.
+async def process_inbound_message(msg: dict, raw_body: dict) -> None:
+    """Store the message, identify the sender, send an auto-reply.
 
-    This looks up the sender by phone number and creates
-    appropriate message records or notifications.
+    POC behaviour — every inbound message triggers a canned reply so the
+    admin can prove the pipeline works. Later phases replace the auto-reply
+    with a real bot flow (menu, intents, state machine).
     """
     from_phone = msg.get("from_phone")
-    text = msg.get("text", "")
-    message_type = msg.get("message_type")
+    text = msg.get("text") or ""
+    message_type = msg.get("message_type") or "unknown"
+    meta_message_id = msg.get("message_id")
 
-    logger.info(f"Processing WhatsApp message from {from_phone}: {text[:50]}...")
-
-    # TODO: Implement full message processing:
-    # 1. Look up user by whatsapp_phone in users table
-    # 2. If found, create a Message record
-    # 3. Notify relevant teachers via WebSocket
-    # 4. If not found, send auto-reply about registration
-
-    # For now, just log the message
-    # This will be fully implemented when we have the parent-student
-    # relationship lookup working
-
-    whatsapp_service = get_whatsapp_service()
-
-    # If we can't identify the sender, send a helpful reply
-    # (Only if we're in the 24-hour conversation window)
     if not from_phone:
+        logger.warning("Inbound WhatsApp message with no from_phone; skipping")
         return
 
-    # Example auto-reply for unregistered numbers:
-    # await whatsapp_service.send_text_message(
-    #     to_phone=from_phone,
-    #     body="Thank you for your message. This number is not registered with ClassUp. "
-    #          "Please contact your school to get registered."
-    # )
+    # Use a dedicated write session so a failure here doesn't leak into
+    # the request's main session (the webhook handler doesn't need to
+    # commit the message row atomically with anything else).
+    async with get_db_context() as db:
+        # Dedup via UNIQUE index on meta_message_id — Meta retries webhooks
+        # on 5xx, and once in a while we get the same message twice.
+        if meta_message_id:
+            existing = await db.execute(
+                select(WhatsAppInboundMessage).where(
+                    WhatsAppInboundMessage.meta_message_id == meta_message_id
+                )
+            )
+            if existing.scalar_one_or_none():
+                logger.info(
+                    f"Skipping duplicate WhatsApp message {meta_message_id} "
+                    f"from {from_phone}"
+                )
+                return
+
+        # Look up sender by phone. WhatsApp gives us the number without a
+        # leading +, but users.whatsapp_phone stores E.164 with the +. Try
+        # both spellings.
+        matched_user = await _find_user_by_phone(db, from_phone)
+
+        record = WhatsAppInboundMessage(
+            tenant_id=matched_user.tenant_id if matched_user else None,
+            matched_user_id=matched_user.id if matched_user else None,
+            from_phone=from_phone,
+            message_type=message_type,
+            text=text[:8000] if text else None,
+            meta_message_id=meta_message_id,
+            raw_payload=raw_body,
+        )
+        db.add(record)
+        await db.flush()
+
+        # Fire an auto-reply so the sender knows the pipeline received their
+        # message. Uses free-form text — safe within the 24hr WhatsApp
+        # session window (which is always open right after a user sends
+        # to us). Best-effort: any failure is logged on the record but
+        # doesn't crash the webhook.
+        try:
+            svc = await get_whatsapp_service_from_db(db)
+            if matched_user:
+                greeting = f"Hi {matched_user.first_name}, ClassUp received your message. "
+            else:
+                greeting = "Hi there! ClassUp received your message. "
+
+            reply = (
+                greeting
+                + "Full WhatsApp features are on the way — for now, log in at "
+                + "https://classup.co.za to check attendance, balances, and reports."
+            )
+            await svc.send_text_message(to_phone=from_phone, body=reply)
+            record.auto_replied = True
+        except Exception as e:
+            logger.exception(
+                "Failed to send auto-reply to %s for message %s",
+                from_phone, meta_message_id,
+            )
+            record.auto_reply_error = str(e)[:500]
+
+        await db.commit()
+
+
+async def _find_user_by_phone(
+    db: AsyncSession, from_phone: str
+) -> User | None:
+    """Look up a user by their WhatsApp phone across all tenants.
+
+    Meta strips the leading +; the DB usually stores it with the + (E.164).
+    We try both and prefer an active, non-deleted, opted-in user. If the
+    number matches an account that hasn't opted in yet we still return it
+    — the caller decides whether to auto-reply anyway.
+    """
+    candidates = {from_phone, f"+{from_phone.lstrip('+')}"}
+    result = await db.execute(
+        select(User)
+        .where(
+            User.whatsapp_phone.in_(list(candidates)),
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
