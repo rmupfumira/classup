@@ -112,6 +112,46 @@ class AnnouncementItem:
 # Private helpers
 # ---------------------------------------------------------------------------
 
+async def _resolve_tenant_id(
+    db: AsyncSession, parent_id: uuid.UUID
+) -> uuid.UUID:
+    """Return the tenant_id to scope tool queries by.
+
+    Fast path: the request-scoped tenant context (set by the bot
+    dispatchers before calling any tool) — matches every other
+    service in the app.
+
+    Fallback: if the context isn't set (e.g. an entry point I missed
+    when wiring a new mode), derive it from the parent's own user row.
+    Warns loudly so we notice + fix the real caller, but keeps the
+    bot working instead of confidently telling parents they have no
+    children linked (which is the failure mode when a query is scoped
+    to a null tenant).
+
+    Raises TenantContextError only when both paths fail — the parent
+    doesn't exist or has no tenant.
+    """
+    from app.utils.tenant_context import get_tenant_id_or_none
+
+    tid = get_tenant_id_or_none()
+    if tid is not None:
+        return tid
+
+    from app.exceptions import TenantContextError
+    user = await db.get(User, parent_id)
+    if user is None or user.tenant_id is None:
+        raise TenantContextError(
+            "Cannot resolve tenant — no context set and parent not found"
+        )
+    logger.warning(
+        "Tenant context missing in a bot tool; derived tenant_id=%s "
+        "from parent_id=%s. Whichever caller invoked the tool forgot "
+        "to set the context — check the dispatcher.",
+        user.tenant_id, parent_id,
+    )
+    return user.tenant_id
+
+
 async def _verify_parent_owns_child(
     db: AsyncSession, parent_id: uuid.UUID, child_id: uuid.UUID
 ) -> None:
@@ -159,8 +199,7 @@ async def get_my_children(
     name alongside the child's name so parents can tell whose class they're
     looking at.
     """
-    from app.utils.tenant_context import get_tenant_id
-    tenant_id = get_tenant_id()
+    tenant_id = await _resolve_tenant_id(db, parent_id)
 
     result = await db.execute(
         select(Student)
@@ -204,9 +243,8 @@ async def get_child_balance(
     await _verify_parent_owns_child(db, parent_id, child_id)
 
     from app.models import BillingInvoice, Tenant
-    from app.utils.tenant_context import get_tenant_id
 
-    tenant_id = get_tenant_id()
+    tenant_id = await _resolve_tenant_id(db, parent_id)
 
     result = await db.execute(
         select(BillingInvoice)
@@ -313,9 +351,8 @@ async def get_child_latest_report(
     await _verify_parent_owns_child(db, parent_id, child_id)
 
     from app.config import get_settings
-    from app.utils.tenant_context import get_tenant_id
 
-    tenant_id = get_tenant_id()
+    tenant_id = await _resolve_tenant_id(db, parent_id)
     result = await db.execute(
         select(DailyReport)
         .where(
@@ -400,8 +437,7 @@ async def get_recent_announcements(
       - School-wide (class_id NULL) OR posted to one of the parent's
         children's classes.
     """
-    from app.utils.tenant_context import get_tenant_id
-    tenant_id = get_tenant_id()
+    tenant_id = await _resolve_tenant_id(db, parent_id)
 
     # Get the classes this parent's children are in (unique, non-null).
     child_class_ids_result = await db.execute(
