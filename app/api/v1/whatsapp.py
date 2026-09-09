@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db, get_db_context
 from app.models import Tenant, User, WhatsAppInboundMessage
 from app.services.whatsapp_bot import BotMode, handle_inbound_message
+from app.services.whatsapp_menu_bot import ButtonReply, ListReply, TextReply
 from app.services.whatsapp_service import (
     get_config,
     get_whatsapp_service_from_db,
@@ -116,6 +117,9 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
     text = msg.get("text") or ""
     message_type = msg.get("message_type") or "unknown"
     meta_message_id = msg.get("message_id")
+    # Parser populates this for button/list replies — carries the state
+    # machine's ``menu:<flow>`` / ``pick:<flow>:<child>`` payload.
+    interactive_id = msg.get("interactive_id")
 
     if not from_phone:
         logger.warning("Inbound WhatsApp message with no from_phone; skipping")
@@ -167,13 +171,37 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
             mode, reply = await handle_inbound_message(
                 db=db,
                 tenant=tenant,
+                user=matched_user,
                 from_phone=from_phone,
                 text=text,
-                matched_user_name=matched_user.first_name if matched_user else None,
+                interactive_id=interactive_id,
             )
-            if reply and mode is not BotMode.OFF:
+            if reply is not None and mode is not BotMode.OFF:
                 svc = await get_whatsapp_service_from_db(db)
-                await svc.send_text_message(to_phone=from_phone, body=reply)
+                # Dispatch on the reply's shape — the bot returns one of
+                # three response types, each maps to a different Meta API
+                # payload.
+                if isinstance(reply, TextReply):
+                    await svc.send_text_message(
+                        to_phone=from_phone, body=reply.body,
+                    )
+                elif isinstance(reply, ButtonReply):
+                    await svc.send_interactive_buttons(
+                        to_phone=from_phone,
+                        body=reply.body,
+                        buttons=reply.buttons,
+                        header=reply.header,
+                        footer=reply.footer,
+                    )
+                elif isinstance(reply, ListReply):
+                    await svc.send_interactive_list(
+                        to_phone=from_phone,
+                        body=reply.body,
+                        button_text=reply.button_text,
+                        sections=reply.sections,
+                        header=reply.header,
+                        footer=reply.footer,
+                    )
                 record.auto_replied = True
         except Exception as e:
             logger.exception(

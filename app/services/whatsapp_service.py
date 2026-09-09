@@ -316,6 +316,137 @@ class WhatsAppService:
 
         return await self._send_request(payload)
 
+    async def send_interactive_buttons(
+        self,
+        to_phone: str,
+        body: str,
+        buttons: list[dict[str, str]],
+        header: str | None = None,
+        footer: str | None = None,
+    ) -> dict | None:
+        """Send a WhatsApp interactive message with up to 3 quick-reply buttons.
+
+        Args:
+            to_phone: Recipient phone number in E.164 format
+            body: Main message text (max 1024 chars)
+            buttons: List of ``{"id": ..., "title": ...}`` — max 3.
+                Title max 20 chars; ID max 256 chars (we use it to encode the
+                menu state for the state machine).
+            header: Optional bold header above the body (max 60 chars).
+            footer: Optional footer below the body (max 60 chars).
+
+        Meta rejects the message with 400 if any of the caps are exceeded, so
+        we truncate defensively — a truncated button title still works, a
+        400 doesn't.
+        """
+        if not self.is_configured:
+            logger.warning("WhatsApp not configured, skipping message")
+            return None
+
+        if not buttons:
+            raise ValueError("At least one button is required")
+        if len(buttons) > 3:
+            raise ValueError("WhatsApp allows at most 3 interactive buttons")
+
+        clean_phone = to_phone.lstrip("+")
+        interactive: dict = {
+            "type": "button",
+            "body": {"text": body[:1024]},
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": str(b["id"])[:256],
+                            "title": str(b["title"])[:20],
+                        },
+                    }
+                    for b in buttons
+                ]
+            },
+        }
+        if header:
+            interactive["header"] = {"type": "text", "text": header[:60]}
+        if footer:
+            interactive["footer"] = {"text": footer[:60]}
+
+        return await self._send_request({
+            "messaging_product": "whatsapp",
+            "to": clean_phone,
+            "type": "interactive",
+            "interactive": interactive,
+        })
+
+    async def send_interactive_list(
+        self,
+        to_phone: str,
+        body: str,
+        button_text: str,
+        sections: list[dict],
+        header: str | None = None,
+        footer: str | None = None,
+    ) -> dict | None:
+        """Send a WhatsApp interactive list message.
+
+        Lists are the right choice when you have more than 3 options — the
+        user taps the ``button_text`` button to expand a modal with up to
+        10 rows across one or more sections.
+
+        Args:
+            to_phone: Recipient phone number in E.164 format
+            body: Main message text (max 1024 chars)
+            button_text: The button label that opens the list (max 20 chars)
+            sections: [{"title": "...", "rows": [{"id": ..., "title": ...,
+                "description": ...}, ...]}, ...] — max 10 rows total across
+                all sections. Row title max 24 chars, description max 72,
+                id max 200. Section title optional but recommended if >1.
+            header: Optional bold header (max 60 chars).
+            footer: Optional footer (max 60 chars).
+        """
+        if not self.is_configured:
+            logger.warning("WhatsApp not configured, skipping message")
+            return None
+
+        total_rows = sum(len(s.get("rows", [])) for s in sections)
+        if total_rows == 0:
+            raise ValueError("List message needs at least one row")
+        if total_rows > 10:
+            raise ValueError("WhatsApp allows at most 10 rows in a list")
+
+        clean_phone = to_phone.lstrip("+")
+        interactive: dict = {
+            "type": "list",
+            "body": {"text": body[:1024]},
+            "action": {
+                "button": button_text[:20],
+                "sections": [
+                    {
+                        "title": (s.get("title") or "")[:24],
+                        "rows": [
+                            {
+                                "id": str(r["id"])[:200],
+                                "title": str(r["title"])[:24],
+                                "description": str(r.get("description") or "")[:72],
+                            }
+                            for r in s.get("rows", [])
+                        ],
+                    }
+                    for s in sections
+                ],
+            },
+        }
+        if header:
+            interactive["header"] = {"type": "text", "text": header[:60]}
+        if footer:
+            interactive["footer"] = {"text": footer[:60]}
+
+        return await self._send_request({
+            "messaging_product": "whatsapp",
+            "to": clean_phone,
+            "type": "interactive",
+            "interactive": interactive,
+        })
+
     async def _send_request(self, payload: dict) -> dict | None:
         """Send a request to the WhatsApp API."""
         url = f"{self.api_url}/{self.phone_number_id}/messages"
@@ -369,19 +500,31 @@ class WhatsAppService:
                             "message_type": msg.get("type"),
                             "timestamp": msg.get("timestamp"),
                             "message_id": msg.get("id"),
+                            # ``interactive_id`` is the developer-set id from
+                            # the button or list row the user tapped — this
+                            # is what the bot state machine dispatches on.
+                            # ``text`` alone is the human-readable title.
+                            "interactive_id": None,
                         }
 
                         # Extract text based on message type
                         if msg.get("type") == "text":
                             parsed["text"] = msg.get("text", {}).get("body", "")
                         elif msg.get("type") == "button":
+                            # Template quick-reply button (not the new
+                            # interactive button API — templates send this).
                             parsed["text"] = msg.get("button", {}).get("text", "")
+                            parsed["interactive_id"] = msg.get("button", {}).get("payload")
                         elif msg.get("type") == "interactive":
                             interactive = msg.get("interactive", {})
                             if interactive.get("type") == "button_reply":
-                                parsed["text"] = interactive.get("button_reply", {}).get("title", "")
+                                reply = interactive.get("button_reply", {})
+                                parsed["text"] = reply.get("title", "")
+                                parsed["interactive_id"] = reply.get("id")
                             elif interactive.get("type") == "list_reply":
-                                parsed["text"] = interactive.get("list_reply", {}).get("title", "")
+                                reply = interactive.get("list_reply", {})
+                                parsed["text"] = reply.get("title", "")
+                                parsed["interactive_id"] = reply.get("id")
                         else:
                             parsed["text"] = f"[{msg.get('type')} message]"
 

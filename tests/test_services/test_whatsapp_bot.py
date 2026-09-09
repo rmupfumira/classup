@@ -8,6 +8,7 @@ Covers Phase 2A wiring:
   correctly and enforces the plan-gated opt-in for the WhatsApp features.
 """
 
+import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -18,7 +19,7 @@ from app.api.v1.admin import (
     TenantFeaturesUpdateRequest,
     update_tenant_features,
 )
-from app.models import Tenant
+from app.models import Tenant, User
 from app.services.whatsapp_bot import (
     BotMode,
     handle_inbound_message,
@@ -99,12 +100,24 @@ class TestResolveBotMode:
         assert resolve_bot_mode(tenant, {"whatsapp_enabled": True}) is BotMode.OFF  # type: ignore[arg-type]
 
 
+def _user(first_name: str = "Alice", tenant_id: uuid.UUID | None = None) -> User:
+    """Lightweight User stand-in — dispatch only reads first_name + id + role."""
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id or uuid.uuid4(),
+        first_name=first_name,
+        last_name="Parent",
+        role="PARENT",
+    )  # type: ignore[return-value]
+
+
 class TestHandleInboundMessage:
-    """Dispatcher wraps the resolver with a plan-features fetch and returns
-    the reply text (or None). Actual send is done by the caller."""
+    """Dispatcher wraps the resolver with a plan-features fetch. In MENU
+    mode it delegates to the state machine (patched here to isolate);
+    in AI mode it still returns a placeholder in Phase 2B."""
 
     async def test_off_returns_none_reply(self, db: AsyncSession):
-        # No plan features — resolver returns OFF, no reply text.
+        # No plan features — resolver returns OFF, no reply.
         with patch(
             "app.services.whatsapp_bot._load_plan_features",
             return_value=None,
@@ -112,34 +125,44 @@ class TestHandleInboundMessage:
             mode, reply = await handle_inbound_message(
                 db=db,
                 tenant=_tenant({"whatsapp_enabled": True}),  # type: ignore[arg-type]
+                user=_user(),
                 from_phone="27821234567",
                 text="hi",
-                matched_user_name="Alice",
+                interactive_id=None,
             )
         assert mode is BotMode.OFF
         assert reply is None
 
-    async def test_menu_returns_placeholder_reply(self, db: AsyncSession):
-        # Phase 2A placeholder — MENU returns a canned message. Replaced in 2B.
+    async def test_menu_delegates_to_state_machine(self, db: AsyncSession):
+        # MENU mode should call handle_menu_message. Patch it so this test
+        # doesn't hit the tools layer (that's covered in menu-bot tests).
+        from app.services.whatsapp_menu_bot import TextReply
+        sentinel = TextReply(body="from state machine")
+
         tenant = _tenant({"whatsapp_enabled": True, "whatsapp_ai_enabled": False})
         with patch(
             "app.services.whatsapp_bot._load_plan_features",
             return_value={"whatsapp_enabled": True, "whatsapp_ai_enabled": False},
-        ):
+        ), patch(
+            "app.services.whatsapp_menu_bot.handle_menu_message",
+            new=AsyncMock(return_value=sentinel),
+        ) as mock_menu:
             mode, reply = await handle_inbound_message(
                 db=db,
                 tenant=tenant,  # type: ignore[arg-type]
+                user=_user(),
                 from_phone="27821234567",
                 text="hi",
-                matched_user_name="Alice",
+                interactive_id=None,
             )
         assert mode is BotMode.MENU
-        assert reply is not None
-        assert "Alice" in reply
-        assert "menu-driven" in reply  # placeholder wording gate
+        assert reply is sentinel
+        mock_menu.assert_awaited_once()
 
     async def test_ai_returns_placeholder_reply(self, db: AsyncSession):
-        # Phase 2A placeholder — AI returns a canned message. Replaced in 2C.
+        # Phase 2C hasn't landed yet — AI still returns a canned message
+        # so a tenant that opts into AI early doesn't get radio silence.
+        from app.services.whatsapp_menu_bot import TextReply
         tenant = _tenant({"whatsapp_enabled": True, "whatsapp_ai_enabled": True})
         with patch(
             "app.services.whatsapp_bot._load_plan_features",
@@ -148,24 +171,33 @@ class TestHandleInboundMessage:
             mode, reply = await handle_inbound_message(
                 db=db,
                 tenant=tenant,  # type: ignore[arg-type]
+                user=_user(first_name="Bob"),
                 from_phone="27821234567",
                 text="what is my balance",
-                matched_user_name="Alice",
+                interactive_id=None,
             )
         assert mode is BotMode.AI
-        assert reply is not None
-        assert "Alice" in reply
-        assert "AI chat" in reply  # placeholder wording gate
+        assert isinstance(reply, TextReply)
+        assert "Bob" in reply.body
+        assert "AI chat" in reply.body
 
     async def test_unknown_sender_returns_off(self, db: AsyncSession):
-        # Sender phone didn't match any user → tenant=None → OFF, silent.
-        mode, reply = await handle_inbound_message(
-            db=db,
-            tenant=None,
-            from_phone="27821234567",
-            text="hi",
-            matched_user_name=None,
-        )
+        # Sender phone didn't match any user → user=None → OFF, silent.
+        # Even if plan+tenant would resolve to MENU, we can't dispatch
+        # without knowing whose data to fetch.
+        tenant = _tenant({"whatsapp_enabled": True})
+        with patch(
+            "app.services.whatsapp_bot._load_plan_features",
+            return_value={"whatsapp_enabled": True},
+        ):
+            mode, reply = await handle_inbound_message(
+                db=db,
+                tenant=tenant,  # type: ignore[arg-type]
+                user=None,
+                from_phone="27821234567",
+                text="hi",
+                interactive_id=None,
+            )
         assert mode is BotMode.OFF
         assert reply is None
 

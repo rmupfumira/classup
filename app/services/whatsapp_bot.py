@@ -32,10 +32,15 @@ from __future__ import annotations
 import logging
 import uuid
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Tenant
+
+if TYPE_CHECKING:
+    from app.models import User
+    from app.services.whatsapp_menu_bot import MenuResponse
 
 logger = logging.getLogger(__name__)
 
@@ -124,43 +129,56 @@ async def _load_plan_features(
 async def handle_inbound_message(
     db: AsyncSession,
     tenant: Tenant | None,
+    user: "User | None",
     from_phone: str,
     text: str | None,
-    matched_user_name: str | None,
-) -> tuple[BotMode, str | None]:
+    interactive_id: str | None,
+) -> "tuple[BotMode, MenuResponse | None]":
     """Dispatch an inbound WhatsApp message to the right mode handler.
 
-    Returns the resolved mode + the reply text to send (or ``None`` for OFF).
-    Actual send is done by the caller (which owns the WhatsApp API client).
+    Returns the resolved mode + the reply to send (a ``TextReply`` /
+    ``ButtonReply`` / ``ListReply`` from whatsapp_menu_bot). ``None``
+    means "do not send anything" — OFF mode, or an unmatched sender.
 
-    Phase 2A: MENU and AI return placeholder text. Phase 2B replaces MENU
-    with the real state-machine bot; Phase 2C replaces AI with the Claude
-    agent loop.
+    Phase 2B: MENU delegates to the whatsapp_menu_bot state machine.
+    Phase 2C: AI will delegate to a Claude tool-use loop; today it still
+    returns a placeholder text reply.
     """
     tenant_id = tenant.id if tenant else None
     plan_features = await _load_plan_features(db, tenant_id)
     mode = resolve_bot_mode(tenant, plan_features)
 
     logger.info(
-        "WhatsApp bot dispatch: tenant=%s user=%s mode=%s",
-        tenant_id, from_phone, mode.value,
+        "WhatsApp bot dispatch: tenant=%s user=%s mode=%s interactive=%s",
+        tenant_id, from_phone, mode.value, interactive_id,
     )
 
     if mode is BotMode.OFF:
         return mode, None
 
-    name = matched_user_name or "there"
+    # Sender didn't match a User in the tenant — even in an on-mode we
+    # can't tell whose data to fetch, so stay silent.
+    if user is None:
+        return BotMode.OFF, None
+
     if mode is BotMode.MENU:
-        reply = (
-            f"Hi {name} 👋 ClassUp WhatsApp is being set up here — the "
-            "menu-driven chat will be live soon. In the meantime, log in at "
-            "https://classup.co.za to check attendance, balances, and reports."
+        # Lazy import — whatsapp_menu_bot imports whatsapp_bot_tools which
+        # pulls in every model; keep it out of the module-level graph.
+        from app.services.whatsapp_menu_bot import handle_menu_message
+        reply = await handle_menu_message(
+            db=db, user=user, text=text or "", interactive_id=interactive_id,
         )
-    else:  # AI
-        reply = (
-            f"Hi {name} 👋 ClassUp AI chat is being set up here — natural "
-            "conversation with the school system will be live soon. For now, "
-            "log in at https://classup.co.za to check attendance, balances, "
-            "and reports."
+        return mode, reply
+
+    # AI — still a placeholder in Phase 2B.
+    from app.services.whatsapp_menu_bot import TextReply
+    return mode, TextReply(
+        body=(
+            f"Hi {user.first_name} 👋 ClassUp AI chat is being set up here — "
+            "natural conversation with the school system will be live soon. "
+            "For now, log in at https://classup.co.za to check attendance, "
+            "balances, and reports."
         )
-    return mode, reply
+    )
+
+
