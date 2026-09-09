@@ -449,3 +449,159 @@ class TestAILoop:
         assert isinstance(reply, TextReply)
         # Menu-bot flattened response — should mention at least one option.
         assert reply.body  # non-empty
+
+    async def test_corrupt_history_400_clears_session_and_retries(
+        self, db: AsyncSession, parent_with_child
+    ):
+        """A poisoned Redis session (orphan tool_result blocks) 400s
+        Claude. The outer handler must clear the session, retry ONCE
+        with a fresh conversation, and only fall through to menu bot
+        if the retry also fails."""
+        cfg = AIConfig(
+            api_key="sk-test", model="claude-haiku-4-5",
+            daily_message_cap_per_user=200, max_conversation_turns=10,
+        )
+
+        # First call: raise a 400 mimicking Anthropic's exact error
+        # text. Second call: succeed with a text reply (proves the
+        # retry ran).
+        bad_400 = RuntimeError(
+            "Error code: 400 - messages.0.content.0: unexpected "
+            "tool_use_id found in tool_result blocks"
+        )
+        mock_client = MagicMock()
+        mock_client.messages.create = AsyncMock(side_effect=[
+            bad_400,
+            _mk_text_response("Retry worked, hi Nomsa."),
+        ])
+
+        mock_store = SimpleNamespace(
+            get_history=AsyncMock(return_value=[
+                {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "orphan"}]},
+            ]),
+            save_history=AsyncMock(),
+            clear=AsyncMock(),
+        )
+
+        with patch(
+            "anthropic.AsyncAnthropic", return_value=mock_client,
+        ), patch(
+            "app.services.whatsapp_ai_bot.get_bot_session_store",
+            return_value=mock_store,
+        ):
+            reply = await whatsapp_ai_bot.handle_ai_message(
+                db=db, user=parent_with_child.parent,
+                tenant_name=parent_with_child.tenant.name,
+                text="hi", cfg=cfg,
+            )
+        assert isinstance(reply, TextReply)
+        assert "Retry worked" in reply.body
+        # Session was cleared exactly once before the retry.
+        mock_store.clear.assert_awaited_once()
+        # Claude was called twice — the failing first attempt + the retry.
+        assert mock_client.messages.create.await_count == 2
+
+
+class TestCleanTextOnlyTurns:
+    """The save-side sanitiser — must never emit a message list that
+    could 400 Anthropic when re-loaded and truncated."""
+
+    def test_strips_tool_use_blocks_from_assistant(self):
+        messages = [
+            {"role": "user", "content": "balance"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "name": "get_child_balance",
+                     "input": {"child_id": "abc"}, "id": "tu_1"},
+                    {"type": "text", "text": "Sarah owes R500."},
+                ],
+            },
+        ]
+        out = whatsapp_ai_bot._clean_text_only_turns(messages)
+        assert len(out) == 2
+        assert out[0] == {"role": "user", "content": "balance"}
+        # Assistant kept — only the text block survives.
+        assert out[1]["role"] == "assistant"
+        assert all(b["type"] == "text" for b in out[1]["content"])
+        assert "Sarah owes R500" in out[1]["content"][0]["text"]
+
+    def test_drops_user_tool_result_messages(self):
+        # A user message that's ONLY tool_result blocks (the reply we
+        # send back to Claude after executing tools) has no human
+        # content — dropping it entirely is safer than keeping half a
+        # tool exchange.
+        messages = [
+            {"role": "user", "content": "balance"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "name": "get_child_balance",
+                     "input": {"child_id": "abc"}, "id": "tu_1"},
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "tu_1",
+                     "content": "{\"balance\": 500}"},
+                ],
+            },
+            {
+                "role": "assistant",
+                "content": [{"type": "text", "text": "Sarah owes R500."}],
+            },
+        ]
+        out = whatsapp_ai_bot._clean_text_only_turns(messages)
+        # Only the text turns survive: user "balance" + assistant answer.
+        # The tool_use-only assistant + tool_result user get dropped so
+        # truncation can never orphan them.
+        roles = [m["role"] for m in out]
+        assert roles == ["user", "assistant"]
+        assert out[0]["content"] == "balance"
+        assert "Sarah owes R500" in out[1]["content"][0]["text"]
+
+    def test_truncation_after_cleaning_is_always_safe(self):
+        """The whole point — after cleaning + rolling-window trim to
+        the last N messages, we never leave an orphan tool_result at
+        position 0 (which is the 400 Claude gave us)."""
+        # A long conversation with tool calls in every turn.
+        long_history = []
+        for i in range(20):
+            long_history.append({"role": "user", "content": f"q{i}"})
+            long_history.append({
+                "role": "assistant",
+                "content": [
+                    {"type": "tool_use", "name": "get_my_children",
+                     "input": {}, "id": f"tu_{i}"},
+                ],
+            })
+            long_history.append({
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": f"tu_{i}",
+                     "content": "[]"},
+                ],
+            })
+            long_history.append({
+                "role": "assistant",
+                "content": [{"type": "text", "text": f"answer {i}"}],
+            })
+
+        cleaned = whatsapp_ai_bot._clean_text_only_turns(long_history)
+        # Every kept message is EITHER a user-string OR an assistant with
+        # text blocks only. No tool_result orphans possible.
+        for m in cleaned:
+            content = m["content"]
+            if isinstance(content, list):
+                for b in content:
+                    assert b.get("type") == "text", (
+                        f"leaked non-text block after cleaning: {b}"
+                    )
+        # Truncate to last 5 — even the strictest truncation stays valid.
+        window = cleaned[-5:]
+        for m in window:
+            content = m["content"]
+            if isinstance(content, list):
+                for b in content:
+                    assert b.get("type") == "text"

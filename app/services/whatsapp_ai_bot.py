@@ -382,9 +382,39 @@ async def handle_ai_message(
     user_tok = _current_user_id.set(user.id)
     role_tok = _current_user_role.set(user.role)
     try:
-        return await _handle_ai_message_inner(
-            db=db, user=user, tenant_name=tenant_name, text=text, cfg=cfg,
-        )
+        try:
+            return await _handle_ai_message_inner(
+                db=db, user=user, tenant_name=tenant_name, text=text, cfg=cfg,
+            )
+        except Exception as e:
+            # Recoverable class: corrupt Redis history (orphan tool_result
+            # blocks from an older bug, manual edit, whatever) 400s Claude
+            # forever until the 24h TTL expires. Clear + retry ONCE with
+            # a clean slate. Bounded to a single retry — no recursion —
+            # so a genuinely broken key can't run up the bill.
+            emsg = str(e).lower()
+            if "tool_use_id" in emsg or ("tool_result" in emsg and "unexpected" in emsg):
+                logger.warning(
+                    "Corrupt Redis session for user %s — clearing + retrying once.",
+                    user.id,
+                )
+                try:
+                    await get_bot_session_store().clear(user.id)
+                except Exception:
+                    logger.exception("Session clear failed for user %s", user.id)
+                try:
+                    return await _handle_ai_message_inner(
+                        db=db, user=user, tenant_name=tenant_name,
+                        text=text, cfg=cfg,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Claude call still failed after session clear for user %s",
+                        user.id,
+                    )
+            # Any other failure — or the retry above — falls through to
+            # the menu bot so the parent always gets a useful reply.
+            return await _menu_fallback(db, user, text)
     finally:
         _current_user_role.reset(role_tok)
         _current_user_id.reset(user_tok)
@@ -488,15 +518,29 @@ async def _handle_ai_message_inner(
                 "Could you try asking one thing at a time?"
             )
 
-    except Exception:
-        logger.exception("Claude call failed for user %s", user.id)
-        return await _menu_fallback(db, user, text)
+    except Exception as e:
+        # Surface the exception name in the log so we can tell 400s
+        # (usually recoverable corrupt history) apart from 401 /
+        # rate limits / network errors (all fatal for this turn).
+        logger.exception("Claude call failed for user %s: %s", user.id, type(e).__name__)
+        raise  # outer handle_ai_message decides whether to retry
 
     if not final_text or not final_text.strip():
         return await _menu_fallback(db, user, text)
 
-    # Persist history — trim server-side to what future turns will send.
-    await store.save_history(user.id, messages)
+    # Persist history — but only the *clean* text turns, not the
+    # intermediate tool_use ↔ tool_result blocks Claude used to get
+    # to its final answer. Reasons:
+    #   1. When the rolling window truncates history, an orphan
+    #      tool_result (with no matching tool_use before it) makes
+    #      Claude reject the whole request with 400. Only ever
+    #      persisting whole "user text → assistant text" turns
+    #      makes truncation safe at any boundary.
+    #   2. Tool calls are ephemeral: if next turn asks a related
+    #      question, Claude re-calls the tool anyway — the raw JSON
+    #      results add tokens without adding reasoning power.
+    clean_history = _clean_text_only_turns(messages)
+    await store.save_history(user.id, clean_history)
 
     return TextReply(body=final_text.strip()[:WA_MAX_REPLY_CHARS])
 
@@ -511,6 +555,52 @@ def _extract_text(content: list[Any]) -> str:
         if getattr(block, "type", None) == "text":
             parts.append(block.text)
     return "\n".join(parts).strip()
+
+
+def _clean_text_only_turns(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Strip tool_use / tool_result blocks from a message list.
+
+    Keeps only user text messages and assistant text blocks. The result
+    is a pure "user says X, assistant says Y" transcript — safe to
+    truncate at any point without breaking Anthropic's requirement
+    that every tool_result has a matching tool_use in the preceding
+    message.
+    """
+    out: list[dict[str, Any]] = []
+    for msg in messages:
+        role = msg.get("role")
+        content = msg.get("content")
+
+        if role == "user":
+            # A user message is EITHER a plain-text string ("hi") OR a
+            # list of blocks (only ever tool_result blocks in our
+            # code). We keep the string version and drop the list one.
+            if isinstance(content, str):
+                out.append({"role": "user", "content": content})
+            elif isinstance(content, list):
+                text_blocks = [
+                    b for b in content
+                    if isinstance(b, dict) and b.get("type") == "text"
+                ]
+                if text_blocks:
+                    out.append({"role": "user", "content": text_blocks})
+            # else: skip entirely (all-tool_result messages have no
+            # user-facing content worth preserving)
+
+        elif role == "assistant":
+            # Assistant messages always come back as a list of blocks.
+            # Drop everything except text blocks; if that leaves the
+            # message empty (Claude only called tools this turn) skip it.
+            if isinstance(content, str):
+                out.append({"role": "assistant", "content": content})
+            elif isinstance(content, list):
+                text_blocks = [
+                    b for b in content
+                    if isinstance(b, dict) and b.get("type") == "text"
+                ]
+                if text_blocks:
+                    out.append({"role": "assistant", "content": text_blocks})
+    return out
 
 
 def _block_to_dict(block: Any) -> dict[str, Any]:
