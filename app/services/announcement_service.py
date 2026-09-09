@@ -410,15 +410,17 @@ class AnnouncementService:
             tenant = await db.get(Tenant, announcement.tenant_id)
             tenant_name = tenant.name if tenant else "ClassUp"
 
-            # Get parent recipient emails only
+            # Load full parent User rows (we need them for the WhatsApp
+            # mirror too — email alone doesn't tell us who opted in for
+            # WhatsApp notifications).
             result = await db.execute(
-                select(User.email).where(
+                select(User).where(
                     User.id.in_(recipient_ids),
                     User.role == "PARENT",
                     User.email.isnot(None),
                 )
             )
-            parent_emails = [row[0] for row in result.all()]
+            parents = list(result.scalars().all())
 
             class_name = None
             if announcement.school_class:
@@ -428,11 +430,13 @@ class AnnouncementService:
             if announcement.creator:
                 creator_name = f"{announcement.creator.first_name} {announcement.creator.last_name}"
 
-            for email in parent_emails:
+            from app.services import parent_notifier
+            subject_text = f"[{severity_label}] {announcement.title}"
+            for parent in parents:
                 try:
                     await email_service.send(
-                        to=email,
-                        subject=f"[{severity_label}] {announcement.title}",
+                        to=parent.email,
+                        subject=subject_text,
                         template_name="announcement_alert.html",
                         context={
                             "severity": announcement.severity,
@@ -445,7 +449,12 @@ class AnnouncementService:
                         from_name=tenant_name,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to send announcement email to {email}: {e}")
+                    logger.error(f"Failed to send announcement email to {parent.email}: {e}")
+                # WhatsApp mirror — uses the same subject line as the email.
+                await parent_notifier.notify_announcement(
+                    db, parent,
+                    tenant_name=tenant_name, subject=announcement.title,
+                )
         except Exception as e:
             logger.error(f"Failed to send announcement emails: {e}")
 

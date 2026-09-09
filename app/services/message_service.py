@@ -771,6 +771,13 @@ class MessageService:
                     },
                     from_name=tenant_name,
                 )
+                # WhatsApp mirror
+                from app.services import parent_notifier
+                await parent_notifier.notify_message_received(
+                    db, recipient_user,
+                    tenant_name=tenant_name, sender_name=sender_name,
+                    student_name=student_name,
+                )
         except Exception as e:
             logger.error(f"Failed to send message email: {e}")
 

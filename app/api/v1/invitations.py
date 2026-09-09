@@ -156,6 +156,13 @@ async def create_invitation(
                     )
                 except Exception as e:
                     logger.error(f"Failed to send child-linked email: {e}")
+                # WhatsApp mirror
+                from app.services import parent_notifier
+                await parent_notifier.notify_parent_link_child(
+                    db, existing_parent,
+                    tenant_name=tenant.name,
+                    student_name=f"{student.first_name} {student.last_name}",
+                )
 
             return APIResponse(
                 status="success",
@@ -194,6 +201,10 @@ async def create_invitation(
                 )
             except Exception as e:
                 logger.error(f"Failed to send invitation email: {e}")
+            # Invitation flow doesn't collect a phone yet — no WhatsApp
+            # mirror. Once the parent registers + adds a WhatsApp number
+            # in Profile, subsequent notifications (reports, invoices,
+            # etc.) will flow through both channels.
 
         return APIResponse(
             status="success",
@@ -326,6 +337,10 @@ async def resend_invitation(
                 )
             except Exception as e:
                 logger.error(f"Failed to send invitation email: {e}")
+            # Invitation flow doesn't collect a phone yet — no WhatsApp
+            # mirror. Once the parent registers + adds a WhatsApp number
+            # in Profile, subsequent notifications (reports, invoices,
+            # etc.) will flow through both channels.
 
         return APIResponse(
             status="success",

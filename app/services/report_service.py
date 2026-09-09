@@ -750,6 +750,13 @@ class ReportService:
                 )
             except Exception as e:
                 logger.error(f"Failed to email parent {parent.email} for report {report.id}: {e}")
+            # WhatsApp mirror
+            from app.services import parent_notifier
+            await parent_notifier.notify_report_ready(
+                db, parent,
+                report_type=report_type, student_name=student_name,
+                url=view_url,
+            )
 
         # Create in-app notifications for all parents
         if parent_ids:

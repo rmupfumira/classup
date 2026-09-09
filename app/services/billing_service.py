@@ -1045,6 +1045,14 @@ class BillingService:
                         "Failed to send overdue reminder email to parent %s for invoice %s",
                         parent.id, invoice.id,
                     )
+                from app.services import parent_notifier
+                await parent_notifier.notify_invoice_overdue(
+                    db, parent,
+                    tenant_name=tenant.name, student_name=student_name,
+                    invoice_number=invoice.invoice_number,
+                    outstanding_balance=invoice.balance,
+                    due_date_str=due_date_str, currency=currency,
+                )
 
             # Send in-app notifications
             try:
@@ -1236,6 +1244,14 @@ class BillingService:
                     "Failed to send invoice email to parent %s for invoice %s",
                     parent.id, invoice.id,
                 )
+            from app.services import parent_notifier
+            await parent_notifier.notify_invoice_sent(
+                db, parent,
+                tenant_name=tenant.name, student_name=student_name,
+                invoice_number=invoice.invoice_number,
+                total_amount=invoice.total_amount,
+                due_date_str=due_date_str, currency=currency,
+            )
 
     async def _notify_parents_invoice(
         self, db: AsyncSession, invoice: BillingInvoice

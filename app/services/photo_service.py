@@ -412,12 +412,12 @@ class PhotoService:
             tenant_name = tenant.name if tenant else "ClassUp"
 
             result = await db.execute(
-                select(User.email).where(
+                select(User).where(
                     User.id.in_(recipient_ids),
                     User.email.isnot(None),
                 )
             )
-            parent_emails = [row[0] for row in result.all()]
+            parents = list(result.scalars().all())
 
             tagged_names = photo_share.tagged_student_names
 
@@ -428,10 +428,11 @@ class PhotoService:
                     url = file_service.generate_presigned_url(psf.file_entity, expires_in=7 * 24 * 3600)
                     photo_urls.append(url)
 
-            for email in parent_emails:
+            from app.services import parent_notifier
+            for parent in parents:
                 try:
                     await email_service.send(
-                        to=email,
+                        to=parent.email,
                         subject=f"New Photos: {class_name}",
                         template_name="photo_shared.html",
                         context={
@@ -446,7 +447,12 @@ class PhotoService:
                         from_name=tenant_name,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to send photo share email to {email}: {e}")
+                    logger.error(f"Failed to send photo share email to {parent.email}: {e}")
+                await parent_notifier.notify_photo_shared(
+                    db, parent,
+                    tenant_name=tenant_name, sharer_name=sharer_name,
+                    class_name=class_name, photo_count=photo_count,
+                )
         except Exception as e:
             logger.error(f"Failed to send photo share emails: {e}")
 

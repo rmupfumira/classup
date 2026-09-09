@@ -464,18 +464,20 @@ class DocumentService:
             tenant = await db.get(Tenant, doc_share.tenant_id)
             tenant_name = tenant.name if tenant else "ClassUp"
 
+            # Full User rows so we can mirror the notification to WhatsApp.
             result = await db.execute(
-                select(User.email).where(
+                select(User).where(
                     User.id.in_(recipient_ids),
                     User.email.isnot(None),
                 )
             )
-            parent_emails = [row[0] for row in result.all()]
+            parents = list(result.scalars().all())
 
-            for email in parent_emails:
+            from app.services import parent_notifier
+            for parent in parents:
                 try:
                     await email_service.send(
-                        to=email,
+                        to=parent.email,
                         subject=f"New Document: {doc_share.title}",
                         template_name="document_shared.html",
                         context={
@@ -492,7 +494,12 @@ class DocumentService:
                         from_name=tenant_name,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to send document share email to {email}: {e}")
+                    logger.error(f"Failed to send document share email to {parent.email}: {e}")
+                await parent_notifier.notify_document_shared(
+                    db, parent,
+                    tenant_name=tenant_name, sharer_name=sharer_name,
+                    title=doc_share.title, scope=scope_label,
+                )
         except Exception as e:
             logger.error(f"Failed to send document share emails: {e}")
 

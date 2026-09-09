@@ -676,6 +676,14 @@ class AttendanceService:
                     f"Failed to email attendance alert to {parent.email} "
                     f"for student {student.id}: {e}"
                 )
+            # WhatsApp mirror — silent no-op if parent hasn't opted in
+            # or tenant hasn't enabled WhatsApp. Never blocks the email.
+            from app.services import parent_notifier
+            await parent_notifier.notify_attendance_alert(
+                db, parent,
+                student_name=student_name, status=status,
+                tenant_name=tenant_name,
+            )
 
         if parent_ids:
             try:
@@ -735,6 +743,12 @@ class AttendanceService:
                     f"Failed to email pickup alert to {parent.email} "
                     f"for student {student.id}: {e}"
                 )
+            from app.services import parent_notifier
+            await parent_notifier.notify_pickup_alert(
+                db, parent,
+                tenant_name=tenant_name, student_name=student_name,
+                time_str=time_str,
+            )
 
         if parent_ids:
             try:
