@@ -48,7 +48,15 @@ class BotMode(str, Enum):
     AI = "AI"
 
 
-# Keep in sync with app/web/settings.py optin_features + subscription_service.py
+# Features that follow opt-in semantics: the plan gates AVAILABILITY, but
+# the tenant admin must consciously enable them. Never auto-enabled from a
+# plan upgrade — this is the "no surprise WhatsApp replies to parents"
+# guarantee.
+OPTIN_FEATURES: frozenset[str] = frozenset({
+    "whatsapp_enabled",
+    "whatsapp_ai_enabled",
+})
+
 _PLAN_WHATSAPP_KEY = "whatsapp_enabled"
 _PLAN_AI_KEY = "whatsapp_ai_enabled"
 _TENANT_WHATSAPP_KEY = "whatsapp_enabled"

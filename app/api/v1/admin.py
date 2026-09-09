@@ -139,6 +139,120 @@ async def update_tenant(
     )
 
 
+class TenantFeaturesUpdateRequest(BaseModel):
+    """Partial features update — merges into tenant.settings.features."""
+
+    features: dict[str, bool] = Field(
+        ...,
+        description=(
+            "Feature keys to update, mapped to True/False. Only the keys "
+            "included are changed; other features are left as-is."
+        ),
+    )
+
+
+@router.get("/tenants/{tenant_id}/features")
+@require_super_admin()
+async def get_tenant_features(
+    tenant_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Read a tenant's features + the plan-level gating info super admin
+    needs to render the toggles UI (which are locked vs. available vs. on).
+    """
+    from app.models import Tenant
+    from app.services.subscription_service import get_subscription_service
+
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant:
+        from app.exceptions import NotFoundException
+        raise NotFoundException("Tenant not found")
+
+    features = (tenant.settings or {}).get("features", {}) or {}
+
+    plan_features: dict = {}
+    try:
+        sub = await get_subscription_service().get_tenant_subscription(db, tenant_id)
+        if sub and sub.plan and sub.plan.features:
+            plan_features = sub.plan.features
+    except Exception:
+        logger.exception("Failed to load subscription for tenant %s", tenant_id)
+
+    return APIResponse(
+        status="success",
+        data={
+            "tenant_id": str(tenant_id),
+            "features": features,
+            "plan_features": plan_features,
+        },
+    )
+
+
+@router.put("/tenants/{tenant_id}/features")
+@require_super_admin()
+async def update_tenant_features(
+    tenant_id: uuid.UUID,
+    request: TenantFeaturesUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Update a tenant's features (Super Admin only).
+
+    Merges the given keys into tenant.settings.features — untouched keys are
+    preserved, so this is safe to call with partial input from a UI panel
+    that only exposes a subset of features (e.g. the WhatsApp toggles on
+    the tenant edit page).
+
+    Enforces the same opt-in gating as /settings/features: for opt-in
+    features (WhatsApp / AI bot), the tenant's subscription plan must allow
+    the feature before super admin can turn it on — otherwise the request
+    is silently coerced to False. This keeps a single source of truth for
+    what "the plan allows this" means, whether the toggle is flipped from
+    the tenant admin UI or the super admin tenant editor.
+    """
+    from app.exceptions import NotFoundException
+    from app.models import Tenant
+    from app.services.subscription_service import get_subscription_service
+    from app.services.whatsapp_bot import OPTIN_FEATURES
+
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant:
+        raise NotFoundException("Tenant not found")
+
+    plan_features: dict = {}
+    try:
+        sub = await get_subscription_service().get_tenant_subscription(db, tenant_id)
+        if sub and sub.plan and sub.plan.features:
+            plan_features = sub.plan.features
+    except Exception:
+        logger.exception("Failed to load subscription for tenant %s", tenant_id)
+
+    settings = dict(tenant.settings or {})
+    features = dict(settings.get("features", {}))
+
+    for key, value in request.features.items():
+        wanted = bool(value)
+        if key in OPTIN_FEATURES:
+            # Plan-gated opt-in — silently force off if plan disallows.
+            features[key] = wanted if plan_features.get(key, False) else False
+        else:
+            features[key] = wanted
+
+    settings["features"] = features
+    tenant.settings = settings
+    await db.commit()
+
+    logger.info(
+        "Super admin updated features for tenant %s: %s",
+        tenant_id, request.features,
+    )
+
+    return APIResponse(
+        status="success",
+        data={"tenant_id": str(tenant_id), "features": features},
+        message="Tenant features updated",
+    )
+
+
 @router.delete("/tenants/{tenant_id}")
 @require_super_admin()
 async def delete_tenant(

@@ -1,17 +1,23 @@
-"""Tests for the WhatsApp bot mode resolver + dispatch.
+"""Tests for the WhatsApp bot mode resolver + dispatch + admin endpoint.
 
 Covers Phase 2A wiring:
 - resolve_bot_mode truth table across (plan_features x tenant.features)
 - handle_inbound_message returns the resolved mode + a reply for MENU/AI
   and (mode, None) for OFF so the caller knows to stay silent.
+- The super admin PUT /api/v1/admin/tenants/{id}/features endpoint merges
+  correctly and enforces the plan-gated opt-in for the WhatsApp features.
 """
 
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.admin import (
+    TenantFeaturesUpdateRequest,
+    update_tenant_features,
+)
 from app.models import Tenant
 from app.services.whatsapp_bot import (
     BotMode,
@@ -162,3 +168,155 @@ class TestHandleInboundMessage:
         )
         assert mode is BotMode.OFF
         assert reply is None
+
+
+@pytest.fixture
+def _as_super_admin():
+    """Set the super-admin context so @require_super_admin() lets us in when
+    calling the endpoint handler directly (no HTTP client / no auth middleware
+    in these tests)."""
+    import uuid as _uuid
+    from app.utils.tenant_context import _current_user_id, _current_user_role
+
+    uid_tok = _current_user_id.set(_uuid.uuid4())
+    role_tok = _current_user_role.set("SUPER_ADMIN")
+    try:
+        yield
+    finally:
+        _current_user_role.reset(role_tok)
+        _current_user_id.reset(uid_tok)
+
+
+@pytest.mark.usefixtures("_as_super_admin")
+class TestAdminFeaturesEndpoint:
+    """Super admin PUT /api/v1/admin/tenants/{id}/features — the endpoint
+    the tenant-edit page calls. Must merge (never wipe other features) and
+    must enforce plan-gated opt-in the same way the tenant admin page does.
+    """
+
+    async def _make_tenant(self, db: AsyncSession, features: dict) -> Tenant:
+        import uuid as _uuid
+        tid = _uuid.uuid4()
+        t = Tenant(
+            id=tid,
+            name=f"WA Bot Test {tid.hex[:6]}",
+            slug=f"wabot-{tid.hex[:8]}",
+            email=f"admin@wabot-{tid.hex[:8]}.test",
+            education_type="PRIMARY_SCHOOL",
+            settings={"features": features, "education_type": "PRIMARY_SCHOOL"},
+            is_active=True,
+            onboarding_completed=True,
+        )
+        db.add(t)
+        await db.commit()
+        await db.refresh(t)
+        return t
+
+    def _mock_plan(self, plan_features: dict):
+        """Patch subscription lookup to return a plan with the given features."""
+        plan = SimpleNamespace(features=plan_features, name="Test Plan")
+        sub = SimpleNamespace(plan=plan)
+        svc = SimpleNamespace(get_tenant_subscription=AsyncMock(return_value=sub))
+        return patch(
+            "app.services.subscription_service.get_subscription_service",
+            return_value=svc,
+        )
+
+    async def test_merge_preserves_unrelated_features(self, db: AsyncSession):
+        # A tenant with lots of features on. Toggling WhatsApp on must
+        # NOT wipe billing, attendance, etc. — the classic bug when a
+        # partial update replaces the whole nested dict.
+        tenant = await self._make_tenant(db, {
+            "billing": True,
+            "attendance_tracking": True,
+            "messaging": True,
+        })
+        try:
+            with self._mock_plan({"whatsapp_enabled": True, "whatsapp_ai_enabled": True}):
+                resp = await update_tenant_features(
+                    tenant_id=tenant.id,
+                    request=TenantFeaturesUpdateRequest(
+                        features={"whatsapp_enabled": True}
+                    ),
+                    db=db,
+                )
+            assert resp.status == "success"
+            assert resp.data["features"]["billing"] is True
+            assert resp.data["features"]["attendance_tracking"] is True
+            assert resp.data["features"]["messaging"] is True
+            assert resp.data["features"]["whatsapp_enabled"] is True
+        finally:
+            await db.delete(tenant)
+            await db.commit()
+
+    async def test_opt_in_gated_by_plan(self, db: AsyncSession):
+        # Even super admin can't force WhatsApp on if the tenant's plan
+        # doesn't include it — the request is silently coerced to False.
+        # This keeps billing / cost accountability honest.
+        tenant = await self._make_tenant(db, {"billing": True})
+        try:
+            with self._mock_plan({"whatsapp_enabled": False}):
+                resp = await update_tenant_features(
+                    tenant_id=tenant.id,
+                    request=TenantFeaturesUpdateRequest(
+                        features={"whatsapp_enabled": True, "whatsapp_ai_enabled": True}
+                    ),
+                    db=db,
+                )
+            assert resp.data["features"]["whatsapp_enabled"] is False
+            assert resp.data["features"]["whatsapp_ai_enabled"] is False
+        finally:
+            await db.delete(tenant)
+            await db.commit()
+
+    async def test_non_optin_feature_is_not_plan_gated(self, db: AsyncSession):
+        # Non-opt-in features (e.g. accounting) are super admin's call —
+        # they don't need to be listed in the plan to be toggled here.
+        # (Different from tenant admin page, where plan-locked features
+        # are read-only. This is a super-admin bypass for support.)
+        tenant = await self._make_tenant(db, {})
+        try:
+            with self._mock_plan({}):
+                resp = await update_tenant_features(
+                    tenant_id=tenant.id,
+                    request=TenantFeaturesUpdateRequest(
+                        features={"accounting": True}
+                    ),
+                    db=db,
+                )
+            assert resp.data["features"]["accounting"] is True
+        finally:
+            await db.delete(tenant)
+            await db.commit()
+
+    async def test_tenant_persists_across_reload(self, db: AsyncSession):
+        # Round-trip: after the endpoint returns, re-loading the tenant in
+        # a FRESH session shows the same features. Guards against forgetting
+        # the commit or accidentally mutating a copy.
+        from app.database import get_db_context
+
+        tenant = await self._make_tenant(db, {"attendance_tracking": True})
+        tenant_id = tenant.id
+        try:
+            with self._mock_plan({"whatsapp_enabled": True}):
+                await update_tenant_features(
+                    tenant_id=tenant_id,
+                    request=TenantFeaturesUpdateRequest(
+                        features={"whatsapp_enabled": True}
+                    ),
+                    db=db,
+                )
+            # Fresh session — proves the commit landed on disk, not just in
+            # the current transaction's identity map.
+            async with get_db_context() as db2:
+                reloaded = await db2.get(Tenant, tenant_id)
+                assert reloaded is not None
+                features = (reloaded.settings or {}).get("features") or {}
+                assert features.get("whatsapp_enabled") is True
+                assert features.get("attendance_tracking") is True
+        finally:
+            async with get_db_context() as db2:
+                t = await db2.get(Tenant, tenant_id)
+                if t is not None:
+                    await db2.delete(t)
+                    await db2.commit()

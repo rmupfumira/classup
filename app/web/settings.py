@@ -204,8 +204,9 @@ async def settings_features_save(
 
         # Opt-in features: plan gates availability (must be True to allow the
         # tenant to turn it on), but the tenant chooses whether to actually
-        # enable — plan True does NOT auto-enable them.
-        optin_features = {"whatsapp_enabled", "whatsapp_ai_enabled"}
+        # enable — plan True does NOT auto-enable them. Shared with the
+        # super admin tenant-features endpoint via whatsapp_bot.OPTIN_FEATURES.
+        from app.services.whatsapp_bot import OPTIN_FEATURES as optin_features
 
         # Check plan-locked features
         plan_features = {}

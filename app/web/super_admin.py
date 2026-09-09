@@ -208,12 +208,27 @@ async def tenant_edit_form(
     tenant_service = get_tenant_service()
     tenant = await tenant_service.get_tenant(db, tenant_id)
 
+    # Load plan features so the WhatsApp toggles panel can show "Upgrade
+    # your plan" vs. "Available" state per feature.
+    plan_features: dict = {}
+    try:
+        from app.services.subscription_service import get_subscription_service
+        sub = await get_subscription_service().get_tenant_subscription(db, tenant_id)
+        if sub and sub.plan and sub.plan.features:
+            plan_features = sub.plan.features
+    except Exception:
+        pass
+
+    tenant_features = (tenant.settings or {}).get("features", {}) or {}
+
     return templates.TemplateResponse(
         "super_admin/tenants/edit.html",
         {
             "request": request,
             "user": user,
             "tenant": tenant,
+            "tenant_features": tenant_features,
+            "plan_features": plan_features,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(user.role),
         },

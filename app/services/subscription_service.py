@@ -497,8 +497,8 @@ class SubscriptionService:
         if not plan.features:
             return
 
-        # Keep in sync with app/web/settings.py optin_features
-        optin_features = {"whatsapp_enabled", "whatsapp_ai_enabled"}
+        # Shared with settings.py + admin.py via whatsapp_bot.OPTIN_FEATURES.
+        from app.services.whatsapp_bot import OPTIN_FEATURES as optin_features
 
         tenant = await db.get(Tenant, tenant_id)
         if not tenant:

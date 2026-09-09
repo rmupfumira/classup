@@ -143,17 +143,133 @@
         </form>
     </div>
 
-    <!-- Settings Card -->
+    <!-- WhatsApp Bot Card (super admin can flip these too) -->
+    {% set wa_plan_ok = plan_features.get('whatsapp_enabled', False) %}
+    {% set ai_plan_ok = plan_features.get('whatsapp_ai_enabled', False) %}
+    {% set wa_on = tenant_features.get('whatsapp_enabled', False) %}
+    {% set ai_on = tenant_features.get('whatsapp_ai_enabled', False) %}
     <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-medium text-neutral-800">Features & Settings</h3>
-            <span class="text-xs text-neutral-500">Coming soon</span>
+        <div class="mb-4">
+            <h3 class="text-sm font-medium text-neutral-800">WhatsApp Bot</h3>
+            <p class="mt-1 text-xs text-neutral-500">
+                Toggle from here as a super admin. Same rules apply as the tenant's own
+                Settings &gt; Features page: the plan must include the feature before it
+                can be enabled. Changes take effect on the next inbound WhatsApp message.
+            </p>
         </div>
-        <p class="text-sm text-neutral-500">
-            Feature toggles and advanced settings can be configured from the tenant's own settings page
-            once they complete onboarding.
-        </p>
+
+        <div class="space-y-4">
+            <!-- WhatsApp toggle -->
+            <label class="flex items-start {% if not wa_plan_ok %}opacity-60{% endif %}">
+                <input type="checkbox" id="feature-whatsapp-enabled"
+                       {% if wa_on and wa_plan_ok %}checked{% endif %}
+                       {% if not wa_plan_ok %}disabled{% endif %}
+                       class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <span class="ml-3">
+                    <span class="block text-sm font-medium text-neutral-900">
+                        WhatsApp Integration
+                        {% if not wa_plan_ok %}
+                        <span class="text-xs font-normal text-neutral-400 ml-1">— not in this tenant's plan</span>
+                        {% endif %}
+                    </span>
+                    <span class="block text-sm text-neutral-500">
+                        Menu-driven bot on WhatsApp. Parents can chat with the school system directly.
+                    </span>
+                </span>
+            </label>
+
+            <!-- AI toggle -->
+            <label class="flex items-start {% if not ai_plan_ok or not wa_on %}opacity-60{% endif %}">
+                <input type="checkbox" id="feature-whatsapp-ai-enabled"
+                       {% if ai_on and ai_plan_ok and wa_on %}checked{% endif %}
+                       {% if not ai_plan_ok %}disabled{% endif %}
+                       class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <span class="ml-3">
+                    <span class="block text-sm font-medium text-neutral-900">
+                        AI-Powered Bot
+                        {% if not ai_plan_ok %}
+                        <span class="text-xs font-normal text-neutral-400 ml-1">— not in this tenant's plan</span>
+                        {% elif not wa_on %}
+                        <span class="text-xs font-normal text-neutral-400 ml-1">— enable WhatsApp first</span>
+                        {% endif %}
+                    </span>
+                    <span class="block text-sm text-neutral-500">
+                        Upgrade the bot from menu-driven to natural conversation using Claude AI.
+                        Adds a small per-message cost.
+                    </span>
+                </span>
+            </label>
+        </div>
+
+        <div class="mt-6 flex items-center justify-end gap-3">
+            <span id="whatsapp-save-msg" class="text-xs text-neutral-500"></span>
+            <button type="button" id="save-whatsapp-features"
+                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors">
+                Save WhatsApp Settings
+            </button>
+        </div>
     </div>
+
+    <script>
+    // Depend on WhatsApp: unchecking WhatsApp forces AI off in the UI too.
+    (function () {
+        const waBox = document.getElementById('feature-whatsapp-enabled');
+        const aiBox = document.getElementById('feature-whatsapp-ai-enabled');
+        function syncAiEnabled() {
+            if (!aiBox) return;
+            if (waBox && !waBox.checked) {
+                aiBox.checked = false;
+                aiBox.disabled = true;
+            } else if (aiBox && {{ 'true' if ai_plan_ok else 'false' }}) {
+                aiBox.disabled = false;
+            }
+        }
+        if (waBox) waBox.addEventListener('change', syncAiEnabled);
+        syncAiEnabled();
+    })();
+
+    document.getElementById('save-whatsapp-features').addEventListener('click', async function () {
+        const btn = this;
+        const msg = document.getElementById('whatsapp-save-msg');
+        const wa = document.getElementById('feature-whatsapp-enabled');
+        const ai = document.getElementById('feature-whatsapp-ai-enabled');
+
+        btn.disabled = true;
+        msg.textContent = 'Saving…';
+        msg.className = 'text-xs text-neutral-500';
+
+        const payload = { features: {} };
+        // Only send what the super admin could actually change (plan allows).
+        if (wa && !wa.disabled) payload.features.whatsapp_enabled = wa.checked;
+        if (ai && !ai.disabled) payload.features.whatsapp_ai_enabled = ai.checked;
+
+        try {
+            const resp = await fetch('/api/v1/admin/tenants/{{ tenant.id }}/features', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload),
+            });
+            const result = await resp.json();
+            if (resp.ok) {
+                msg.textContent = 'Saved';
+                msg.className = 'text-xs text-green-600';
+                if (window.ClassUp && window.ClassUp.toast) {
+                    window.ClassUp.toast('WhatsApp settings updated', 'success');
+                }
+            } else {
+                msg.textContent = result.message || 'Failed to save';
+                msg.className = 'text-xs text-error-500';
+            }
+        } catch (err) {
+            console.error(err);
+            msg.textContent = 'Network error';
+            msg.className = 'text-xs text-error-500';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+    </script>
 </div>
 
 <script>
