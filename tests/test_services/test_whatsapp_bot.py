@@ -214,6 +214,156 @@ class TestHandleInboundMessage:
         assert reply is None
 
 
+class TestOptOut:
+    """STOP / START handling — WhatsApp policy requirement + UX must-have."""
+
+    async def _real_user(self, db: AsyncSession):
+        """A real DB-backed User so we can watch the flag flip."""
+        import uuid as _uuid
+        from app.models import Tenant as _Tenant, User as _User
+        from app.models.user import Role as _Role
+        from app.utils.security import hash_password
+
+        tid = _uuid.uuid4()
+        slug = f"stop-{tid.hex[:8]}"
+        tenant = _Tenant(
+            id=tid, name=f"Stop {tid.hex[:6]}", slug=slug,
+            email=f"admin@{slug}.test", education_type="PRIMARY_SCHOOL",
+            settings={"features": {"whatsapp_enabled": True}},
+            is_active=True, onboarding_completed=True,
+        )
+        db.add(tenant)
+        await db.flush()
+        parent = _User(
+            id=_uuid.uuid4(), tenant_id=tid,
+            email=f"p-{tid.hex[:6]}@stop.test",
+            password_hash=hash_password("x"),
+            first_name="Sara", last_name="Test",
+            role=_Role.PARENT.value, is_active=True,
+            whatsapp_phone="+27821234567", whatsapp_opted_in=True,
+        )
+        db.add(parent)
+        await db.commit()
+        return tenant, parent, tid
+
+    @pytest.mark.parametrize("stop_word", [
+        "STOP", "stop", "Stop", "STOP ALL", "unsubscribe",
+        "  stop  ", "cancel", "OPT OUT",
+    ])
+    async def test_stop_variants_flip_opted_in_to_false(
+        self, db: AsyncSession, stop_word
+    ):
+        tenant, parent, tid = await self._real_user(db)
+        try:
+            with patch(
+                "app.services.whatsapp_bot._load_plan_features",
+                return_value={"whatsapp_enabled": True},
+            ):
+                mode, reply = await handle_inbound_message(
+                    db=db, tenant=tenant, user=parent,
+                    from_phone="27821234567",
+                    text=stop_word, interactive_id=None,
+                )
+            # Refresh the parent row from a fresh session to prove the
+            # commit landed on disk, not just in the current identity map.
+            from app.database import get_db_context
+            from app.models import User as _User
+            async with get_db_context() as db2:
+                reloaded = await db2.get(_User, parent.id)
+                assert reloaded is not None
+                assert reloaded.whatsapp_opted_in is False, (
+                    f"STOP variant {stop_word!r} did NOT flip opt-in flag"
+                )
+
+            from app.services.whatsapp_menu_bot import TextReply
+            assert isinstance(reply, TextReply)
+            assert "unsubscribed" in reply.body.lower()
+        finally:
+            from app.database import get_db_context
+            from sqlalchemy import text as sql_text
+            async with get_db_context() as db2:
+                await db2.execute(
+                    sql_text("DELETE FROM tenants WHERE id = :tid"),
+                    {"tid": tid},
+                )
+                await db2.commit()
+
+    async def test_start_re_opts_in(self, db: AsyncSession):
+        tenant, parent, tid = await self._real_user(db)
+        # Simulate a previous STOP.
+        parent.whatsapp_opted_in = False
+        await db.commit()
+        try:
+            with patch(
+                "app.services.whatsapp_bot._load_plan_features",
+                return_value={"whatsapp_enabled": True},
+            ):
+                mode, reply = await handle_inbound_message(
+                    db=db, tenant=tenant, user=parent,
+                    from_phone="27821234567",
+                    text="START", interactive_id=None,
+                )
+            from app.database import get_db_context
+            from app.models import User as _User
+            async with get_db_context() as db2:
+                reloaded = await db2.get(_User, parent.id)
+                assert reloaded.whatsapp_opted_in is True
+
+            from app.services.whatsapp_menu_bot import TextReply
+            assert isinstance(reply, TextReply)
+            assert "subscribed" in reply.body.lower()
+        finally:
+            from app.database import get_db_context
+            from sqlalchemy import text as sql_text
+            async with get_db_context() as db2:
+                await db2.execute(
+                    sql_text("DELETE FROM tenants WHERE id = :tid"),
+                    {"tid": tid},
+                )
+                await db2.commit()
+
+    async def test_stop_works_even_when_mode_is_off(
+        self, db: AsyncSession
+    ):
+        """A parent who's on a plan that just dropped WhatsApp must
+        still be able to unsubscribe — otherwise we'd keep sending
+        (still-in-flight) invoice reminders they explicitly told us
+        to stop. STOP is checked BEFORE the mode resolution's off
+        short-circuit for exactly this reason."""
+        tenant, parent, tid = await self._real_user(db)
+        try:
+            with patch(
+                "app.services.whatsapp_bot._load_plan_features",
+                return_value={"whatsapp_enabled": False},  # plan DROPPED it
+            ):
+                mode, reply = await handle_inbound_message(
+                    db=db, tenant=tenant, user=parent,
+                    from_phone="27821234567",
+                    text="STOP", interactive_id=None,
+                )
+            # Mode resolves to OFF because plan dropped WhatsApp — but
+            # STOP was still honoured.
+            assert mode is BotMode.OFF
+            from app.services.whatsapp_menu_bot import TextReply
+            assert isinstance(reply, TextReply)
+            assert "unsubscribed" in reply.body.lower()
+
+            from app.database import get_db_context
+            from app.models import User as _User
+            async with get_db_context() as db2:
+                reloaded = await db2.get(_User, parent.id)
+                assert reloaded.whatsapp_opted_in is False
+        finally:
+            from app.database import get_db_context
+            from sqlalchemy import text as sql_text
+            async with get_db_context() as db2:
+                await db2.execute(
+                    sql_text("DELETE FROM tenants WHERE id = :tid"),
+                    {"tid": tid},
+                )
+                await db2.commit()
+
+
 @pytest.fixture
 def _as_super_admin():
     """Set the super-admin context so @require_super_admin() lets us in when

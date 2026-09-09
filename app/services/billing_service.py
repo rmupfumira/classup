@@ -1283,20 +1283,29 @@ class BillingService:
     async def _notify_parents_payment(
         self, db: AsyncSession, payment: BillingPayment, invoice: BillingInvoice
     ) -> None:
-        """Send payment confirmation notification to parents."""
+        """Send payment confirmation notification to parents.
+
+        Fires three channels: in-app notification (always), email (if
+        template renders), WhatsApp (if opted-in). Each is best-effort
+        — a failure in one channel never blocks the others.
+        """
         from app.services.notification_service import get_notification_service
+        from app.services.email_service import get_email_service
+        from app.config import get_settings as _get_settings
 
         parent_ids = await self._get_parent_ids_for_student(db, invoice.student_id)
         if not parent_ids:
             return
 
         notification_service = get_notification_service()
+        email_service = get_email_service()
         student_name = (
             f"{invoice.student.first_name} {invoice.student.last_name}"
             if invoice.student
             else "Student"
         )
 
+        # In-app: bulk-create (unchanged behaviour).
         await notification_service.create_bulk_notifications(
             db=db,
             user_ids=parent_ids,
@@ -1306,6 +1315,61 @@ class BillingService:
             reference_type="invoice",
             reference_id=invoice.id,
         )
+
+        # Fetch tenant + parents for email/WhatsApp addressing.
+        from app.models import Tenant, User
+        tenant = await db.get(Tenant, invoice.tenant_id)
+        tenant_name = tenant.name if tenant else "ClassUp"
+        currency = (tenant.settings or {}).get("billing_currency") if tenant else None
+        currency = currency or "R"
+        payment_amount_str = f"{currency} {payment.amount:,.2f}"
+        remaining_str = f"{currency} {invoice.balance:,.2f}"
+        view_url = (
+            f"{_get_settings().app_base_url.rstrip('/')}/billing/invoices/{invoice.id}"
+        )
+
+        parents_q = select(User).where(
+            User.id.in_(parent_ids),
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+        parents = list((await db.execute(parents_q)).scalars().all())
+
+        for parent in parents:
+            # Email: uses the existing payment_received.html template.
+            try:
+                await email_service.send_payment_confirmation(
+                    to=parent.email,
+                    parent_name=parent.first_name,
+                    student_name=student_name,
+                    invoice_number=invoice.invoice_number,
+                    payment_amount=payment_amount_str,
+                    remaining_balance=remaining_str,
+                    payment_method=(payment.payment_method or "").replace("_", " ").title(),
+                    view_url=view_url,
+                    tenant_name=tenant_name,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to email payment confirmation to %s for payment %s",
+                    parent.email, payment.id,
+                )
+            # WhatsApp mirror.
+            try:
+                from app.services import parent_notifier
+                await parent_notifier.notify_payment_received(
+                    db, parent,
+                    tenant_name=tenant_name,
+                    student_name=student_name,
+                    invoice_number=invoice.invoice_number,
+                    payment_amount=payment.amount,
+                    remaining_balance=invoice.balance,
+                    currency=currency,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to WhatsApp payment confirmation to %s", parent.id,
+                )
 
     async def _notify_parents_overdue(
         self, db: AsyncSession, invoice: BillingInvoice

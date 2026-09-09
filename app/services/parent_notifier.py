@@ -271,6 +271,29 @@ async def notify_invoice_overdue(
     )
 
 
+async def notify_payment_received(
+    db: AsyncSession, user: User,
+    *, tenant_name: str, student_name: str, invoice_number: str,
+    payment_amount: Decimal, remaining_balance: Decimal, currency: str = "R",
+) -> bool:
+    """Confirm a payment via WhatsApp — the peace-of-mind message parents
+    check for right after they pay. Uses the announcement template until
+    a bespoke ``payment_received`` template is approved."""
+    if not await _can_notify_whatsapp(db, user):
+        return False
+    if remaining_balance <= Decimal("0"):
+        tail = "Fully paid up — thank you!"
+    else:
+        tail = f"Remaining balance: {_fmt_amount(remaining_balance, currency)}."
+    subject = (
+        f"Payment of {_fmt_amount(payment_amount, currency)} received for "
+        f"{student_name} on {invoice_number}. {tail}"
+    )
+    return await _send_template(
+        db, user, "send_announcement", tenant_name, subject[:120],
+    )
+
+
 async def notify_pickup_alert(
     db: AsyncSession, user: User,
     *, tenant_name: str, student_name: str, time_str: str,

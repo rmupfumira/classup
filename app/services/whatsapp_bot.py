@@ -126,6 +126,77 @@ async def _load_plan_features(
     return None
 
 
+STOP_KEYWORDS = frozenset({
+    "stop", "stop all", "stopall", "unsubscribe", "unsub",
+    "cancel", "end", "quit", "opt out", "optout", "opt-out",
+})
+START_KEYWORDS = frozenset({
+    "start", "resubscribe", "resub", "opt in", "optin", "opt-in",
+    "subscribe", "yes",
+})
+
+
+async def _handle_opt_out(
+    db: AsyncSession, user: "User"
+) -> "MenuResponse":
+    """Flip whatsapp_opted_in=False + confirm.
+
+    Also clears any Redis AI session so a re-opt-in later starts clean.
+    WhatsApp / TCPA-style policies require an immediate confirmation
+    and an easy path back — so both STOP and START are supported.
+    """
+    from app.services.whatsapp_menu_bot import TextReply
+
+    user.whatsapp_opted_in = False
+    await db.commit()
+
+    # Best-effort: clear conversation history so a future re-opt-in
+    # doesn't resurface stale tool_use blocks.
+    try:
+        from app.services.bot_session_store import get_bot_session_store
+        await get_bot_session_store().clear(user.id)
+    except Exception:
+        logger.exception("Failed to clear bot session for %s on opt-out", user.id)
+
+    logger.info("User %s opted out of WhatsApp via STOP", user.id)
+    return TextReply(
+        body=(
+            "You've been unsubscribed from ClassUp WhatsApp notifications. "
+            "You will not receive any more messages here.\n\n"
+            "Changed your mind? Reply *START* to opt back in, or go to "
+            "*Profile* on classup.co.za to manage this yourself."
+        )
+    )
+
+
+async def _handle_opt_in(
+    db: AsyncSession, user: "User"
+) -> "MenuResponse":
+    """Flip whatsapp_opted_in=True + confirm.
+
+    Symmetric to STOP — parents can opt back in without logging into
+    the app. Requires their whatsapp_phone to already be set (which it
+    must be, since we matched them by it).
+    """
+    from app.services.whatsapp_menu_bot import TextReply
+
+    was_opted_in = user.whatsapp_opted_in
+    user.whatsapp_opted_in = True
+    await db.commit()
+
+    logger.info(
+        "User %s opted in via START (was_opted_in=%s)", user.id, was_opted_in,
+    )
+    return TextReply(
+        body=(
+            "You're subscribed to ClassUp WhatsApp notifications. 👋\n\n"
+            "You'll get updates about attendance, reports, invoices and "
+            "school announcements here. Reply *STOP* any time to "
+            "unsubscribe."
+        )
+    )
+
+
 async def handle_inbound_message(
     db: AsyncSession,
     tenant: Tenant | None,
@@ -152,6 +223,20 @@ async def handle_inbound_message(
         "WhatsApp bot dispatch: tenant=%s user=%s mode=%s interactive=%s",
         tenant_id, from_phone, mode.value, interactive_id,
     )
+
+    # STOP / START are honoured BEFORE mode resolution and BEFORE the
+    # `mode == OFF` short-circuit — parents can always turn WhatsApp
+    # off (or back on) from WhatsApp itself, regardless of feature
+    # flags. This is a compliance requirement (WhatsApp policy: 24hr
+    # after STOP no more free-form messages) plus a UX must-have (the
+    # AI bot's system prompt already tells parents "Reply STOP to opt
+    # out" — that promise has to work).
+    normalized_text = (text or "").strip().lower()
+    if user is not None and normalized_text:
+        if normalized_text in STOP_KEYWORDS:
+            return mode, await _handle_opt_out(db, user)
+        if normalized_text in START_KEYWORDS:
+            return mode, await _handle_opt_in(db, user)
 
     if mode is BotMode.OFF:
         return mode, None

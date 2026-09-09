@@ -277,6 +277,51 @@ class TestDispatcher:
         subject = svc.send_announcement.await_args.args[2]
         assert "4" in subject and "Grade 3A" in subject
 
+    async def test_payment_received_partial_balance(
+        self, db: AsyncSession, opted_in
+    ):
+        """When a payment leaves a positive remaining balance, the
+        WhatsApp subject line must include both the paid amount AND
+        the remaining balance — parents scan it in 2 seconds and need
+        to know where they stand."""
+        svc, patches = await self._wired(db, opted_in)
+        try:
+            await parent_notifier.notify_payment_received(
+                db, opted_in.parent,
+                tenant_name="Acme", student_name="Sipho",
+                invoice_number="INV-2026-0001",
+                payment_amount=Decimal("200.00"),
+                remaining_balance=Decimal("300.00"),
+            )
+        finally:
+            self._stop(patches)
+        subject = svc.send_announcement.await_args.args[2]
+        assert "200" in subject
+        assert "300" in subject
+        assert "INV-2026-0001" in subject
+        assert "Sipho" in subject
+
+    async def test_payment_received_fully_paid_says_thank_you(
+        self, db: AsyncSession, opted_in
+    ):
+        """Zero balance → "Fully paid up — thank you!" instead of
+        "Remaining balance R0" (which would read as debt-shaming a
+        parent who just settled up)."""
+        svc, patches = await self._wired(db, opted_in)
+        try:
+            await parent_notifier.notify_payment_received(
+                db, opted_in.parent,
+                tenant_name="Acme", student_name="Sipho",
+                invoice_number="INV-2026-0001",
+                payment_amount=Decimal("500.00"),
+                remaining_balance=Decimal("0.00"),
+            )
+        finally:
+            self._stop(patches)
+        subject = svc.send_announcement.await_args.args[2]
+        assert "Fully paid" in subject
+        assert "thank you" in subject.lower()
+
     async def test_not_opted_in_returns_false_no_send(
         self, db: AsyncSession, opted_in
     ):
