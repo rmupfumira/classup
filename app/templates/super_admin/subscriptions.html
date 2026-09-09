@@ -198,6 +198,7 @@
                     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_billing" checked class="rounded border-neutral-300 text-primary-600"> Billing & Invoicing</label>
                     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_accounting" class="rounded border-neutral-300 text-primary-600"> Accounting</label>
                     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_enabled" class="rounded border-neutral-300 text-primary-600"> WhatsApp Integration</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_ai_enabled" class="rounded border-neutral-300 text-primary-600"> AI-Powered WhatsApp Bot</label>
                 </div>
             </div>
             <div class="flex justify-end gap-3 pt-4">
@@ -293,6 +294,7 @@ const featureLabels = {
     billing: 'Billing & Invoicing',
     accounting: 'Accounting',
     whatsapp_enabled: 'WhatsApp Integration',
+    whatsapp_ai_enabled: 'AI-Powered WhatsApp Bot',
 };
 
 // Cache loaded plans for editing
@@ -369,9 +371,10 @@ function showPlanModal(planId) {
         title.textContent = 'Create Subscription Plan';
         submitBtn.textContent = 'Create Plan';
         activeToggle.classList.add('hidden');
-        // Reset checkboxes to default (all checked except whatsapp)
+        // Reset checkboxes to default (all checked except WhatsApp opt-in upsells)
+        const optIn = new Set(['feat_whatsapp_enabled', 'feat_whatsapp_ai_enabled']);
         form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
-            cb.checked = cb.name !== 'feat_whatsapp_enabled';
+            cb.checked = !optIn.has(cb.name);
         });
     }
 

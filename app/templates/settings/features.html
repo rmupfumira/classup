@@ -82,6 +82,34 @@
     </label>
     {% endmacro %}
 
+    {#
+      Opt-in toggle: the plan gates AVAILABILITY (plan flag must be true for
+      the tenant to be able to enable it); the tenant then opts in themselves.
+      If the plan doesn't include it, the checkbox is disabled and we show an
+      upgrade nudge. Used for WhatsApp/AI where enabling has an operational or
+      cost implication the tenant should choose deliberately.
+    #}
+    {% macro optin_toggle(name, label, description) %}
+    {% set plan_allows = plan_features is defined and plan_features.get(name, False) %}
+    {% set enabled = features.get(name, False) %}
+    <label class="flex items-start {% if not plan_allows %}opacity-60{% endif %}">
+        <input type="checkbox" name="feature_{{ name }}"
+               {% if enabled and plan_allows %}checked{% endif %}
+               {% if not plan_allows %}disabled{% endif %}
+               class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+        <span class="ml-3">
+            <span class="block text-sm font-medium text-neutral-900">
+                {{ label }}
+                {% if not plan_allows %}
+                <svg class="inline w-3.5 h-3.5 text-neutral-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                <span class="text-xs font-normal text-neutral-400">Not in your plan &mdash; contact us to upgrade</span>
+                {% endif %}
+            </span>
+            <span class="block text-sm text-neutral-500">{{ description }}</span>
+        </span>
+    </label>
+    {% endmacro %}
+
     <!-- Form -->
     <form method="POST" action="/settings/features" class="space-y-6">
         <!-- Core Features -->
@@ -129,7 +157,8 @@
         <div class="bg-white shadow-sm rounded-lg p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Integrations</h3>
             <div class="space-y-4">
-                {{ feature_toggle('whatsapp_enabled', 'WhatsApp Integration', 'Send notifications via WhatsApp') }}
+                {{ optin_toggle('whatsapp_enabled', 'WhatsApp Integration', 'Send notifications and let parents chat with a menu-driven bot on WhatsApp. Requires Meta Cloud API setup.') }}
+                {{ optin_toggle('whatsapp_ai_enabled', 'AI-Powered WhatsApp Bot', 'Upgrade the WhatsApp bot from menu-driven to natural conversation using Claude AI. Parents can ask questions in plain English (or Afrikaans, isiZulu, Shona) and the bot understands. Adds a small per-message cost.') }}
             </div>
         </div>
 

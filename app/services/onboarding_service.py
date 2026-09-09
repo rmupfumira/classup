@@ -162,6 +162,7 @@ class OnboardingService:
             "exam_management": False,
             "disciplinary_records": False,
             "whatsapp_enabled": False,
+            "whatsapp_ai_enabled": False,
         }
 
         if education_type == "DAYCARE":

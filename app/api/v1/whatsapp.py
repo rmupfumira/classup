@@ -1,15 +1,16 @@
 """WhatsApp webhook API endpoints.
 
-POC flow — every inbound message:
+Inbound flow — every message:
   1. Verified via HMAC (using the app_secret configured in
      /admin/whatsapp-settings, falling back to APP_SECRET_KEY env var).
   2. Deduplicated on Meta's message id (UNIQUE index).
   3. Persisted to whatsapp_inbound_messages so the admin page can show it.
   4. Sender matched against users.whatsapp_phone (across all tenants).
-  5. Auto-replied with a "we got it" text so the sender knows the pipe works.
+  5. Dispatched to the bot: mode resolved from plan + tenant settings
+     (OFF / MENU / AI); each mode owns its own reply logic.
 
-No bot flow yet — that lands in later phases. This file's job is purely
-to prove the plumbing is live.
+The bot handlers themselves live in app.services.whatsapp_bot. This file
+just owns the webhook plumbing.
 """
 
 import logging
@@ -19,7 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, get_db_context
-from app.models import User, WhatsAppInboundMessage
+from app.models import Tenant, User, WhatsAppInboundMessage
+from app.services.whatsapp_bot import BotMode, handle_inbound_message
 from app.services.whatsapp_service import (
     get_config,
     get_whatsapp_service_from_db,
@@ -104,11 +106,11 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 async def process_inbound_message(msg: dict, raw_body: dict) -> None:
-    """Store the message, identify the sender, send an auto-reply.
+    """Store the message, identify the sender, dispatch to the bot.
 
-    POC behaviour — every inbound message triggers a canned reply so the
-    admin can prove the pipeline works. Later phases replace the auto-reply
-    with a real bot flow (menu, intents, state machine).
+    The bot module resolves the mode (OFF / MENU / AI) and returns a reply
+    (or None for OFF). We record what happened on the message row so the
+    admin page can show it.
     """
     from_phone = msg.get("from_phone")
     text = msg.get("text") or ""
@@ -142,6 +144,9 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
         # leading +, but users.whatsapp_phone stores E.164 with the +. Try
         # both spellings.
         matched_user = await _find_user_by_phone(db, from_phone)
+        tenant = None
+        if matched_user and matched_user.tenant_id:
+            tenant = await db.get(Tenant, matched_user.tenant_id)
 
         record = WhatsAppInboundMessage(
             tenant_id=matched_user.tenant_id if matched_user else None,
@@ -155,28 +160,24 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
         db.add(record)
         await db.flush()
 
-        # Fire an auto-reply so the sender knows the pipeline received their
-        # message. Uses free-form text — safe within the 24hr WhatsApp
-        # session window (which is always open right after a user sends
-        # to us). Best-effort: any failure is logged on the record but
-        # doesn't crash the webhook.
+        # Bot dispatch: resolve mode, get a reply (or None for OFF), send it.
+        # Best-effort — any failure is logged on the record but never crashes
+        # the webhook (Meta would keep retrying forever).
         try:
-            svc = await get_whatsapp_service_from_db(db)
-            if matched_user:
-                greeting = f"Hi {matched_user.first_name}, ClassUp received your message. "
-            else:
-                greeting = "Hi there! ClassUp received your message. "
-
-            reply = (
-                greeting
-                + "Full WhatsApp features are on the way — for now, log in at "
-                + "https://classup.co.za to check attendance, balances, and reports."
+            mode, reply = await handle_inbound_message(
+                db=db,
+                tenant=tenant,
+                from_phone=from_phone,
+                text=text,
+                matched_user_name=matched_user.first_name if matched_user else None,
             )
-            await svc.send_text_message(to_phone=from_phone, body=reply)
-            record.auto_replied = True
+            if reply and mode is not BotMode.OFF:
+                svc = await get_whatsapp_service_from_db(db)
+                await svc.send_text_message(to_phone=from_phone, body=reply)
+                record.auto_replied = True
         except Exception as e:
             logger.exception(
-                "Failed to send auto-reply to %s for message %s",
+                "Bot dispatch failed for %s (message %s)",
                 from_phone, meta_message_id,
             )
             record.auto_reply_error = str(e)[:500]

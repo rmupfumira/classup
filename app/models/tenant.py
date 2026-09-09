@@ -159,6 +159,7 @@ def get_default_tenant_settings(
         "exam_management": False,
         "disciplinary_records": False,
         "whatsapp_enabled": False,
+        "whatsapp_ai_enabled": False,
         "billing": True,
     }
 
@@ -178,6 +179,7 @@ def get_default_tenant_settings(
         "exam_management": True,
         "disciplinary_records": True,
         "whatsapp_enabled": False,
+        "whatsapp_ai_enabled": False,
         "billing": True,
     }
 

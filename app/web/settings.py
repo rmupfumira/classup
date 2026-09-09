@@ -197,9 +197,15 @@ async def settings_features_save(
             "exam_management",
             "disciplinary_records",
             "whatsapp_enabled",
+            "whatsapp_ai_enabled",
             "billing",
             "accounting",
         ]
+
+        # Opt-in features: plan gates availability (must be True to allow the
+        # tenant to turn it on), but the tenant chooses whether to actually
+        # enable — plan True does NOT auto-enable them.
+        optin_features = {"whatsapp_enabled", "whatsapp_ai_enabled"}
 
         # Check plan-locked features
         plan_features = {}
@@ -213,11 +219,19 @@ async def settings_features_save(
             pass
 
         for feature in all_features:
-            if feature in plan_features:
-                # Plan controls this feature — enforce plan value
+            form_checked = f"feature_{feature}" in form_data
+            if feature in optin_features:
+                # Plan-gated opt-in: allowed only if the plan permits it,
+                # and only then does the tenant's form choice take effect.
+                if plan_features.get(feature, False):
+                    features[feature] = form_checked
+                else:
+                    features[feature] = False
+            elif feature in plan_features:
+                # Plan controls this feature — enforce plan value.
                 features[feature] = plan_features[feature]
             else:
-                features[feature] = f"feature_{feature}" in form_data
+                features[feature] = form_checked
 
         settings["features"] = features
         tenant.settings = settings

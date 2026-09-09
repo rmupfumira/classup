@@ -488,9 +488,17 @@ class SubscriptionService:
         Features defined in the plan override the tenant's current feature
         settings.  Features *not* mentioned in the plan dict are left as-is,
         so only features explicitly listed in the plan are enforced.
+
+        Exception: opt-in features (WhatsApp / AI bot) — the plan flag gates
+        AVAILABILITY, but the tenant chooses when to actually enable them.
+        Never auto-enable them from a plan sync. If the plan later drops the
+        entitlement, force the tenant off.
         """
         if not plan.features:
             return
+
+        # Keep in sync with app/web/settings.py optin_features
+        optin_features = {"whatsapp_enabled", "whatsapp_ai_enabled"}
 
         tenant = await db.get(Tenant, tenant_id)
         if not tenant:
@@ -500,6 +508,12 @@ class SubscriptionService:
         features = dict(settings.get("features", {}))
 
         for key, enabled in plan.features.items():
+            if key in optin_features:
+                # Only force OFF if the plan drops the entitlement;
+                # never force ON — that's the tenant admin's decision.
+                if not enabled:
+                    features[key] = False
+                continue
             features[key] = enabled
 
         settings["features"] = features
