@@ -359,7 +359,16 @@ async def handle_ai_message(
 
     Falls through to a menu-bot response on any Anthropic error so the
     parent never sees silence — bots that go quiet feel broken.
+
+    Sets the user's tenant + role context so tools that rely on
+    ``get_tenant_id()`` (billing, attendance, my children) work
+    correctly. Torn down on exit so this webhook worker session can
+    handle the next message with a clean slate.
     """
+    from app.utils.tenant_context import (
+        _current_user_id, _current_user_role, _tenant_id,
+    )
+
     if not cfg.configured:
         # Should have been checked upstream, but be defensive — never
         # leak "no API key" to the parent; log it and menu-fall-back.
@@ -368,6 +377,30 @@ async def handle_ai_message(
             "falling back to menu bot for user %s", user.id,
         )
         return await _menu_fallback(db, user, text)
+
+    tenant_tok = _tenant_id.set(user.tenant_id) if user.tenant_id else None
+    user_tok = _current_user_id.set(user.id)
+    role_tok = _current_user_role.set(user.role)
+    try:
+        return await _handle_ai_message_inner(
+            db=db, user=user, tenant_name=tenant_name, text=text, cfg=cfg,
+        )
+    finally:
+        _current_user_role.reset(role_tok)
+        _current_user_id.reset(user_tok)
+        if tenant_tok is not None:
+            _tenant_id.reset(tenant_tok)
+
+
+async def _handle_ai_message_inner(
+    db: AsyncSession,
+    user: User,
+    tenant_name: str,
+    text: str,
+    cfg: AIConfig,
+) -> TextReply:
+    """The actual Claude loop, called from handle_ai_message which owns
+    the tenant/user/role context lifecycle."""
 
     from anthropic import AsyncAnthropic
 
