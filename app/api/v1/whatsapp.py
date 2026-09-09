@@ -144,17 +144,29 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
                 )
                 return
 
-        # Look up sender by phone. WhatsApp gives us the number without a
-        # leading +, but users.whatsapp_phone stores E.164 with the +. Try
-        # both spellings.
+        # Look up sender by phone. Two passes:
+        #   1. Strict match on whatsapp_phone — the user opted in.
+        #   2. Fallback: same phone lives in the regular users.phone
+        #      field but the parent hasn't set whatsapp_phone yet. That
+        #      IS a known user, they just don't know they had to fill
+        #      in a separate field. Send them a one-time onboarding
+        #      prompt so they can enable it themselves.
         matched_user = await _find_user_by_phone(db, from_phone)
+        onboarding_user = None
+        if matched_user is None:
+            onboarding_user = await _find_user_by_regular_phone(db, from_phone)
+
         tenant = None
         if matched_user and matched_user.tenant_id:
             tenant = await db.get(Tenant, matched_user.tenant_id)
 
         record = WhatsAppInboundMessage(
-            tenant_id=matched_user.tenant_id if matched_user else None,
-            matched_user_id=matched_user.id if matched_user else None,
+            # Record the match against onboarding_user too — the admin
+            # page needs to see who this actually is, not "unknown".
+            tenant_id=(matched_user or onboarding_user).tenant_id
+                if (matched_user or onboarding_user) else None,
+            matched_user_id=(matched_user or onboarding_user).id
+                if (matched_user or onboarding_user) else None,
             from_phone=from_phone,
             message_type=message_type,
             text=text[:8000] if text else None,
@@ -163,6 +175,26 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
         )
         db.add(record)
         await db.flush()
+
+        # Onboarding branch — short-circuits the bot dispatch. Guarded
+        # by a 24h Redis dedupe so we don't spam every message.
+        if matched_user is None and onboarding_user is not None:
+            try:
+                sent = await _send_onboarding_if_new(
+                    from_phone=from_phone,
+                    user=onboarding_user,
+                    db=db,
+                )
+                if sent:
+                    record.auto_replied = True
+            except Exception as e:
+                logger.exception(
+                    "Onboarding prompt failed for %s (message %s)",
+                    from_phone, meta_message_id,
+                )
+                record.auto_reply_error = str(e)[:500]
+            await db.commit()
+            return
 
         # Bot dispatch: resolve mode, get a reply (or None for OFF), send it.
         # Best-effort — any failure is logged on the record but never crashes
@@ -227,9 +259,6 @@ async def _find_user_by_phone(
     Returns the first active, non-deleted match. Any user linked to the
     number counts — the caller (bot dispatcher) handles the opt-in gate.
     """
-    def _digits(s: str) -> str:
-        return "".join(ch for ch in (s or "") if ch.isdigit())
-
     incoming = _digits(from_phone)
     if not incoming:
         return None
@@ -295,3 +324,125 @@ async def _find_user_by_phone(
         if incoming.startswith("0") and stored.startswith("263") and incoming[1:] == stored[3:]:
             return u
     return None
+
+
+def _digits(s: str | None) -> str:
+    return "".join(ch for ch in (s or "") if ch.isdigit())
+
+
+def _same_number(a: str | None, b: str | None) -> bool:
+    """Loose phone equality using the same normalisation as _find_user_by_phone
+    (digits-only + ZA/ZW local-vs-international swap)."""
+    da, db_ = _digits(a), _digits(b)
+    if not da or not db_:
+        return False
+    if da == db_:
+        return True
+    # ZA
+    if da.startswith("0") and db_.startswith("27") and da[1:] == db_[2:]:
+        return True
+    if db_.startswith("0") and da.startswith("27") and db_[1:] == da[2:]:
+        return True
+    # ZW
+    if da.startswith("0") and db_.startswith("263") and da[1:] == db_[3:]:
+        return True
+    if db_.startswith("0") and da.startswith("263") and db_[1:] == da[3:]:
+        return True
+    return False
+
+
+async def _find_user_by_regular_phone(
+    db: AsyncSession, from_phone: str
+) -> User | None:
+    """Fallback lookup: does this WhatsApp number match ANY user's regular
+    ``phone`` field?
+
+    Used when whatsapp_phone hasn't been set — the parent's WhatsApp is
+    almost always the same number as their contact phone, they just don't
+    know they need to fill in a separate field. Returning them here lets
+    the webhook send a one-time onboarding prompt so they can opt in.
+
+    Only returns opted-in-eligible users (active, non-deleted). Never
+    returns a user who ALSO has a different whatsapp_phone — that would
+    mean they deliberately chose a different number.
+    """
+    incoming_digits = _digits(from_phone)
+    if not incoming_digits:
+        return None
+
+    result = await db.execute(
+        select(User).where(
+            User.phone.is_not(None),
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+    )
+    for u in result.scalars().all():
+        if not _same_number(u.phone, from_phone):
+            continue
+        # Don't shadow an explicit whatsapp_phone the user picked.
+        if u.whatsapp_phone and not _same_number(u.whatsapp_phone, from_phone):
+            continue
+        return u
+    return None
+
+
+async def _send_onboarding_if_new(
+    from_phone: str, user: User, db: AsyncSession
+) -> bool:
+    """Send the "please opt in" message, at most once per 24h per number.
+
+    Dedupe via Redis: key ``whatsapp:onboard-sent:{digits}``, TTL 24h.
+    If Redis is down we still send (better to double-message than to
+    stay silent). Returns True if we sent, False if suppressed.
+    """
+    normalized = _digits(from_phone)
+    dedupe_key = f"whatsapp:onboard-sent:{normalized}"
+
+    # Check Redis first.
+    redis_client = None
+    try:
+        import redis.asyncio as aioredis
+        from app.config import get_settings as _get_settings
+        if _get_settings().redis_url:
+            redis_client = aioredis.from_url(
+                _get_settings().redis_url,
+                encoding="utf-8", decode_responses=True,
+            )
+            already = await redis_client.get(dedupe_key)
+            if already:
+                logger.info(
+                    "Onboarding prompt already sent to %s in the last 24h",
+                    from_phone,
+                )
+                return False
+    except Exception:
+        logger.exception("Redis check failed for onboarding dedupe — proceeding")
+
+    # Send the prompt via the WhatsApp service.
+    svc = await get_whatsapp_service_from_db(db)
+    body = (
+        f"Hi {user.first_name} 👋\n\n"
+        "It looks like this WhatsApp number is registered to your ClassUp "
+        "account, but you haven't turned on WhatsApp chat yet.\n\n"
+        "To use ClassUp on WhatsApp:\n"
+        "1. Log in at https://classup.co.za\n"
+        "2. Go to *Profile*\n"
+        "3. Add this number as your *WhatsApp Number* and tick "
+        "*Receive WhatsApp notifications*\n"
+        "4. Message us again — I'll be ready to help!"
+    )
+    await svc.send_text_message(to_phone=from_phone, body=body)
+
+    # Mark as sent so we don't repeat.
+    if redis_client is not None:
+        try:
+            await redis_client.set(dedupe_key, "1", ex=24 * 60 * 60)
+        except Exception:
+            logger.exception("Redis write failed for onboarding dedupe")
+
+    logger.info(
+        "Sent onboarding prompt to %s (user %s / %s)",
+        from_phone, user.id, user.email,
+    )
+    return True
