@@ -433,13 +433,26 @@ async def handle_ai_message(
                 db=db, user=user, tenant_name=tenant_name, text=text, cfg=cfg,
             )
         except Exception as e:
-            # Recoverable class: corrupt Redis history (orphan tool_result
-            # blocks from an older bug, manual edit, whatever) 400s Claude
+            # Recoverable class: corrupt Redis history 400s Claude
             # forever until the 24h TTL expires. Clear + retry ONCE with
             # a clean slate. Bounded to a single retry — no recursion —
             # so a genuinely broken key can't run up the bill.
+            #
+            # Known corruption patterns matched here:
+            #   - orphan tool_result blocks (older bug fixed by clean-history)
+            #   - "thinking.text: Extra inputs are not permitted" — a
+            #     thinking block was replayed back with a shape the API
+            #     rejects (fixed by disabling thinking + stripping
+            #     blocks on echo, but a mid-flight session predating
+            #     that fix still bites once until we clear it).
             emsg = str(e).lower()
-            if "tool_use_id" in emsg or ("tool_result" in emsg and "unexpected" in emsg):
+            is_corrupt_history = (
+                "tool_use_id" in emsg
+                or ("tool_result" in emsg and "unexpected" in emsg)
+                or ("thinking" in emsg and "extra inputs" in emsg)
+                or ("extra inputs are not permitted" in emsg)
+            )
+            if is_corrupt_history:
                 logger.warning(
                     "Corrupt Redis session for user %s — clearing + retrying once.",
                     user.id,
@@ -506,29 +519,50 @@ async def _handle_ai_message_inner(
 
     final_text: str | None = None
 
+    # Build the create() kwargs. Extended thinking is intentionally
+    # DISABLED — Sonnet 5 / Opus 5 default to adaptive thinking, but
+    # our tool-use loop doesn't benefit from it (parent question →
+    # tool call → answer). Worse, when we round-trip a thinking block
+    # back to the API via model_dump() its serialized shape has an
+    # extra `text` field the API rejects with:
+    #   messages.N.content.0.thinking.text: Extra inputs are not permitted
+    # Disabling thinking sidesteps the whole class of round-trip bugs
+    # and saves the (small but real) thinking token cost per turn.
+    # Opus 5 requires effort ≤ high when thinking is disabled — we cap
+    # at medium to stay compatible with any model the admin picks.
+    create_kwargs: dict[str, Any] = dict(
+        model=cfg.model,
+        max_tokens=1024,
+        system=[
+            {
+                "type": "text",
+                "text": system_prompt,
+                # Cache the system prompt across turns for this user —
+                # ~90% off input tokens once warm.
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        tools=tool_schemas,
+        thinking={"type": "disabled"},
+        output_config={"effort": "medium"},
+    )
+
     try:
         for iteration in range(MAX_LOOP_ITERATIONS):
-            resp = await client.messages.create(
-                model=cfg.model,
-                max_tokens=1024,
-                system=[
-                    {
-                        "type": "text",
-                        "text": system_prompt,
-                        # Cache the system prompt across turns for this
-                        # user — ~90% off input tokens once warm.
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-                tools=tool_schemas,
-                messages=messages,
-            )
+            resp = await client.messages.create(messages=messages, **create_kwargs)
 
             # Append the assistant turn to history — required so the next
             # iteration sees the tool_use blocks it needs to answer to.
+            # Filter out any thinking blocks belt-and-braces (with
+            # thinking disabled above the model shouldn't emit them,
+            # but a mid-conversation model swap could leave one in an
+            # older cached response — better safe than another 400).
             messages.append({
                 "role": "assistant",
-                "content": [_block_to_dict(b) for b in resp.content],
+                "content": [
+                    _block_to_dict(b) for b in resp.content
+                    if getattr(b, "type", None) != "thinking"
+                ],
             })
 
             if resp.stop_reason != "tool_use":
