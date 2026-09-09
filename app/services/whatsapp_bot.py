@@ -170,15 +170,26 @@ async def handle_inbound_message(
         )
         return mode, reply
 
-    # AI — still a placeholder in Phase 2B.
-    from app.services.whatsapp_menu_bot import TextReply
-    return mode, TextReply(
-        body=(
-            f"Hi {user.first_name} 👋 ClassUp AI chat is being set up here — "
-            "natural conversation with the school system will be live soon. "
-            "For now, log in at https://classup.co.za to check attendance, "
-            "balances, and reports."
+    # AI mode. If Anthropic isn't configured yet (admin hasn't set the
+    # API key), silently downgrade to menu mode so the parent still gets
+    # a useful reply. If the parent tapped an interactive button, defer
+    # to the menu bot for that turn too — button IDs aren't natural-
+    # language input, and the AI would have to guess at the intent.
+    from app.services.ai_config import get_config as get_ai_config
+    from app.services.whatsapp_ai_bot import handle_ai_message
+    from app.services.whatsapp_menu_bot import handle_menu_message
+
+    ai_cfg = await get_ai_config(db)
+    if not ai_cfg.configured or interactive_id:
+        reply = await handle_menu_message(
+            db=db, user=user, text=text or "", interactive_id=interactive_id,
         )
+        return mode, reply
+
+    reply = await handle_ai_message(
+        db=db, user=user, tenant_name=tenant.name if tenant else "your school",
+        text=text or "", cfg=ai_cfg,
     )
+    return mode, reply
 
 

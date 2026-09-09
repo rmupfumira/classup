@@ -76,6 +76,9 @@ python-magic==0.4.27
 # Redis
 redis==5.2.1
 
+# Anthropic API — Claude Haiku 4.5 powers the AI-mode WhatsApp bot
+anthropic==0.42.0
+
 # Multipart form handling
 python-multipart==0.0.19
 

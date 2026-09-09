@@ -159,15 +159,27 @@ class TestHandleInboundMessage:
         assert reply is sentinel
         mock_menu.assert_awaited_once()
 
-    async def test_ai_returns_placeholder_reply(self, db: AsyncSession):
-        # Phase 2C hasn't landed yet — AI still returns a canned message
-        # so a tenant that opts into AI early doesn't get radio silence.
-        from app.services.whatsapp_menu_bot import TextReply
+    async def test_ai_without_key_falls_back_to_menu_bot(
+        self, db: AsyncSession
+    ):
+        # AI-mode tenants get the menu bot when the Anthropic key isn't
+        # configured — silent graceful degradation, never radio silence.
+        # Phase 2C wires real Claude when the key IS set.
+        from app.services.whatsapp_menu_bot import ListReply, TextReply
         tenant = _tenant({"whatsapp_enabled": True, "whatsapp_ai_enabled": True})
         with patch(
             "app.services.whatsapp_bot._load_plan_features",
             return_value={"whatsapp_enabled": True, "whatsapp_ai_enabled": True},
-        ):
+        ), patch(
+            "app.services.ai_config.get_config",
+            new=AsyncMock(return_value=SimpleNamespace(
+                configured=False, api_key="", model="claude-haiku-4-5",
+                max_conversation_turns=10, daily_message_cap_per_user=200,
+            )),
+        ), patch(
+            "app.services.whatsapp_menu_bot.handle_menu_message",
+            new=AsyncMock(return_value=TextReply(body="menu fallback")),
+        ) as mock_menu:
             mode, reply = await handle_inbound_message(
                 db=db,
                 tenant=tenant,  # type: ignore[arg-type]
@@ -178,8 +190,8 @@ class TestHandleInboundMessage:
             )
         assert mode is BotMode.AI
         assert isinstance(reply, TextReply)
-        assert "Bob" in reply.body
-        assert "AI chat" in reply.body
+        assert reply.body == "menu fallback"
+        mock_menu.assert_awaited_once()
 
     async def test_unknown_sender_returns_off(self, db: AsyncSession):
         # Sender phone didn't match any user → user=None → OFF, silent.

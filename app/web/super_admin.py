@@ -466,6 +466,28 @@ async def whatsapp_settings_page(request: Request, db: AsyncSession = Depends(ge
     )
 
 
+@router.get("/ai-settings", response_class=HTMLResponse)
+async def ai_settings_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Super admin page: Anthropic API key + model for the AI-mode bot."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    _require_super_admin()
+
+    return templates.TemplateResponse(
+        "super_admin/ai_settings.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
 @router.get("/platform-settings", response_class=HTMLResponse)
 async def platform_settings_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Super admin page: platform-wide defaults inherited by new tenants."""

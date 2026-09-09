@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}AI Settings - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center gap-4">
+        <a href="/admin"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">AI Settings</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Anthropic Claude powers the AI-mode WhatsApp bot. Configure the key + model here.
+            </p>
+        </div>
+    </div>
+
+    <!-- Info banner -->
+    <div class="rounded-lg bg-info-50 border border-info-200 p-4 text-sm text-info-800">
+        <p class="font-medium mb-1">Two-tier feature — recap</p>
+        <p>
+            AI mode kicks in only when both the tenant's <strong>plan</strong> and the
+            tenant's <strong>own toggle</strong> allow it. If the API key isn't set here
+            (or Anthropic errors out), AI-mode tenants silently fall back to the
+            menu bot — parents still get useful replies.
+        </p>
+    </div>
+
+    <!-- Credentials card -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-base font-semibold text-neutral-800">Anthropic API</h2>
+                <p class="text-sm text-neutral-500 mt-0.5">
+                    Get a key at
+                    <a href="https://console.anthropic.com" target="_blank" class="text-primary-600 hover:underline">console.anthropic.com</a>.
+                    Enable prompt caching there too — cuts our input cost ~90%.
+                </p>
+            </div>
+            <span id="status-badge"
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                Loading…
+            </span>
+        </div>
+
+        <form id="ai-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">API key</label>
+                <input type="password" id="api_key" maxlength="500"
+                       placeholder="sk-ant-api03-..."
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg font-mono">
+                <p class="text-xs text-neutral-500 mt-1">
+                    Leave the masked value (********) to keep the current key.
+                    Never shown after save.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Model</label>
+                    <select id="model" class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg bg-white">
+                        <option value="claude-haiku-4-5">Haiku 4.5 (cheapest, recommended)</option>
+                        <option value="claude-sonnet-5">Sonnet 5 (smarter, ~10× cost)</option>
+                        <option value="claude-opus-5">Opus 5 (top tier)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        Daily cap per user
+                    </label>
+                    <input type="number" id="daily_message_cap_per_user" min="1" max="10000"
+                           class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                    <p class="text-xs text-neutral-500 mt-1">Kill switch for a broken loop.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        Conversation memory
+                    </label>
+                    <input type="number" id="max_conversation_turns" min="2" max="40"
+                           class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                    <p class="text-xs text-neutral-500 mt-1">Last N msgs kept per user (Redis, 24h TTL).</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 transition-colors">
+                    Save Settings
+                </button>
+                <button type="button" id="test-btn"
+                        class="inline-flex items-center px-4 py-2 bg-white border border-neutral-300 text-neutral-700 text-sm rounded-lg hover:bg-neutral-50 transition-colors">
+                    Test Connection
+                </button>
+                <span id="test-result" class="text-sm"></span>
+            </div>
+        </form>
+    </div>
+
+    <!-- Cost reference -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <h3 class="text-sm font-semibold text-neutral-800 mb-3">Rough cost per exchange</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div class="border border-neutral-200 rounded-lg p-3">
+                <p class="font-semibold text-neutral-800">Haiku 4.5</p>
+                <p class="text-neutral-500 text-xs">$1 / $5 per 1M tokens</p>
+                <p class="mt-2 text-neutral-700">~<strong>R0.02</strong> per parent question</p>
+            </div>
+            <div class="border border-neutral-200 rounded-lg p-3">
+                <p class="font-semibold text-neutral-800">Sonnet 5</p>
+                <p class="text-neutral-500 text-xs">$2 / $10 per 1M tokens</p>
+                <p class="mt-2 text-neutral-700">~<strong>R0.05</strong> per parent question</p>
+            </div>
+            <div class="border border-neutral-200 rounded-lg p-3">
+                <p class="font-semibold text-neutral-800">Opus 5</p>
+                <p class="text-neutral-500 text-xs">$5 / $25 per 1M tokens</p>
+                <p class="mt-2 text-neutral-700">~<strong>R0.14</strong> per parent question</p>
+            </div>
+        </div>
+        <p class="text-xs text-neutral-500 mt-3">
+            Estimates assume prompt caching enabled + typical 3-turn tool-use loop
+            (~1.5K input, 200 output tokens). Actual cost per tenant depends on parent
+            engagement — a school of 200 active parents at 50 msgs/mo on Haiku ≈ R240/mo.
+        </p>
+    </div>
+</div>
+
+<script>
+const setBadge = (kind, text) => {
+    const el = document.getElementById('status-badge');
+    el.textContent = text;
+    const cls = {
+        ok:   'bg-green-100 text-green-700',
+        warn: 'bg-yellow-100 text-yellow-700',
+        err:  'bg-red-100 text-red-700',
+    }[kind] || 'bg-neutral-100 text-neutral-600';
+    el.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ' + cls;
+};
+
+async function loadSettings() {
+    try {
+        const resp = await fetch('/api/v1/admin/ai-settings', {credentials: 'same-origin'});
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result.message || 'Failed to load');
+        const d = result.data || {};
+        document.getElementById('api_key').value = d.api_key || '';
+        document.getElementById('model').value = d.model || 'claude-haiku-4-5';
+        document.getElementById('daily_message_cap_per_user').value = d.daily_message_cap_per_user || 200;
+        document.getElementById('max_conversation_turns').value = d.max_conversation_turns || 10;
+        setBadge(d.configured ? 'ok' : 'warn',
+                 d.configured ? 'Configured' : 'Not configured');
+    } catch (e) {
+        setBadge('err', 'Load failed');
+        console.error(e);
+    }
+}
+
+document.getElementById('ai-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const payload = {
+        api_key: document.getElementById('api_key').value,
+        model: document.getElementById('model').value,
+        daily_message_cap_per_user: parseInt(document.getElementById('daily_message_cap_per_user').value, 10),
+        max_conversation_turns: parseInt(document.getElementById('max_conversation_turns').value, 10),
+    };
+    try {
+        const resp = await fetch('/api/v1/admin/ai-settings', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        });
+        const result = await resp.json();
+        if (resp.ok) {
+            if (window.ClassUp && window.ClassUp.toast) {
+                window.ClassUp.toast('AI settings saved', 'success');
+            }
+            await loadSettings();
+        } else {
+            ClassUp.toast(result.message || 'Save failed', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        ClassUp.toast('Network error', 'error');
+    }
+});
+
+document.getElementById('test-btn').addEventListener('click', async function () {
+    const btn = this;
+    const out = document.getElementById('test-result');
+    btn.disabled = true;
+    out.textContent = 'Testing…';
+    out.className = 'text-sm text-neutral-500';
+    try {
+        const resp = await fetch('/api/v1/admin/ai-settings/test', {
+            method: 'POST',
+            credentials: 'same-origin',
+        });
+        const result = await resp.json();
+        if (result.status === 'success') {
+            out.textContent = '✓ ' + (result.message || 'OK');
+            out.className = 'text-sm text-green-600';
+        } else {
+            out.textContent = '✗ ' + (result.message || 'Failed');
+            out.className = 'text-sm text-red-600';
+        }
+    } catch (err) {
+        out.textContent = 'Network error';
+        out.className = 'text-sm text-red-600';
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+loadSettings();
+</script>
+{% endblock %}

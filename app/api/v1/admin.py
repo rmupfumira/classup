@@ -1030,3 +1030,66 @@ async def list_recent_whatsapp_messages(
             for r in rows
         ],
     )
+
+
+# ==========================================================================
+# AI settings — Anthropic API key + model powering the AI-mode WhatsApp bot
+# ==========================================================================
+
+
+class AISettingsRequest(BaseModel):
+    """PUT body for /admin/ai-settings. Every field optional so the admin
+    can bump the daily cap without re-entering the API key."""
+
+    api_key: str | None = Field(None, max_length=500)
+    model: str | None = Field(None, max_length=100)
+    daily_message_cap_per_user: int | None = Field(None, ge=1, le=10_000)
+    max_conversation_turns: int | None = Field(None, ge=2, le=40)
+
+
+@router.get("/ai-settings")
+@require_super_admin()
+async def get_ai_settings(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Return the current AI config (API key masked)."""
+    from app.services import ai_config
+
+    cfg = await ai_config.get_config(db)
+    return APIResponse(status="success", data=cfg.with_masked_secrets())
+
+
+@router.put("/ai-settings")
+@require_super_admin()
+async def update_ai_settings(
+    body: AISettingsRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Save AI config. MASKED api_key preserves the existing key so the
+    admin can edit the model / cap without re-entering the secret."""
+    from app.services import ai_config
+
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    cfg = await ai_config.save_config(db, updates)
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message="AI settings saved.",
+        data=cfg.with_masked_secrets(),
+    )
+
+
+@router.post("/ai-settings/test")
+@require_super_admin()
+async def test_ai_settings(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Verify the Anthropic API key + model with a minimal live call.
+
+    Sends "Say OK." with an 8-token cap — under $0.0001, enough to
+    confirm the key works and the model responds.
+    """
+    from app.services import ai_config
+
+    cfg = await ai_config.get_config(db)
+    ok, message = await ai_config.test_connection(cfg)
+    return APIResponse(
+        status="success" if ok else "error",
+        message=message,
+    )
