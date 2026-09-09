@@ -126,6 +126,60 @@ class UserService:
 
         return list(result.scalars().all()), total
 
+    async def get_parents_paginated(
+        self,
+        db: AsyncSession,
+        search: str | None = None,
+        limit: int = 20,
+    ) -> list[User]:
+        """Search parents in the current tenant by name or email.
+
+        Used by the admin's "invite parent" typeahead — as the admin
+        types, we surface matching existing parents so they can be
+        linked to a new student with a single click instead of going
+        through the full invitation flow. Eager-loads parent_students
+        + student so the UI can show which children each parent is
+        already linked to (that's the context that makes the match
+        confirmable — "yes, that's the same Jane Doe, parent of
+        Sarah Moyo in Grade 3B").
+
+        Returns UP TO ``limit`` matches. Not paginated with
+        offset/count — a typeahead only ever needs the top 10.
+        """
+        from app.models.student import ParentStudent, Student
+
+        tenant_id = get_tenant_id()
+
+        base_filter = [
+            User.tenant_id == tenant_id,
+            User.role == Role.PARENT.value,
+            User.deleted_at.is_(None),
+            User.is_active.is_(True),
+        ]
+
+        if search:
+            term = f"%{search.strip()}%"
+            base_filter.append(
+                (User.first_name.ilike(term))
+                | (User.last_name.ilike(term))
+                | (User.email.ilike(term))
+                | (User.phone.ilike(term))
+            )
+
+        query = (
+            select(User)
+            .where(*base_filter)
+            .options(
+                selectinload(User.parent_students).selectinload(
+                    ParentStudent.student
+                ),
+            )
+            .order_by(User.first_name, User.last_name)
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
     async def create_teacher(
         self,
         db: AsyncSession,

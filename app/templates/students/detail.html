@@ -301,14 +301,44 @@
                 </p>
             </div>
             <div>
-                <label for="inv-email" class="block text-sm font-medium text-neutral-700 mb-1">Parent Email</label>
-                <input type="email" id="inv-email" name="email" required
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                              focus:border-primary-500 focus:ring-0"
-                       placeholder="parent@example.com">
+                <label for="inv-search" class="block text-sm font-medium text-neutral-700 mb-1">
+                    Parent Email or Name
+                </label>
+                <div class="relative">
+                    <input type="text" id="inv-search" name="search" required autocomplete="off"
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                                  focus:border-primary-500 focus:ring-0"
+                           placeholder="parent@example.com or Jane Doe">
+                    {# Live-search dropdown — populated by the typeahead handler
+                       as the admin types. Positioned absolutely under the input
+                       so the dialog layout doesn't jump. Hidden by default. #}
+                    <div id="inv-suggestions"
+                         class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-md shadow-lg max-h-56 overflow-y-auto">
+                    </div>
+                </div>
+                {# Hidden inputs the form submit reads. If the admin clicks a
+                   suggestion we set parent_id (link path). Otherwise we treat
+                   the search text as an email (invite path). #}
+                <input type="hidden" id="inv-parent-id" value="">
+                <input type="hidden" id="inv-email" value="">
+            </div>
+            <div id="inv-selected-parent" class="hidden rounded-md border border-primary-200 bg-primary-50 p-3 text-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="font-medium text-neutral-900">
+                            Link existing parent
+                            <span id="inv-selected-name"></span>
+                        </p>
+                        <p id="inv-selected-context" class="text-xs text-neutral-600 mt-0.5"></p>
+                    </div>
+                    <button type="button" id="inv-clear-selection"
+                            class="text-xs text-neutral-500 hover:text-neutral-800 underline">
+                        Clear
+                    </button>
+                </div>
             </div>
             <p class="text-xs text-neutral-500">
-                If this parent already has an account, they'll be linked automatically. Otherwise, an invitation email will be sent.
+                Start typing to search existing parents. If none match, type the full email to send a new invitation.
             </p>
             <div id="inv-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
             <div id="inv-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
@@ -338,44 +368,175 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorDiv = document.getElementById('inv-error');
     const successDiv = document.getElementById('inv-success');
     const submitBtn = document.getElementById('inv-submit-btn');
+    const searchInput = document.getElementById('inv-search');
+    const suggestionsBox = document.getElementById('inv-suggestions');
+    const parentIdField = document.getElementById('inv-parent-id');
+    const emailField = document.getElementById('inv-email');
+    const selectedPanel = document.getElementById('inv-selected-parent');
+    const selectedName = document.getElementById('inv-selected-name');
+    const selectedContext = document.getElementById('inv-selected-context');
+    const clearBtn = document.getElementById('inv-clear-selection');
+
+    const STUDENT_ID = '{{ student.id }}';
+
+    // ── Typeahead: debounce search as the admin types ───────────────
+
+    let searchTimer = null;
+    let latestQuery = '';
+
+    function clearSelection() {
+        parentIdField.value = '';
+        selectedPanel.classList.add('hidden');
+        submitBtn.textContent = 'Send Invitation';
+    }
+
+    function selectParent(parent) {
+        parentIdField.value = parent.id;
+        emailField.value = parent.email || '';
+        searchInput.value = `${parent.first_name} ${parent.last_name}`.trim();
+        selectedName.textContent = `— ${parent.first_name} ${parent.last_name}`;
+        const childNames = (parent.children || []).map(c => c.first_name).join(', ');
+        selectedContext.textContent = childNames
+            ? `${parent.email} · currently linked to ${childNames}`
+            : parent.email;
+        selectedPanel.classList.remove('hidden');
+        suggestionsBox.classList.add('hidden');
+        submitBtn.textContent = 'Link to Student';
+    }
+
+    async function runSearch(q) {
+        try {
+            const resp = await fetch(
+                `/api/v1/users/parents/search?q=${encodeURIComponent(q)}&limit=8`,
+                { credentials: 'same-origin' },
+            );
+            if (!resp.ok) return;
+            const result = await resp.json();
+            // Guard against out-of-order responses (fast typing).
+            if (q !== latestQuery) return;
+            renderSuggestions(result.data.parents || []);
+        } catch (err) {
+            /* silent — typeahead falls back to plain-text invite */
+        }
+    }
+
+    function renderSuggestions(parents) {
+        if (!parents.length) {
+            suggestionsBox.classList.add('hidden');
+            return;
+        }
+        suggestionsBox.innerHTML = parents.map(p => {
+            const children = (p.children || []).map(c => c.first_name).join(', ');
+            const childrenLine = children
+                ? `<p class="text-xs text-neutral-500 mt-0.5">Parent of ${children}</p>`
+                : '';
+            return `
+                <button type="button" data-parent-id="${p.id}" class="inv-suggest w-full text-left px-3 py-2 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50">
+                    <p class="text-sm font-medium text-neutral-900">${p.first_name} ${p.last_name}</p>
+                    <p class="text-xs text-neutral-600">${p.email || ''}</p>
+                    ${childrenLine}
+                </button>
+            `;
+        }).join('');
+        suggestionsBox.classList.remove('hidden');
+
+        suggestionsBox.querySelectorAll('.inv-suggest').forEach((btn, idx) => {
+            btn.addEventListener('click', () => selectParent(parents[idx]));
+        });
+    }
+
+    searchInput.addEventListener('input', function() {
+        clearSelection();
+        const q = this.value.trim();
+        latestQuery = q;
+        clearTimeout(searchTimer);
+        if (q.length < 2) {
+            suggestionsBox.classList.add('hidden');
+            return;
+        }
+        // 200ms debounce — feels instant, saves round-trips while typing.
+        searchTimer = setTimeout(() => runSearch(q), 200);
+    });
+
+    // Click outside → close suggestions.
+    document.addEventListener('click', (e) => {
+        if (!suggestionsBox.contains(e.target) && e.target !== searchInput) {
+            suggestionsBox.classList.add('hidden');
+        }
+    });
+
+    clearBtn.addEventListener('click', () => {
+        clearSelection();
+        searchInput.value = '';
+        searchInput.focus();
+    });
+
+    // ── Submit: link if parent selected, else invite by email ───────
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         errorDiv.classList.add('hidden');
         successDiv.classList.add('hidden');
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Sending...';
 
-        const data = {
-            student_id: '{{ student.id }}',
-            email: document.getElementById('inv-email').value,
-        };
+        const selectedParentId = parentIdField.value;
+        const searchText = searchInput.value.trim();
 
         try {
-            const response = await fetch('/api/v1/invitations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify(data),
-            });
+            let response, result, wasLink;
+            if (selectedParentId) {
+                // LINK path — call POST /students/{id}/parents with parent_id.
+                // No invitation email; parent is already registered.
+                submitBtn.textContent = 'Linking...';
+                response = await fetch(`/api/v1/students/${STUDENT_ID}/parents`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        parent_id: selectedParentId,
+                        relationship_type: 'PARENT',
+                        is_primary: false,
+                    }),
+                });
+                wasLink = true;
+            } else {
+                // INVITE path — treat search text as email address.
+                if (!searchText.includes('@')) {
+                    throw new Error('Please pick an existing parent from the list or type a full email address.');
+                }
+                submitBtn.textContent = 'Sending...';
+                response = await fetch('/api/v1/invitations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        student_id: STUDENT_ID,
+                        email: searchText,
+                    }),
+                });
+                wasLink = false;
+            }
 
-            const result = await response.json();
+            result = await response.json();
 
-            if (result.status === 'success') {
-                successDiv.textContent = result.message || 'Invitation sent successfully!';
+            if (response.ok && result.status === 'success') {
+                successDiv.textContent = wasLink
+                    ? (result.message || 'Parent linked to student.')
+                    : (result.message || 'Invitation sent.');
                 successDiv.classList.remove('hidden');
                 form.reset();
+                clearSelection();
                 setTimeout(() => window.location.reload(), 1500);
             } else {
-                errorDiv.textContent = result.detail || result.message || 'Failed to send invitation';
+                errorDiv.textContent = result.detail || result.message || 'Failed to add parent.';
                 errorDiv.classList.remove('hidden');
             }
         } catch (error) {
-            errorDiv.textContent = 'An error occurred. Please try again.';
+            errorDiv.textContent = error.message || 'An error occurred. Please try again.';
             errorDiv.classList.remove('hidden');
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Send Invitation';
+            submitBtn.textContent = selectedParentId ? 'Link to Student' : 'Send Invitation';
         }
     });
 });

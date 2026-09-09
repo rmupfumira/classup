@@ -3,7 +3,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +39,59 @@ class UpdateTeacherRequest(BaseModel):
 
 class SetPasswordRequest(BaseModel):
     password: str = Field(..., min_length=8)
+
+
+@router.get("/parents/search")
+@require_role("SCHOOL_ADMIN")
+async def search_parents(
+    q: str | None = Query(
+        None, min_length=1, max_length=100,
+        description="Search term — matches name, email, or phone (case-insensitive)",
+    ),
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Search existing parents in this tenant.
+
+    Powers the "invite parent" typeahead: as the admin types an email
+    or name, we return up to ``limit`` matching parents WITH their
+    linked children — so the admin can confirm the identity (*"yes,
+    Jane Doe, parent of Sarah Moyo in Grade 3B — that's her"*) and
+    link the new student with one click instead of running the full
+    invite flow again. Also powers the "sibling of" picker on the
+    student-create form.
+    """
+    from app.models.student import ParentStudent  # noqa: F401  (relationship load)
+
+    service = get_user_service()
+    parents = await service.get_parents_paginated(db, search=q, limit=limit)
+
+    def _summary(p) -> dict:
+        # Compact shape — the typeahead only needs enough to render
+        # a "Jane Doe · jane@example.com · parent of Sarah, Peter" row.
+        children = [
+            {
+                "id": str(ps.student.id),
+                "first_name": ps.student.first_name,
+                "last_name": ps.student.last_name,
+                "is_primary": ps.is_primary,
+            }
+            for ps in (p.parent_students or [])
+            if ps.student is not None and ps.student.deleted_at is None
+        ]
+        return {
+            "id": str(p.id),
+            "first_name": p.first_name,
+            "last_name": p.last_name,
+            "email": p.email,
+            "phone": p.phone,
+            "children": children,
+        }
+
+    return APIResponse(
+        status="success",
+        data={"parents": [_summary(p) for p in parents]},
+    )
 
 
 @router.post("/teachers/invite")

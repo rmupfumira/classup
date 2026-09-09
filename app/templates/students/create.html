@@ -16,6 +16,63 @@
 
     <!-- Form -->
     <form id="student-form" class="space-y-6">
+        <!-- Sibling of existing student (optional) -->
+        <div class="bg-primary-50 rounded-lg border border-primary-200 p-6">
+            <label class="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" id="is-sibling" class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <span>
+                    <span class="block text-sm font-semibold text-neutral-900">
+                        This student is a sibling of an existing student
+                    </span>
+                    <span class="block text-xs text-neutral-600 mt-0.5">
+                        Automatically links the same parents so you don't have to re-invite them.
+                    </span>
+                </span>
+            </label>
+
+            {# Sibling picker — hidden until the checkbox is ticked. #}
+            <div id="sibling-picker" class="hidden mt-4">
+                <div class="relative">
+                    <input type="text" id="sibling-search" autocomplete="off"
+                           placeholder="Search existing students by name…"
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white focus:border-primary-500 focus:ring-0">
+                    <div id="sibling-suggestions"
+                         class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-md shadow-lg max-h-56 overflow-y-auto">
+                    </div>
+                </div>
+
+                {# Preview panel — what will be inherited from the sibling. #}
+                <div id="sibling-selected" class="hidden mt-3 rounded-md border border-primary-300 bg-white p-3 text-sm">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <p class="font-medium text-neutral-900">
+                            Sibling of <span id="sibling-selected-name"></span>
+                        </p>
+                        <button type="button" id="sibling-clear"
+                                class="text-xs text-neutral-500 hover:text-neutral-800 underline">
+                            Clear
+                        </button>
+                    </div>
+                    <p id="sibling-parents-preview" class="text-xs text-neutral-600">
+                        Loading parents…
+                    </p>
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="inherit-parents" checked class="rounded border-neutral-300 text-primary-600">
+                            Parents (auto-link)
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="inherit-emergency" class="rounded border-neutral-300 text-primary-600">
+                            Emergency contacts
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="inherit-class" class="rounded border-neutral-300 text-primary-600">
+                            Same class
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Basic Information -->
         <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Basic Information</h2>
@@ -192,11 +249,164 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Form submission
+    // ── Sibling picker ──────────────────────────────────────────────
+
+    const siblingCheckbox = document.getElementById('is-sibling');
+    const siblingPicker = document.getElementById('sibling-picker');
+    const siblingSearch = document.getElementById('sibling-search');
+    const siblingSuggestions = document.getElementById('sibling-suggestions');
+    const siblingSelected = document.getElementById('sibling-selected');
+    const siblingSelectedName = document.getElementById('sibling-selected-name');
+    const siblingParentsPreview = document.getElementById('sibling-parents-preview');
+    const siblingClearBtn = document.getElementById('sibling-clear');
+    const inheritClassCheckbox = document.getElementById('inherit-class');
+    const classSelect = document.getElementById('class_id');
+
+    // Sibling state, populated when a sibling is picked. Read on submit
+    // to inherit parents (and optionally other fields).
+    let siblingState = {
+        studentId: null,
+        studentName: null,
+        parents: [],
+        emergencyContacts: [],
+        classId: null,
+    };
+
+    function clearSibling() {
+        siblingState = { studentId: null, studentName: null, parents: [], emergencyContacts: [], classId: null };
+        siblingSelected.classList.add('hidden');
+        siblingSearch.value = '';
+    }
+
+    siblingCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            siblingPicker.classList.remove('hidden');
+            siblingSearch.focus();
+        } else {
+            siblingPicker.classList.add('hidden');
+            clearSibling();
+        }
+    });
+
+    siblingClearBtn.addEventListener('click', function() {
+        clearSibling();
+        siblingSearch.focus();
+    });
+
+    let siblingTimer = null;
+    let latestSiblingQuery = '';
+
+    siblingSearch.addEventListener('input', function() {
+        const q = this.value.trim();
+        latestSiblingQuery = q;
+        clearTimeout(siblingTimer);
+        if (q.length < 2) {
+            siblingSuggestions.classList.add('hidden');
+            return;
+        }
+        siblingTimer = setTimeout(() => runSiblingSearch(q), 200);
+    });
+
+    async function runSiblingSearch(q) {
+        try {
+            const resp = await fetch(
+                `/api/v1/students?search=${encodeURIComponent(q)}&page_size=8`,
+                { credentials: 'same-origin' },
+            );
+            if (!resp.ok) return;
+            const result = await resp.json();
+            if (q !== latestSiblingQuery) return;
+            renderSiblingSuggestions(result.data || []);
+        } catch (err) { /* silent */ }
+    }
+
+    function renderSiblingSuggestions(students) {
+        if (!students.length) {
+            siblingSuggestions.classList.add('hidden');
+            return;
+        }
+        siblingSuggestions.innerHTML = students.map((s, idx) => {
+            const cls = s.class_name ? ` · ${s.class_name}` : '';
+            return `
+                <button type="button" data-idx="${idx}" class="sib-suggest w-full text-left px-3 py-2 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50">
+                    <p class="text-sm font-medium text-neutral-900">${s.first_name} ${s.last_name}</p>
+                    <p class="text-xs text-neutral-500">${(s.grade_level || '')}${cls}</p>
+                </button>
+            `;
+        }).join('');
+        siblingSuggestions.classList.remove('hidden');
+        siblingSuggestions.querySelectorAll('.sib-suggest').forEach((btn) => {
+            btn.addEventListener('click', () => selectSibling(students[Number(btn.dataset.idx)]));
+        });
+    }
+
+    async function selectSibling(student) {
+        siblingState.studentId = student.id;
+        siblingState.studentName = `${student.first_name} ${student.last_name}`;
+        siblingState.classId = student.class_id || null;
+        siblingSelectedName.textContent = siblingState.studentName;
+        siblingSelected.classList.remove('hidden');
+        siblingSuggestions.classList.add('hidden');
+        siblingSearch.value = siblingState.studentName;
+        siblingParentsPreview.textContent = 'Loading parents…';
+
+        // Fetch the sibling's parents so we know what will be inherited.
+        try {
+            const resp = await fetch(
+                `/api/v1/students/${student.id}/parents`,
+                { credentials: 'same-origin' },
+            );
+            const result = await resp.json();
+            siblingState.parents = (result.data || []).map(p => ({
+                id: p.id, first_name: p.first_name, last_name: p.last_name,
+            }));
+            if (siblingState.parents.length === 0) {
+                siblingParentsPreview.textContent = 'No parents linked yet — nothing to inherit.';
+            } else {
+                const names = siblingState.parents.map(p => `${p.first_name} ${p.last_name}`).join(', ');
+                siblingParentsPreview.textContent = `Will link parents: ${names}.`;
+            }
+        } catch (err) {
+            siblingParentsPreview.textContent = 'Could not load parents. You can still create the student and link them manually.';
+        }
+
+        // Also fetch full sibling detail so we can inherit emergency contacts
+        // if the admin ticks that option.
+        try {
+            const detailResp = await fetch(
+                `/api/v1/students/${student.id}`,
+                { credentials: 'same-origin' },
+            );
+            const detailResult = await detailResp.json();
+            siblingState.emergencyContacts = (detailResult.data && detailResult.data.emergency_contacts) || [];
+        } catch (err) {
+            siblingState.emergencyContacts = [];
+        }
+
+        // Watch "inherit class" toggle: when ticked, pre-fill the class
+        // dropdown. Un-ticking doesn't revert — the admin can pick manually.
+        if (inheritClassCheckbox.checked && siblingState.classId) {
+            classSelect.value = siblingState.classId;
+        }
+    }
+
+    inheritClassCheckbox.addEventListener('change', function() {
+        if (this.checked && siblingState.classId) {
+            classSelect.value = siblingState.classId;
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!siblingSuggestions.contains(e.target) && e.target !== siblingSearch) {
+            siblingSuggestions.classList.add('hidden');
+        }
+    });
+
+    // ── Form submission ────────────────────────────────────────────
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
 
-        // Gather form data
         const formData = new FormData(form);
         const data = {
             first_name: formData.get('first_name'),
@@ -210,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
             emergency_contacts: []
         };
 
-        // Gather emergency contacts
+        // Emergency contacts from the form UI.
         const contactItems = contactsContainer.querySelectorAll('.contact-item');
         contactItems.forEach(item => {
             const name = item.querySelector('input[name="emergency_contacts[][name]"]').value;
@@ -220,6 +430,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.emergency_contacts.push({ name, phone, relationship });
             }
         });
+
+        // Inherit emergency contacts from the sibling if requested.
+        if (siblingState.studentId && document.getElementById('inherit-emergency').checked) {
+            (siblingState.emergencyContacts || []).forEach(c => {
+                data.emergency_contacts.push(c);
+            });
+        }
 
         try {
             const response = await fetch('/api/v1/students', {
@@ -231,11 +448,57 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const result = await response.json();
 
-            if (response.ok) {
-                window.location.href = '/students/' + result.data.id;
-            } else {
+            if (!response.ok) {
                 ClassUp.toast(result.message || 'Failed to create student', 'error');
+                return;
             }
+
+            const newStudentId = result.data.id;
+
+            // Inherit sibling's parents — batch of link calls. Best-effort
+            // per parent: if one fails, the others still get linked and the
+            // admin lands on the student page where they can retry.
+            if (
+                siblingState.studentId
+                && document.getElementById('inherit-parents').checked
+                && siblingState.parents.length > 0
+            ) {
+                let linkedCount = 0, failedCount = 0;
+                for (const parent of siblingState.parents) {
+                    try {
+                        const linkResp = await fetch(
+                            `/api/v1/students/${newStudentId}/parents`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({
+                                    parent_id: parent.id,
+                                    relationship_type: 'PARENT',
+                                    is_primary: false,
+                                }),
+                            },
+                        );
+                        if (linkResp.ok) linkedCount += 1; else failedCount += 1;
+                    } catch (err) {
+                        failedCount += 1;
+                    }
+                }
+                if (linkedCount > 0) {
+                    ClassUp.toast(
+                        `Student created + ${linkedCount} parent${linkedCount === 1 ? '' : 's'} inherited from ${siblingState.studentName}.`,
+                        'success',
+                    );
+                }
+                if (failedCount > 0) {
+                    ClassUp.toast(
+                        `${failedCount} parent link${failedCount === 1 ? '' : 's'} failed — you can retry from the student page.`,
+                        'warning',
+                    );
+                }
+            }
+
+            window.location.href = '/students/' + newStudentId;
         } catch (error) {
             console.error('Error:', error);
             ClassUp.toast('An error occurred. Please try again.', 'error');
