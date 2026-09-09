@@ -1,5 +1,11 @@
 <!DOCTYPE html>
-<html lang="{{ current_language | default('en') }}" class="h-full {% if user %}has-navbar{% endif %}">
+{# Note: we intentionally do NOT set h-full on <html>/<body> — that used to
+   lock the viewport to 100vh and force <main> to scroll internally via
+   overflow-y-auto, which broke mouse-wheel scrolling anywhere outside the
+   main content column (sidebar, right gutter, over the mobile nav). Natural
+   body scrolling works everywhere; sticky navbar + fixed sidebar don't need
+   the height lock. #}
+<html lang="{{ current_language | default('en') }}" class="{% if user %}has-navbar{% endif %}">
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
@@ -224,10 +230,11 @@
         /* iOS standalone uses a different env */
         body.is-standalone .hide-in-standalone { display: none !important; }
 
-        /* Pull-to-refresh hint area — kept invisible, but lets browser know
-           we'll handle reload via JS. Setting overscroll-behavior: contain
-           on the main scroll area prevents the whole-page bounce. */
-        main { overscroll-behavior-y: contain; }
+        /* (Removed) main { overscroll-behavior-y: contain; } — no longer
+           needed now that <main> isn't its own scroll container; the html/body
+           overscroll-behavior above handles bounce prevention for the whole
+           page. Kept as a comment as a signpost for anyone tracing the
+           previous "can't scroll to bottom" bug. */
 
         /* Native-feeling tap response on buttons + links */
         button:active, a:active { transform: scale(0.98); transition: transform 0.05s; }
@@ -246,7 +253,7 @@
 
     {% block head %}{% endblock %}
 </head>
-<body class="h-full bg-neutral-50 text-neutral-800 antialiased text-sm">
+<body class="min-h-screen bg-neutral-50 text-neutral-800 antialiased text-sm">
     {% include 'components/_env_banner.html' %}
     {% if user %}
         <!-- Authenticated Layout -->
@@ -257,9 +264,13 @@
             {% include 'components/_sidebar.html' %}
 
             <!-- Main Content -->
-            {# pb-24 + md:pb-0 keeps content above the mobile bottom nav.
+            {# No overflow-y-auto — <main> flows naturally and the whole
+               page scrolls with the browser's native scroll bar. That's
+               what makes mouse-wheel scrolling work anywhere on the page.
+               md:ml-56 leaves room for the fixed sidebar on desktop.
+               pb-24 + md:pb-0 keeps content above the mobile bottom nav.
                pb-safe handles the iPhone home-indicator. #}
-            <main class="flex-1 overflow-y-auto pb-24 md:pb-0">
+            <main class="flex-1 pb-24 md:pb-0 md:ml-56 min-w-0">
                 <div class="p-6 pb-safe md:pb-6">
                     <!-- Toast Container -->
                     <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3"></div>
