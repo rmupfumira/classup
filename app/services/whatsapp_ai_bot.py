@@ -519,37 +519,33 @@ async def _handle_ai_message_inner(
 
     final_text: str | None = None
 
-    # Build the create() kwargs. Extended thinking is intentionally
-    # DISABLED — Sonnet 5 / Opus 5 default to adaptive thinking, but
-    # our tool-use loop doesn't benefit from it (parent question →
-    # tool call → answer). Worse, when we round-trip a thinking block
-    # back to the API via model_dump() its serialized shape has an
-    # extra `text` field the API rejects with:
-    #   messages.N.content.0.thinking.text: Extra inputs are not permitted
-    # Disabling thinking sidesteps the whole class of round-trip bugs
-    # and saves the (small but real) thinking token cost per turn.
-    # Opus 5 requires effort ≤ high when thinking is disabled — we cap
-    # at medium to stay compatible with any model the admin picks.
-    create_kwargs: dict[str, Any] = dict(
-        model=cfg.model,
-        max_tokens=1024,
-        system=[
-            {
-                "type": "text",
-                "text": system_prompt,
-                # Cache the system prompt across turns for this user —
-                # ~90% off input tokens once warm.
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
-        tools=tool_schemas,
-        thinking={"type": "disabled"},
-        output_config={"effort": "medium"},
-    )
+    # Note on extended thinking: the newer models (Sonnet 5, Opus 5)
+    # default to adaptive thinking, which returns `thinking` blocks in
+    # the response. We could disable it via thinking={"type":"disabled"}
+    # + output_config effort=medium, but the pinned SDK version
+    # (anthropic==0.42.0) doesn't accept those kwargs — TypeError at
+    # send time. Rather than upgrade the SDK mid-testing, we let the
+    # model do whatever thinking it wants, then STRIP thinking blocks
+    # from the assistant echo below. The API accepts thinking blocks
+    # inbound; only the round-trip is broken.
 
     try:
         for iteration in range(MAX_LOOP_ITERATIONS):
-            resp = await client.messages.create(messages=messages, **create_kwargs)
+            resp = await client.messages.create(
+                model=cfg.model,
+                max_tokens=1024,
+                system=[
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        # Cache the system prompt across turns for this
+                        # user — ~90% off input tokens once warm.
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+                tools=tool_schemas,
+                messages=messages,
+            )
 
             # Append the assistant turn to history — required so the next
             # iteration sees the tool_use blocks it needs to answer to.
