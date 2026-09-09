@@ -502,6 +502,56 @@ class TestAILoop:
         assert mock_client.messages.create.await_count == 2
 
 
+class TestSystemPromptChildInjection:
+    """The system prompt injects the full children list (with child_ids)
+    so Claude can call downstream tools directly, without a per-turn
+    get_my_children round-trip. That round-trip was the source of the
+    hallucination where Claude flipped between "Aaron is linked" and
+    "Aaron isn't linked" mid-conversation."""
+
+    def test_prompt_includes_child_id_class_and_teacher(self):
+        import uuid as _uuid
+        from app.services import whatsapp_bot_tools as _tools
+        children = [
+            _tools.ChildSummary(
+                id=_uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                first_name="Aaron", last_name="Moyo",
+                class_name="Grade 3B", teacher_name="Ms Smith",
+            ),
+        ]
+        user = SimpleNamespace(first_name="Russel", last_name="Mupfumira")
+        prompt = whatsapp_ai_bot._build_system_prompt(
+            user, "Kingsway Primary", children,  # type: ignore[arg-type]
+        )
+        # Child_id is what stops Claude from re-calling get_my_children.
+        assert "11111111-1111-1111-1111-111111111111" in prompt
+        assert "Aaron Moyo" in prompt
+        assert "Grade 3B" in prompt
+        assert "Ms Smith" in prompt
+        # Explicit anti-hallucination rule must be in the prompt so
+        # Claude never invents "your child isn't linked" for a child
+        # that IS in the pre-fetched list.
+        assert "AUTHORITATIVE" in prompt or "authoritative" in prompt.lower()
+
+    def test_prompt_names_no_children_gracefully(self):
+        user = SimpleNamespace(first_name="Alone", last_name="Parent")
+        prompt = whatsapp_ai_bot._build_system_prompt(
+            user, "Test School", [],  # type: ignore[arg-type]
+        )
+        assert "0 child" in prompt or "none linked" in prompt.lower()
+
+    def test_prompt_instructs_language_fallback_to_english(self):
+        """A subtle but important rule after seeing broken Shona output:
+        Haiku should reply in English when it's not confident in the
+        parent's language, not attempt a grammatically-broken translation."""
+        user = SimpleNamespace(first_name="Test", last_name="User")
+        prompt = whatsapp_ai_bot._build_system_prompt(
+            user, "S", [],  # type: ignore[arg-type]
+        )
+        # Fallback to English when translation would be broken.
+        assert "reply in English" in prompt
+
+
 class TestCleanTextOnlyTurns:
     """The save-side sanitiser — must never emit a message list that
     could 400 Anthropic when re-loaded and truncated."""
