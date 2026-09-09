@@ -218,12 +218,43 @@ async def _find_user_by_phone(
 ) -> User | None:
     """Look up a user by their WhatsApp phone across all tenants.
 
-    Meta strips the leading +; the DB usually stores it with the + (E.164).
-    We try both and prefer an active, non-deleted, opted-in user. If the
-    number matches an account that hasn't opted in yet we still return it
-    — the caller decides whether to auto-reply anyway.
+    Meta strips the leading ``+``; admins are inconsistent about how they
+    save the number (with plus / without plus / with spaces / SA-local
+    ``0`` prefix). Rather than dictate a format we normalise both sides
+    to digits and compare, then also try the classic country-code
+    substitutions for the tenants we know about.
+
+    Returns the first active, non-deleted match. Any user linked to the
+    number counts — the caller (bot dispatcher) handles the opt-in gate.
     """
-    candidates = {from_phone, f"+{from_phone.lstrip('+')}"}
+    def _digits(s: str) -> str:
+        return "".join(ch for ch in (s or "") if ch.isdigit())
+
+    incoming = _digits(from_phone)
+    if not incoming:
+        return None
+
+    # Build the set of DB spellings that should also match. Start with the
+    # obvious variants, then add common local-vs-international swaps.
+    candidates: set[str] = {
+        from_phone,
+        incoming,
+        f"+{incoming}",
+    }
+    # SA: +27 vs local 0 (e.g. +27722621278 <-> 0722621278)
+    if incoming.startswith("27") and len(incoming) >= 11:
+        local = "0" + incoming[2:]
+        candidates.update({local, f"+{local}"})
+    if incoming.startswith("0") and len(incoming) >= 10:
+        za_intl = "27" + incoming[1:]
+        candidates.update({za_intl, f"+{za_intl}"})
+    # Zimbabwe: +263 vs local 0
+    if incoming.startswith("263") and len(incoming) >= 12:
+        local = "0" + incoming[3:]
+        candidates.update({local, f"+{local}"})
+
+    # Direct match first — fast path when the admin stored one of the
+    # obvious spellings.
     result = await db.execute(
         select(User)
         .where(
@@ -233,4 +264,34 @@ async def _find_user_by_phone(
         )
         .limit(1)
     )
-    return result.scalar_one_or_none()
+    hit = result.scalar_one_or_none()
+    if hit is not None:
+        return hit
+
+    # Slow path: normalise DB values in Python. Only fires when the
+    # direct spellings all missed — usually because the admin typed
+    # spaces / dashes ("+27 72 262 1278"). Bounded by whatsapp_phone
+    # NOT NULL so it doesn't scan the whole users table.
+    result = await db.execute(
+        select(User).where(
+            User.whatsapp_phone.is_not(None),
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+    )
+    for u in result.scalars().all():
+        stored = _digits(u.whatsapp_phone or "")
+        if not stored:
+            continue
+        if stored == incoming:
+            return u
+        # local <-> international swaps on the normalised digits
+        if stored.startswith("0") and incoming.startswith("27") and stored[1:] == incoming[2:]:
+            return u
+        if incoming.startswith("0") and stored.startswith("27") and incoming[1:] == stored[2:]:
+            return u
+        if stored.startswith("0") and incoming.startswith("263") and stored[1:] == incoming[3:]:
+            return u
+        if incoming.startswith("0") and stored.startswith("263") and incoming[1:] == stored[3:]:
+            return u
+    return None
