@@ -944,13 +944,20 @@ async def send_whatsapp_test_message(
             message="WhatsApp is not fully configured yet. Fill in the credentials + test connection first.",
         )
 
+    school = body.school_name or "ClassUp"
+    if body.template_name == "welcome":
+        params, button_urls = [school, "https://classup.co.za"], None
+    elif body.template_name == "parent_signup":
+        params, button_urls = [school], ["TESTCODE"]
+    else:
+        params, button_urls = None, None
+
     result = await service.send_template_message(
         to_phone=body.to_phone,
         template_name=body.template_name,
         language_code="en",
-        parameters=[body.school_name or "ClassUp", "https://classup.co.za"]
-        if body.template_name == "welcome"
-        else None,
+        parameters=params,
+        button_url_variables=button_urls,
     )
 
     if not result:

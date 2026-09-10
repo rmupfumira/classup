@@ -1009,12 +1009,30 @@ class WhatsAppService:
         code: str,
         language: str = "en",
     ) -> dict | None:
-        """Send a parent invitation template message."""
+        """Send a parent signup invitation.
+
+        Template body (parent_signup, approved as Marketing on Meta):
+          "Welcome to ClassUp! *{{1}}* has invited you as a parent.
+           Tap the button below to complete your signup and start
+           receiving updates about your child. See you soon!"
+        Button: URL — /register?code={{1}} (dynamic suffix carries
+        the invitation code — parent taps once, lands on the pre-filled
+        signup form).
+
+        The Meta template is named ``parent_signup`` (not
+        ``parent_invite``): the first ``parent_invite`` attempt was
+        rejected as miscategorised and the name is locked out for 30
+        days. Category is Marketing because Meta refused to classify a
+        signup-CTA template as Utility — parents have already opted
+        into WhatsApp via ``users.whatsapp_opted_in`` so Marketing is
+        equally fine on our side.
+        """
         return await self.send_template_message(
             to_phone=to_phone,
-            template_name="parent_invite",
+            template_name="parent_signup",
             language_code=language,
-            parameters=[school_name, code],
+            parameters=[school_name],
+            button_url_variables=[code],
         )
 
     async def send_welcome(

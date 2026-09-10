@@ -86,22 +86,44 @@ TEMPLATES: list[dict[str, Any]] = [
             }
         ],
     },
+    # Meta rejected the original ``parent_invite`` (Utility) as
+    # miscategorised, and the name is locked out for 30 days after
+    # deletion. Resubmitted as ``parent_signup`` under MARKETING —
+    # Meta refuses to treat a signup CTA as Utility. Parents have
+    # already opted in via ``users.whatsapp_opted_in`` so Marketing
+    # is equally fine on our side. The code moves out of the body
+    # into a dynamic URL button, so the body reads as pure copy and
+    # avoids anything that looks like an authentication token.
     {
-        "name": "parent_invite",
+        "name": "parent_signup",
         "language": "en_US",
-        "category": "UTILITY",
+        "category": "MARKETING",
         "components": [
             {
                 "type": "BODY",
                 "text": (
-                    "You've been invited to {{1}} on ClassUp. Use code "
-                    "*{{2}}* to complete your registration at "
-                    "https://classup.co.za/register"
+                    "Welcome to ClassUp! *{{1}}* has invited you as a "
+                    "parent. Tap the button below to complete your "
+                    "signup and start receiving updates about your "
+                    "child. See you soon!"
                 ),
                 "example": {
-                    "body_text": [["Kingsway Primary", "A3F7B2K9"]]
+                    "body_text": [["Kingsway Primary"]]
                 },
-            }
+            },
+            {
+                "type": "BUTTONS",
+                "buttons": [
+                    {
+                        "type": "URL",
+                        "text": "Complete signup",
+                        "url": "https://classup.co.za/register?code={{1}}",
+                        "example": [
+                            "https://classup.co.za/register?code=A3F7B2K9"
+                        ],
+                    }
+                ],
+            },
         ],
     },
     {

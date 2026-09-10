@@ -15,7 +15,7 @@ Best-effort semantics:
 
 Template strategy:
   - 5 events have bespoke Meta-approved templates (``attendance_alert``,
-    ``report_ready``, ``announcement``, ``parent_invite``, ``welcome``)
+    ``report_ready``, ``announcement``, ``parent_signup``, ``welcome``)
     — these give the polished branded message parents see.
   - 6 more events (invoices, payments, documents, photos, messages,
     pickup) DON'T have bespoke templates yet — they fall back to the
