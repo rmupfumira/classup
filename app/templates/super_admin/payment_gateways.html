@@ -124,6 +124,16 @@
 <script>
 let _state = null;
 
+// Read a credential field's value in a type-aware way. Checkboxes come
+// out as booleans (server stores true/false); text/password stay as
+// strings. Falls back to '' when the input isn't in the DOM.
+function readCredValue(f) {
+    const el = document.querySelector(`input[name="cred_${f.key}"]`);
+    if (!el) return '';
+    if (f.type === 'checkbox') return el.checked;
+    return el.value;
+}
+
 async function loadConfig() {
     try {
         const res = await ClassUp.fetch('/api/v1/admin/payment-gateways');
@@ -216,17 +226,41 @@ function onProviderChange(providerId) {
     const savedCreds = (_state.current && _state.current.provider_id === providerId
         ? (_state.current.credentials || {})
         : {});
-    fieldsWrap.innerHTML = p.credential_fields.map(f => `
-        <div>
-            <label class="block text-sm font-medium text-neutral-700 mb-1">${f.label}</label>
-            <input type="${f.type === 'password' ? 'password' : 'text'}"
-                   name="cred_${f.key}"
-                   placeholder="${f.placeholder || ''}"
-                   value="${(savedCreds[f.key] || '').replace(/"/g, '&quot;')}"
-                   class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
-            ${f.help ? `<p class="text-xs text-neutral-500 mt-1">${f.help}</p>` : ''}
-        </div>
-    `).join('');
+    fieldsWrap.innerHTML = p.credential_fields.map(f => {
+        // Checkbox rendering: label on the right of the box, help below.
+        // We coerce truthy strings ("true", "1", "on") to checked so
+        // toggling a previously-saved test_mode round-trips cleanly.
+        if (f.type === 'checkbox') {
+            const raw = savedCreds[f.key];
+            const checked = raw === true || (typeof raw === 'string' &&
+                ['true', '1', 'on', 'yes'].includes(raw.toLowerCase()));
+            return `
+                <div class="border border-amber-200 bg-amber-50 rounded-lg p-3">
+                    <label class="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" name="cred_${f.key}" ${checked ? 'checked' : ''}
+                               class="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                        <span>
+                            <span class="block text-sm font-medium text-amber-900">${f.label}</span>
+                            ${f.help ? `<span class="block text-xs text-amber-800 mt-1">${f.help}</span>` : ''}
+                        </span>
+                    </label>
+                </div>`;
+        }
+        // Default text/password input.
+        const rawValue = savedCreds[f.key];
+        const valueAttr = (rawValue === undefined || rawValue === null || typeof rawValue !== 'string')
+            ? '' : rawValue.replace(/"/g, '&quot;');
+        return `
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">${f.label}</label>
+                <input type="${f.type === 'password' ? 'password' : 'text'}"
+                       name="cred_${f.key}"
+                       placeholder="${f.placeholder || ''}"
+                       value="${valueAttr}"
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                ${f.help ? `<p class="text-xs text-neutral-500 mt-1">${f.help}</p>` : ''}
+            </div>`;
+    }).join('');
 
     // Webhook URL hint
     const baseUrl = window.location.origin;
@@ -254,7 +288,7 @@ document.getElementById('btn-test').addEventListener('click', async (e) => {
     if (!p) return;
     const creds = {};
     p.credential_fields.forEach(f => {
-        creds[f.key] = document.querySelector(`input[name="cred_${f.key}"]`).value;
+        creds[f.key] = readCredValue(f);
     });
     const btn = e.currentTarget;
     btn.disabled = true;
@@ -283,7 +317,7 @@ document.getElementById('gateway-form').addEventListener('submit', async (e) => 
         const p = (_state.providers || []).find(x => x.provider_id === providerId);
         if (p) {
             p.credential_fields.forEach(f => {
-                creds[f.key] = document.querySelector(`input[name="cred_${f.key}"]`).value;
+                creds[f.key] = readCredValue(f);
             });
         }
     }

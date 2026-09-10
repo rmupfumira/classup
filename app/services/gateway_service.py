@@ -85,6 +85,13 @@ class PaymentProvider(ABC):
     def __init__(self, credentials: dict[str, Any]):
         self.credentials = credentials or {}
 
+    @property
+    def is_test_mode(self) -> bool:
+        """Default: not in test mode. Providers that expose a test_mode
+        credential (like PayNow) override this to reflect it. Consumers
+        use this to render "no real money" banners to end users."""
+        return False
+
     # ────────────────────── Abstract methods ──────────────────────
 
     @abstractmethod
@@ -352,6 +359,10 @@ class PayNowProvider(PaymentProvider):
         {"key": "integration_key", "label": "Integration Key", "type": "password",
          "placeholder": "GUID",
          "help": "Generated alongside the Integration ID. Used to sign + verify every call."},
+        {"key": "test_mode", "label": "Test mode", "type": "checkbox",
+         "help": "Tick this when your Paynow Integration ID is set to Test on Paynow's dashboard. "
+                 "Shows a clear warning banner to tenants + skips test-mode-incompatible fields "
+                 "(no real money is charged in test mode either way — this just makes it visible)."},
     ]
 
     INITIATE_URL = "https://www.paynow.co.zw/interface/initiatetransaction"
@@ -441,6 +452,16 @@ class PayNowProvider(PaymentProvider):
 
         # Field order matters for the hash. This dict is the order Paynow
         # sees them, and the hash concatenation walks the same order.
+        #
+        # `authemail` intentionally OMITTED here — it's optional for
+        # standard hosted-checkout, and PayNow enforces a hard rule in
+        # test mode that authemail must equal the merchant's registered
+        # email address. Passing the tenant's own email (which we did
+        # briefly) trips that rule and every test-mode initiate errors
+        # with "The integration ID is in test mode…". Once we wire up
+        # Express Checkout (mobile EcoCash flow) authemail becomes
+        # required and we'll add it back, gated on a `merchant_email`
+        # credential the admin verifies against PayNow's own record.
         fields: dict[str, str] = {
             "id": self.integration_id,
             "reference": reference,
@@ -448,7 +469,6 @@ class PayNowProvider(PaymentProvider):
             "additionalinfo": additional_info,
             "returnurl": return_url,
             "resulturl": self._resulturl_for(return_url),
-            "authemail": self._email_for(invoice),
             "status": "Message",
         }
         fields["hash"] = self._hash_fields(fields)
@@ -512,15 +532,17 @@ class PayNowProvider(PaymentProvider):
             return "/api/v1/paynow/webhook"
         return urlunparse((parts.scheme, parts.netloc, "/api/v1/paynow/webhook", "", "", ""))
 
-    @staticmethod
-    def _email_for(invoice: PlatformInvoice) -> str:
-        """The tenant's admin email if we can reach it — helps Paynow's
-        Express Checkout mobile flow auto-fill. Optional field; safe to
-        be empty."""
-        tenant = getattr(invoice, "tenant", None)
-        if tenant is not None and getattr(tenant, "email", None):
-            return str(tenant.email).strip()
-        return ""
+    @property
+    def is_test_mode(self) -> bool:
+        """True when the admin has flagged this integration as test mode
+        in /admin/payment-gateways. Drives UI banners so users see a
+        clear "no real money" warning before they click Pay."""
+        raw = self.credentials.get("test_mode", False)
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, str):
+            return raw.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(raw)
 
     # ────────────────────── Webhook (result URL) ──────────────────────
 
@@ -600,6 +622,9 @@ class PayNowProvider(PaymentProvider):
         import uuid as _uuid
 
         test_ref = f"credtest-{_uuid.uuid4().hex[:12]}"
+        # Omit authemail — see create_checkout for the full explanation.
+        # An empty-string authemail is treated as "not present" for the
+        # hash but still trips test-mode validation on some PayNow tenants.
         fields: dict[str, str] = {
             "id": self.integration_id,
             "reference": test_ref,
@@ -607,7 +632,6 @@ class PayNowProvider(PaymentProvider):
             "additionalinfo": "ClassUp credential test — safe to ignore",
             "returnurl": "https://classup.co.za/paynow/return",
             "resulturl": "https://classup.co.za/api/v1/paynow/webhook",
-            "authemail": "",
             "status": "Message",
         }
         fields["hash"] = self._hash_fields(fields)

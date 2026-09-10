@@ -1232,15 +1232,20 @@ async def get_active_gateway_for_subscription(
     if not cfg.configured:
         return APIResponse(
             status="success",
-            data={"configured": False, "provider_id": "", "display_name": ""},
+            data={"configured": False, "provider_id": "", "display_name": "", "is_test_mode": False},
         )
     cls = gateway_service.PROVIDER_REGISTRY.get(cfg.provider_id)
+    provider = cls(cfg.credentials) if cls else None
     return APIResponse(
         status="success",
         data={
             "configured": True,
             "provider_id": cfg.provider_id,
             "display_name": cls.display_name if cls else cfg.provider_id,
+            # Tenants see a "test mode" banner + label when this is true
+            # so no one thinks their card was actually charged during a
+            # test run.
+            "is_test_mode": bool(provider.is_test_mode) if provider else False,
         },
     )
 

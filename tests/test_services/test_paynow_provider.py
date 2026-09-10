@@ -350,6 +350,69 @@ class TestEventParsing:
         assert event.payment_method == "paynow_ecocash"
 
 
+class TestTestModeToggle:
+    """The admin can flip PayNow into test mode via the credential
+    form. is_test_mode reflects that so UIs can render banners."""
+
+    def test_default_is_not_test_mode(self):
+        assert _provider().is_test_mode is False
+
+    @pytest.mark.parametrize("raw", [True, "true", "True", "1", "on", "yes"])
+    def test_truthy_values_enable_test_mode(self, raw):
+        p = PayNowProvider(credentials={
+            "integration_id": "1", "integration_key": "k", "test_mode": raw,
+        })
+        assert p.is_test_mode is True
+
+    @pytest.mark.parametrize("raw", [False, "false", "0", "off", "no", ""])
+    def test_falsy_values_disable_test_mode(self, raw):
+        p = PayNowProvider(credentials={
+            "integration_id": "1", "integration_key": "k", "test_mode": raw,
+        })
+        assert p.is_test_mode is False
+
+
+class TestAuthemailNotSent:
+    """PayNow's test-mode rejects requests that include authemail unless
+    it exactly matches the merchant's registered email. We dropped the
+    field entirely for the standard checkout — this test guards against
+    accidentally adding it back."""
+
+    async def test_create_checkout_omits_authemail(self):
+        provider = _provider()
+        invoice = _fake_invoice()
+        # Build a valid Ok response so the flow completes.
+        browser_url = "https://www.paynow.co.zw/Payment/x"
+        poll_url = "https://www.paynow.co.zw/Interface/x"
+        response_fields = {"Status": "Ok", "BrowserUrl": browser_url, "PollUrl": poll_url}
+        response_body = (
+            f"Status=Ok&BrowserUrl={browser_url}&PollUrl={poll_url}"
+            f"&Hash={provider._hash_fields(response_fields)}"
+        )
+
+        captured = {}
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_ctx = MagicMock()
+            mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_ctx.__aexit__ = AsyncMock(return_value=None)
+            async def capture_post(url, data=None, headers=None):
+                captured["data"] = data
+                return SimpleNamespace(status_code=200, text=response_body)
+            mock_ctx.post = capture_post
+            mock_client.return_value = mock_ctx
+
+            await provider.create_checkout(
+                invoice, return_url="https://school.example.com/paid",
+                cancel_url="https://school.example.com/cancel",
+            )
+
+        assert "authemail" not in captured["data"], (
+            "authemail is present in the initiate payload — this trips "
+            "PayNow test-mode's 'authemail must match merchant email' rule "
+            "and every test-mode transaction errors out."
+        )
+
+
 class TestFormBodyParsing:
     """The parser must preserve order for hash verification, and
     URL-decode values (spaces + %-encoded chars) BEFORE the hash is

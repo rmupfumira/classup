@@ -397,4 +397,4 @@ class TestPayNowRegistered:
         assert "paynow" in providers
         assert providers["paynow"]["display_name"] == "Paynow (Zimbabwe)"
         cred_keys = {f["key"] for f in providers["paynow"]["credential_fields"]}
-        assert cred_keys == {"integration_id", "integration_key"}
+        assert cred_keys == {"integration_id", "integration_key", "test_mode"}
