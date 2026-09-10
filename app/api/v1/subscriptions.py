@@ -180,6 +180,10 @@ async def update_plan(
         updates["price_monthly"] = Decimal(str(updates["price_monthly"]))
     if "price_annually" in updates:
         updates["price_annually"] = Decimal(str(updates["price_annually"]))
+    if "currency" in updates:
+        # Normalise to ISO 4217 shape so we don't end up with "usd" or
+        # "usd " sneaking into the DB.
+        updates["currency"] = str(updates["currency"]).upper().strip()
 
     plan = await service.update_plan(db, plan_id, **updates)
     if not plan:

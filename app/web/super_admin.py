@@ -285,6 +285,10 @@ async def subscriptions_page(
             "user": user,
             "platform_currency_code": currency_code,
             "platform_currency_symbol": currency_symbol,
+            # Feeds the currency dropdown on the create/edit plan form
+            # so admins can pick any ISO from the registry — not just
+            # the platform default.
+            "currencies": jurisdiction_service.list_currencies(),
             "current_language": get_current_language(),
             "permissions": PermissionChecker(user.role),
         },

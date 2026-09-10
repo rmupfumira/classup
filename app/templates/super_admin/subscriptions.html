@@ -135,13 +135,34 @@
                     </button>
                 </div>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Currency</label>
+                <select name="currency" id="plan-currency"
+                        class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                        onchange="updatePriceLabels(this.value)">
+                    {% for cur in currencies %}
+                    <option value="{{ cur.code }}"
+                            {% if cur.code == platform_currency_code %}selected{% endif %}>
+                        {{ cur.code }} ({{ cur.symbol }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-neutral-500 mt-1">
+                    New plans default to the platform currency ({{ platform_currency_code }}). Existing
+                    ZAR plans can be switched here — no data migration needed.
+                </p>
+            </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Monthly Price ({{ platform_currency_code }})</label>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        Monthly Price (<span class="price-currency-label">{{ platform_currency_code }}</span>)
+                    </label>
                     <input type="number" name="price_monthly" step="0.01" required class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="299.00">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Annual Price ({{ platform_currency_code }})</label>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        Annual Price (<span class="price-currency-label">{{ platform_currency_code }}</span>)
+                    </label>
                     <input type="number" name="price_annually" step="0.01" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="2990.00">
                 </div>
             </div>
@@ -378,6 +399,12 @@ function showPlanModal(planId) {
         form.max_staff.value = plan.max_staff || '';
         form.trial_days.value = plan.trial_days;
         form.is_active.checked = plan.is_active;
+        // Currency picker — reflect the plan's own stored currency so
+        // the admin can see what it currently is (and change it).
+        if (plan.currency && form.currency) {
+            form.currency.value = plan.currency;
+            updatePriceLabels(plan.currency);
+        }
 
         // Set feature checkboxes
         form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
@@ -393,6 +420,8 @@ function showPlanModal(planId) {
         title.textContent = 'Create Subscription Plan';
         submitBtn.textContent = 'Create Plan';
         activeToggle.classList.add('hidden');
+        // Currency defaults to platform (already selected server-side).
+        updatePriceLabels(form.currency ? form.currency.value : '');
         // Reset checkboxes to default (all checked except WhatsApp opt-in upsells)
         const optIn = new Set(['feat_whatsapp_enabled', 'feat_whatsapp_ai_enabled']);
         form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
@@ -401,6 +430,14 @@ function showPlanModal(planId) {
     }
 
     modal.showModal();
+}
+
+function updatePriceLabels(currencyCode) {
+    // Sync the "Monthly Price (XXX)" / "Annual Price (XXX)" labels
+    // with the currently-selected currency in the form.
+    document.querySelectorAll('.price-currency-label').forEach(el => {
+        el.textContent = currencyCode || '';
+    });
 }
 
 async function savePlan(e) {
@@ -421,6 +458,10 @@ async function savePlan(e) {
         description: form.description.value || null,
         price_monthly: parseFloat(form.price_monthly.value),
         price_annually: form.price_annually.value ? parseFloat(form.price_annually.value) : null,
+        // Send the currency so a switch from ZAR → USD (or any other)
+        // sticks. Omitted only when the form doesn't carry the field
+        // (create mode where the server still defaults to platform).
+        currency: form.currency ? form.currency.value : undefined,
         max_students: form.max_students.value ? parseInt(form.max_students.value) : null,
         max_staff: form.max_staff.value ? parseInt(form.max_staff.value) : null,
         trial_days: parseInt(form.trial_days.value) || 30,
