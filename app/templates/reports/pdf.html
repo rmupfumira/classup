@@ -1,0 +1,323 @@
+{# PDF-friendly report template. Rendered by app.services.report_pdf via
+   Jinja2, then WeasyPrint converts to PDF bytes for WhatsApp delivery.
+
+   Standalone (does NOT extend base.html): the PDF has no navbar / no
+   Tailwind — WeasyPrint reads only what's in this file. Inline styles
+   because there's no static asset pipeline at PDF-render time.
+
+   Visual goal: match app/templates/reports/view.html — colored section
+   titles, status badge, section-specific formats for naps / fluids /
+   bathroom / meals / checklist. Different enough from a browser render
+   only where PDF-specific concerns force it (A4 page size, no
+   interactive buttons, print-friendly font stack).
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ student_first_name }}'s Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 22mm 20mm 20mm 20mm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: Liberation Sans, DejaVu Sans, sans-serif;
+                font-size: 9pt;
+                color: #94a3b8;
+            }
+        }
+        body {
+            font-family: Liberation Sans, DejaVu Sans, Helvetica, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #1e293b;
+            margin: 0;
+        }
+        .report-header {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 14px;
+            margin-bottom: 22px;
+        }
+        .report-title {
+            font-size: 26pt;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 4px 0;
+        }
+        .report-date {
+            font-size: 13pt;
+            color: #475569;
+            margin: 0;
+        }
+        .school-name {
+            font-size: 10pt;
+            color: #64748b;
+            margin-top: 6px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 9.5pt;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        .status-badge.finalized {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .status-badge.draft {
+            background: #fef3c7;
+            color: #b45309;
+        }
+        .report-section {
+            margin-bottom: 26px;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            font-size: 18pt;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+        {# Section colors mirror view.html's Tailwind palette. #}
+        .color-violet  { color: #7c3aed; }
+        .color-green   { color: #059669; }
+        .color-orange  { color: #ea580c; }
+        .color-blue    { color: #2563eb; }
+        .color-red     { color: #dc2626; }
+        .entry-row {
+            margin: 0 0 6px 0;
+            color: #1e293b;
+        }
+        .entry-emoji {
+            display: inline-block;
+            width: 22px;
+        }
+        .entry-highlight {
+            color: #7c3aed;
+            font-weight: 600;
+        }
+        .entry-note {
+            color: #64748b;
+            font-style: italic;
+            display: block;
+            margin-left: 22px;
+            margin-top: 2px;
+        }
+        .checkbox-row {
+            margin: 0 0 6px 0;
+            display: flex;
+            align-items: flex-start;
+        }
+        .check-mark {
+            display: inline-block;
+            width: 20px;
+            color: #16a34a;
+            font-weight: 700;
+        }
+        .field-label {
+            font-weight: 600;
+        }
+        .empty-note {
+            color: #94a3b8;
+            font-style: italic;
+            margin: 0;
+        }
+        .narrative-body {
+            white-space: pre-wrap;
+            margin: 0 0 10px 0;
+        }
+        .teacher-notes {
+            border-top: 1px solid #e2e8f0;
+            margin-top: 26px;
+            padding-top: 18px;
+        }
+        .teacher-notes h2 {
+            font-size: 15pt;
+            color: #334155;
+            margin: 0 0 8px 0;
+        }
+        .footer-meta {
+            border-top: 1px solid #e2e8f0;
+            margin-top: 30px;
+            padding-top: 14px;
+            font-size: 9.5pt;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="report-header">
+    <h1 class="report-title">{{ student_first_name }}'s Report</h1>
+    <p class="report-date">{{ report_date_pretty }}</p>
+    <div class="school-name">{{ tenant_name }}{% if class_name %} · {{ class_name }}{% endif %}</div>
+    <span class="status-badge {% if status == 'FINALIZED' %}finalized{% else %}draft{% endif %}">
+        {% if status == 'FINALIZED' %}Finalised{% else %}Draft — not yet sent to parents{% endif %}
+    </span>
+</div>
+
+{% for section in sections %}
+    {% set section_id = section.id %}
+    {% set section_data = report_sections.get(section_id, {}) if report_sections else {} %}
+    {% set section_color = section.get('color', 'violet') %}
+    {% set color_class = section_color_class(section_color) %}
+
+    {# Skip INFO_DISPLAY — matches view.html behavior. #}
+    {% if section.type != 'INFO_DISPLAY' %}
+    <div class="report-section">
+        <h2 class="section-title {{ color_class }}">{{ section.title }}</h2>
+
+        {% if section.type == 'REPEATABLE_ENTRIES' %}
+            {% set entries = section_data.get('entries', []) %}
+            {% if entries %}
+                {% for entry in entries %}
+                    <p class="entry-row">
+                    {% if section.id == 'naps' %}
+                        <span class="entry-emoji">🛏</span>
+                        {{ entry.get('start_time', '') }} - {{ entry.get('end_time', '') }}
+                        {% if entry.get('duration') %}<span class="entry-highlight">&nbsp;({{ entry.get('duration') }})</span>{% endif %}
+                    {% elif section.id == 'fluids' %}
+                        {{ entry.get('time', '') }} - {{ (entry.get('amount', 'none') or 'none') | lower }} - {{ entry.get('type', '') }}
+                        {% if entry.get('notes') %}<span class="entry-note">{{ entry.get('notes') }}</span>{% endif %}
+                    {% elif section.id == 'bathroom' %}
+                        {{ entry.get('time', '') }} - {{ entry.get('type', 'Diaper') }} - {{ entry.get('condition', '') }}{% if entry.get('notes') %}, {{ entry.get('notes') }}{% endif %}
+                    {% else %}
+                        {% for field in section.get('fields', []) %}
+                            {% if not loop.first %} - {% endif %}
+                            {{ entry.get(field.id, '') }}
+                        {% endfor %}
+                    {% endif %}
+                    </p>
+                {% endfor %}
+            {% else %}
+                <p class="empty-note">No entries recorded</p>
+            {% endif %}
+
+        {% elif section.type == 'MEALS' or section_id == 'meals' %}
+            {% set has_any = namespace(v=false) %}
+            {% for field in section.get('fields', []) %}
+                {% set amount = section_data.get(field.id ~ '_amount', '') %}
+                {% set desc = section_data.get(field.id ~ '_desc', section_data.get(field.id, '')) %}
+                {% if amount or desc %}
+                    {% set has_any.v = true %}
+                    <p class="entry-row">
+                        <span class="field-label">{{ field.label }}</span>
+                        {% if amount %} - {{ amount }}{% endif %}
+                        {% if desc %} - {{ desc }}{% endif %}
+                    </p>
+                {% endif %}
+            {% endfor %}
+            {% if not has_any.v %}<p class="empty-note">No meals recorded</p>{% endif %}
+
+        {% elif section.type == 'CHECKLIST' %}
+            {% set has_any = namespace(v=false) %}
+            {% for field in section.get('fields', []) %}
+                {% set field_value = section_data.get(field.id, '') %}
+                {% set field_desc = section_data.get(field.id ~ '_desc', section_data.get(field.id ~ '_notes', '')) %}
+                {% if field.type == 'CHECKBOX' %}
+                    {% if field_value == true or field_value == 'true' %}
+                        {% set has_any.v = true %}
+                        <p class="checkbox-row"><span class="check-mark">✓</span>{{ field.label }}</p>
+                    {% endif %}
+                {% elif field.type == 'TEXTAREA' %}
+                    {% if field_value %}
+                        {% set has_any.v = true %}
+                        <p class="entry-row" style="white-space: pre-wrap;">
+                            <span class="field-label">{{ field.label }}:</span> {{ field_value }}
+                        </p>
+                    {% endif %}
+                {% elif field_value or field_desc %}
+                    {% set has_any.v = true %}
+                    <p class="entry-row">
+                        <span class="field-label">{{ field.label }}</span>
+                        {% if field_value %} - {{ field_value }}{% endif %}
+                        {% if field_desc %} - {{ field_desc }}{% endif %}
+                    </p>
+                {% endif %}
+            {% endfor %}
+            {% if not has_any.v %}<p class="empty-note">No activities recorded</p>{% endif %}
+
+        {% elif section.type == 'NARRATIVE' %}
+            {% set has_any = namespace(v=false) %}
+            {% for field in section.get('fields', []) %}
+                {% set field_value = section_data.get(field.id, '') %}
+                {% if field_value %}
+                    {% set has_any.v = true %}
+                    <p class="narrative-body">{{ field_value }}</p>
+                {% endif %}
+            {% endfor %}
+            {% if not has_any.v %}<p class="empty-note">No notes recorded</p>{% endif %}
+
+        {% elif section.type == 'ACADEMIC_GRADES' %}
+            {% set subjects = section.get('subjects', []) %}
+            {% set grading = section.get('grading_system', []) %}
+            {% if subjects %}
+                <table style="width: 100%; border-collapse: collapse; margin-top: 6px;">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">Subject</th>
+                            <th style="padding: 8px; border: 1px solid #cbd5e1; width: 80px;">Mark</th>
+                            <th style="padding: 8px; border: 1px solid #cbd5e1; width: 60px;">Grade</th>
+                            <th style="text-align: left; padding: 8px; border: 1px solid #cbd5e1;">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in subjects %}
+                            {% set entry = section_data.get(subject.id, {}) %}
+                            {% set marks = entry.get('marks_obtained') %}
+                            {% set total = subject.get('total_marks', 100) %}
+                            <tr>
+                                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">{{ subject.name }}</td>
+                                <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">
+                                    {% if marks is not none %}{{ marks }}/{{ total }}{% else %}-{% endif %}
+                                </td>
+                                <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">
+                                    {{ grade_for(marks, total, grading) or '-' }}
+                                </td>
+                                <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">{{ entry.get('remarks', '') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty-note">No subjects configured</p>
+            {% endif %}
+
+        {% else %}
+            {# Fallback for unknown section types — key/value list. #}
+            {% set has_any = namespace(v=false) %}
+            {% for field in section.get('fields', []) %}
+                {% set field_value = section_data.get(field.id, '') %}
+                {% if field_value %}
+                    {% set has_any.v = true %}
+                    <p class="entry-row">
+                        <span class="field-label">{{ field.label }}:</span> {{ field_value }}
+                    </p>
+                {% endif %}
+            {% endfor %}
+            {% if not has_any.v %}<p class="empty-note">No data</p>{% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+{% endfor %}
+
+{# Teacher notes as a separate section — matches view.html #}
+{% if teacher_notes_body %}
+<div class="teacher-notes">
+    <h2>Teacher's Notes</h2>
+    <p class="narrative-body">{{ teacher_notes_body }}</p>
+</div>
+{% endif %}
+
+<div class="footer-meta">
+    {% if finalized_at %}
+        Finalised on {{ finalized_at }} · Generated by ClassUp
+    {% else %}
+        Draft — created by {{ created_by_name or 'teacher' }} · Generated by ClassUp
+    {% endif %}
+</div>
+
+</body>
+</html>

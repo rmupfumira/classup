@@ -79,6 +79,10 @@ redis==5.2.1
 # Anthropic API — Claude Haiku 4.5 powers the AI-mode WhatsApp bot
 anthropic==0.42.0
 
+# WeasyPrint — renders report HTML → PDF for WhatsApp delivery.
+# Requires libpango + libharfbuzz system libs (installed in Dockerfile).
+weasyprint>=62.0,<64.0
+
 # Multipart form handling
 python-multipart==0.0.19
 
