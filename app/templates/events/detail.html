@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Event - {{ app_name }}{% endblock %}
+
+{% set is_staff = user.role in ('SCHOOL_ADMIN', 'TEACHER') %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div>
+        <a href="/events" class="text-sm text-neutral-500 hover:text-neutral-700 inline-flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to events
+        </a>
+    </div>
+
+    <div id="event-card" class="bg-white rounded-xl border border-neutral-200 p-6">
+        <p class="text-center text-neutral-400 py-8">Loading event…</p>
+    </div>
+
+    {% if is_staff %}
+    <div id="rsvp-list" class="bg-white rounded-xl border border-neutral-200 p-6 hidden">
+        <h2 class="text-sm font-medium text-neutral-500 uppercase tracking-wide mb-3">RSVPs</h2>
+        <div id="rsvp-body" class="text-sm"></div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+const EVENT_ID = '{{ event_id }}';
+const IS_STAFF = {{ 'true' if is_staff else 'false' }};
+
+function fmtWhen(iso) {
+    if (!iso) return 'TBC';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-ZA', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'})
+        + ' at ' + d.toLocaleTimeString('en-ZA', {hour: '2-digit', minute: '2-digit'});
+}
+
+function typeLabel(t) {
+    return (t || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+async function loadEvent() {
+    const card = document.getElementById('event-card');
+    try {
+        const res = await ClassUp.fetch(`/api/v1/events/${EVENT_ID}`);
+        const ev = res.data;
+        if (!ev) { card.innerHTML = '<p class="text-center text-red-500">Event not found.</p>'; return; }
+
+        const cancelledBanner = ev.cancelled_at
+            ? '<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800"><strong>This event has been cancelled.</strong> Attendees have been notified and their calendar entries updated.</div>'
+            : '';
+
+        const rsvpButtons = (!IS_STAFF && ev.rsvp_required && !ev.cancelled_at)
+            ? `<div class="mt-6 pt-6 border-t border-neutral-200">
+                <p class="text-sm font-medium text-neutral-700 mb-3">Will you be there?</p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="rsvp('YES')" class="px-4 py-2 border border-green-300 text-green-700 rounded-md hover:bg-green-50 text-sm font-medium">✓ Yes, I'll be there</button>
+                    <button type="button" onclick="rsvp('MAYBE')" class="px-4 py-2 border border-amber-300 text-amber-700 rounded-md hover:bg-amber-50 text-sm font-medium">Maybe</button>
+                    <button type="button" onclick="rsvp('NO')" class="px-4 py-2 border border-neutral-300 text-neutral-600 rounded-md hover:bg-neutral-50 text-sm font-medium">Can't make it</button>
+                </div>
+              </div>`
+            : '';
+
+        const staffActions = (IS_STAFF && !ev.cancelled_at)
+            ? `<div class="mt-6 pt-6 border-t border-neutral-200 flex gap-2">
+                <button type="button" onclick="cancelEvent()" class="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50 font-medium">Cancel event</button>
+              </div>`
+            : '';
+
+        card.innerHTML = `
+            ${cancelledBanner}
+            <p class="text-xs font-medium text-neutral-500 uppercase tracking-wide">${typeLabel(ev.event_type)}</p>
+            <h1 class="mt-1 text-2xl font-semibold text-neutral-900 ${ev.cancelled_at ? 'line-through' : ''}">${ev.title}</h1>
+            <div class="mt-4 space-y-2 text-sm">
+                <p><span class="text-neutral-500">When:</span> <span class="font-medium text-neutral-800">${fmtWhen(ev.starts_at)}</span></p>
+                ${ev.location ? `<p><span class="text-neutral-500">Where:</span> <span class="font-medium text-neutral-800">${ev.location}</span></p>` : ''}
+                <p><span class="text-neutral-500">Invited:</span> <span class="font-medium text-neutral-800">${
+                    ev.scope === 'SCHOOL' ? 'Whole school'
+                    : ev.scope === 'CLASS' ? (ev.class_name || 'Class')
+                    : (ev.student_name || 'Student')
+                }</span></p>
+                ${ev.rsvp_required && ev.rsvp_deadline ? `<p><span class="text-neutral-500">RSVP by:</span> <span class="font-medium text-amber-700">${fmtWhen(ev.rsvp_deadline)}</span></p>` : ''}
+            </div>
+            ${ev.description ? `<div class="mt-4 pt-4 border-t border-neutral-200 whitespace-pre-wrap text-sm text-neutral-700">${ev.description}</div>` : ''}
+            ${rsvpButtons}
+            ${staffActions}
+        `;
+
+        if (IS_STAFF && ev.rsvp_required) {
+            const wrap = document.getElementById('rsvp-list');
+            const body = document.getElementById('rsvp-body');
+            if (wrap && body) {
+                wrap.classList.remove('hidden');
+                const s = ev.rsvp_summary || {};
+                const total = (s.YES || 0) + (s.NO || 0) + (s.MAYBE || 0);
+                body.innerHTML = total === 0
+                    ? '<p class="text-neutral-400">No RSVPs yet. Parents get email + WhatsApp invites with tap-to-respond buttons.</p>'
+                    : `
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="text-center p-3 bg-green-50 rounded-lg">
+                                <p class="text-2xl font-semibold text-green-700">${s.YES || 0}</p>
+                                <p class="text-xs text-green-600">Attending</p>
+                            </div>
+                            <div class="text-center p-3 bg-amber-50 rounded-lg">
+                                <p class="text-2xl font-semibold text-amber-700">${s.MAYBE || 0}</p>
+                                <p class="text-xs text-amber-600">Maybe</p>
+                            </div>
+                            <div class="text-center p-3 bg-neutral-100 rounded-lg">
+                                <p class="text-2xl font-semibold text-neutral-700">${s.NO || 0}</p>
+                                <p class="text-xs text-neutral-600">Can't make it</p>
+                            </div>
+                        </div>`;
+            }
+        }
+    } catch (e) {
+        card.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load event.</p>';
+        console.error(e);
+    }
+}
+
+async function rsvp(response) {
+    try {
+        await ClassUp.fetch(`/api/v1/events/${EVENT_ID}/rsvp`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ response }),
+        });
+        ClassUp.toast('RSVP recorded — thanks!', 'success');
+        loadEvent();
+    } catch (e) {
+        ClassUp.toast('Could not record RSVP.', 'error');
+    }
+}
+
+async function cancelEvent() {
+    const ok = await ClassUp.confirm(
+        'Cancel this event? Invited parents will be notified and their calendar entry will update.',
+        { confirmText: 'Cancel event', tone: 'danger' }
+    );
+    if (!ok) return;
+    try {
+        await ClassUp.fetch(`/api/v1/events/${EVENT_ID}/cancel`, { method: 'POST' });
+        ClassUp.toast('Event cancelled — attendees notified.', 'success');
+        loadEvent();
+    } catch (e) {
+        ClassUp.toast('Could not cancel event.', 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadEvent);
+</script>
+{% endblock %}

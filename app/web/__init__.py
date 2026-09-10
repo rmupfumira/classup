@@ -13,6 +13,7 @@ from app.web import (
     classes,
     dashboard,
     documents,
+    events,
     help as help_web,
     imports,
     invitations,
@@ -48,6 +49,7 @@ web_router.include_router(teachers.router)
 web_router.include_router(subscription.router)
 web_router.include_router(super_admin.router)
 web_router.include_router(help_web.router)
+web_router.include_router(events.router)  # School events + parent RSVPs — always available
 
 # Plan-gated pages — redirect to /subscription?locked=X when feature is off
 web_router.include_router(

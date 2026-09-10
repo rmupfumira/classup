@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}Events - {{ app_name }}{% endblock %}
+
+{% set is_staff = user.role in ('SCHOOL_ADMIN', 'TEACHER') %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">
+                {% if is_staff %}Events{% else %}My Events{% endif %}
+            </h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                {% if is_staff %}
+                Parent meetings, PTCs, assemblies and outings. Invitations go out by email with a calendar attachment + WhatsApp (opted-in parents).
+                {% else %}
+                Upcoming school events you've been invited to. Tap RSVP to let the school know if you'll be there.
+                {% endif %}
+            </p>
+        </div>
+        {% if is_staff %}
+        <button type="button" onclick="openCreateModal()"
+                class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 shadow-sm">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Event
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Toggle: upcoming / all -->
+    {% if is_staff %}
+    <div class="flex items-center gap-2 border-b border-neutral-200">
+        <button type="button" id="tab-upcoming"
+                onclick="setFilter('upcoming')"
+                class="px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-500">Upcoming</button>
+        <button type="button" id="tab-all"
+                onclick="setFilter('all')"
+                class="px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">All</button>
+    </div>
+    {% endif %}
+
+    <!-- Event list -->
+    <div id="events-list" class="space-y-3">
+        <p class="text-center text-neutral-400 py-8">Loading events…</p>
+    </div>
+</div>
+
+<!-- Create / edit modal (staff only) -->
+{% if is_staff %}
+<dialog id="event-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold" id="event-modal-title">New event</h3>
+            <button type="button" onclick="document.getElementById('event-modal').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <form id="event-form" onsubmit="submitEvent(event)" class="space-y-4">
+            <input type="hidden" name="event_id" value="">
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Title *</label>
+                <input type="text" name="title" required maxlength="200"
+                       placeholder="e.g. Term 3 Parent-Teacher Conference"
+                       class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Type</label>
+                <select name="event_type" class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <option value="PARENT_MEETING">Parent meeting</option>
+                    <option value="PARENT_TEACHER_CONFERENCE">Parent-teacher conference</option>
+                    <option value="ASSEMBLY">Assembly</option>
+                    <option value="OUTING">Outing / field trip</option>
+                    <option value="SPORTS">Sports fixture</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Who's invited *</label>
+                <select name="scope" id="scope-select" onchange="onScopeChange()"
+                        class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <option value="SCHOOL">Everyone (whole school)</option>
+                    <option value="CLASS">A class</option>
+                </select>
+                <div id="class-picker-wrap" class="mt-3 hidden">
+                    <label class="block text-xs font-medium text-neutral-500 mb-1">Class</label>
+                    <select name="class_id" class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select a class…</option>
+                        {% for c in classes %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Starts *</label>
+                    <input type="datetime-local" name="starts_at" required
+                           class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Ends</label>
+                    <input type="datetime-local" name="ends_at"
+                           class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Location</label>
+                <input type="text" name="location" maxlength="300"
+                       placeholder="e.g. School hall / Room 12 / Sports field"
+                       class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                <textarea name="description" rows="3" maxlength="5000"
+                          placeholder="Anything parents need to know — agenda, what to bring, etc."
+                          class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
+            </div>
+
+            <div class="border-t border-neutral-200 pt-4">
+                <label class="flex items-start gap-2">
+                    <input type="checkbox" name="rsvp_required" onchange="toggleRsvpDeadline(this.checked)"
+                           class="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                    <span>
+                        <span class="block text-sm font-medium text-neutral-800">Request RSVPs</span>
+                        <span class="block text-xs text-neutral-500">Parents get Yes / Maybe / Can't-make-it buttons in the email.</span>
+                    </span>
+                </label>
+                <div id="rsvp-deadline-wrap" class="mt-3 hidden">
+                    <label class="block text-xs font-medium text-neutral-500 mb-1">RSVP deadline</label>
+                    <input type="datetime-local" name="rsvp_deadline"
+                           class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('event-modal').close()"
+                        class="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800">Cancel</button>
+                <button type="submit" id="event-submit-btn"
+                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">
+                    Create event & send invites
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+{% endif %}
+
+<script>
+const IS_STAFF = {{ 'true' if is_staff else 'false' }};
+let _filter = 'upcoming';
+
+function fmtWhen(iso) {
+    if (!iso) return 'TBC';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-ZA', {weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'})
+        + ' · ' + d.toLocaleTimeString('en-ZA', {hour: '2-digit', minute: '2-digit'});
+}
+
+function scopeBadge(ev) {
+    if (ev.scope === 'SCHOOL') return '<span class="text-xs px-2 py-0.5 bg-primary-50 text-primary-700 rounded">Whole school</span>';
+    if (ev.scope === 'CLASS') return `<span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded">${ev.class_name || 'Class'}</span>`;
+    return `<span class="text-xs px-2 py-0.5 bg-purple-50 text-purple-700 rounded">${ev.student_name || 'Student'}</span>`;
+}
+
+function typeIcon(t) {
+    const map = {
+        PARENT_MEETING: '👥', PARENT_TEACHER_CONFERENCE: '🎓',
+        ASSEMBLY: '🎤', OUTING: '🚌', SPORTS: '⚽', OTHER: '📅',
+    };
+    return map[t] || '📅';
+}
+
+function rsvpBadge(response) {
+    if (!response) return '<span class="text-xs text-neutral-400">Not responded</span>';
+    const styles = {
+        YES: 'bg-green-100 text-green-700',
+        NO: 'bg-neutral-100 text-neutral-700',
+        MAYBE: 'bg-amber-100 text-amber-700',
+    };
+    const labels = { YES: '✓ Attending', NO: 'Can’t make it', MAYBE: 'Maybe' };
+    return `<span class="text-xs px-2 py-0.5 rounded ${styles[response]}">${labels[response]}</span>`;
+}
+
+async function loadEvents() {
+    const wrap = document.getElementById('events-list');
+    try {
+        const url = IS_STAFF
+            ? `/api/v1/events?upcoming_only=${_filter === 'upcoming'}`
+            : '/api/v1/events/my?upcoming_only=true';
+        const res = await ClassUp.fetch(url);
+        const items = res.data || [];
+        if (!items.length) {
+            wrap.innerHTML = `
+                <div class="text-center py-12 border-2 border-dashed border-neutral-200 rounded-lg">
+                    <p class="text-neutral-500">${IS_STAFF ? 'No events scheduled yet.' : 'No upcoming events. You\\'ll be notified by email + WhatsApp when the school schedules one.'}</p>
+                    ${IS_STAFF ? '<button type="button" onclick="openCreateModal()" class="mt-4 inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">Create your first event</button>' : ''}
+                </div>`;
+            return;
+        }
+        wrap.innerHTML = items.map(ev => `
+            <div class="bg-white rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-sm transition-all ${ev.cancelled_at ? 'opacity-60' : ''}">
+                <div class="p-4 flex flex-col sm:flex-row gap-4">
+                    <div class="text-3xl">${typeIcon(ev.event_type)}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h3 class="text-base font-semibold text-neutral-900 ${ev.cancelled_at ? 'line-through' : ''}">${ev.title}</h3>
+                                <p class="text-sm text-neutral-500 mt-0.5">${fmtWhen(ev.starts_at)}${ev.location ? ' · ' + ev.location : ''}</p>
+                            </div>
+                            <div class="shrink-0">${scopeBadge(ev)}</div>
+                        </div>
+                        ${ev.cancelled_at ? '<p class="mt-2 text-xs font-medium text-red-600">Cancelled</p>' : ''}
+                        ${ev.description ? `<p class="mt-2 text-sm text-neutral-600 line-clamp-2">${ev.description}</p>` : ''}
+
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            ${IS_STAFF
+                                ? renderStaffActions(ev)
+                                : renderParentActions(ev)
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        wrap.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load events.</p>';
+        console.error(e);
+    }
+}
+
+function renderStaffActions(ev) {
+    const rsvpTotal = ev.rsvp_summary
+        ? (ev.rsvp_summary.YES || 0) + (ev.rsvp_summary.NO || 0) + (ev.rsvp_summary.MAYBE || 0)
+        : 0;
+    const summary = ev.rsvp_summary && rsvpTotal > 0 && ev.rsvp_required
+        ? `<span class="text-xs text-neutral-500">RSVPs: ${ev.rsvp_summary.YES || 0} yes · ${ev.rsvp_summary.MAYBE || 0} maybe · ${ev.rsvp_summary.NO || 0} no</span>`
+        : ev.rsvp_required ? '<span class="text-xs text-neutral-400">No RSVPs yet</span>' : '';
+    const view = `<a href="/events/${ev.id}" class="text-xs text-primary-600 hover:underline">View</a>`;
+    const cancel = ev.cancelled_at ? '' : `<button type="button" onclick="cancelEvent('${ev.id}', '${ev.title.replace(/'/g, "\\'")}')" class="text-xs text-red-600 hover:underline">Cancel</button>`;
+    return [summary, view, cancel].filter(Boolean).join('<span class="text-neutral-300">·</span>');
+}
+
+function renderParentActions(ev) {
+    if (ev.cancelled_at) return '<span class="text-xs text-red-600 font-medium">Event cancelled</span>';
+    if (!ev.rsvp_required) return `<a href="/events/${ev.id}" class="text-xs text-primary-600 hover:underline">View details</a>`;
+    return `
+        <div class="flex items-center gap-2 flex-wrap">
+            ${rsvpBadge(ev.my_rsvp)}
+            <button type="button" onclick="rsvp('${ev.id}', 'YES')" class="text-xs px-3 py-1 border border-green-300 text-green-700 rounded hover:bg-green-50">Yes, I'll be there</button>
+            <button type="button" onclick="rsvp('${ev.id}', 'MAYBE')" class="text-xs px-3 py-1 border border-amber-300 text-amber-700 rounded hover:bg-amber-50">Maybe</button>
+            <button type="button" onclick="rsvp('${ev.id}', 'NO')" class="text-xs px-3 py-1 border border-neutral-300 text-neutral-600 rounded hover:bg-neutral-50">Can't make it</button>
+        </div>`;
+}
+
+async function rsvp(eventId, response) {
+    try {
+        await ClassUp.fetch(`/api/v1/events/${eventId}/rsvp`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ response }),
+        });
+        ClassUp.toast('RSVP recorded — thanks!', 'success');
+        loadEvents();
+    } catch (e) {
+        ClassUp.toast('Could not record RSVP. Try again.', 'error');
+    }
+}
+
+async function cancelEvent(eventId, title) {
+    const ok = await ClassUp.confirm(`Cancel "${title}"? Invited parents will be notified and their calendar entry will update.`, { confirmText: 'Cancel event', tone: 'danger' });
+    if (!ok) return;
+    try {
+        await ClassUp.fetch(`/api/v1/events/${eventId}/cancel`, { method: 'POST' });
+        ClassUp.toast('Event cancelled — attendees notified.', 'success');
+        loadEvents();
+    } catch (e) {
+        ClassUp.toast('Could not cancel event.', 'error');
+    }
+}
+
+function setFilter(f) {
+    _filter = f;
+    document.getElementById('tab-upcoming').className = f === 'upcoming'
+        ? 'px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-500'
+        : 'px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700';
+    document.getElementById('tab-all').className = f === 'all'
+        ? 'px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-500'
+        : 'px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700';
+    loadEvents();
+}
+
+// ── Staff form ──────────────────────────────────
+
+function openCreateModal() {
+    const modal = document.getElementById('event-modal');
+    if (!modal) return;
+    const form = document.getElementById('event-form');
+    form.reset();
+    form.event_id.value = '';
+    document.getElementById('event-modal-title').textContent = 'New event';
+    document.getElementById('event-submit-btn').textContent = 'Create event & send invites';
+    onScopeChange();
+    toggleRsvpDeadline(false);
+    // Sensible default start: 09:00 tomorrow.
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    t.setHours(9, 0, 0, 0);
+    form.starts_at.value = t.toISOString().slice(0, 16);
+    modal.showModal();
+}
+
+function onScopeChange() {
+    const scope = document.getElementById('scope-select').value;
+    document.getElementById('class-picker-wrap').classList.toggle('hidden', scope !== 'CLASS');
+}
+
+function toggleRsvpDeadline(shown) {
+    document.getElementById('rsvp-deadline-wrap').classList.toggle('hidden', !shown);
+}
+
+async function submitEvent(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('event-submit-btn');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Saving…';
+
+    const body = {
+        title: form.title.value,
+        event_type: form.event_type.value,
+        scope: form.scope.value,
+        starts_at: new Date(form.starts_at.value).toISOString(),
+        ends_at: form.ends_at.value ? new Date(form.ends_at.value).toISOString() : null,
+        location: form.location.value || null,
+        description: form.description.value || null,
+        rsvp_required: form.rsvp_required.checked,
+        rsvp_deadline: form.rsvp_deadline.value ? new Date(form.rsvp_deadline.value).toISOString() : null,
+    };
+    if (body.scope === 'CLASS') {
+        body.class_id = form.class_id.value || null;
+        if (!body.class_id) {
+            ClassUp.toast('Pick a class first.', 'error');
+            btn.disabled = false; btn.textContent = originalText;
+            return;
+        }
+    }
+
+    try {
+        await ClassUp.fetch('/api/v1/events', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body),
+        });
+        ClassUp.toast('Event created — invitations on the way.', 'success');
+        document.getElementById('event-modal').close();
+        loadEvents();
+    } catch (err) {
+        // ClassUp.fetch already fires a toast with the API detail.
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadEvents();
+});
+</script>
+{% endblock %}
