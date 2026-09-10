@@ -32,10 +32,41 @@ class StudentBase(BaseModel):
     notes: str | None = None
 
 
-class StudentCreate(StudentBase):
-    """Schema for creating a student."""
+class ParentEnrollmentInfo(BaseModel):
+    """One parent's details captured at student-enrollment time.
 
-    pass
+    The admin fills this in the "Add student" form. Downstream the
+    service either links an existing PARENT user (same tenant + email)
+    or creates a ParentInvitation that emails the parent a signup
+    link. ``send_whatsapp_invite`` piggybacks on the invite send —
+    when true (and ``phone`` given), the parent_signup WhatsApp
+    template goes out alongside the email and the user's
+    ``whatsapp_opted_in`` is set on registration.
+    """
+
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    email: EmailStr
+    phone: str | None = Field(None, max_length=32)
+    relationship_type: str = Field("PARENT", max_length=32)
+    is_primary: bool = True
+    send_whatsapp_invite: bool = True
+
+
+class StudentCreate(StudentBase):
+    """Schema for creating a student.
+
+    ``parents`` — new parent/guardian contacts to invite as part of
+    enrollment. Optional (empty list allowed, e.g. when the sibling
+    section already covers it, or for a walk-in registration that
+    still needs parent details attached). Each entry either links to
+    an existing PARENT user for this tenant (matched by email) or
+    creates a ParentInvitation. Failures per-parent do not roll back
+    the student — the student saves, the failing parent shows up in
+    the response payload for the UI to surface.
+    """
+
+    parents: list[ParentEnrollmentInfo] = Field(default_factory=list)
 
 
 class StudentUpdate(BaseModel):

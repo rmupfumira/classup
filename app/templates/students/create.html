@@ -114,6 +114,28 @@
             </div>
         </div>
 
+        <!-- Parent / Guardian -->
+        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6" id="parents-section">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-lg font-semibold text-neutral-900">Parent / Guardian</h2>
+                <button type="button" id="add-parent-btn"
+                        class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                    + Add another parent
+                </button>
+            </div>
+            <p class="text-xs text-neutral-500 mb-4">
+                Add every parent or guardian who should receive updates.
+                Each one gets an email invitation — tick the WhatsApp box to also send a signup
+                link on WhatsApp when you provide a phone number.
+            </p>
+            <div id="parents-disabled-message" class="hidden mb-4 rounded-md border border-primary-200 bg-primary-50 p-3 text-sm text-primary-900">
+                Parents will be inherited from the selected sibling — no need to re-enter them here.
+            </div>
+            <div id="parents-container" class="space-y-4">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+
         <!-- Class Assignment -->
         <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Class Assignment</h2>
@@ -199,6 +221,55 @@
     </form>
 </div>
 
+<!-- Parent Template -->
+<template id="parent-template">
+    <div class="parent-item border border-neutral-200 rounded-lg p-4 relative">
+        <button type="button" class="remove-parent absolute top-2 right-2 text-neutral-400 hover:text-red-500" title="Remove parent">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">First Name <span class="text-red-500">*</span></label>
+                <input type="text" name="parents[][first_name]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Last Name <span class="text-red-500">*</span></label>
+                <input type="text" name="parents[][last_name]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Email <span class="text-red-500">*</span></label>
+                <input type="email" name="parents[][email]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Phone (optional)</label>
+                <input type="tel" name="parents[][phone]" placeholder="+27821234567" class="parent-phone w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Relationship</label>
+                <select name="parents[][relationship_type]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <option value="PARENT">Parent</option>
+                    <option value="GUARDIAN">Guardian</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <label class="flex items-center gap-2 text-xs text-neutral-700 pb-2">
+                    <input type="checkbox" name="parents[][is_primary]" checked class="parent-primary rounded border-neutral-300 text-primary-600">
+                    Primary contact
+                </label>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label class="flex items-center gap-2 text-xs text-neutral-700">
+                <input type="checkbox" name="parents[][send_whatsapp_invite]" checked class="parent-whatsapp rounded border-neutral-300 text-primary-600">
+                Also send WhatsApp signup link (requires phone number above)
+            </label>
+        </div>
+    </div>
+</template>
+
 <!-- Contact Template -->
 <template id="contact-template">
     <div class="contact-item border border-neutral-200 rounded-lg p-4 relative">
@@ -249,6 +320,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ── Parent / Guardian rows ─────────────────────────────────────
+
+    const parentsSection = document.getElementById('parents-section');
+    const parentsContainer = document.getElementById('parents-container');
+    const parentsDisabledMsg = document.getElementById('parents-disabled-message');
+    const addParentBtn = document.getElementById('add-parent-btn');
+    const parentTemplate = document.getElementById('parent-template');
+
+    function addParentRow() {
+        const clone = parentTemplate.content.cloneNode(true);
+        parentsContainer.appendChild(clone);
+    }
+
+    // Start with one empty parent row — the section is soft-required.
+    addParentRow();
+
+    addParentBtn.addEventListener('click', addParentRow);
+
+    parentsContainer.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-parent')) {
+            e.target.closest('.parent-item').remove();
+        }
+    });
+
+    function setParentsSectionDisabled(disabled) {
+        parentsContainer.classList.toggle('opacity-40', disabled);
+        parentsContainer.classList.toggle('pointer-events-none', disabled);
+        addParentBtn.disabled = disabled;
+        addParentBtn.classList.toggle('opacity-40', disabled);
+        addParentBtn.classList.toggle('pointer-events-none', disabled);
+        parentsDisabledMsg.classList.toggle('hidden', !disabled);
+    }
+
     // ── Sibling picker ──────────────────────────────────────────────
 
     const siblingCheckbox = document.getElementById('is-sibling');
@@ -276,6 +380,17 @@ document.addEventListener('DOMContentLoaded', function() {
         siblingState = { studentId: null, studentName: null, parents: [], emergencyContacts: [], classId: null };
         siblingSelected.classList.add('hidden');
         siblingSearch.value = '';
+        setParentsSectionDisabled(false);
+    }
+
+    // Sync the parents-section dimming with sibling+inherit state.
+    function syncParentsSectionState() {
+        const dim = Boolean(
+            siblingState.studentId
+            && document.getElementById('inherit-parents').checked
+            && siblingState.parents.length > 0
+        );
+        setParentsSectionDisabled(dim);
     }
 
     siblingCheckbox.addEventListener('change', function() {
@@ -361,11 +476,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 id: p.id, first_name: p.first_name, last_name: p.last_name,
             }));
             if (siblingState.parents.length === 0) {
-                siblingParentsPreview.textContent = 'No parents linked yet — nothing to inherit.';
+                siblingParentsPreview.textContent = 'No parents linked yet — enter parent details below.';
             } else {
                 const names = siblingState.parents.map(p => `${p.first_name} ${p.last_name}`).join(', ');
                 siblingParentsPreview.textContent = `Will link parents: ${names}.`;
             }
+            syncParentsSectionState();
         } catch (err) {
             siblingParentsPreview.textContent = 'Could not load parents. You can still create the student and link them manually.';
         }
@@ -396,6 +512,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    document.getElementById('inherit-parents').addEventListener('change', syncParentsSectionState);
+
     document.addEventListener('click', (e) => {
         if (!siblingSuggestions.contains(e.target) && e.target !== siblingSearch) {
             siblingSuggestions.classList.add('hidden');
@@ -404,10 +522,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── Form submission ────────────────────────────────────────────
 
+    // Collect parent rows into the API payload shape. Rows are skipped
+    // if all three required fields are blank — the admin can add an
+    // empty row and abandon it without it breaking the submit. Rows
+    // with SOME fields filled but not all fail HTML5 required
+    // validation before we get here, so we don't defensively repeat that.
+    function collectParents() {
+        const rows = parentsContainer.querySelectorAll('.parent-item');
+        const parents = [];
+        rows.forEach(row => {
+            const first = row.querySelector('input[name="parents[][first_name]"]').value.trim();
+            const last = row.querySelector('input[name="parents[][last_name]"]').value.trim();
+            const email = row.querySelector('input[name="parents[][email]"]').value.trim();
+            if (!first && !last && !email) return; // empty row
+            parents.push({
+                first_name: first,
+                last_name: last,
+                email: email,
+                phone: row.querySelector('input[name="parents[][phone]"]').value.trim() || null,
+                relationship_type: row.querySelector('select[name="parents[][relationship_type]"]').value,
+                is_primary: row.querySelector('input[name="parents[][is_primary]"]').checked,
+                send_whatsapp_invite: row.querySelector('input[name="parents[][send_whatsapp_invite]"]').checked,
+            });
+        });
+        return parents;
+    }
+
+    // Enforce required fields ONLY on rows the admin has started filling.
+    // A totally empty row is legit (they added it and abandoned it).
+    function toggleParentRowRequired() {
+        parentsContainer.querySelectorAll('.parent-item').forEach(row => {
+            const first = row.querySelector('input[name="parents[][first_name]"]');
+            const last = row.querySelector('input[name="parents[][last_name]"]');
+            const email = row.querySelector('input[name="parents[][email]"]');
+            const any = [first, last, email].some(el => el.value.trim());
+            [first, last, email].forEach(el => { el.required = any; });
+        });
+    }
+    parentsContainer.addEventListener('input', toggleParentRowRequired);
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
+        toggleParentRowRequired();
+        // Let HTML5 validation trip if any half-filled row is invalid.
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
 
         const formData = new FormData(form);
+        const parents = collectParents();
+        const willInheritFromSibling = Boolean(
+            siblingState.studentId
+            && document.getElementById('inherit-parents').checked
+            && siblingState.parents.length > 0
+        );
+
+        // Soft-required: warn (don't block) if we're saving a student
+        // with no parent info at all and no sibling to inherit from.
+        if (parents.length === 0 && !willInheritFromSibling) {
+            const ok = await ClassUp.confirm(
+                'You have not added any parent or guardian details, and no sibling is selected. '
+                + 'Are you sure you want to save this student now? You can add parents later from the student page.',
+                { confirmText: 'Save anyway', cancelText: 'Go back' },
+            );
+            if (!ok) return;
+        }
+
         const data = {
             first_name: formData.get('first_name'),
             last_name: formData.get('last_name'),
@@ -417,7 +598,8 @@ document.addEventListener('DOMContentLoaded', function() {
             allergies: formData.get('allergies') || null,
             medical_info: formData.get('medical_info') || null,
             notes: formData.get('notes') || null,
-            emergency_contacts: []
+            emergency_contacts: [],
+            parents: willInheritFromSibling ? [] : parents,
         };
 
         // Emergency contacts from the form UI.
@@ -443,7 +625,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
             });
 
             const result = await response.json();
@@ -453,16 +635,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const newStudentId = result.data.id;
+            const newStudentId = result.data.student.id;
+            const parentResults = result.data.parent_results || [];
 
-            // Inherit sibling's parents — batch of link calls. Best-effort
-            // per parent: if one fails, the others still get linked and the
-            // admin lands on the student page where they can retry.
-            if (
-                siblingState.studentId
-                && document.getElementById('inherit-parents').checked
-                && siblingState.parents.length > 0
-            ) {
+            // Surface per-parent outcomes from the create response.
+            let invited = 0, linked = 0, failed = 0;
+            parentResults.forEach(r => {
+                if (r.status === 'invited') invited += 1;
+                else if (r.status === 'linked' || r.status === 'already_linked') linked += 1;
+                else if (r.status === 'error') failed += 1;
+            });
+            if (invited > 0) {
+                ClassUp.toast(`${invited} parent invitation${invited === 1 ? '' : 's'} sent.`, 'success');
+            }
+            if (linked > 0) {
+                ClassUp.toast(`${linked} parent${linked === 1 ? '' : 's'} linked and notified.`, 'success');
+            }
+            if (failed > 0) {
+                const detail = parentResults
+                    .filter(r => r.status === 'error')
+                    .map(r => `${r.email}: ${r.message}`)
+                    .join('; ');
+                ClassUp.toast(
+                    `${failed} parent${failed === 1 ? '' : 's'} failed — ${detail}. Retry from the student page.`,
+                    'warning',
+                );
+            }
+
+            // Sibling flow: link inherited parents via the existing endpoint,
+            // which now also fires the "new child added" email + WhatsApp.
+            if (willInheritFromSibling) {
                 let linkedCount = 0, failedCount = 0;
                 for (const parent of siblingState.parents) {
                     try {
@@ -486,7 +688,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (linkedCount > 0) {
                     ClassUp.toast(
-                        `Student created + ${linkedCount} parent${linkedCount === 1 ? '' : 's'} inherited from ${siblingState.studentName}.`,
+                        `${linkedCount} parent${linkedCount === 1 ? '' : 's'} inherited from ${siblingState.studentName} and notified.`,
                         'success',
                     );
                 }

@@ -7,6 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+import logging
+
 from app.exceptions import ConflictException, ForbiddenException, NotFoundException
 from app.models import (
     InvitationStatus, ParentInvitation, ParentStudent, SchoolClass,
@@ -15,10 +17,13 @@ from app.models import (
 from app.models.user import Role
 from app.schemas.student import (
     LinkParentRequest,
+    ParentEnrollmentInfo,
     StudentCreate,
     StudentUpdate,
 )
 from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
+
+logger = logging.getLogger(__name__)
 
 
 class StudentService:
@@ -122,8 +127,16 @@ class StudentService:
         self,
         db: AsyncSession,
         data: StudentCreate,
-    ) -> Student:
-        """Create a new student."""
+    ) -> tuple[Student, list[dict]]:
+        """Create a new student and enroll any parents supplied.
+
+        Returns a tuple of (student, parent_results). ``parent_results``
+        is a list of ``{email, status, message}`` — the UI uses it to
+        surface per-parent outcomes (linked to existing account,
+        invitation sent, or per-parent failure). A parent failure never
+        rolls back the student — the student is already saved and the
+        admin can retry from the detail page.
+        """
         tenant_id = get_tenant_id()
 
         # Validate class belongs to tenant if provided
@@ -151,7 +164,223 @@ class StudentService:
         await db.flush()
         await db.refresh(student)
 
-        return student
+        parent_results: list[dict] = []
+        for parent_info in data.parents:
+            result = await self._enroll_parent_at_create(db, student, parent_info)
+            parent_results.append(result)
+
+        return student, parent_results
+
+    async def _enroll_parent_at_create(
+        self,
+        db: AsyncSession,
+        student: Student,
+        info: ParentEnrollmentInfo,
+    ) -> dict:
+        """Attach one parent to a freshly-created student.
+
+        Two branches:
+          * ``linked`` — a PARENT user with that email already exists on
+            this tenant. Create the parent_students row, flip
+            ``whatsapp_opted_in`` on if the admin gave a phone + ticked
+            the box, and fire the "new child added" email + WhatsApp
+            mirror. Idempotent — a duplicate link is reported as
+            ``already_linked`` rather than raising.
+          * ``invited`` — no existing user. Create a ParentInvitation and
+            send the invite email; if a phone was captured and the admin
+            wants WhatsApp, the parent_signup template goes out too.
+            The captured phone is stashed on the invitation row's
+            first/last name context only — the actual User row gets
+            populated at registration time.
+
+        Errors are swallowed and returned as ``status: "error"`` — the
+        student stays saved, the admin can retry the individual parent
+        from the detail page.
+        """
+        from app.config import get_settings
+        from app.models import Tenant
+        from app.services import parent_notifier
+        from app.services.email_service import get_email_service
+        from app.services.invitation_service import get_invitation_service
+
+        settings = get_settings()
+        tenant_id = student.tenant_id
+        email = info.email.lower()
+
+        try:
+            existing_parent_stmt = select(User).where(
+                User.email == email,
+                User.tenant_id == tenant_id,
+                User.role == Role.PARENT.value,
+                User.deleted_at.is_(None),
+            )
+            existing_parent = (await db.execute(existing_parent_stmt)).scalar_one_or_none()
+
+            tenant = await db.get(Tenant, tenant_id)
+            tenant_name = tenant.name if tenant else "your school"
+            email_service = get_email_service()
+
+            if existing_parent:
+                dup_stmt = select(ParentStudent).where(
+                    ParentStudent.parent_id == existing_parent.id,
+                    ParentStudent.student_id == student.id,
+                )
+                if (await db.execute(dup_stmt)).scalar_one_or_none():
+                    return {
+                        "email": email,
+                        "status": "already_linked",
+                        "message": (
+                            f"{existing_parent.first_name} {existing_parent.last_name} "
+                            f"is already linked to this student."
+                        ),
+                    }
+
+                if info.is_primary:
+                    await self._unset_primary_parent(db, student.id)
+
+                db.add(ParentStudent(
+                    parent_id=existing_parent.id,
+                    student_id=student.id,
+                    relationship_type=info.relationship_type,
+                    is_primary=info.is_primary,
+                ))
+                await db.flush()
+
+                # Sibling case: the parent already has an account —
+                # tell them a new child has been added.
+                if info.phone and info.send_whatsapp_invite and not existing_parent.whatsapp_phone:
+                    existing_parent.whatsapp_phone = info.phone
+                if info.send_whatsapp_invite and not existing_parent.whatsapp_opted_in:
+                    existing_parent.whatsapp_opted_in = True
+
+                await self._notify_parent_new_child(
+                    db, existing_parent, tenant_name,
+                    f"{student.first_name} {student.last_name}",
+                    email_service, settings,
+                )
+                return {
+                    "email": email,
+                    "status": "linked",
+                    "message": (
+                        f"Linked to existing parent account "
+                        f"{existing_parent.first_name} {existing_parent.last_name}. "
+                        "They have been notified by email"
+                        + (" + WhatsApp" if info.send_whatsapp_invite else "")
+                        + "."
+                    ),
+                }
+
+            # No account yet — create + send invitation.
+            invitation_service = get_invitation_service()
+            invitation = await invitation_service.create_invitation(
+                db,
+                student_id=student.id,
+                email=email,
+                first_name=info.first_name,
+                last_name=info.last_name,
+            )
+
+            from urllib.parse import urlencode
+            register_url = (
+                f"{settings.app_base_url}/register?"
+                + urlencode({"code": invitation.invitation_code, "email": invitation.email})
+            )
+            try:
+                await email_service.send_parent_invitation(
+                    to=invitation.email,
+                    tenant_name=tenant_name,
+                    student_name=f"{student.first_name} {student.last_name}",
+                    invitation_code=invitation.invitation_code,
+                    register_url=register_url,
+                )
+            except Exception:
+                logger.exception(
+                    "Invitation email failed for %s (student %s)", email, student.id,
+                )
+
+            # WhatsApp signup nudge if we have a phone and the admin ticked
+            # the box. Best-effort — email is still the authoritative channel.
+            whatsapp_sent = False
+            if info.phone and info.send_whatsapp_invite:
+                try:
+                    whatsapp_sent = await parent_notifier.notify_parent_invite(
+                        db, None,
+                        to_phone=info.phone,
+                        tenant_name=tenant_name,
+                        code=invitation.invitation_code,
+                    )
+                except Exception:
+                    logger.exception(
+                        "WhatsApp signup nudge failed for %s (student %s)",
+                        info.phone, student.id,
+                    )
+
+            channels = "email"
+            if whatsapp_sent:
+                channels += " + WhatsApp"
+            return {
+                "email": email,
+                "status": "invited",
+                "message": f"Invitation sent by {channels}.",
+            }
+        except ValueError as e:
+            # invitation service raises ValueError for duplicates etc.
+            return {"email": email, "status": "error", "message": str(e)}
+        except Exception:
+            logger.exception(
+                "Failed to enroll parent %s for student %s", email, student.id,
+            )
+            return {
+                "email": email,
+                "status": "error",
+                "message": "Something went wrong — retry from the student page.",
+            }
+
+    async def _notify_parent_new_child(
+        self,
+        db: AsyncSession,
+        parent: User,
+        tenant_name: str,
+        student_name: str,
+        email_service,
+        settings,
+    ) -> None:
+        """Email + WhatsApp: 'a new child has been linked to your account'.
+
+        Used both when a sibling is picked at create time and when the
+        admin manually links a parent from the student detail page.
+        Never raises — every failure is logged and swallowed so the
+        parent link still lands.
+        """
+        from app.services import parent_notifier
+
+        try:
+            await email_service.send(
+                to=parent.email,
+                subject=f"A new child has been linked to your {tenant_name} account",
+                template_name="parent_link_child.html",
+                context={
+                    "parent_name": parent.first_name,
+                    "student_name": student_name,
+                    "tenant_name": tenant_name,
+                    "login_url": f"{settings.app_base_url}/login",
+                    "app_name": settings.app_name,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "child-linked email failed for parent %s", parent.id,
+            )
+        try:
+            await parent_notifier.notify_parent_link_child(
+                db, parent,
+                tenant_name=tenant_name,
+                student_name=student_name,
+            )
+        except Exception:
+            logger.exception(
+                "child-linked WhatsApp failed for parent %s", parent.id,
+            )
 
     async def update_student(
         self,
@@ -352,7 +581,16 @@ class StudentService:
         student_id: uuid.UUID,
         data: LinkParentRequest,
     ) -> ParentStudent:
-        """Link a parent to a student."""
+        """Link a parent to a student.
+
+        Fires the "new child added to your profile" notification (email
+        + WhatsApp mirror) after linking — the sibling flow at student-
+        create time and manual admin linking both go through here.
+        """
+        from app.config import get_settings
+        from app.models import Tenant
+        from app.services.email_service import get_email_service
+
         tenant_id = get_tenant_id()
         student = await self.get_student(db, student_id)
 
@@ -392,6 +630,15 @@ class StudentService:
         db.add(link)
         await db.flush()
         await db.refresh(link)
+
+        tenant = await db.get(Tenant, tenant_id)
+        await self._notify_parent_new_child(
+            db, parent,
+            tenant.name if tenant else "your school",
+            f"{student.first_name} {student.last_name}",
+            get_email_service(),
+            get_settings(),
+        )
 
         return link
 

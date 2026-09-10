@@ -176,19 +176,30 @@ async def list_students(
     )
 
 
-@router.post("", response_model=APIResponse[StudentResponse])
+@router.post("", response_model=APIResponse[dict])
 @require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
 async def create_student(
     data: StudentCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new student."""
+    """Create a new student.
+
+    When ``parents`` is supplied, each entry is either linked to the
+    existing PARENT user on this tenant (matched by email) or turned
+    into a ParentInvitation with an email sent (and a WhatsApp
+    signup nudge if the admin captured a phone and ticked the box).
+    The response includes a ``parent_results`` list so the UI can
+    surface per-parent outcomes (linked / invited / duplicate / error).
+    """
     service = get_student_service()
-    student = await service.create_student(db, data)
+    student, parent_results = await service.create_student(db, data)
     await db.commit()
 
     return APIResponse(
-        data=_build_student_response(student),
+        data={
+            "student": _build_student_response(student).model_dump(mode="json"),
+            "parent_results": parent_results,
+        },
         message="Student created successfully",
     )
 
