@@ -1,0 +1,74 @@
+{# Public landing page hit when a parent taps an RSVP button in the
+   event email. No login required — signature already verified. Kept
+   self-contained (doesn't extend base.html) so it works before the
+   parent is logged in, on any device. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event RSVP · {{ app_name }}</title>
+<style>
+    body {
+        font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        margin: 0; padding: 24px;
+        background: #f8fafc; color: #1e293b;
+        min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .card {
+        max-width: 480px; width: 100%;
+        background: #fff; border-radius: 12px;
+        padding: 32px 28px; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+    }
+    .icon {
+        width: 64px; height: 64px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 16px auto; font-size: 32px;
+    }
+    .icon.ok { background: #dcfce7; color: #15803d; }
+    .icon.err { background: #fee2e2; color: #b91c1c; }
+    h1 { font-size: 22px; margin: 0 0 8px 0; text-align: center; color: #0f172a; }
+    p.msg { font-size: 15px; text-align: center; margin: 0 0 20px 0; color: #475569; }
+    .event-summary {
+        margin: 20px 0; padding: 16px;
+        background: #f1f5f9; border-radius: 8px;
+    }
+    .event-summary p { margin: 4px 0; font-size: 14px; }
+    .event-title { font-weight: 600; color: #0f172a; margin-bottom: 8px !important; }
+    .footer {
+        margin-top: 24px; text-align: center;
+        font-size: 13px; color: #64748b;
+    }
+    .footer a {
+        display: inline-block; margin-top: 12px;
+        padding: 10px 20px; background: #4f46e5; color: #fff;
+        text-decoration: none; border-radius: 6px; font-weight: 500;
+    }
+</style>
+</head>
+<body>
+<main class="card">
+    <div class="icon {{ 'ok' if success else 'err' }}">
+        {% if success %}✓{% else %}!{% endif %}
+    </div>
+    <h1>{% if success %}RSVP received{% else %}Something's not right{% endif %}</h1>
+    <p class="msg">{{ message }}</p>
+
+    {% if event %}
+    <div class="event-summary">
+        <p class="event-title">{{ event.title }}</p>
+        {% if when_display %}<p>📅 {{ when_display }}</p>{% endif %}
+        {% if event.location %}<p>📍 {{ event.location }}</p>{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        {% if success %}
+            Changed your mind? You can update your response any time from the events page.
+        {% endif %}
+        <br>
+        <a href="/events">Go to events</a>
+    </div>
+</main>
+</body>
+</html>

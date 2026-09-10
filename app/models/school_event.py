@@ -133,6 +133,14 @@ class SchoolEvent(Base, TimestampMixin):
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True,
     )
+    # Idempotency flags for the reminder worker. Non-null = we already
+    # sent that reminder; the worker's WHERE clause filters those out.
+    reminder_24h_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    reminder_1h_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
 
     # Relationships — lazy=selectin so listing events doesn't N+1 the
     # class/student lookup for display names.

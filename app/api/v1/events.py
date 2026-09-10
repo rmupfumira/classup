@@ -134,6 +134,73 @@ def _event_to_dict(
     return out
 
 
+async def _send_reminders(
+    db: AsyncSession, event: SchoolEvent, *, label: str,
+) -> None:
+    """Fire a reminder email to every parent in the audience.
+
+    ``label`` is "24h" or "1h" — feeds subject line + copy in the email
+    template. Best-effort per parent — logged but non-fatal.
+    """
+    from app.services import event_service as es
+    from app.services.email_service import EmailService
+
+    audience = await es.resolve_audience(db, event)
+    if not audience:
+        return
+    tenant = event.tenant
+    tenant_name = tenant.name if tenant else "Your school"
+    tz_name = event.timezone or await es.get_tenant_timezone(db, event.tenant_id)
+    when_display = es.format_event_when(event, tz_name)
+
+    email_service = EmailService()
+    app_settings = get_settings()
+    base = app_settings.app_base_url.rstrip("/")
+    view_url = f"{base}/events/{event.id}"
+
+    subject_prefix = "Reminder — tomorrow" if label == "24h" else "Reminder — in an hour"
+    subject = f"{subject_prefix}: {event.title}"
+
+    for parent in audience:
+        try:
+            await email_service.send(
+                to=parent.email,
+                subject=subject,
+                template_name="event_reminder.html",
+                context={
+                    "parent_name": parent.first_name or "there",
+                    "tenant_name": tenant_name,
+                    "event_title": event.title,
+                    "event_when": when_display,
+                    "event_location": event.location,
+                    "view_url": view_url,
+                    "label": "tomorrow" if label == "24h" else "in about an hour",
+                    "app_name": app_settings.app_name,
+                },
+                from_name=tenant_name,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send %s reminder email to %s for event %s",
+                label, parent.email, event.id,
+            )
+        try:
+            from app.services import parent_notifier
+            await parent_notifier.notify_event_reminder(
+                db, parent,
+                tenant_name=tenant_name,
+                event_title=event.title,
+                event_when=when_display,
+                label=label,
+                event_id=str(event.id),
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send %s reminder WhatsApp to user %s for event %s",
+                label, parent.id, event.id,
+            )
+
+
 async def _send_invitations(
     db: AsyncSession, event: SchoolEvent, *, method: str = "REQUEST",
 ) -> None:
@@ -173,16 +240,19 @@ async def _send_invitations(
 
     for parent in audience:
         try:
-            # Signed RSVP token — parent clicks the email link and we
-            # trust the response without a login round-trip. Token is
-            # opaque to us (secrets.token_urlsafe) — the mapping token
-            # → (event, user, response) lives client-side in the URL,
-            # so we don't need to persist a table. If tampered the
-            # response record is still keyed by user_id which the
-            # session-verify below re-checks.
-            rsvp_yes = f"{base}/events/{event.id}/rsvp?r=YES&u={parent.id}"
-            rsvp_no = f"{base}/events/{event.id}/rsvp?r=NO&u={parent.id}"
-            rsvp_maybe = f"{base}/events/{event.id}/rsvp?r=MAYBE&u={parent.id}"
+            # Signed one-tap RSVP links — parent clicks in email, lands
+            # on /events/{id}/rsvp with (u, r, sig). We verify the HMAC
+            # server-side before writing the RSVP, so a forged link
+            # can't RSVP on someone else's behalf. Signature is
+            # deterministic per (event, user, response), so the parent
+            # can bookmark / revisit their own link freely.
+            def _rsvp_link(response: str) -> str:
+                sig = es.sign_rsvp_token(event.id, parent.id, response)
+                return f"{base}/events/{event.id}/rsvp?r={response}&u={parent.id}&sig={sig}"
+
+            rsvp_yes = _rsvp_link("YES")
+            rsvp_no = _rsvp_link("NO")
+            rsvp_maybe = _rsvp_link("MAYBE")
             await email_service.send_event_invitation(
                 to=parent.email,
                 parent_name=parent.first_name or "there",
@@ -207,7 +277,7 @@ async def _send_invitations(
                 "Failed to send event invitation email to %s for event %s",
                 parent.email, event.id,
             )
-        # WhatsApp — best-effort fallback via announcement template.
+        # WhatsApp — bespoke event_invited template with announcement fallback.
         try:
             from app.services import parent_notifier
             await parent_notifier.notify_event_invited(
@@ -216,6 +286,7 @@ async def _send_invitations(
                 event_title=event.title,
                 event_when=when_display,
                 event_location=event.location,
+                event_id=str(event.id),
             )
         except Exception:
             logger.exception(

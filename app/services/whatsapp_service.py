@@ -905,6 +905,74 @@ class WhatsAppService:
             button_url_variables=[invoice_id],
         )
 
+    # ─────────────────── Event templates ───────────────────
+    # Based on Meta's gallery templates:
+    #   event_invite → event_details_reminder_1
+    #   event_reminder → event_details_reminder_2
+    #   event_rsvp_confirmed → event_rsvp_confirmation_1
+
+    async def send_event_invited(
+        self,
+        to_phone: str,
+        *,
+        event_title: str,
+        event_when: str,
+        event_location: str | None,
+        event_id: str,
+        language: str = "en",
+    ) -> dict | None:
+        """Invite a parent to an event.
+
+        Template body (event_invited, from event_details_reminder_1):
+          "You have an upcoming event: {{1}}. Starts on {{2}} at {{3}}."
+        Button: URL — /events/{{1}} (dynamic suffix).
+        """
+        return await self.send_template_message(
+            to_phone=to_phone,
+            template_name="event_invited",
+            language_code=language,
+            parameters=[event_title, event_when, event_location or "TBC"],
+            button_url_variables=[event_id],
+        )
+
+    async def send_event_reminder(
+        self,
+        to_phone: str,
+        *,
+        event_title: str,
+        event_when: str,
+        event_id: str,
+        language: str = "en",
+    ) -> dict | None:
+        """T-24h and T-1h reminder before an event."""
+        return await self.send_template_message(
+            to_phone=to_phone,
+            template_name="event_reminder",
+            language_code=language,
+            parameters=[event_title, event_when],
+            button_url_variables=[event_id],
+        )
+
+    async def send_event_rsvp_confirmed(
+        self,
+        to_phone: str,
+        *,
+        event_title: str,
+        event_when: str,
+        response: str,
+        event_id: str,
+        language: str = "en",
+    ) -> dict | None:
+        """Confirm a parent's RSVP was received. Sent when a parent
+        RSVPs via WhatsApp or from the email link."""
+        return await self.send_template_message(
+            to_phone=to_phone,
+            template_name="event_rsvp_confirmed",
+            language_code=language,
+            parameters=[event_title, response.title(), event_when],
+            button_url_variables=[event_id],
+        )
+
     async def send_invoice_overdue(
         self,
         to_phone: str,

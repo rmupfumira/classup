@@ -425,20 +425,79 @@ async def notify_message_received(
     )
 
 
+async def notify_event_reminder(
+    db: AsyncSession, user: User,
+    *, tenant_name: str, event_title: str, event_when: str, label: str,
+    event_id: str | None = None,
+) -> bool:
+    """WhatsApp reminder — fires 24h and again 1h before an event.
+    Bespoke ``event_reminder`` template first; falls back to the
+    generic announcement if Meta hasn't approved it yet."""
+    if not await _can_notify_whatsapp(db, user):
+        return False
+    if event_id:
+        ok = await _send_template(
+            db, user, "send_event_reminder",
+            event_title=event_title, event_when=event_when, event_id=event_id,
+        )
+        if ok:
+            return True
+    when_clause = "tomorrow" if label == "24h" else "in about an hour"
+    subject = f"Reminder: {event_title} is {when_clause} ({event_when}). See email for details."
+    return await _send_template(
+        db, user, "send_announcement", tenant_name, subject[:120],
+    )
+
+
 async def notify_event_invited(
     db: AsyncSession, user: User,
     *, tenant_name: str, event_title: str, event_when: str,
     event_location: str | None = None,
+    event_id: str | None = None,
 ) -> bool:
-    """WhatsApp copy of the event invitation email. Falls back to the
-    generic ``announcement`` template until a bespoke ``event_invite``
-    template is submitted + approved on Meta. The email carries the
-    calendar attachment; WhatsApp just gives the parent an at-a-glance
-    heads-up so they don't miss it."""
+    """WhatsApp copy of the event invitation email. Bespoke
+    ``event_invited`` template first; falls back to the generic
+    ``announcement`` template if the bespoke template isn't
+    approved on Meta yet.
+
+    The email carries the calendar attachment; WhatsApp just gives
+    the parent an at-a-glance heads-up so they don't miss it."""
     if not await _can_notify_whatsapp(db, user):
         return False
+    if event_id:
+        ok = await _send_template(
+            db, user, "send_event_invited",
+            event_title=event_title, event_when=event_when,
+            event_location=event_location, event_id=event_id,
+        )
+        if ok:
+            return True
     where = f" at {event_location}" if event_location else ""
     subject = f"Event: {event_title} — {event_when}{where}. Check email for details + calendar invite."
+    return await _send_template(
+        db, user, "send_announcement", tenant_name, subject[:120],
+    )
+
+
+async def notify_event_rsvp_confirmed(
+    db: AsyncSession, user: User,
+    *, tenant_name: str, event_title: str, event_when: str,
+    response: str, event_id: str,
+) -> bool:
+    """Sent when a parent RSVPs (via email link, UI, or WhatsApp bot).
+    Bespoke ``event_rsvp_confirmed`` template first; falls back to the
+    announcement template."""
+    if not await _can_notify_whatsapp(db, user):
+        return False
+    ok = await _send_template(
+        db, user, "send_event_rsvp_confirmed",
+        event_title=event_title, event_when=event_when,
+        response=response, event_id=event_id,
+    )
+    if ok:
+        return True
+    labels = {"YES": "attending", "NO": "not attending", "MAYBE": "maybe attending"}
+    subject = f"RSVP confirmed for {event_title}: {labels.get(response.upper(), response)}."
     return await _send_template(
         db, user, "send_announcement", tenant_name, subject[:120],
     )

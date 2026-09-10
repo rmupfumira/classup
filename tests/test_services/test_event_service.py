@@ -140,6 +140,55 @@ class TestIcsGeneration:
         assert s_late > s_early
 
 
+class TestSignedRsvpToken:
+    """Signed one-tap RSVP links — the HMAC is the whole authorisation
+    for the public /events/{id}/rsvp endpoint."""
+
+    def test_token_verifies_with_matching_inputs(self):
+        eid = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        uid = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        sig = event_service.sign_rsvp_token(eid, uid, "YES")
+        assert event_service.verify_rsvp_token(eid, uid, "YES", sig)
+
+    def test_token_rejects_different_user(self):
+        """Attacker takes their own valid link and swaps the u= param
+        to someone else's user_id. Must not verify."""
+        eid = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        attacker = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        victim = uuid.UUID("33333333-3333-3333-3333-333333333333")
+        sig = event_service.sign_rsvp_token(eid, attacker, "YES")
+        assert not event_service.verify_rsvp_token(eid, victim, "YES", sig)
+
+    def test_token_rejects_different_response(self):
+        """Attacker takes a YES link and edits it to NO. Must not verify."""
+        eid = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        uid = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        sig = event_service.sign_rsvp_token(eid, uid, "YES")
+        assert not event_service.verify_rsvp_token(eid, uid, "NO", sig)
+
+    def test_token_rejects_different_event(self):
+        eid1 = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        eid2 = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+        uid = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        sig = event_service.sign_rsvp_token(eid1, uid, "YES")
+        assert not event_service.verify_rsvp_token(eid2, uid, "YES", sig)
+
+    def test_missing_signature_rejected(self):
+        eid = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        uid = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        assert not event_service.verify_rsvp_token(eid, uid, "YES", "")
+        assert not event_service.verify_rsvp_token(eid, uid, "YES", None)
+
+    def test_response_case_insensitive(self):
+        """URLs might come back with response in different case
+        (some email clients uppercase params). Both sides normalise."""
+        eid = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        uid = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        sig = event_service.sign_rsvp_token(eid, uid, "YES")
+        # verify converts to upper — should match a lowercase input too
+        assert event_service.verify_rsvp_token(eid, uid, "yes", sig)
+
+
 class TestFormatEventWhen:
     def test_start_and_end_same_day(self):
         ev = _fake_event()

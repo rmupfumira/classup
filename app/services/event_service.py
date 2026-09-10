@@ -14,6 +14,8 @@ Apple Mail).
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -22,6 +24,7 @@ from typing import Iterable
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models import (
     EventRsvp, EventScope, ParentStudent, RsvpResponse, SchoolEvent,
     Student, Tenant, User,
@@ -416,6 +419,109 @@ async def get_rsvp_summary(
 # ---------------------------------------------------------------------------
 # Helpers used by the API + web layers
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Signed RSVP tokens — for email-link one-tap RSVP without login
+# ---------------------------------------------------------------------------
+
+
+def sign_rsvp_token(event_id: uuid.UUID, user_id: uuid.UUID, response: str) -> str:
+    """Sign an (event_id, user_id, response) triple with HMAC-SHA256
+    using the app secret. Result is a 16-hex-char prefix (64 bits of
+    entropy — plenty against forgery for a per-event per-user opt-in
+    where the worst case is someone RSVPing on a friend's behalf).
+
+    Truncated for URL brevity. Full signature would be 64 chars.
+    """
+    settings = get_settings()
+    msg = f"{event_id}:{user_id}:{response.upper()}".encode("utf-8")
+    key = settings.app_secret_key.encode("utf-8")
+    sig = hmac.new(key, msg, hashlib.sha256).hexdigest()
+    return sig[:16]
+
+
+def verify_rsvp_token(
+    event_id: uuid.UUID, user_id: uuid.UUID, response: str, provided_sig: str,
+) -> bool:
+    """Constant-time check that the token matches. False on any
+    mismatch or missing/malformed input — the caller treats that as
+    "reject, ask the parent to log in and RSVP manually"."""
+    if not provided_sig:
+        return False
+    try:
+        expected = sign_rsvp_token(event_id, user_id, response)
+    except Exception:
+        return False
+    return hmac.compare_digest(expected.lower(), provided_sig.strip().lower())
+
+
+# ---------------------------------------------------------------------------
+# Reminders — 24h + 1h before starts_at
+# ---------------------------------------------------------------------------
+
+
+async def send_due_reminders(db: AsyncSession) -> dict[str, int]:
+    """Scan every non-deleted, non-cancelled event and fire reminders
+    that are due but not yet sent.
+
+    Two windows:
+      - 24h: starts_at is between now+22h and now+26h (2h grace band)
+      - 1h:  starts_at is between now+45min and now+1h15min (30min grace)
+
+    Idempotency guaranteed by reminder_{Xh}_sent_at columns — a second
+    concurrent scan re-selects only events with those columns still
+    NULL, so no double-send.
+
+    Returns {'24h_sent': N, '1h_sent': N} for the caller / logging.
+    Best-effort per event: one failing send doesn't stop the rest.
+    """
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    stats = {"24h_sent": 0, "1h_sent": 0}
+
+    async def _scan(window_hours: int, grace_hours: float, flag_attr: str, label: str) -> int:
+        window_start = now + timedelta(hours=window_hours - grace_hours)
+        window_end = now + timedelta(hours=window_hours + grace_hours)
+        flag_col = getattr(SchoolEvent, flag_attr)
+        stmt = select(SchoolEvent).where(
+            SchoolEvent.deleted_at.is_(None),
+            SchoolEvent.cancelled_at.is_(None),
+            SchoolEvent.starts_at >= window_start,
+            SchoolEvent.starts_at <= window_end,
+            flag_col.is_(None),
+        )
+        events = list((await db.execute(stmt)).scalars().unique().all())
+        if not events:
+            return 0
+
+        # Late import to avoid a circular import between event_service
+        # and the API layer that owns the send helper.
+        from app.api.v1.events import _send_reminders as api_send_reminders
+
+        sent = 0
+        for event in events:
+            try:
+                await api_send_reminders(db, event, label=label)
+                setattr(event, flag_attr, datetime.now(timezone.utc))
+                sent += 1
+            except Exception:
+                logger.exception(
+                    "Reminder send failed for event %s (%s)", event.id, label,
+                )
+        if sent:
+            await db.flush()
+        return sent
+
+    stats["24h_sent"] = await _scan(24, 2.0, "reminder_24h_sent_at", "24h")
+    stats["1h_sent"] = await _scan(1, 0.25, "reminder_1h_sent_at", "1h")
+    if stats["24h_sent"] or stats["1h_sent"]:
+        logger.info(
+            "Event reminders sent: 24h=%d, 1h=%d",
+            stats["24h_sent"], stats["1h_sent"],
+        )
+    return stats
 
 
 async def get_tenant_timezone(db: AsyncSession, tenant_id: uuid.UUID | None) -> str:

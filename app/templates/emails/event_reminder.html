@@ -1,0 +1,46 @@
+{% extends "base_email.html" %}
+
+{% block title %}Reminder: {{ event_title }}{% endblock %}
+
+{% block content %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Hi {{ parent_name or 'there' }},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Just a quick reminder from <strong>{{ tenant_name }}</strong> — <strong>{{ event_title }}</strong> is {{ label }}.
+</p>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px; background-color: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 8px;">
+    <tr>
+        <td style="padding: 20px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding-bottom: 10px;">
+                        <p style="margin: 0; font-size: 13px; color: #6B7280;">When</p>
+                        <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #111827;">{{ event_when }}</p>
+                    </td>
+                </tr>
+                {% if event_location %}
+                <tr>
+                    <td>
+                        <p style="margin: 0; font-size: 13px; color: #6B7280;">Where</p>
+                        <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #111827;">{{ event_location }}</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </table>
+        </td>
+    </tr>
+</table>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #4F46E5;">
+            <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                View event details
+            </a>
+        </td>
+    </tr>
+</table>
+{% endblock %}

@@ -101,6 +101,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if path.startswith(prefix):
                 return True
 
+        # Public signed-link RSVP: /events/{uuid}/rsvp?u=…&r=…&sig=…
+        # Parent taps a button in the event invitation email — the HMAC
+        # in the query string is the authorisation, so we don't need
+        # (and can't get) a JWT here.
+        if path.startswith("/events/") and path.endswith("/rsvp"):
+            return True
+
         return False
 
     def _extract_token(self, request: Request) -> str | None:
