@@ -314,17 +314,32 @@ class YocoProvider(PaymentProvider):
 
 
 # ============================================================================
-# PayNow — Zimbabwe gateway (scaffolded; finalise when Zim instance deploys)
+# PayNow — Zimbabwe gateway (EcoCash, OneMoney, ZIPIT, Visa/Mastercard)
 # ============================================================================
 
 class PayNowProvider(PaymentProvider):
-    """Zimbabwe's Paynow gateway. Filled in when the Zim instance is being
-    provisioned — the abstraction + admin UI is ready to go.
+    """Zimbabwe's Paynow gateway. Handles ClassUp SaaS subscription
+    payments for Zim tenants — parents-paying-school-fees is a separate
+    feature (see BillingInvoice flow).
 
     Docs: https://developers.paynow.co.zw
-    Auth: Integration ID + Integration Key, with HMAC-MD5 (yes, MD5) on a
-    pipe-separated, key-sorted payload. Webhook ("result URL") delivery is
-    by POST with the same hash style.
+
+    Contract:
+      - Initiate: POST form-encoded body to /interface/initiatetransaction.
+        Response is form-encoded "Status=Ok&BrowserUrl=…&PollUrl=…&Hash=…"
+        (or "Status=Error&Error=…" on failure). We MUST verify the
+        response hash before redirecting.
+      - Redirect user to BrowserUrl.
+      - Paynow POSTs to our resulturl when the transaction status changes,
+        form-encoded: reference, paynowreference, amount, status, pollurl,
+        hash. We validate the hash, then map ``status`` to PaymentEvent.
+      - Statuses treated as succeeded: "Paid" (funds settled), "Awaiting
+        Delivery" (paid but held pending our confirm — for services like
+        SaaS that's effectively paid), "Delivered" (belt-and-braces).
+
+    Hash algorithm: concatenate all field VALUES in the order they appear
+    in the message (skip ``hash``), append the integration key, SHA512,
+    uppercase hex. For inbound messages we URL-decode values first.
     """
 
     provider_id = "paynow"
@@ -339,6 +354,62 @@ class PayNowProvider(PaymentProvider):
          "help": "Generated alongside the Integration ID. Used to sign + verify every call."},
     ]
 
+    INITIATE_URL = "https://www.paynow.co.zw/interface/initiatetransaction"
+    # Statuses that mean "the customer's money is committed" — safe to
+    # mark the invoice PAID. Everything else is either pending or failed.
+    SUCCESS_STATUSES = frozenset({"paid", "awaiting delivery", "delivered"})
+
+    @property
+    def integration_id(self) -> str:
+        return str(self.credentials.get("integration_id", "")).strip()
+
+    @property
+    def integration_key(self) -> str:
+        return str(self.credentials.get("integration_key", "")).strip()
+
+    # ────────────────────── Hash helpers ──────────────────────
+
+    def _hash_fields(self, fields: dict[str, str]) -> str:
+        """SHA512 hex-upper of concatenated values (in dict-order, skipping
+        the ``hash`` key) plus the integration key. Preserving insertion
+        order matters — PayNow's PHP reference implementation iterates the
+        associative array in add-order.
+
+        Test vector from the docs (integration key
+        3e9fed89-60e1-4ce5-ab6e-6b1eb2d4f977) is exercised in
+        tests/test_services/test_paynow_provider.py.
+        """
+        concat = ""
+        for key, value in fields.items():
+            if key.lower() == "hash":
+                continue
+            concat += "" if value is None else str(value)
+        concat += self.integration_key
+        return hashlib.sha512(concat.encode("utf-8")).hexdigest().upper()
+
+    def _verify_hash(self, fields: dict[str, str], provided_hash: str) -> bool:
+        """constant-time compare against a computed hash. False if either
+        side is missing so a caller can't accidentally accept "no hash"."""
+        if not provided_hash:
+            return False
+        return hmac.compare_digest(
+            self._hash_fields(fields).upper(), provided_hash.strip().upper(),
+        )
+
+    @staticmethod
+    def _parse_form_body(body: bytes | str) -> dict[str, str]:
+        """URL-decoded, order-preserving parse of a form body. Values are
+        the RAW strings (spaces already un-plussed, %-decoded) which is
+        exactly what the hash algorithm expects."""
+        from urllib.parse import parse_qsl
+
+        text = body.decode("utf-8", errors="replace") if isinstance(body, bytes) else body
+        # keep_blank_values=True so a "reference=&…" field doesn't silently
+        # disappear before we verify the hash.
+        return dict(parse_qsl(text, keep_blank_values=True))
+
+    # ────────────────────── Initiate transaction ──────────────────────
+
     async def create_checkout(
         self,
         invoice: PlatformInvoice,
@@ -346,16 +417,223 @@ class PayNowProvider(PaymentProvider):
         return_url: str,
         cancel_url: str,
     ) -> CheckoutResult:
-        raise NotImplementedError(
-            "Paynow integration is scaffolded but not wired up yet — "
-            "will be completed when the Zimbabwe instance is being deployed."
-        )
+        """Create a Paynow transaction and return the URL to redirect the
+        user to.
+
+        Paynow doesn't have a distinct cancel flow — the customer clicks
+        back or times out, and the transaction stays in "Sent" status.
+        We ignore ``cancel_url`` (kept in the signature so the abstraction
+        matches Yoco's).
+        """
+        if not (self.integration_id and self.integration_key):
+            raise RuntimeError("Paynow integration_id / integration_key not configured.")
+
+        # ``reference`` must be unique per merchant per transaction. Using
+        # the invoice id keeps it stable across retries — if Paynow rejects
+        # a duplicate, we know the invoice is already known to them and
+        # can look it up rather than creating a new one.
+        reference = str(invoice.id)
+        amount = f"{Decimal(invoice.amount):.2f}"
+        additional_info = (
+            f"ClassUp subscription — {invoice.billing_period_start:%b %Y}"
+            if getattr(invoice, "billing_period_start", None) else "ClassUp subscription"
+        )[:250]  # Paynow silently truncates; we clip explicitly to avoid surprises.
+
+        # Field order matters for the hash. This dict is the order Paynow
+        # sees them, and the hash concatenation walks the same order.
+        fields: dict[str, str] = {
+            "id": self.integration_id,
+            "reference": reference,
+            "amount": amount,
+            "additionalinfo": additional_info,
+            "returnurl": return_url,
+            "resulturl": self._resulturl_for(return_url),
+            "authemail": self._email_for(invoice),
+            "status": "Message",
+        }
+        fields["hash"] = self._hash_fields(fields)
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                self.INITIATE_URL,
+                data=fields,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        if resp.status_code >= 300:
+            logger.warning(
+                "Paynow initiate failed: %s %s", resp.status_code, resp.text[:200]
+            )
+            raise RuntimeError(f"Paynow rejected the request: HTTP {resp.status_code}")
+
+        parsed = self._parse_form_body(resp.text)
+        status = (parsed.get("Status") or parsed.get("status") or "").strip()
+        if status.lower() == "error":
+            err = parsed.get("Error") or parsed.get("error") or "unknown error"
+            logger.warning("Paynow returned Error: %s", err)
+            raise RuntimeError(f"Paynow error: {err}")
+        if status.lower() != "ok":
+            raise RuntimeError(f"Paynow returned unexpected status: {status!r}")
+
+        # Verify the response hash BEFORE trusting BrowserUrl — otherwise
+        # a MITM could inject a phishing redirect.
+        response_fields = dict(parsed)  # preserve order for hash re-compute
+        provided_hash = response_fields.pop("Hash", None) or response_fields.pop("hash", None)
+        if not self._verify_hash(response_fields, provided_hash or ""):
+            logger.warning("Paynow initiate response hash mismatch — refusing redirect")
+            raise RuntimeError("Paynow response hash invalid; refusing to redirect user.")
+
+        browser_url = parsed.get("BrowserUrl") or parsed.get("browserurl")
+        poll_url = parsed.get("PollUrl") or parsed.get("pollurl") or ""
+        if not browser_url:
+            raise RuntimeError("Paynow response missing BrowserUrl.")
+
+        # Store poll_url as the reference — it's the canonical way to
+        # reconcile later if the webhook doesn't fire (network issue,
+        # missed callback). apply_payment_event stores this on
+        # invoice.paystack_reference (name is historical).
+        return CheckoutResult(redirect_url=browser_url, reference=poll_url or reference)
+
+    @staticmethod
+    def _resulturl_for(return_url: str) -> str:
+        """Derive the resulturl from the caller-supplied return_url. Both
+        webhook + return_url live under the same host + scheme, but the
+        webhook path is fixed at /api/v1/paynow/webhook.
+
+        We accept a return_url that might carry a query string (e.g.
+        ?invoice_id=…) and preserve the origin only — no path.
+        """
+        from urllib.parse import urlparse, urlunparse
+
+        parts = urlparse(return_url)
+        if not parts.scheme or not parts.netloc:
+            # Called from a test that gave a relative URL — just append
+            # the webhook path and hope the caller ran in a context
+            # where relative URLs resolve.
+            return "/api/v1/paynow/webhook"
+        return urlunparse((parts.scheme, parts.netloc, "/api/v1/paynow/webhook", "", "", ""))
+
+    @staticmethod
+    def _email_for(invoice: PlatformInvoice) -> str:
+        """The tenant's admin email if we can reach it — helps Paynow's
+        Express Checkout mobile flow auto-fill. Optional field; safe to
+        be empty."""
+        tenant = getattr(invoice, "tenant", None)
+        if tenant is not None and getattr(tenant, "email", None):
+            return str(tenant.email).strip()
+        return ""
+
+    # ────────────────────── Webhook (result URL) ──────────────────────
 
     def verify_webhook(self, headers: dict[str, str], body: bytes) -> bool:
-        raise NotImplementedError("Paynow webhook verification not yet implemented.")
+        """PayNow authenticates the callback via a hash on the body — no
+        signature headers. So headers aren't consulted; ``body`` is the
+        form-encoded POST that includes ``hash=…`` alongside the fields.
+        """
+        if not self.integration_key:
+            logger.warning("Paynow integration_key not configured — refusing webhook")
+            return False
+
+        fields = self._parse_form_body(body)
+        # Pop the hash so re-compute uses the same input the sender did
+        provided_hash = fields.pop("hash", None) or fields.pop("Hash", None)
+        if not provided_hash:
+            logger.warning("Paynow webhook missing hash field")
+            return False
+        return self._verify_hash(fields, provided_hash)
 
     def parse_webhook_event(self, body: bytes) -> PaymentEvent:
-        raise NotImplementedError("Paynow event parsing not yet implemented.")
+        """Map a validated (already-verified) result URL POST to our
+        provider-agnostic PaymentEvent. ``invoice_id`` comes from the
+        ``reference`` field, which we set to str(invoice.id) at initiate
+        time — so parsing it back to UUID is the round-trip."""
+        fields = self._parse_form_body(body)
+        # verify_webhook already checked the hash; parsing is fine to do
+        # with the possibly-still-hash-bearing dict.
+        raw_status = (fields.get("status") or fields.get("Status") or "").strip()
+        succeeded = raw_status.lower() in self.SUCCESS_STATUSES
+
+        # Turn our reference back into a UUID. If it's not a UUID (test
+        # data, corrupt POST), leave invoice_id None — apply_payment_event
+        # logs + no-ops on that path.
+        reference = (fields.get("reference") or fields.get("Reference") or "").strip()
+        invoice_id: UUID | None = None
+        try:
+            if reference:
+                invoice_id = UUID(reference)
+        except ValueError:
+            invoice_id = None
+
+        paynow_ref = (
+            fields.get("paynowreference")
+            or fields.get("PaynowReference")
+            or fields.get("PaynowReference".lower())
+        )
+
+        channel = (
+            fields.get("paymentchannel")
+            or fields.get("PaymentChannel")
+            or "paynow"
+        )
+
+        return PaymentEvent(
+            invoice_id=invoice_id,
+            succeeded=succeeded,
+            provider_reference=(paynow_ref or None),
+            payment_method=f"paynow_{channel.lower().replace(' ', '_')}",
+            failure_reason=None if succeeded else raw_status or "Unknown",
+            raw=dict(fields),
+        )
+
+    async def test_credentials(self) -> tuple[bool, str]:
+        """Sanity-check the integration id + key by attempting an
+        initiate with a $0.01 amount and a throwaway reference. A real
+        transaction is created but never redirected/completed — Paynow
+        marks it Cancelled after a short time.
+
+        We keep this lightweight because Paynow has no dedicated ping
+        endpoint. If either credential is wrong the server returns an
+        Error message before creating anything.
+        """
+        if not (self.integration_id and self.integration_key):
+            return False, "Missing integration ID or key."
+
+        import uuid as _uuid
+
+        test_ref = f"credtest-{_uuid.uuid4().hex[:12]}"
+        fields: dict[str, str] = {
+            "id": self.integration_id,
+            "reference": test_ref,
+            "amount": "0.01",
+            "additionalinfo": "ClassUp credential test — safe to ignore",
+            "returnurl": "https://classup.co.za/paynow/return",
+            "resulturl": "https://classup.co.za/api/v1/paynow/webhook",
+            "authemail": "",
+            "status": "Message",
+        }
+        fields["hash"] = self._hash_fields(fields)
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    self.INITIATE_URL,
+                    data=fields,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+        except httpx.HTTPError as e:
+            return False, f"Could not reach Paynow: {e}"
+        if resp.status_code >= 500:
+            return False, f"Paynow server error: HTTP {resp.status_code}"
+
+        parsed = self._parse_form_body(resp.text)
+        status = (parsed.get("Status") or parsed.get("status") or "").strip().lower()
+        if status == "ok":
+            return True, "Credentials look valid. Test transaction created and will auto-cancel."
+        if status == "error":
+            err = parsed.get("Error") or parsed.get("error") or "unknown error"
+            # "Hash from Website does not match" → integration_key wrong
+            # "Invalid id" → integration_id wrong
+            return False, f"Paynow rejected credentials: {err}"
+        return False, f"Unexpected Paynow response: {resp.text[:200]}"
 
 
 # ============================================================================

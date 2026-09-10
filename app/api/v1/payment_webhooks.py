@@ -72,7 +72,15 @@ async def yoco_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.post("/paynow/webhook")
 async def paynow_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    """Paynow (Zim) result URL endpoint — to be enabled when the Zim
-    instance deploys. Provider verification + parsing is currently a
-    NotImplementedError stub in gateway_service.PayNowProvider."""
+    """Paynow (Zim) result URL endpoint.
+
+    Body is application/x-www-form-urlencoded (NOT JSON) — Paynow POSTs
+    the transaction status change as form fields including a SHA512
+    hash we verify against the integration key configured in
+    /admin/payment-gateways.
+
+    Paynow retries up to 10 times on non-2xx responses; we always
+    return 200 (with a status body) so retries stop, and log unusual
+    payloads for later review.
+    """
     return await _handle_webhook("paynow", request, db)

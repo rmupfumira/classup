@@ -380,24 +380,21 @@ class TestApplyPaymentEvent:
         assert await apply_payment_event(db, event) is None
 
 
-class TestPayNowScaffold:
-    """Paynow methods are NotImplementedError until the Zim instance deploys.
-    Lock that down so we don't accidentally wire half a Paynow integration."""
+class TestPayNowRegistered:
+    """Paynow is fully implemented for platform subscription billing.
+    Detailed tests live in tests/test_services/test_paynow_provider.py —
+    here we just assert the provider is registered + surfaces itself in
+    the admin dropdown."""
 
-    def test_create_checkout_raises(self):
-        p = PayNowProvider({"integration_id": "1", "integration_key": "k"})
-        with pytest.raises(NotImplementedError):
-            import asyncio
-            asyncio.run(p.create_checkout(
-                None, return_url="https://x", cancel_url="https://y"
-            ))
+    def test_paynow_in_registry(self):
+        from app.services.gateway_service import PROVIDER_REGISTRY
+        assert "paynow" in PROVIDER_REGISTRY
+        assert PROVIDER_REGISTRY["paynow"] is PayNowProvider
 
-    def test_verify_webhook_raises(self):
-        p = PayNowProvider({"integration_id": "1", "integration_key": "k"})
-        with pytest.raises(NotImplementedError):
-            p.verify_webhook({}, b"{}")
-
-    def test_parse_webhook_event_raises(self):
-        p = PayNowProvider({"integration_id": "1", "integration_key": "k"})
-        with pytest.raises(NotImplementedError):
-            p.parse_webhook_event(b"{}")
+    def test_paynow_appears_in_admin_list(self):
+        from app.services.gateway_service import list_providers
+        providers = {p["provider_id"]: p for p in list_providers()}
+        assert "paynow" in providers
+        assert providers["paynow"]["display_name"] == "Paynow (Zimbabwe)"
+        cred_keys = {f["key"] for f in providers["paynow"]["credential_fields"]}
+        assert cred_keys == {"integration_id", "integration_key"}
