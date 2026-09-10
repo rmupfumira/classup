@@ -34,6 +34,11 @@ class PlanCreate(BaseModel):
     description: str | None = None
     price_monthly: float
     price_annually: float | None = None
+    # ISO 4217 currency code. Omitted → the endpoint fills in the
+    # platform default (system_settings.platform_defaults.default_currency),
+    # so a USD or KES instance gets USD / KES plans by default instead
+    # of the model's hardcoded ZAR fallback.
+    currency: str | None = Field(None, min_length=3, max_length=3)
     max_students: int | None = None
     max_staff: int | None = None
     trial_days: int = 30
@@ -45,6 +50,7 @@ class PlanUpdate(BaseModel):
     description: str | None = None
     price_monthly: float | None = None
     price_annually: float | None = None
+    currency: str | None = Field(None, min_length=3, max_length=3)
     max_students: int | None = None
     max_staff: int | None = None
     trial_days: int | None = None
@@ -127,6 +133,15 @@ async def create_plan(
 ) -> APIResponse:
     """Create a new subscription plan (super admin)."""
     from decimal import Decimal
+    from app.services import platform_service
+
+    # Default currency to the platform default when the caller doesn't
+    # specify one — matches how the create-plan form labels the price
+    # inputs with the platform's currency code.
+    currency = (body.currency or "").upper().strip()
+    if not currency:
+        pd = await platform_service.get_defaults(db)
+        currency = pd.default_currency or "ZAR"
 
     service = get_subscription_service()
     plan = await service.create_plan(
@@ -135,6 +150,7 @@ async def create_plan(
         description=body.description,
         price_monthly=Decimal(str(body.price_monthly)),
         price_annually=Decimal(str(body.price_annually)) if body.price_annually else None,
+        currency=currency,
         max_students=body.max_students,
         max_staff=body.max_staff,
         trial_days=body.trial_days,
@@ -226,6 +242,10 @@ async def list_subscriptions(
                 "tenant_name": s.tenant.name if s.tenant else None,
                 "plan_name": s.plan.name if s.plan else None,
                 "plan_price": float(s.plan.price_monthly) if s.plan else None,
+                # Plan's own currency so the admin table renders each row
+                # in the correct symbol (some plans in USD, some in ZAR
+                # etc. on a multi-country platform).
+                "plan_currency": s.plan.currency if s.plan else None,
                 "status": s.status,
                 "trial_start": s.trial_start.isoformat() if s.trial_start else None,
                 "trial_end": s.trial_end.isoformat() if s.trial_end else None,

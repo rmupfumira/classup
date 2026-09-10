@@ -73,11 +73,22 @@ async def eft_payment_page(
     except Exception:
         return RedirectResponse(url="/login", status_code=302)
 
+    # Currency for the "Amount paid (XXX)" label — jurisdiction resolves
+    # tenant override → platform default → country default → ZA fallback.
+    from app.models.tenant import Tenant
+    from app.services import jurisdiction_service
+    currency_code = "ZAR"
+    if user.tenant_id:
+        tenant = await db.get(Tenant, user.tenant_id)
+        jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
+        currency_code = jurisdiction.currency_code
+
     return templates.TemplateResponse(
         "subscription_eft.html",
         {
             "request": request,
             "user": user,
+            "currency_code": currency_code,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(get_current_user_role()),
         },

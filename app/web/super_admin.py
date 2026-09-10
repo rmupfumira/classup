@@ -271,11 +271,20 @@ async def subscriptions_page(
 
     _require_super_admin()
 
+    # Platform-level page → platform currency (super admin's own config,
+    # not any single tenant's override). Feeds the fmtMoney JS helper.
+    from app.services import platform_service, jurisdiction_service
+    pd = await platform_service.get_defaults(db)
+    currency_code = pd.default_currency or "ZAR"
+    currency_symbol = jurisdiction_service.CURRENCY_SYMBOLS.get(currency_code, currency_code)
+
     return templates.TemplateResponse(
         "super_admin/subscriptions.html",
         {
             "request": request,
             "user": user,
+            "platform_currency_code": currency_code,
+            "platform_currency_symbol": currency_symbol,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(user.role),
         },

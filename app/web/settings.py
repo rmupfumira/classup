@@ -374,12 +374,20 @@ async def settings_billing(
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id)
 
+    # Pull the full currency list from jurisdiction_service — same source
+    # as super admin's tenant edit page — so a tenant on a KE/NG/GH
+    # instance can pick their real local currency, not just the seven
+    # that used to be hardcoded here.
+    from app.services import jurisdiction_service
+    currencies = jurisdiction_service.list_currencies()
+
     return templates.TemplateResponse(
         "settings/billing.html",
         {
             "request": request,
             "user": current_user,
             "tenant": tenant,
+            "currencies": currencies,
             "active_tab": "billing",
         },
     )

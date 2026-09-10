@@ -23,15 +23,15 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white rounded-xl border border-neutral-200 p-5">
             <p class="text-sm font-medium text-neutral-500">Monthly Recurring Revenue</p>
-            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="mrr">R 0.00</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="mrr">{{ platform_currency_symbol }} 0.00</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-200 p-5">
             <p class="text-sm font-medium text-neutral-500">Revenue This Month</p>
-            <p class="mt-2 text-3xl font-semibold text-success-600" id="monthly-revenue">R 0.00</p>
+            <p class="mt-2 text-3xl font-semibold text-success-600" id="monthly-revenue">{{ platform_currency_symbol }} 0.00</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-200 p-5">
             <p class="text-sm font-medium text-neutral-500">Total Revenue</p>
-            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="total-revenue">R 0.00</p>
+            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="total-revenue">{{ platform_currency_symbol }} 0.00</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-200 p-5">
             <p class="text-sm font-medium text-neutral-500">Active Subscriptions</p>
@@ -137,11 +137,11 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Monthly Price (ZAR)</label>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Monthly Price ({{ platform_currency_code }})</label>
                     <input type="number" name="price_monthly" step="0.01" required class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="299.00">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Annual Price (ZAR)</label>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Annual Price ({{ platform_currency_code }})</label>
                     <input type="number" name="price_annually" step="0.01" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="2990.00">
                 </div>
             </div>
@@ -305,9 +305,31 @@ function badge(status) {
     return `<span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${cls}">${status}</span>`;
 }
 
-function formatR(amount) {
-    return `R ${Number(amount).toLocaleString('en-ZA', {minimumFractionDigits: 2})}`;
+// Platform-default currency symbol — passed in from the server so we
+// never hardcode "R". Plans on the platform can also carry their OWN
+// currency (SubscriptionPlan.currency); when the API surfaces that,
+// fmtMoney(amount, plan.currency) uses the plan's symbol instead.
+const PLATFORM_CURRENCY_SYMBOL = "{{ platform_currency_symbol }}";
+const CURRENCY_SYMBOL_MAP = {
+    ZAR: "R", USD: "$", EUR: "EUR", GBP: "GBP",
+    KES: "KSh", NGN: "N", GHS: "GHS", BWP: "P", ZMW: "K",
+    MWK: "MK", NAD: "N$", AUD: "A$", CAD: "C$", INR: "INR",
+    UGX: "USh", TZS: "TSh", ZWL: "Z$",
+};
+
+function fmtMoney(amount, currencyCode) {
+    // currencyCode is the plan's own ISO 4217 when present, else falls
+    // back to the platform default. Keeps a mixed-currency plan roster
+    // (some plans in USD, some in ZAR) rendering each correctly.
+    const symbol = currencyCode
+        ? (CURRENCY_SYMBOL_MAP[currencyCode] || currencyCode)
+        : PLATFORM_CURRENCY_SYMBOL;
+    if (amount === null || amount === undefined || isNaN(Number(amount))) return `${symbol} -`;
+    return `${symbol} ${Number(amount).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
+// Kept as an alias so any inline template that already calls formatR
+// keeps working; new code should use fmtMoney.
+const formatR = fmtMoney;
 
 function buildDescriptionFromFeatures() {
     const form = document.getElementById('plan-form');
@@ -493,7 +515,7 @@ async function loadPlans() {
                     <h3 class="font-semibold text-neutral-800">${p.name}</h3>
                     ${p.is_active ? '<span class="text-xs text-green-600">Active</span>' : '<span class="text-xs text-neutral-400">Inactive</span>'}
                 </div>
-                <p class="text-2xl font-bold text-primary-600">${formatR(p.price_monthly)}<span class="text-sm font-normal text-neutral-500">/mo</span></p>
+                <p class="text-2xl font-bold text-primary-600">${fmtMoney(p.price_monthly, p.currency)}<span class="text-sm font-normal text-neutral-500">/mo</span></p>
                 <p class="text-sm text-neutral-500 mt-2">${p.description || ''}</p>
                 <div class="mt-3 space-y-1 text-xs text-neutral-500">
                     <div>Students: ${p.max_students || 'Unlimited'}</div>
@@ -553,7 +575,7 @@ async function loadSubscriptions() {
                 <td class="px-6 py-4 text-sm">${badge(s.status)}</td>
                 <td class="px-6 py-4 text-sm text-neutral-600">${s.trial_end || '-'}</td>
                 <td class="px-6 py-4 text-sm text-neutral-600">${s.current_period_end || '-'}</td>
-                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${s.plan_price ? formatR(s.plan_price) : '-'}</td>
+                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${s.plan_price ? fmtMoney(s.plan_price, s.plan_currency) : '-'}</td>
                 <td class="px-6 py-4 text-sm">
                     ${canExtend ? `<button onclick="showExtendTrialModal('${s.id}', '${s.tenant_name || 'Unknown'}', '${s.trial_end || ''}')"
                         class="inline-flex items-center px-2 py-1 text-xs font-medium text-primary-600 bg-primary-50 rounded hover:bg-primary-100 transition-colors"
@@ -580,7 +602,7 @@ async function loadInvoices() {
         tbody.innerHTML = res.data.map(inv => `
             <tr class="hover:bg-neutral-50">
                 <td class="px-6 py-4 text-sm font-medium text-neutral-900">${inv.tenant_name || 'Unknown'}</td>
-                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${formatR(inv.amount)}</td>
+                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${fmtMoney(inv.amount, inv.currency)}</td>
                 <td class="px-6 py-4 text-sm text-neutral-600">${inv.billing_period_start} - ${inv.billing_period_end}</td>
                 <td class="px-6 py-4 text-sm">${badge(inv.status)}</td>
                 <td class="px-6 py-4 text-sm text-neutral-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>

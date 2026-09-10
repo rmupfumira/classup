@@ -57,8 +57,12 @@ class SubscriptionService:
         description: str | None = None, max_students: int | None = None,
         max_staff: int | None = None, trial_days: int = 30,
         price_annually: Decimal | None = None, features: dict | None = None,
+        currency: str | None = None,
     ) -> SubscriptionPlan:
-        plan = SubscriptionPlan(
+        # currency=None keeps the model's SQL default (ZAR). Passing a
+        # non-None value lets the API set it from platform defaults so
+        # a USD/KES instance creates non-ZAR plans out of the box.
+        kwargs = dict(
             name=name,
             description=description,
             price_monthly=price_monthly,
@@ -68,6 +72,9 @@ class SubscriptionService:
             trial_days=trial_days,
             features=features,
         )
+        if currency:
+            kwargs["currency"] = currency
+        plan = SubscriptionPlan(**kwargs)
 
         # Create plan on Paystack if configured
         paystack = get_paystack_service()

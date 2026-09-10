@@ -59,13 +59,11 @@
                 <select name="billing_currency" id="billing_currency"
                         class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:max-w-xs">
                     {% set current_currency = (tenant.settings or {}).get('billing_currency', 'ZAR') %}
-                    <option value="ZAR" {% if current_currency == 'ZAR' %}selected{% endif %}>ZAR - South African Rand</option>
-                    <option value="USD" {% if current_currency == 'USD' %}selected{% endif %}>USD - US Dollar</option>
-                    <option value="GBP" {% if current_currency == 'GBP' %}selected{% endif %}>GBP - British Pound</option>
-                    <option value="EUR" {% if current_currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
-                    <option value="KES" {% if current_currency == 'KES' %}selected{% endif %}>KES - Kenyan Shilling</option>
-                    <option value="NGN" {% if current_currency == 'NGN' %}selected{% endif %}>NGN - Nigerian Naira</option>
-                    <option value="BWP" {% if current_currency == 'BWP' %}selected{% endif %}>BWP - Botswana Pula</option>
+                    {% for cur in currencies %}
+                    <option value="{{ cur.code }}" {% if current_currency == cur.code %}selected{% endif %}>
+                        {{ cur.code }} ({{ cur.symbol }})
+                    </option>
+                    {% endfor %}
                 </select>
             </div>
         </div>
