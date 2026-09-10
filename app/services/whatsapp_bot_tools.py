@@ -108,6 +108,34 @@ class AnnouncementItem:
     class_name: str | None  # None = school-wide
 
 
+@dataclass(frozen=True)
+class DocumentPayload:
+    """A file the parent can receive as a real WhatsApp attachment.
+
+    The caller (whatsapp_ai_bot or whatsapp_menu_bot) wraps this into a
+    DocumentReply — no direct Meta API access at the tools layer. Keeps
+    the security surface tight: tools produce raw bytes + metadata,
+    delivery layer handles all Meta interaction.
+    """
+    file_bytes: bytes
+    mime_type: str
+    filename: str
+    caption: str
+    # Human summary of what this attachment IS, for the bot to compose
+    # its intro text (e.g. "Invoice INV-2026-0001 for R500").
+    summary: str
+
+
+@dataclass(frozen=True)
+class PhotoPayload:
+    """One photo ready to send as an actual WhatsApp image."""
+    image_bytes: bytes
+    mime_type: str
+    caption: str
+    taken_by: str | None
+    class_name: str | None
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
@@ -490,3 +518,285 @@ async def get_recent_announcements(
         )
         for a in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# Attachment tools — generate documents and images for delivery via WhatsApp
+# ---------------------------------------------------------------------------
+#
+# Security model for every attachment tool:
+#   1. parent_id is bound from user context (upstream), never from tool input
+#   2. child_id → verified via _verify_parent_owns_child before any query
+#   3. When a tool returns bytes, the delivery layer sends via Meta Media API
+#      (media_id path, not public URL) — no data URL is ever exposed
+#   4. Filenames sanitized at the send layer (whatsapp_service._sanitize_filename)
+#   5. File size caps enforced at upload time (100MB doc / 5MB image)
+
+
+async def get_child_invoice_pdf(
+    db: AsyncSession,
+    parent_id: uuid.UUID,
+    child_id: uuid.UUID,
+    invoice_number: str | None = None,
+) -> DocumentPayload | None:
+    """Render the PDF for one of a child's invoices and return the bytes.
+
+    If ``invoice_number`` is given, that specific invoice is fetched
+    (must belong to the child — enforced by the query filter). If it's
+    omitted, the OLDEST OPEN invoice is used (parent asked "send me
+    the invoice" without specifying — that's the one they most need
+    to pay). Returns None if the child has no matching invoice.
+
+    Reuses the existing ``generate_invoice_pdf`` (the same generator
+    that produces the email attachment) so parents get the same PDF
+    they'd get by email — no rendering divergence.
+    """
+    await _verify_parent_owns_child(db, parent_id, child_id)
+
+    from app.models import BillingInvoice, Tenant
+    from app.services.invoice_pdf import generate_invoice_pdf
+    from sqlalchemy.orm import selectinload as _sel
+
+    tenant_id = await _resolve_tenant_id(db, parent_id)
+
+    filters = [
+        BillingInvoice.tenant_id == tenant_id,
+        BillingInvoice.student_id == child_id,
+        BillingInvoice.deleted_at.is_(None),
+        # Never surface DRAFT to a parent — same rule as get_child_balance.
+        BillingInvoice.status.not_in(("DRAFT", "CANCELLED")),
+    ]
+    if invoice_number:
+        filters.append(BillingInvoice.invoice_number == invoice_number)
+
+    q = (
+        select(BillingInvoice)
+        .where(*filters)
+        .options(_sel(BillingInvoice.items))
+        .order_by(BillingInvoice.due_date.asc().nulls_last())
+        .limit(1)
+    )
+    result = await db.execute(q)
+    invoice = result.scalar_one_or_none()
+    if invoice is None:
+        return None
+
+    tenant = await db.get(Tenant, tenant_id)
+    child = await db.get(Student, child_id)
+    child_name = (
+        f"{child.first_name} {child.last_name}".strip()
+        if child is not None else "your child"
+    )
+
+    # Build the same line_items shape billing_service uses when calling
+    # generate_invoice_pdf via email — keeps the two rendering paths
+    # identical.
+    line_items = [
+        {
+            "description": (li.description or ""),
+            "quantity": str(li.quantity or 0),
+            "unit_amount": f"{li.unit_amount:.2f}",
+            "total_amount": f"{li.total_amount:.2f}",
+        }
+        for li in (invoice.items or [])
+    ]
+
+    currency = (tenant.settings or {}).get("billing_currency") if tenant else None
+    currency = currency or "R"
+    banking_details = (tenant.settings or {}).get("billing_banking_details") or None
+    payment_instructions = (tenant.settings or {}).get("billing_payment_instructions") or None
+
+    try:
+        pdf_bytes = generate_invoice_pdf(
+            invoice_number=invoice.invoice_number,
+            student_name=child_name,
+            due_date=invoice.due_date.strftime("%d %b %Y") if invoice.due_date else "no due date",
+            total_amount=f"{invoice.total_amount:.2f}",
+            currency=currency,
+            line_items=line_items,
+            tenant_name=tenant.name if tenant else "ClassUp",
+            tenant_address=tenant.address if tenant else None,
+            tenant_phone=tenant.phone if tenant else None,
+            tenant_email=tenant.email if tenant else None,
+            banking_details=banking_details,
+            payment_instructions=payment_instructions,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to render PDF for invoice %s", invoice.invoice_number,
+        )
+        return None
+
+    return DocumentPayload(
+        file_bytes=pdf_bytes,
+        mime_type="application/pdf",
+        # Filename appears in the WhatsApp doc bubble the parent sees —
+        # make it self-explanatory when saved to their phone.
+        filename=f"{invoice.invoice_number}_{child_name.replace(' ', '_')}.pdf",
+        caption=(
+            f"Invoice {invoice.invoice_number} for {child_name} "
+            f"— {currency} {invoice.total_amount:,.2f} "
+            f"(balance {currency} {invoice.balance:,.2f})"
+        ),
+        summary=(
+            f"Invoice {invoice.invoice_number} for {child_name}: "
+            f"{currency} {invoice.total_amount:,.2f}"
+            + (f", balance {currency} {invoice.balance:,.2f}" if invoice.balance > 0 else " — paid in full")
+        ),
+    )
+
+
+async def get_child_report_pdf(
+    db: AsyncSession, parent_id: uuid.UUID, child_id: uuid.UUID,
+) -> DocumentPayload | None:
+    """Render the child's most recent finalised report as a PDF.
+
+    Uses ``app.services.report_pdf.render_report_pdf`` which renders the
+    report from its JSONB structure via reportlab (no browser, no
+    system deps). Cached to R2 on first render so subsequent parent
+    requests are cheap.
+    """
+    await _verify_parent_owns_child(db, parent_id, child_id)
+
+    from app.models import DailyReport
+    from app.services.report_pdf import render_report_pdf
+
+    tenant_id = await _resolve_tenant_id(db, parent_id)
+    result = await db.execute(
+        select(DailyReport)
+        .where(
+            DailyReport.tenant_id == tenant_id,
+            DailyReport.student_id == child_id,
+            DailyReport.deleted_at.is_(None),
+            DailyReport.status == "FINALIZED",
+        )
+        .order_by(
+            DailyReport.finalized_at.desc().nulls_last(),
+            DailyReport.report_date.desc(),
+        )
+        .limit(1)
+    )
+    report = result.scalar_one_or_none()
+    if report is None:
+        return None
+
+    child = await db.get(Student, child_id)
+    child_name = (
+        f"{child.first_name} {child.last_name}".strip()
+        if child is not None else "your child"
+    )
+
+    try:
+        pdf_bytes = await render_report_pdf(db, report)
+    except Exception:
+        logger.exception("Failed to render PDF for report %s", report.id)
+        return None
+
+    date_str = report.report_date.strftime("%d %b %Y")
+    return DocumentPayload(
+        file_bytes=pdf_bytes,
+        mime_type="application/pdf",
+        filename=f"Report_{child_name.replace(' ', '_')}_{report.report_date.isoformat()}.pdf",
+        caption=f"{child_name}'s report — {date_str}",
+        summary=f"Latest report for {child_name} ({date_str})",
+    )
+
+
+async def get_recent_photos(
+    db: AsyncSession, parent_id: uuid.UUID, limit: int = 3,
+) -> list[PhotoPayload]:
+    """Return recent photos shared with the parent's children's classes.
+
+    Downloads the actual image bytes from R2 (via file_service's presigned
+    URL) — the delivery layer then uploads them to Meta's Media API and
+    sends as WhatsApp images. Capped at ``limit`` (default 3 — WhatsApp
+    handles 4 nicely in a burst but 3 keeps the chat scrollable).
+    """
+    from app.models import PhotoShare, PhotoShareFile, Student
+    from app.services.file_service import get_file_service
+    import httpx as _httpx
+
+    tenant_id = await _resolve_tenant_id(db, parent_id)
+
+    # Get parent's children's classes.
+    child_classes_result = await db.execute(
+        select(Student.class_id)
+        .join(ParentStudent, ParentStudent.student_id == Student.id)
+        .where(
+            ParentStudent.parent_id == parent_id,
+            Student.tenant_id == tenant_id,
+            Student.deleted_at.is_(None),
+        )
+    )
+    class_ids = [cid for cid in child_classes_result.scalars().all() if cid]
+
+    if not class_ids:
+        return []
+
+    # Recent PhotoShares posted to those classes.
+    shares_q = (
+        select(PhotoShare)
+        .where(
+            PhotoShare.tenant_id == tenant_id,
+            PhotoShare.deleted_at.is_(None),
+            PhotoShare.class_id.in_(class_ids),
+        )
+        .options(
+            selectinload(PhotoShare.files).selectinload(PhotoShareFile.file_entity),
+        )
+        .order_by(PhotoShare.created_at.desc())
+        .limit(3)  # up to 3 recent SHARES; we'll pick photos from each
+    )
+    shares_result = await db.execute(shares_q)
+    shares = list(shares_result.scalars().all())
+
+    if not shares:
+        return []
+
+    file_service = get_file_service()
+    payloads: list[PhotoPayload] = []
+
+    for share in shares:
+        if len(payloads) >= limit:
+            break
+        class_name = None
+        try:
+            # Class name lookup for caption. If it fails, no worries —
+            # the caption just omits it. Tenant-scoped by the class_id we
+            # already validated as belonging to the parent's children.
+            from app.models import SchoolClass
+            cls = await db.get(SchoolClass, share.class_id) if share.class_id else None
+            class_name = cls.name if cls else None
+        except Exception:
+            pass
+
+        for psf in (share.files or []):
+            if len(payloads) >= limit:
+                break
+            fe = psf.file_entity
+            if fe is None or fe.content_type not in ("image/jpeg", "image/png"):
+                continue
+            try:
+                url = file_service.generate_presigned_url(fe, expires_in=300)
+                # Fetch the bytes ourselves — Meta accepts either a URL
+                # or bytes, but we prefer bytes so no signed URL ever
+                # touches Meta's infrastructure. Signed URL only used
+                # for our own server-to-storage read.
+                async with _httpx.AsyncClient(timeout=15.0) as client:
+                    r = await client.get(url)
+                    if r.status_code != 200:
+                        continue
+                    payloads.append(PhotoPayload(
+                        image_bytes=r.content,
+                        mime_type=fe.content_type,
+                        caption=(share.caption or "")[:200],
+                        taken_by=None,
+                        class_name=class_name,
+                    ))
+            except Exception:
+                logger.exception(
+                    "Failed to fetch photo %s for parent %s", fe.id, parent_id,
+                )
+                continue
+
+    return payloads

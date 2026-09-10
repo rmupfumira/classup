@@ -22,7 +22,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db, get_db_context
 from app.models import Tenant, User, WhatsAppInboundMessage
 from app.services.whatsapp_bot import BotMode, handle_inbound_message
-from app.services.whatsapp_menu_bot import ButtonReply, ListReply, TextReply
+from app.services.whatsapp_menu_bot import (
+    ButtonReply, DocumentReply, ImageReply, ListReply, MultiReply, TextReply,
+)
 from app.services.whatsapp_service import (
     get_config,
     get_whatsapp_service_from_db,
@@ -210,30 +212,7 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
             )
             if reply is not None and mode is not BotMode.OFF:
                 svc = await get_whatsapp_service_from_db(db)
-                # Dispatch on the reply's shape — the bot returns one of
-                # three response types, each maps to a different Meta API
-                # payload.
-                if isinstance(reply, TextReply):
-                    await svc.send_text_message(
-                        to_phone=from_phone, body=reply.body,
-                    )
-                elif isinstance(reply, ButtonReply):
-                    await svc.send_interactive_buttons(
-                        to_phone=from_phone,
-                        body=reply.body,
-                        buttons=reply.buttons,
-                        header=reply.header,
-                        footer=reply.footer,
-                    )
-                elif isinstance(reply, ListReply):
-                    await svc.send_interactive_list(
-                        to_phone=from_phone,
-                        body=reply.body,
-                        button_text=reply.button_text,
-                        sections=reply.sections,
-                        header=reply.header,
-                        footer=reply.footer,
-                    )
+                await _send_reply(svc, from_phone, reply)
                 record.auto_replied = True
         except Exception as e:
             logger.exception(
@@ -243,6 +222,65 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
             record.auto_reply_error = str(e)[:500]
 
         await db.commit()
+
+
+async def _send_reply(svc, from_phone: str, reply) -> None:
+    """Dispatch one bot reply through the right WhatsApp API method.
+
+    Split out so both the main path and future async workers can share
+    the send logic. MultiReply recurses so a caller can chain multiple
+    parts (e.g. "here's Sarah's balance" text + the invoice PDF)
+    without knowing the wire-level details.
+    """
+    if isinstance(reply, TextReply):
+        await svc.send_text_message(to_phone=from_phone, body=reply.body)
+    elif isinstance(reply, ButtonReply):
+        await svc.send_interactive_buttons(
+            to_phone=from_phone,
+            body=reply.body,
+            buttons=reply.buttons,
+            header=reply.header,
+            footer=reply.footer,
+        )
+    elif isinstance(reply, ListReply):
+        await svc.send_interactive_list(
+            to_phone=from_phone,
+            body=reply.body,
+            button_text=reply.button_text,
+            sections=reply.sections,
+            header=reply.header,
+            footer=reply.footer,
+        )
+    elif isinstance(reply, DocumentReply):
+        await svc.send_document_from_bytes(
+            to_phone=from_phone,
+            file_bytes=reply.file_bytes,
+            mime_type=reply.mime_type,
+            filename=reply.filename,
+            caption=reply.caption,
+        )
+    elif isinstance(reply, ImageReply):
+        await svc.send_image_from_bytes(
+            to_phone=from_phone,
+            image_bytes=reply.image_bytes,
+            mime_type=reply.mime_type,
+            caption=reply.caption,
+        )
+    elif isinstance(reply, MultiReply):
+        # Send each part in sequence — order matters (text intro → doc).
+        # If one part fails the others still fire, matching best-effort
+        # semantics everywhere else.
+        for part in reply.parts:
+            try:
+                await _send_reply(svc, from_phone, part)
+            except Exception:
+                logger.exception(
+                    "MultiReply part failed to send to %s", from_phone,
+                )
+    else:
+        logger.warning(
+            "Unknown reply type %s — silently skipped", type(reply).__name__,
+        )
 
 
 async def _find_user_by_phone(

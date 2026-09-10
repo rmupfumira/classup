@@ -194,17 +194,26 @@ class TestAIConfig:
 # ---------------------------------------------------------------------------
 
 class TestToolSchemas:
-    def test_all_six_tools_present(self):
+    def test_all_read_tools_present(self):
         schemas = whatsapp_ai_bot._tool_schemas()
         names = {s["name"] for s in schemas}
-        assert names == {
+        # Read-only tools + attachment tools. Both categories must be
+        # present so Claude can both answer AND attach documents/photos
+        # — the "WhatsApp is the whole product" positioning depends on
+        # attachments working end-to-end.
+        assert {
             "get_my_children",
             "get_child_balance",
             "get_child_attendance",
             "get_child_latest_report",
             "get_child_teacher",
             "get_recent_announcements",
-        }
+        } <= names, "missing a read-only tool"
+        assert {
+            "send_child_invoice_pdf",
+            "send_child_report_pdf",
+            "send_recent_photos",
+        } <= names, "missing an attachment tool"
 
     def test_parent_id_never_in_schema(self):
         """The whole tenant-isolation story rests on Claude NEVER being

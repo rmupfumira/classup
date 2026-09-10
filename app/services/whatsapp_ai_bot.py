@@ -41,7 +41,9 @@ from app.models import User
 from app.services import whatsapp_bot_tools as tools
 from app.services.ai_config import AIConfig
 from app.services.bot_session_store import get_bot_session_store
-from app.services.whatsapp_menu_bot import TextReply
+from app.services.whatsapp_menu_bot import (
+    DocumentReply, ImageReply, MultiReply, TextReply,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +172,67 @@ def _tool_schemas() -> list[dict[str, Any]]:
                 "required": [],
             },
         },
+        # Attachment tools — instead of returning data to reason over,
+        # these queue an actual WhatsApp attachment (PDF/image) that will
+        # be sent alongside your text reply after the loop finishes.
+        # You'll see a "summary" line in the tool result — use it to
+        # compose a natural intro ("Here's Sarah's latest report") but
+        # DO NOT try to include the file contents in your text; the
+        # parent will receive the file as a separate WhatsApp message.
+        {
+            "name": "send_child_invoice_pdf",
+            "description": (
+                "Attach the child's invoice as a PDF to your reply. If "
+                "invoice_number is omitted, sends the oldest OPEN invoice "
+                "(the one they most need to pay). Use this when the parent "
+                "asks for their bill, invoice, or how much they owe — the "
+                "PDF is the definitive document."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "child_id": {"type": "string"},
+                    "invoice_number": {
+                        "type": "string",
+                        "description": "Specific invoice, e.g. 'INV-2026-0001'. Omit for oldest open.",
+                    },
+                },
+                "required": ["child_id"],
+            },
+        },
+        {
+            "name": "send_child_report_pdf",
+            "description": (
+                "Attach the child's most recent FINALISED report as a PDF. "
+                "Use this when the parent asks for the report, results, or "
+                "performance — the PDF is the shareable, savable version."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {"child_id": {"type": "string"}},
+                "required": ["child_id"],
+            },
+        },
+        {
+            "name": "send_recent_photos",
+            "description": (
+                "Attach up to 3 recent photos shared with the parent's "
+                "children's classes. Use this when the parent asks 'any "
+                "photos?' or 'send me pictures'."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 3,
+                        "description": "Max photos to send. Default 3.",
+                    },
+                },
+                "required": [],
+            },
+        },
     ]
 
 
@@ -182,11 +245,20 @@ async def _run_tool(
     parent_id: uuid.UUID,
     name: str,
     tool_input: dict[str, Any],
+    pending_attachments: list["MenuResponse"] | None = None,
 ) -> Any:
     """Dispatch one tool call. Returns a JSON-serialisable payload for
     Claude to consume. Never raises — errors are returned as ``{"error":
     "..."}`` so Claude can adapt (e.g. "I don't have permission to see
-    that child, try another")."""
+    that child, try another").
+
+    Attachment tools (``send_child_invoice_pdf`` etc.) don't return the
+    file bytes to Claude. They fetch bytes, append a DocumentReply or
+    ImageReply to ``pending_attachments``, and return a short summary
+    so Claude can compose intro text. The dispatcher then sends the
+    text + attachments as a MultiReply.
+    """
+    pending: list[Any] = pending_attachments if pending_attachments is not None else []
     try:
         if name == "get_my_children":
             children = await tools.get_my_children(db, parent_id)
@@ -275,6 +347,82 @@ async def _run_tool(
                 }
                 for a in items
             ]
+
+        if name == "send_child_invoice_pdf":
+            payload = await tools.get_child_invoice_pdf(
+                db, parent_id, uuid.UUID(tool_input["child_id"]),
+                invoice_number=tool_input.get("invoice_number"),
+            )
+            if payload is None:
+                return {
+                    "attached": False,
+                    "reason": "no_matching_invoice",
+                    "message": (
+                        "No matching invoice found for that child (may be draft, "
+                        "cancelled, or the number was wrong)."
+                    ),
+                }
+            pending.append(DocumentReply(
+                file_bytes=payload.file_bytes,
+                mime_type=payload.mime_type,
+                filename=payload.filename,
+                caption=payload.caption,
+            ))
+            return {
+                "attached": True,
+                "kind": "invoice_pdf",
+                "summary": payload.summary,
+                "note": "The PDF will be sent alongside your text reply.",
+            }
+
+        if name == "send_child_report_pdf":
+            payload = await tools.get_child_report_pdf(
+                db, parent_id, uuid.UUID(tool_input["child_id"]),
+            )
+            if payload is None:
+                return {
+                    "attached": False,
+                    "reason": "no_finalised_report",
+                    "message": (
+                        "The school hasn't finalised a report for this child yet."
+                    ),
+                }
+            pending.append(DocumentReply(
+                file_bytes=payload.file_bytes,
+                mime_type=payload.mime_type,
+                filename=payload.filename,
+                caption=payload.caption,
+            ))
+            return {
+                "attached": True,
+                "kind": "report_pdf",
+                "summary": payload.summary,
+                "note": "The PDF will be sent alongside your text reply.",
+            }
+
+        if name == "send_recent_photos":
+            limit = int(tool_input.get("limit") or 3)
+            photos = await tools.get_recent_photos(db, parent_id, limit=limit)
+            if not photos:
+                return {
+                    "attached": False,
+                    "reason": "no_recent_photos",
+                    "message": (
+                        "No recent photos from the school for this parent's classes."
+                    ),
+                }
+            for photo in photos:
+                pending.append(ImageReply(
+                    image_bytes=photo.image_bytes,
+                    mime_type=photo.mime_type,
+                    caption=photo.caption or None,
+                ))
+            return {
+                "attached": True,
+                "kind": "photos",
+                "count": len(photos),
+                "note": "Photos will be sent alongside your text reply.",
+            }
 
         return {"error": f"Unknown tool: {name}"}
 
@@ -517,6 +665,11 @@ async def _handle_ai_message_inner(
     system_prompt = _build_system_prompt(user, tenant_name, children)
     tool_schemas = _tool_schemas()
 
+    # Attachments Claude queued during this turn. Filled in by
+    # _run_tool for send_* tools; sent as a MultiReply after the loop
+    # so text + files arrive in one WhatsApp interaction.
+    pending_attachments: list[Any] = []
+
     final_text: str | None = None
 
     # Note on extended thinking: the newer models (Sonnet 5, Opus 5)
@@ -566,9 +719,10 @@ async def _handle_ai_message_inner(
                 final_text = _extract_text(resp.content)
                 break
 
-            # Execute every tool_use block from this turn (in parallel is
-            # fine; keep sequential for simplicity and deterministic
-            # logging until we have a reason to speed it up).
+            # Execute every tool_use block from this turn. Attachment
+            # tools (send_child_invoice_pdf / send_child_report_pdf /
+            # send_recent_photos) side-effect into pending_attachments;
+            # data tools return their result directly.
             tool_results: list[dict[str, Any]] = []
             for block in resp.content:
                 if getattr(block, "type", None) != "tool_use":
@@ -576,6 +730,7 @@ async def _handle_ai_message_inner(
                 result = await _run_tool(
                     db=db, parent_id=user.id,
                     name=block.name, tool_input=block.input or {},
+                    pending_attachments=pending_attachments,
                 )
                 tool_results.append({
                     "type": "tool_result",
@@ -620,7 +775,15 @@ async def _handle_ai_message_inner(
     clean_history = _clean_text_only_turns(messages)
     await store.save_history(user.id, clean_history)
 
-    return TextReply(body=final_text.strip()[:WA_MAX_REPLY_CHARS])
+    text_reply = TextReply(body=final_text.strip()[:WA_MAX_REPLY_CHARS])
+
+    # If Claude queued any attachments, wrap them + the text into a
+    # MultiReply so the dispatcher sends everything as one interaction.
+    # Order: text first (parent sees the intro), then attachments.
+    if pending_attachments:
+        return MultiReply(parts=[text_reply, *pending_attachments])
+
+    return text_reply
 
 
 # ---------------------------------------------------------------------------

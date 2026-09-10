@@ -316,6 +316,214 @@ class WhatsAppService:
 
         return await self._send_request(payload)
 
+    # ============== Media upload + send helpers ==============
+    #
+    # WhatsApp Cloud API supports two ways to attach media (docs/images/etc):
+    #   1. Public URL — Meta fetches the file itself. Requires the URL to be
+    #      publicly accessible, which is a leak risk for tenant data.
+    #   2. Media API — POST bytes to /media first, get a media_id, then
+    #      reference the id in the message. No public URL exposed.
+    #
+    # We ALWAYS use path 2. Uploads are per-phone_number_id, so cross-tenant
+    # media_id leakage is impossible even if an id somehow escaped — Meta
+    # scopes visibility to the WABA that uploaded it.
+
+    # Enforced client-side BEFORE the network call — cheaper to reject
+    # oversized attachments here than to eat the round-trip and Meta 400.
+    MAX_DOCUMENT_BYTES = 100 * 1024 * 1024   # WhatsApp doc limit
+    MAX_IMAGE_BYTES    =   5 * 1024 * 1024   # WhatsApp image limit
+
+    _ALLOWED_DOC_MIMES = frozenset({
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",   # .docx
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",         # .xlsx
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation", # .pptx
+        "application/msword",                # .doc
+        "application/vnd.ms-excel",          # .xls
+        "text/plain",
+    })
+    _ALLOWED_IMAGE_MIMES = frozenset({"image/jpeg", "image/png"})
+
+    @staticmethod
+    def _sanitize_filename(name: str) -> str:
+        """Strip path traversal + control chars. WhatsApp displays this
+        filename verbatim to the recipient — we own its integrity."""
+        import os
+        # Take basename only — kills any '../' or 'C:\...' traversal.
+        cleaned = os.path.basename(name).strip()
+        # Belt-and-braces: replace any remaining path/control chars.
+        cleaned = "".join(
+            c for c in cleaned
+            if c not in ('/', '\\', '\0') and (c.isprintable() or c == ' ')
+        )
+        # Never send an empty filename — Meta rejects it and it looks broken.
+        return cleaned or "document.pdf"
+
+    async def upload_media(
+        self,
+        file_bytes: bytes,
+        mime_type: str,
+        filename: str | None = None,
+    ) -> str | None:
+        """Upload a media file to Meta's Media API, return the media_id.
+
+        The returned id is what ``send_document_message`` / ``send_image_message``
+        reference. Meta expires it in ~30 days (long enough for any single
+        message flow). No public URL is ever exposed.
+
+        Returns None if the service isn't configured, the file exceeds the
+        size cap, or Meta rejects the upload — the caller must handle None
+        gracefully (typically by falling back to a text message).
+        """
+        if not self.is_configured:
+            logger.warning("WhatsApp not configured, skipping media upload")
+            return None
+
+        # Size checks — enforced client-side to avoid burning bandwidth
+        # + a guaranteed Meta 400 on files above the cap.
+        if mime_type in self._ALLOWED_IMAGE_MIMES:
+            cap = self.MAX_IMAGE_BYTES
+            kind = "image"
+        elif mime_type in self._ALLOWED_DOC_MIMES:
+            cap = self.MAX_DOCUMENT_BYTES
+            kind = "document"
+        else:
+            logger.warning(
+                "Rejected upload — mime_type %s is not on the WhatsApp allow list",
+                mime_type,
+            )
+            return None
+
+        if len(file_bytes) > cap:
+            logger.warning(
+                "Rejected upload — %s file is %d bytes, cap is %d",
+                kind, len(file_bytes), cap,
+            )
+            return None
+
+        safe_name = self._sanitize_filename(filename or f"file.{mime_type.split('/')[-1]}")
+        url = f"{self.api_url}/{self.phone_number_id}/media"
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # httpx multipart: fields for each form part, files= for the
+                # binary. Meta expects messaging_product=whatsapp on every
+                # upload — do NOT omit it.
+                resp = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {self.access_token}"},
+                    data={
+                        "messaging_product": "whatsapp",
+                        "type": mime_type,
+                    },
+                    files={"file": (safe_name, file_bytes, mime_type)},
+                )
+        except httpx.HTTPError as e:
+            logger.error("WhatsApp media upload failed: %s", e)
+            return None
+
+        if resp.status_code == 200:
+            media_id = resp.json().get("id")
+            logger.info(
+                "WhatsApp media uploaded: id=%s type=%s size=%d filename=%s",
+                media_id, mime_type, len(file_bytes), safe_name,
+            )
+            return media_id
+
+        logger.error(
+            "WhatsApp media upload rejected: %s - %s",
+            resp.status_code, resp.text[:400],
+        )
+        return None
+
+    async def send_document_message(
+        self,
+        to_phone: str,
+        media_id: str,
+        filename: str,
+        caption: str | None = None,
+    ) -> dict | None:
+        """Send a document (PDF / DOCX / XLSX etc.) referenced by media_id.
+
+        The recipient sees a document bubble in WhatsApp with the filename
+        + tap-to-download / open. Caption text renders below the bubble.
+
+        Requires the parent has messaged in the last 24hr (session window)
+        — outside that, WhatsApp only permits pre-approved templates and
+        this call will fail with a 24hr window error.
+        """
+        if not self.is_configured:
+            return None
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to_phone.lstrip("+"),
+            "type": "document",
+            "document": {
+                "id": media_id,
+                "filename": self._sanitize_filename(filename),
+            },
+        }
+        if caption:
+            payload["document"]["caption"] = caption[:1024]
+        return await self._send_request(payload)
+
+    async def send_image_message(
+        self,
+        to_phone: str,
+        media_id: str,
+        caption: str | None = None,
+    ) -> dict | None:
+        """Send an image (JPG/PNG) referenced by media_id.
+
+        Renders inline in WhatsApp with tap-to-view-fullscreen. Caption
+        appears below the image.
+        """
+        if not self.is_configured:
+            return None
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to_phone.lstrip("+"),
+            "type": "image",
+            "image": {"id": media_id},
+        }
+        if caption:
+            payload["image"]["caption"] = caption[:1024]
+        return await self._send_request(payload)
+
+    async def send_document_from_bytes(
+        self,
+        to_phone: str,
+        file_bytes: bytes,
+        mime_type: str,
+        filename: str,
+        caption: str | None = None,
+    ) -> dict | None:
+        """Convenience: upload bytes + send in one call. Returns None if
+        either step fails. This is what most callers actually want —
+        they have file bytes in hand and don't care about the media_id."""
+        media_id = await self.upload_media(file_bytes, mime_type, filename)
+        if not media_id:
+            return None
+        return await self.send_document_message(
+            to_phone=to_phone, media_id=media_id,
+            filename=filename, caption=caption,
+        )
+
+    async def send_image_from_bytes(
+        self,
+        to_phone: str,
+        image_bytes: bytes,
+        mime_type: str,
+        caption: str | None = None,
+    ) -> dict | None:
+        """Convenience: upload bytes + send in one call for images."""
+        media_id = await self.upload_media(image_bytes, mime_type, filename="image")
+        if not media_id:
+            return None
+        return await self.send_image_message(
+            to_phone=to_phone, media_id=media_id, caption=caption,
+        )
+
     async def send_interactive_buttons(
         self,
         to_phone: str,

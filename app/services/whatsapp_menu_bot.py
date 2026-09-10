@@ -70,7 +70,45 @@ class ListReply:
     footer: str | None = None
 
 
-MenuResponse = TextReply | ButtonReply | ListReply
+@dataclass(frozen=True)
+class DocumentReply:
+    """Send a PDF/DOCX/XLSX as an actual WhatsApp attachment.
+
+    The parent sees a document bubble they can tap-to-open in WhatsApp —
+    no browser round-trip needed. This is core to the "WhatsApp is the
+    primary UI" product positioning: reports/invoices are consumed IN
+    the chat, not by clicking through to the web app.
+
+    ``file_bytes`` is uploaded to Meta's Media API first; the caller
+    (webhook dispatcher) handles that + the send. ``caption`` may
+    accompany the doc — usually a short "here's Sarah's report".
+    """
+    file_bytes: bytes
+    mime_type: str
+    filename: str
+    caption: str | None = None
+
+
+@dataclass(frozen=True)
+class ImageReply:
+    """Send a JPG/PNG as an actual WhatsApp image."""
+    image_bytes: bytes
+    mime_type: str
+    caption: str | None = None
+
+
+@dataclass(frozen=True)
+class MultiReply:
+    """Send multiple replies in sequence — e.g. a text intro + a PDF,
+    or a caption + a batch of images. The dispatcher sends each in order.
+    """
+    parts: list["MenuResponse"]
+
+
+MenuResponse = (
+    TextReply | ButtonReply | ListReply
+    | DocumentReply | ImageReply | MultiReply
+)
 
 
 # ---------------------------------------------------------------------------
