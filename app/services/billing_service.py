@@ -1253,10 +1253,13 @@ class BillingService:
                     parent.id, invoice.id,
                 )
             from app.services import parent_notifier
-            # Reuse the pdf_bytes we generated above for the email
-            # attachment — no need to render twice per invoice. If the
-            # earlier render failed we pass None and the notifier
-            # falls back to a text-only send.
+            # Not passing pdf_bytes to WhatsApp: the invoice_sent
+            # template deliberately has no DOCUMENT header (would need
+            # a two-step sample upload to submit to Meta). The email
+            # already carries the PDF attachment; the WhatsApp message
+            # is the "you've got a new invoice, tap to view" nudge —
+            # the URL button lands the parent on the invoice page
+            # where they can download the PDF.
             await parent_notifier.notify_invoice_sent(
                 db, parent,
                 tenant_name=tenant.name, student_name=student_name,
@@ -1265,7 +1268,6 @@ class BillingService:
                 due_date_str=due_date_str,
                 invoice_id=str(invoice.id),
                 currency=currency,
-                pdf_bytes=pdf_bytes,
             )
 
     async def _notify_parents_invoice(
