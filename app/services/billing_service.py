@@ -1055,7 +1055,9 @@ class BillingService:
                     tenant_name=tenant.name, student_name=student_name,
                     invoice_number=invoice.invoice_number,
                     outstanding_balance=invoice.balance,
-                    due_date_str=due_date_str, currency=currency,
+                    due_date_str=due_date_str,
+                    invoice_id=str(invoice.id),
+                    currency=currency,
                 )
 
             # Send in-app notifications
@@ -1251,12 +1253,19 @@ class BillingService:
                     parent.id, invoice.id,
                 )
             from app.services import parent_notifier
+            # Reuse the pdf_bytes we generated above for the email
+            # attachment — no need to render twice per invoice. If the
+            # earlier render failed we pass None and the notifier
+            # falls back to a text-only send.
             await parent_notifier.notify_invoice_sent(
                 db, parent,
                 tenant_name=tenant.name, student_name=student_name,
                 invoice_number=invoice.invoice_number,
                 total_amount=invoice.total_amount,
-                due_date_str=due_date_str, currency=currency,
+                due_date_str=due_date_str,
+                invoice_id=str(invoice.id),
+                currency=currency,
+                pdf_bytes=pdf_bytes,
             )
 
     async def _notify_parents_invoice(
@@ -1364,6 +1373,13 @@ class BillingService:
             # WhatsApp mirror.
             try:
                 from app.services import parent_notifier
+                # payment_date shown to the parent is the payment.payment_date
+                # they recorded (not today) — matches what the email + PDF
+                # receipt show. Fallback to today if somehow missing.
+                pay_date = payment.payment_date if getattr(payment, "payment_date", None) else None
+                payment_date_str = (
+                    pay_date.strftime("%d %b %Y") if pay_date else "today"
+                )
                 await parent_notifier.notify_payment_received(
                     db, parent,
                     tenant_name=tenant_name,
@@ -1371,6 +1387,8 @@ class BillingService:
                     invoice_number=invoice.invoice_number,
                     payment_amount=payment.amount,
                     remaining_balance=invoice.balance,
+                    invoice_id=str(invoice.id),
+                    payment_date=payment_date_str,
                     currency=currency,
                 )
             except Exception:

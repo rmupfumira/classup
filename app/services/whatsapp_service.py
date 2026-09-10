@@ -234,33 +234,78 @@ class WhatsAppService:
         template_name: str,
         language_code: str,
         parameters: list[str] | None = None,
+        *,
+        header_document_media_id: str | None = None,
+        header_document_filename: str | None = None,
+        button_url_variables: list[str] | None = None,
     ) -> dict | None:
-        """
-        Send a pre-approved template message.
+        """Send a pre-approved template message.
 
         Args:
-            to_phone: Recipient phone number in E.164 format (e.g., +27821234567)
-            template_name: Name of the approved template
-            language_code: Template language code (e.g., "en", "en_US")
-            parameters: Template variable values
+            to_phone: Recipient phone number in E.164 format (e.g. +27821234567).
+            template_name: Name of the approved template.
+            language_code: Template language code (e.g. "en", "en_US").
+            parameters: Template BODY variable values, in order.
+            header_document_media_id: Media ID (from upload_media()) for a
+                template that has a DOCUMENT header — used by templates like
+                ``purchase_receipt_3`` where the invoice PDF sits as the
+                header attachment. Requires the template to be authored
+                with a document header on Meta's side.
+            header_document_filename: Filename shown for the header
+                document attachment (e.g. "invoice_INV-2026-0001.pdf").
+                Optional but strongly recommended for UX.
+            button_url_variables: Values to fill dynamic-URL button slots
+                (``{{1}}`` in the button's URL configured on Meta). One
+                value per button component that has a dynamic URL. Order
+                matches the button order defined in the template.
 
         Returns:
-            API response dict or None if failed
+            API response dict, or None if WhatsApp isn't configured.
         """
         if not self.is_configured:
             logger.warning("WhatsApp not configured, skipping message")
             return None
 
-        # Clean phone number - ensure E.164 format without +
         clean_phone = to_phone.lstrip("+")
 
-        # Build template components
-        components = []
+        # Build components in the shape Meta's Cloud API expects.
+        # Order in the list doesn't matter — Meta reads by `type`.
+        components: list[dict] = []
+
+        # HEADER — document attachment for templates like purchase_receipt.
+        # Meta requires the media_id to have been uploaded to *the same
+        # phone number* the message is sent from, which upload_media()
+        # already handles.
+        if header_document_media_id:
+            document_param: dict = {"id": header_document_media_id}
+            if header_document_filename:
+                document_param["filename"] = header_document_filename
+            components.append({
+                "type": "header",
+                "parameters": [
+                    {"type": "document", "document": document_param},
+                ],
+            })
+
+        # BODY — variable substitution, unchanged.
         if parameters:
             components.append({
                 "type": "body",
                 "parameters": [
                     {"type": "text", "text": str(p)} for p in parameters
+                ],
+            })
+
+        # BUTTONS — one component per dynamic-URL button, with `index` as
+        # its position in the template. Static buttons (fixed URL, phone
+        # dial) don't need any parameter — they're baked into the template.
+        for i, url_value in enumerate(button_url_variables or []):
+            components.append({
+                "type": "button",
+                "sub_type": "url",
+                "index": str(i),
+                "parameters": [
+                    {"type": "text", "text": str(url_value)},
                 ],
             })
 
@@ -790,6 +835,112 @@ class WhatsAppService:
             template_name="announcement",
             language_code=language,
             parameters=[school_name, subject],
+        )
+
+    # ─────────────────── Payment / billing templates ───────────────────
+    # These use Meta gallery templates as the design base (utility
+    # category, fast approval). All three carry a dynamic URL button
+    # that deep-links to the invoice view in ClassUp.
+
+    async def send_invoice_sent(
+        self,
+        to_phone: str,
+        *,
+        parent_name: str,
+        invoice_number: str,
+        student_name: str,
+        formatted_amount: str,
+        due_date: str,
+        invoice_id: str,
+        pdf_media_id: str | None = None,
+        pdf_filename: str | None = None,
+        language: str = "en",
+    ) -> dict | None:
+        """Notify a parent that a new invoice has been issued.
+
+        Template body (invoice_sent, from purchase_receipt_3 gallery):
+          "Hi {{1}}, invoice {{2}} for {{3}} — {{4}} due by {{5}}.
+           Tap 'View invoice' for details."
+        Header: document (invoice PDF).
+        Button: URL — `/billing/invoices/{{1}}` (dynamic suffix).
+
+        pdf_media_id is optional — the template works without it too
+        (Meta renders a placeholder card), but attaching the PDF is
+        the whole point. Upload first via ``upload_media()``.
+        """
+        return await self.send_template_message(
+            to_phone=to_phone,
+            template_name="invoice_sent",
+            language_code=language,
+            parameters=[parent_name, invoice_number, student_name, formatted_amount, due_date],
+            header_document_media_id=pdf_media_id,
+            header_document_filename=(pdf_filename or f"invoice_{invoice_number}.pdf"),
+            button_url_variables=[invoice_id],
+        )
+
+    async def send_payment_received(
+        self,
+        to_phone: str,
+        *,
+        parent_name: str,
+        formatted_amount: str,
+        student_name: str,
+        invoice_number: str,
+        payment_date: str,
+        invoice_id: str,
+        language: str = "en",
+    ) -> dict | None:
+        """Confirm receipt of a parent's payment.
+
+        Template body (payment_received, from payment_successful gallery):
+          "Hi {{1}}, your payment of {{2}} for {{3}} ({{4}}) has been
+           received on {{5}}. Thank you!"
+        Button: URL — `/billing/invoices/{{1}}` (Receipt).
+        """
+        return await self.send_template_message(
+            to_phone=to_phone,
+            template_name="payment_received",
+            language_code=language,
+            parameters=[parent_name, formatted_amount, student_name, invoice_number, payment_date],
+            button_url_variables=[invoice_id],
+        )
+
+    async def send_invoice_overdue(
+        self,
+        to_phone: str,
+        *,
+        student_name: str,
+        formatted_balance: str,
+        due_date: str,
+        invoice_id: str,
+        penalty_text: str = "additional late fees",
+        language: str = "en",
+    ) -> dict | None:
+        """Reminder for an overdue invoice.
+
+        Template body (invoice_overdue, from payment_reminder_3 gallery):
+          "Payment reminder:
+
+           Account: {{1}}
+           Amount due: {{2}}
+           Due date: {{3}}
+
+           Pay now to avoid {{4}}.
+
+           Please ignore this if you have already paid."
+        Button: URL — `/billing/invoices/{{1}}` (Pay now).
+
+        We dropped the "Contact us" phone button that the gallery template
+        has: WhatsApp template phone buttons are static (baked in at
+        approval time), so we can't render each tenant's own phone number.
+        Parents can find the school's contact via the invoice view.
+        """
+        return await self.send_template_message(
+            to_phone=to_phone,
+            template_name="invoice_overdue",
+            language_code=language,
+            parameters=[student_name, formatted_balance, due_date, penalty_text],
+            button_url_variables=[invoice_id],
         )
 
     async def send_parent_invite(

@@ -92,8 +92,14 @@ def _configured_wa_service():
     for method in [
         "send_attendance_alert", "send_report_ready", "send_announcement",
         "send_parent_invite", "send_welcome",
+        # Bespoke payment templates (from Meta's gallery) — stubbed
+        # to succeed so the fallback path isn't accidentally exercised.
+        "send_invoice_sent", "send_payment_received", "send_invoice_overdue",
     ]:
         setattr(svc, method, AsyncMock(return_value={"messages": [{"id": "wa_1"}]}))
+    # upload_media is invoked from notify_invoice_sent when a PDF is
+    # passed — return a fake media id so the code path doesn't crash.
+    svc.upload_media = AsyncMock(return_value="fake_media_id_123")
     return svc
 
 
@@ -231,12 +237,13 @@ class TestDispatcher:
             self._stop(patches)
         svc.send_report_ready.assert_awaited_once()
 
-    async def test_invoice_sent_falls_back_to_announcement(
+    async def test_invoice_sent_uses_bespoke_template(
         self, db: AsyncSession, opted_in
     ):
-        """No bespoke template for invoice_sent yet — must use the
-        generic announcement template with a subject line that carries
-        the important info (number, amount, due date)."""
+        """Now that invoice_sent has a bespoke Meta template (based on
+        purchase_receipt_3), notify_invoice_sent should hit it directly
+        with the invoice ID + amount + due date as body variables and
+        the invoice_id as the dynamic-URL button suffix."""
         svc, patches = await self._wired(db, opted_in)
         try:
             await parent_notifier.notify_invoice_sent(
@@ -245,21 +252,43 @@ class TestDispatcher:
                 invoice_number="INV-2026-0001",
                 total_amount=Decimal("500.00"),
                 due_date_str="15 Oct 2026",
+                invoice_id="abc-123",
+            )
+        finally:
+            self._stop(patches)
+        svc.send_invoice_sent.assert_awaited_once()
+        kwargs = svc.send_invoice_sent.await_args.kwargs
+        assert kwargs["invoice_number"] == "INV-2026-0001"
+        assert kwargs["student_name"] == "Sipho"
+        assert kwargs["due_date"] == "15 Oct 2026"
+        assert kwargs["invoice_id"] == "abc-123"
+        assert "500" in kwargs["formatted_amount"]
+        # No fallback should fire when the bespoke send succeeded.
+        svc.send_announcement.assert_not_awaited()
+
+    async def test_invoice_sent_falls_back_when_bespoke_fails(
+        self, db: AsyncSession, opted_in
+    ):
+        """If Meta rejects the bespoke template (not approved yet, quality
+        blocked, etc.), the notifier drops to the announcement template
+        so the parent still hears about the invoice."""
+        svc, patches = await self._wired(db, opted_in)
+        svc.send_invoice_sent = AsyncMock(return_value=None)  # simulate failure
+        try:
+            await parent_notifier.notify_invoice_sent(
+                db, opted_in.parent,
+                tenant_name="Acme", student_name="Sipho",
+                invoice_number="INV-2026-0001",
+                total_amount=Decimal("500.00"),
+                due_date_str="15 Oct 2026",
+                invoice_id="abc-123",
             )
         finally:
             self._stop(patches)
         svc.send_announcement.assert_awaited_once()
-        # send_announcement(to_phone, school_name, subject)
-        call = svc.send_announcement.await_args
-        assert call.args[1] == "Acme"
-        subject = call.args[2]
-        # The subject line must carry the invoice number, amount, and due date
-        # so the parent gets the same signal from WhatsApp as from email.
+        subject = svc.send_announcement.await_args.args[2]
         assert "INV-2026-0001" in subject
         assert "500" in subject
-        assert "15 Oct 2026" in subject
-        # And the bespoke templates for other events were NOT touched.
-        svc.send_attendance_alert.assert_not_awaited()
 
     async def test_photo_shared_falls_back_to_announcement(
         self, db: AsyncSession, opted_in
@@ -277,13 +306,12 @@ class TestDispatcher:
         subject = svc.send_announcement.await_args.args[2]
         assert "4" in subject and "Grade 3A" in subject
 
-    async def test_payment_received_partial_balance(
+    async def test_payment_received_uses_bespoke_template(
         self, db: AsyncSession, opted_in
     ):
-        """When a payment leaves a positive remaining balance, the
-        WhatsApp subject line must include both the paid amount AND
-        the remaining balance — parents scan it in 2 seconds and need
-        to know where they stand."""
+        """Bespoke payment_received template (from Meta's payment_successful
+        gallery) — the parent gets a proper 'Payment received' card with
+        a Receipt button, not a plain announcement."""
         svc, patches = await self._wired(db, opted_in)
         try:
             await parent_notifier.notify_payment_received(
@@ -292,22 +320,28 @@ class TestDispatcher:
                 invoice_number="INV-2026-0001",
                 payment_amount=Decimal("200.00"),
                 remaining_balance=Decimal("300.00"),
+                invoice_id="abc-123",
+                payment_date="10 Sep 2026",
             )
         finally:
             self._stop(patches)
-        subject = svc.send_announcement.await_args.args[2]
-        assert "200" in subject
-        assert "300" in subject
-        assert "INV-2026-0001" in subject
-        assert "Sipho" in subject
+        svc.send_payment_received.assert_awaited_once()
+        kwargs = svc.send_payment_received.await_args.kwargs
+        assert kwargs["invoice_number"] == "INV-2026-0001"
+        assert kwargs["student_name"] == "Sipho"
+        assert kwargs["payment_date"] == "10 Sep 2026"
+        assert kwargs["invoice_id"] == "abc-123"
+        assert "200" in kwargs["formatted_amount"]
 
-    async def test_payment_received_fully_paid_says_thank_you(
+    async def test_payment_received_fully_paid_fallback_says_thank_you(
         self, db: AsyncSession, opted_in
     ):
-        """Zero balance → "Fully paid up — thank you!" instead of
-        "Remaining balance R0" (which would read as debt-shaming a
-        parent who just settled up)."""
+        """When the bespoke template fails and the fallback fires, a
+        zero-remaining-balance payment still reads as "Fully paid up —
+        thank you!" (never "Remaining balance R0" which would debt-shame
+        a parent who just settled up)."""
         svc, patches = await self._wired(db, opted_in)
+        svc.send_payment_received = AsyncMock(return_value=None)  # force fallback
         try:
             await parent_notifier.notify_payment_received(
                 db, opted_in.parent,
@@ -315,6 +349,8 @@ class TestDispatcher:
                 invoice_number="INV-2026-0001",
                 payment_amount=Decimal("500.00"),
                 remaining_balance=Decimal("0.00"),
+                invoice_id="abc-123",
+                payment_date="10 Sep 2026",
             )
         finally:
             self._stop(patches)

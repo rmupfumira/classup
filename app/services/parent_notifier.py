@@ -104,8 +104,14 @@ async def _send_template(
     template_method: str,
     *args: Any,
     language: str | None = None,
+    **extra_kwargs: Any,
 ) -> bool:
-    """Best-effort dispatch: call ``getattr(svc, template_method)(user.whatsapp_phone, *args)``.
+    """Best-effort dispatch: call ``getattr(svc, template_method)(user.whatsapp_phone, *args, **extra_kwargs)``.
+
+    Callers can pass positional args (legacy helpers like
+    ``send_announcement(school, subject)``) OR keyword args (newer
+    bespoke helpers like ``send_invoice_sent(parent_name=..., ...)``).
+    ``language`` is always injected from the user's preference.
 
     Returns True if Meta accepted the send. Catches every exception —
     the caller must never care whether this succeeded.
@@ -119,7 +125,7 @@ async def _send_template(
                 template_method,
             )
             return False
-        kwargs = {"language": language or (user.language or "en")}
+        kwargs = {"language": language or (user.language or "en"), **extra_kwargs}
         result = await fn(user.whatsapp_phone, *args, **kwargs)
         return result is not None
     except Exception:
@@ -239,16 +245,54 @@ def _fmt_amount(amount: Decimal | float | int | str, currency: str = "R") -> str
 async def notify_invoice_sent(
     db: AsyncSession, user: User,
     *, tenant_name: str, student_name: str, invoice_number: str,
-    total_amount: Decimal, due_date_str: str, currency: str = "R",
+    total_amount: Decimal, due_date_str: str, invoice_id: str,
+    currency: str = "R",
+    pdf_bytes: bytes | None = None,
 ) -> bool:
-    """Uses the generic announcement template until an ``invoice_sent``
-    template is approved in Meta."""
+    """Uses the bespoke ``invoice_sent`` template (from Meta's
+    ``purchase_receipt_3`` gallery). Falls back to the generic
+    ``announcement`` template on any failure — most likely case is
+    Meta hasn't approved the template yet on a given instance.
+
+    ``pdf_bytes`` (optional) is uploaded to Meta as a document header
+    so the invoice PDF appears in the WhatsApp thread. If omitted or
+    the upload fails, the template still sends without an attachment.
+    """
     if not await _can_notify_whatsapp(db, user):
         return False
+    formatted = _fmt_amount(total_amount, currency)
+    # Upload the PDF first — best-effort, message still sends without.
+    pdf_media_id: str | None = None
+    if pdf_bytes:
+        try:
+            svc = await get_whatsapp_service_from_db(db)
+            pdf_media_id = await svc.upload_media(
+                pdf_bytes, mime_type="application/pdf",
+                filename=f"invoice_{invoice_number}.pdf",
+            )
+        except Exception:
+            logger.exception(
+                "Failed to upload invoice PDF for user %s — sending without attachment",
+                user.id,
+            )
+    ok = await _send_template(
+        db, user, "send_invoice_sent",
+        parent_name=user.first_name or "there",
+        invoice_number=invoice_number,
+        student_name=student_name,
+        formatted_amount=formatted,
+        due_date=due_date_str,
+        invoice_id=invoice_id,
+        pdf_media_id=pdf_media_id,
+        pdf_filename=f"invoice_{invoice_number}.pdf",
+    )
+    if ok:
+        return True
+    # Fallback: bespoke template hasn't been approved on this instance,
+    # or Meta rejected the media. Fire the generic announcement so
+    # the parent still gets *something*.
     subject = (
-        f"Invoice {invoice_number} for {student_name}: "
-        f"{_fmt_amount(total_amount, currency)} due {due_date_str}. "
-        f"Log in to classup.co.za to view."
+        f"Invoice {invoice_number} for {student_name}: {formatted} due {due_date_str}."
     )
     return await _send_template(
         db, user, "send_announcement", tenant_name, subject[:120],
@@ -258,13 +302,29 @@ async def notify_invoice_sent(
 async def notify_invoice_overdue(
     db: AsyncSession, user: User,
     *, tenant_name: str, student_name: str, invoice_number: str,
-    outstanding_balance: Decimal, due_date_str: str, currency: str = "R",
+    outstanding_balance: Decimal, due_date_str: str, invoice_id: str,
+    currency: str = "R",
+    penalty_text: str = "additional late fees",
 ) -> bool:
+    """Uses the bespoke ``invoice_overdue`` template (from Meta's
+    ``payment_reminder_3`` gallery). Falls back to the announcement
+    template on failure."""
     if not await _can_notify_whatsapp(db, user):
         return False
+    balance_str = _fmt_amount(outstanding_balance, currency)
+    ok = await _send_template(
+        db, user, "send_invoice_overdue",
+        student_name=student_name,
+        formatted_balance=balance_str,
+        due_date=due_date_str,
+        invoice_id=invoice_id,
+        penalty_text=penalty_text,
+    )
+    if ok:
+        return True
     subject = (
         f"Reminder: {invoice_number} for {student_name} is overdue "
-        f"({_fmt_amount(outstanding_balance, currency)}). Due was {due_date_str}."
+        f"({balance_str}). Due was {due_date_str}."
     )
     return await _send_template(
         db, user, "send_announcement", tenant_name, subject[:120],
@@ -274,19 +334,35 @@ async def notify_invoice_overdue(
 async def notify_payment_received(
     db: AsyncSession, user: User,
     *, tenant_name: str, student_name: str, invoice_number: str,
-    payment_amount: Decimal, remaining_balance: Decimal, currency: str = "R",
+    payment_amount: Decimal, remaining_balance: Decimal, invoice_id: str,
+    payment_date: str, currency: str = "R",
 ) -> bool:
     """Confirm a payment via WhatsApp — the peace-of-mind message parents
-    check for right after they pay. Uses the announcement template until
-    a bespoke ``payment_received`` template is approved."""
+    check for right after they pay. Uses the bespoke ``payment_received``
+    template (from Meta's ``payment_successful`` gallery) with a URL
+    button linking to the receipt view."""
     if not await _can_notify_whatsapp(db, user):
         return False
+    payment_str = _fmt_amount(payment_amount, currency)
+    ok = await _send_template(
+        db, user, "send_payment_received",
+        parent_name=user.first_name or "there",
+        formatted_amount=payment_str,
+        student_name=student_name,
+        invoice_number=invoice_number,
+        payment_date=payment_date,
+        invoice_id=invoice_id,
+    )
+    if ok:
+        return True
+    # Fallback with the old rendered subject so the parent still
+    # gets confirmation even if the bespoke template isn't approved.
     if remaining_balance <= Decimal("0"):
         tail = "Fully paid up — thank you!"
     else:
         tail = f"Remaining balance: {_fmt_amount(remaining_balance, currency)}."
     subject = (
-        f"Payment of {_fmt_amount(payment_amount, currency)} received for "
+        f"Payment of {payment_str} received for "
         f"{student_name} on {invoice_number}. {tail}"
     )
     return await _send_template(
