@@ -340,13 +340,25 @@ async def list_platform_invoices(
 @router.get("/subscription")
 @require_role("SCHOOL_ADMIN")
 async def get_my_subscription(db: AsyncSession = Depends(get_db)) -> APIResponse:
-    """Get the current tenant's subscription status."""
+    """Get the current tenant's subscription status.
+
+    Includes the tenant's effective ``currency_code`` + ``currency_symbol``
+    so the /subscription page can render prices in the right currency
+    for the tenant's jurisdiction — a Zim tenant sees "$", a SA tenant
+    sees "R", etc. Falls back to R (ZAR) when nothing is configured.
+    """
+    from app.models.tenant import Tenant
+    from app.services import jurisdiction_service
+
     tenant_id = get_tenant_id()
     service = get_subscription_service()
     sub = await service.get_tenant_subscription(db, tenant_id)
 
     if not sub:
         return APIResponse(status="success", data=None, message="No subscription found")
+
+    tenant = await db.get(Tenant, tenant_id)
+    jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
 
     return APIResponse(
         status="success",
@@ -362,6 +374,11 @@ async def get_my_subscription(db: AsyncSession = Depends(get_db)) -> APIResponse
             "is_active": await service.is_subscription_active(db, tenant_id),
             "max_students": sub.plan.max_students if sub.plan else None,
             "max_staff": sub.plan.max_staff if sub.plan else None,
+            # Jurisdiction-aware money display. The page uses these
+            # instead of hardcoding "R".
+            "currency_code": jurisdiction.currency_code,
+            "currency_symbol": jurisdiction.currency_symbol,
+            "country_code": jurisdiction.country_code,
         },
     )
 
@@ -458,50 +475,108 @@ async def initialize_payment(
     body: InitializePayment,
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse:
-    """Initialize a Paystack checkout to capture card and start subscription.
+    """Start a hosted-checkout for the school's next subscription bill.
 
-    Returns an authorization_url that the tenant should be redirected to.
+    Uses the platform's configured payment gateway (Yoco, Paynow, …).
+    If a PENDING PlatformInvoice for this tenant already exists it's
+    reused — no duplicate invoices. Otherwise a fresh one is minted for
+    the next billing period so trialing tenants who click "Pay now"
+    early get an invoice created on demand.
+
+    Returns ``redirect_url`` — the frontend redirects the browser there.
+    EFT-with-POP remains a separate flow (POST /subscription/eft-payments).
     """
+    from datetime import date, timedelta
+    from app.config import get_settings as get_app_settings
+    from app.models.subscription import PlatformInvoiceStatus
+    from app.models.tenant import Tenant
+    from app.services import gateway_service
+    from sqlalchemy import select
+
     tenant_id = get_tenant_id()
     service = get_subscription_service()
     sub = await service.get_tenant_subscription(db, tenant_id)
     if not sub:
         raise HTTPException(status_code=404, detail="No subscription found")
     if not sub.plan:
-        raise HTTPException(status_code=400, detail="No plan assigned")
+        raise HTTPException(status_code=400, detail="Pick a plan first")
 
-    paystack = get_paystack_service()
-    if not paystack.is_configured:
-        raise HTTPException(status_code=503, detail="Payment gateway not configured")
+    # Route through the configured gateway — Paystack no longer hard-coded.
+    provider = await gateway_service.get_active_provider(db)
+    if provider is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Card payments aren't enabled on this platform yet. "
+                "The super admin can configure a gateway at "
+                "/admin/payment-gateways, or you can pay by EFT below."
+            ),
+        )
 
-    # Get tenant email
-    from app.models.tenant import Tenant
     tenant = await db.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    callback = body.callback_url or f"{settings.app_base_url}/subscription?payment=complete"
-    ref = f"classup-sub-{tenant_id}-{uuid.uuid4().hex[:8]}"
+    # Find-or-create a PENDING invoice for this tenant. Reusing a pending
+    # invoice keeps the tenant from stacking up duplicates when they
+    # bounce off the checkout page and click Pay again.
+    q = select(PlatformInvoice).where(
+        PlatformInvoice.tenant_id == tenant_id,
+        PlatformInvoice.status == PlatformInvoiceStatus.PENDING.value,
+    ).order_by(PlatformInvoice.created_at.desc())
+    invoice = (await db.execute(q)).scalars().first()
+    if invoice is None:
+        # Next period starts today (or when trial ends, whichever is
+        # sooner). Keeping the period 30 days matches handle_payment_success.
+        today = date.today()
+        start = min(sub.trial_end or today, today) if sub.trial_end else today
+        # If tenant is mid-cycle, extend from current_period_end instead.
+        if sub.current_period_end and sub.current_period_end > today:
+            start = sub.current_period_end
+        invoice = PlatformInvoice(
+            tenant_id=tenant_id,
+            subscription_id=sub.id,
+            amount=sub.plan.price_monthly,
+            currency=(sub.plan.currency if getattr(sub.plan, "currency", None) else "ZAR"),
+            status=PlatformInvoiceStatus.PENDING.value,
+            billing_period_start=start,
+            billing_period_end=start + timedelta(days=30),
+        )
+        db.add(invoice)
+        await db.flush()  # get invoice.id before create_checkout
 
-    result = await paystack.initialize_transaction(
-        email=tenant.email,
-        amount_cents=paystack.rands_to_cents(sub.plan.price_monthly),
-        reference=ref,
-        callback_url=callback,
-        plan_code=sub.plan.paystack_plan_code,
-        metadata={
-            "tenant_id": str(tenant_id),
-            "subscription_id": str(sub.id),
-            "plan_name": sub.plan.name,
-        },
-    )
+    # Redirect back to the /subscription page after payment; the query
+    # string lets the page verify + refresh.
+    app_settings = get_app_settings()
+    base = app_settings.app_base_url.rstrip("/")
+    callback = body.callback_url or f"{base}/subscription?paid=1"
+    cancel_url = f"{base}/subscription?cancelled=1"
+
+    try:
+        result = await provider.create_checkout(
+            invoice, return_url=callback, cancel_url=cancel_url,
+        )
+    except Exception as e:
+        logger.exception("Gateway checkout creation failed")
+        # 502 is more accurate than 500 — the failure originates upstream.
+        raise HTTPException(status_code=502, detail=str(e))
+
+    # Persist the provider ref so a webhook that comes back with just
+    # the reference can be reconciled to this invoice.
+    invoice.paystack_reference = result.reference
+    await db.commit()
 
     return APIResponse(
         status="success",
+        message="Redirecting to payment page…",
         data={
-            "authorization_url": result["authorization_url"],
-            "access_code": result["access_code"],
-            "reference": result["reference"],
+            "redirect_url": result.redirect_url,
+            # Legacy alias — old clients read authorization_url. Safe to
+            # remove once the subscription page has been redeployed.
+            "authorization_url": result.redirect_url,
+            "reference": result.reference,
+            "provider_id": provider.provider_id,
+            "invoice_id": str(invoice.id),
         },
     )
 

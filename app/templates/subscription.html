@@ -59,7 +59,8 @@
                 <div>
                     <p class="text-sm font-semibold text-neutral-800">Pay by card with <span id="gateway-display-name">—</span></p>
                     <p class="text-xs text-neutral-500 mt-1">
-                        Use the Pay button next to any pending invoice below to complete payment instantly.
+                        Click the <span class="font-medium">Pay with</span> button in your subscription card above.
+                        You'll be redirected to complete payment, then brought back here.
                         Subscription activates as soon as the payment confirms.
                     </p>
                 </div>
@@ -100,8 +101,19 @@ const statusMessages = {
 
 let currentPlanId = null;
 let currentStatus = null;
+// Jurisdiction currency for this tenant — populated by loadSubscription()
+// so the whole page renders "$ 3000.00" (Zim) or "R 3000.00" (SA) etc.
+// instead of a hardcoded "R". Falls back to "R" for backwards compat.
+let currencySymbol = 'R';
 
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-ZA', {year:'numeric',month:'long',day:'numeric'}) : '-'; }
+
+function fmtMoney(n) {
+    // Currency symbol + space + amount. Space thousands separator to match
+    // SA/ZW convention (12 345.67, not 12,345.67).
+    if (n === null || n === undefined || isNaN(Number(n))) return `${currencySymbol} -`;
+    return `${currencySymbol} ${Number(n).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+}
 
 async function loadSubscription() {
     const card = document.getElementById('sub-card');
@@ -130,6 +142,9 @@ async function loadSubscription() {
         // For now store what we have
         currentPlanId = sub.id; // subscription ID, will match plan below
 
+        // Adopt the tenant's jurisdiction currency for the whole page.
+        if (sub.currency_symbol) currencySymbol = sub.currency_symbol;
+
         const sm = statusMessages[sub.status] || statusMessages.SUSPENDED;
         const isTrialing = sub.status === 'TRIALING';
         const needsPayment = ['TRIALING', 'PAST_DUE', 'SUSPENDED'].includes(sub.status);
@@ -153,7 +168,7 @@ async function loadSubscription() {
                     <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                         <div>
                             <span class="text-neutral-500">Monthly Price</span>
-                            <p class="font-semibold text-neutral-800">R ${sub.plan_price ? sub.plan_price.toFixed(2) : '0.00'}</p>
+                            <p class="font-semibold text-neutral-800">${fmtMoney(sub.plan_price)}</p>
                         </div>
                         <div>
                             <span class="text-neutral-500">${isTrialing ? 'Trial Ends' : 'Next Billing'}</span>
@@ -169,23 +184,15 @@ async function loadSubscription() {
                         </div>
                     </div>
 
-                    <div class="mt-6 flex flex-wrap gap-3">
-                        ${needsPayment ? `
-                            <button onclick="startPayment()"
-                                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 transition-colors">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                                </svg>
-                                ${isTrialing ? 'Add Payment Method' : 'Make Payment'}
-                            </button>
-                        ` : ''}
-                        ${sub.status === 'ACTIVE' ? `
+                    <div id="pay-cta-slot" class="mt-6"></div>
+                    ${sub.status === 'ACTIVE' ? `
+                        <div class="mt-3">
                             <button onclick="cancelSubscription()"
                                     class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-md hover:bg-red-50 transition-colors">
                                 Cancel Subscription
                             </button>
-                        ` : ''}
-                    </div>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -193,9 +200,21 @@ async function loadSubscription() {
         // Store plan name for plan card matching
         card.dataset.planName = sub.plan_name || '';
 
-        // Check if returning from payment
+        // Check if returning from a gateway redirect. The webhook does the
+        // heavy lifting — we just show feedback and clean the URL. If the
+        // webhook hasn't fired yet (rare, few-second lag), the invoice
+        // stays PENDING and the user sees "Pay again" — no lost money,
+        // gateway will keep trying to notify us.
         const params = new URLSearchParams(window.location.search);
-        if (params.get('payment') === 'complete' && params.get('reference')) {
+        if (params.get('paid') === '1') {
+            ClassUp.toast('Payment received &mdash; thanks! Your subscription will update shortly.', 'success');
+            window.history.replaceState({}, '', '/subscription');
+        } else if (params.get('cancelled') === '1') {
+            ClassUp.toast('Payment cancelled. You can try again any time.', 'info');
+            window.history.replaceState({}, '', '/subscription');
+        } else if (params.get('payment') === 'complete' && params.get('reference')) {
+            // Legacy Paystack return path — kept for backwards compat while
+            // any old tabs are still open. Safe to remove in a later release.
             verifyPayment(params.get('reference'));
         }
     } catch (e) {
@@ -226,10 +245,10 @@ async function loadPlans() {
                 ${isCurrent ? '<div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-primary-500 text-white text-xs font-semibold rounded-full">Current Plan</div>' : ''}
                 <h3 class="text-lg font-semibold text-neutral-800">${p.name}</h3>
                 <div class="mt-2">
-                    <span class="text-3xl font-bold text-neutral-900">R ${Number(p.price_monthly).toLocaleString('en-ZA', {minimumFractionDigits: 2})}</span>
+                    <span class="text-3xl font-bold text-neutral-900">${fmtMoney(p.price_monthly)}</span>
                     <span class="text-sm text-neutral-500">/month</span>
                 </div>
-                ${p.price_annually ? `<p class="text-xs text-neutral-500 mt-1">or R ${Number(p.price_annually).toLocaleString('en-ZA', {minimumFractionDigits: 2})}/year</p>` : ''}
+                ${p.price_annually ? `<p class="text-xs text-neutral-500 mt-1">or ${fmtMoney(p.price_annually)}/year</p>` : ''}
                 <p class="text-sm text-neutral-500 mt-3">${p.description || ''}</p>
                 <div class="mt-4 space-y-2 text-sm flex-1">
                     <div class="flex items-center gap-2 text-neutral-600">
@@ -308,6 +327,51 @@ async function loadGateway() {
     } catch (e) {
         _gatewayState = { configured: false };
     }
+    // Now that both subscription + gateway state are known, render the
+    // primary Pay CTA into the slot the sub card left open. This is the
+    // ONE payment button — no more competing CTAs on the page.
+    renderPayCTA();
+}
+
+function renderPayCTA() {
+    const slot = document.getElementById('pay-cta-slot');
+    if (!slot) return;  // subscription card never rendered
+    const needsPayment = ['TRIALING', 'PAST_DUE', 'SUSPENDED'].includes(currentStatus);
+    if (!needsPayment) { slot.innerHTML = ''; return; }
+
+    const isTrialing = currentStatus === 'TRIALING';
+    const gatewayName = (_gatewayState && _gatewayState.configured)
+        ? _gatewayState.display_name : null;
+
+    if (gatewayName) {
+        // Happy path — gateway configured. One prominent button that
+        // will find-or-create a pending invoice and redirect.
+        const label = isTrialing
+            ? `Pay early with ${gatewayName}`
+            : `Pay with ${gatewayName}`;
+        slot.innerHTML = `
+            <button onclick="startPayment(this)"
+                    class="inline-flex items-center px-5 py-2.5 bg-primary-500 text-white text-sm font-semibold rounded-md hover:bg-primary-600 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+                ${label}
+            </button>
+            ${isTrialing ? `<p class="mt-2 text-xs text-neutral-500">
+                Optional during your trial &mdash; pay now to activate immediately or wait until your trial ends.
+            </p>` : ''}`;
+    } else {
+        // No gateway configured on this instance yet. Point to EFT so
+        // there's still a clear path — the previous UX left a broken
+        // button that just errored.
+        slot.innerHTML = `
+            <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p class="text-sm font-medium text-amber-900">Card payments aren't set up on this instance yet.</p>
+                <p class="mt-1 text-xs text-amber-700">
+                    You can pay by EFT (bank transfer) using the "Pay by EFT" panel below &mdash; upload a proof of payment and it's approved within one business day.
+                </p>
+            </div>`;
+    }
 }
 
 async function payInvoice(invoiceId, btn) {
@@ -355,7 +419,7 @@ async function loadInvoices() {
                     ${res.data.map(inv => `
                         <tr>
                             <td class="px-4 py-3 text-sm">${inv.billing_period_start} - ${inv.billing_period_end}</td>
-                            <td class="px-4 py-3 text-sm font-medium">R ${inv.amount.toFixed(2)}</td>
+                            <td class="px-4 py-3 text-sm font-medium">${fmtMoney(inv.amount)}</td>
                             <td class="px-4 py-3 text-sm">
                                 <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full
                                     ${inv.status === 'PAID' ? 'bg-green-100 text-green-800' : inv.status === 'FAILED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
@@ -378,20 +442,38 @@ async function loadInvoices() {
     }
 }
 
-async function startPayment() {
+async function startPayment(btn) {
+    const originalHTML = btn ? btn.innerHTML : null;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Preparing checkout…';
+    }
     try {
         const res = await ClassUp.fetch('/api/v1/subscription/initialize-payment', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                callback_url: window.location.origin + '/subscription?payment=complete',
+                callback_url: window.location.origin + '/subscription?paid=1',
             }),
         });
-        if (res.data && res.data.authorization_url) {
-            window.location.href = res.data.authorization_url;
+        // The server returns redirect_url (new field). authorization_url
+        // is kept as a legacy alias for older clients — read redirect_url
+        // first so we honour whichever the server preferred.
+        const url = res.data && (res.data.redirect_url || res.data.authorization_url);
+        if (url) {
+            window.location.href = url;
+            return;  // navigation in progress
         }
+        ClassUp.toast('Gateway did not return a redirect URL.', 'error');
     } catch (e) {
-        ClassUp.toast('Failed to initialize payment. Please try again.', 'error');
+        // ClassUp.fetch surfaces a toast with the API error detail
+        // already; this is a belt-and-braces fallback for network fails.
+        console.error('startPayment failed', e);
+    } finally {
+        if (btn && originalHTML) {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        }
     }
 }
 
