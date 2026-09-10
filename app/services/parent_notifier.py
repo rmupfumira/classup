@@ -247,34 +247,19 @@ async def notify_invoice_sent(
     *, tenant_name: str, student_name: str, invoice_number: str,
     total_amount: Decimal, due_date_str: str, invoice_id: str,
     currency: str = "R",
-    pdf_bytes: bytes | None = None,
 ) -> bool:
-    """Uses the bespoke ``invoice_sent`` template (from Meta's
-    ``purchase_receipt_3`` gallery). Falls back to the generic
-    ``announcement`` template on any failure — most likely case is
-    Meta hasn't approved the template yet on a given instance.
+    """Uses the bespoke ``invoice_sent`` template approved on Meta.
+    Falls back to the generic ``announcement`` template on failure —
+    most likely case is Meta hasn't approved the template yet on a
+    given instance.
 
-    ``pdf_bytes`` (optional) is uploaded to Meta as a document header
-    so the invoice PDF appears in the WhatsApp thread. If omitted or
-    the upload fails, the template still sends without an attachment.
+    No PDF header — the approved template is body + URL button only.
+    Email still carries the invoice PDF as an attachment; WhatsApp is
+    the tap-through nudge.
     """
     if not await _can_notify_whatsapp(db, user):
         return False
     formatted = _fmt_amount(total_amount, currency)
-    # Upload the PDF first — best-effort, message still sends without.
-    pdf_media_id: str | None = None
-    if pdf_bytes:
-        try:
-            svc = await get_whatsapp_service_from_db(db)
-            pdf_media_id = await svc.upload_media(
-                pdf_bytes, mime_type="application/pdf",
-                filename=f"invoice_{invoice_number}.pdf",
-            )
-        except Exception:
-            logger.exception(
-                "Failed to upload invoice PDF for user %s — sending without attachment",
-                user.id,
-            )
     ok = await _send_template(
         db, user, "send_invoice_sent",
         parent_name=user.first_name or "there",
@@ -283,8 +268,6 @@ async def notify_invoice_sent(
         formatted_amount=formatted,
         due_date=due_date_str,
         invoice_id=invoice_id,
-        pdf_media_id=pdf_media_id,
-        pdf_filename=f"invoice_{invoice_number}.pdf",
     )
     if ok:
         return True
@@ -304,11 +287,9 @@ async def notify_invoice_overdue(
     *, tenant_name: str, student_name: str, invoice_number: str,
     outstanding_balance: Decimal, due_date_str: str, invoice_id: str,
     currency: str = "R",
-    penalty_text: str = "additional late fees",
 ) -> bool:
-    """Uses the bespoke ``invoice_overdue`` template (from Meta's
-    ``payment_reminder_3`` gallery). Falls back to the announcement
-    template on failure."""
+    """Uses the bespoke ``invoice_overdue`` template approved on Meta.
+    Falls back to the announcement template on failure."""
     if not await _can_notify_whatsapp(db, user):
         return False
     balance_str = _fmt_amount(outstanding_balance, currency)
@@ -318,7 +299,6 @@ async def notify_invoice_overdue(
         formatted_balance=balance_str,
         due_date=due_date_str,
         invoice_id=invoice_id,
-        penalty_text=penalty_text,
     )
     if ok:
         return True

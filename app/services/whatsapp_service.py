@@ -852,29 +852,25 @@ class WhatsAppService:
         formatted_amount: str,
         due_date: str,
         invoice_id: str,
-        pdf_media_id: str | None = None,
-        pdf_filename: str | None = None,
         language: str = "en",
     ) -> dict | None:
         """Notify a parent that a new invoice has been issued.
 
-        Template body (invoice_sent, from purchase_receipt_3 gallery):
-          "Hi {{1}}, invoice {{2}} for {{3}} — {{4}} due by {{5}}.
-           Tap 'View invoice' for details."
-        Header: document (invoice PDF).
+        Template body (invoice_sent, approved by Meta):
+          "Hi {{1}}, a new invoice has been issued for {{2}}.
+           Invoice number: {{3}}. Total amount due: {{4}}.
+           Please settle by {{5}}. Tap the button below to view
+           the full invoice and banking details."
         Button: URL — `/billing/invoices/{{1}}` (dynamic suffix).
 
-        pdf_media_id is optional — the template works without it too
-        (Meta renders a placeholder card), but attaching the PDF is
-        the whole point. Upload first via ``upload_media()``.
+        No PDF header — email still carries the PDF; WhatsApp is the
+        "you've got an invoice, tap to view" nudge.
         """
         return await self.send_template_message(
             to_phone=to_phone,
             template_name="invoice_sent",
             language_code=language,
-            parameters=[parent_name, invoice_number, student_name, formatted_amount, due_date],
-            header_document_media_id=pdf_media_id,
-            header_document_filename=(pdf_filename or f"invoice_{invoice_number}.pdf"),
+            parameters=[parent_name, student_name, invoice_number, formatted_amount, due_date],
             button_url_variables=[invoice_id],
         )
 
@@ -981,33 +977,28 @@ class WhatsAppService:
         formatted_balance: str,
         due_date: str,
         invoice_id: str,
-        penalty_text: str = "additional late fees",
         language: str = "en",
     ) -> dict | None:
         """Reminder for an overdue invoice.
 
-        Template body (invoice_overdue, from payment_reminder_3 gallery):
-          "Payment reminder:
-
-           Account: {{1}}
-           Amount due: {{2}}
-           Due date: {{3}}
-
-           Pay now to avoid {{4}}.
-
-           Please ignore this if you have already paid."
+        Template body (invoice_overdue, approved by Meta):
+          "Payment reminder: an invoice for {{1}} is overdue.
+           The amount due is {{2}} and was originally due on {{3}}.
+           Please settle as soon as possible to avoid additional
+           late fees. If you've already paid, please ignore this
+           message."
         Button: URL — `/billing/invoices/{{1}}` (Pay now).
 
-        We dropped the "Contact us" phone button that the gallery template
-        has: WhatsApp template phone buttons are static (baked in at
-        approval time), so we can't render each tenant's own phone number.
-        Parents can find the school's contact via the invoice view.
+        The penalty phrase is baked into the template — WhatsApp
+        approval keeps template phone buttons static, and Meta's
+        variable-density check drove us to hard-code the "late fees"
+        wording rather than parameterise it.
         """
         return await self.send_template_message(
             to_phone=to_phone,
             template_name="invoice_overdue",
             language_code=language,
-            parameters=[student_name, formatted_balance, due_date, penalty_text],
+            parameters=[student_name, formatted_balance, due_date],
             button_url_variables=[invoice_id],
         )
 
