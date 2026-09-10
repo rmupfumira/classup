@@ -157,11 +157,29 @@ def _render_section_header(pdf: FPDF, section: dict[str, Any]) -> None:
 
 
 def _render_kv_row(pdf: FPDF, label: str, value: str) -> None:
-    """One label + value row — used across most section types."""
+    """One label + value row — used across most section types.
+
+    Uses pdf.write() rather than cell + multi_cell. write() flows text
+    naturally across the page width without any cursor-drift trap:
+    fpdf2's multi_cell(w=0, ...) computes remaining width from the
+    current x, and a previous multi_cell's ``new_y="NEXT"`` doesn't
+    always reset x to the left margin — leaving the next multi_cell
+    with zero remaining space and the exception:
+      Not enough horizontal space to render a single character
+    write() sidesteps that entirely.
+    """
+    # Belt-and-braces cursor reset — irrelevant to write() itself but
+    # keeps the SECTION HEADER below our text properly aligned.
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(55, 5.5, f"{label}:", new_x="RIGHT")
+    pdf.write(5.5, f"{label}: ")
     pdf.set_font("Helvetica", "", 10)
-    pdf.multi_cell(0, 5.5, str(value or "-"))
+    # Truncate absurdly long values so one wonky field can't blow the
+    # renderer with a 100KB single string. 2000 chars is well past
+    # anything a school-report field should hold.
+    val = str(value if value not in (None, "") else "-")[:2000]
+    pdf.write(5.5, val)
+    pdf.ln(5.5)
 
 
 def _render_checklist(pdf: FPDF, section: dict, data: dict) -> None:
@@ -175,12 +193,17 @@ def _render_checklist(pdf: FPDF, section: dict, data: dict) -> None:
 def _render_narrative(pdf: FPDF, section: dict, data: dict) -> None:
     for field in section.get("fields") or []:
         raw = data.get(field.get("id"))
-        val = str(raw or "").strip()
+        val = str(raw or "").strip()[:8000]  # sanity cap on narrative length
         if not val:
             continue
+        # Reset cursor to left margin so an earlier section's cursor
+        # position can't leave multi_cell with zero remaining width.
         if field.get("label"):
+            pdf.set_x(pdf.l_margin)
             pdf.set_font("Helvetica", "B", 10)
-            pdf.multi_cell(0, 5.5, field["label"] + ":")
+            pdf.write(5.5, field["label"] + ":")
+            pdf.ln(5.5)
+        pdf.set_x(pdf.l_margin)
         pdf.set_font("Helvetica", "", 10)
         pdf.multi_cell(0, 5.5, val)
         pdf.ln(1)
