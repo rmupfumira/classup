@@ -221,6 +221,18 @@ async def tenant_edit_form(
 
     tenant_features = (tenant.settings or {}).get("features", {}) or {}
 
+    # Jurisdiction context — the effective resolution (tenant override →
+    # platform default → country registry), plus the raw settings so the
+    # UI can distinguish "explicitly set" from "inherited".
+    from app.services import jurisdiction_service, platform_service
+    platform_defaults = (await platform_service.get_defaults(db)).to_dict()
+    effective_jurisdiction = jurisdiction_service.resolve_jurisdiction(
+        tenant, platform_defaults=platform_defaults,
+    )
+    tenant_country_raw = (tenant.settings or {}).get("country") or ""
+    tenant_currency_raw = (tenant.settings or {}).get("billing_currency") or ""
+    tenant_timezone_raw = (tenant.settings or {}).get("timezone") or ""
+
     return templates.TemplateResponse(
         "super_admin/tenants/edit.html",
         {
@@ -228,6 +240,14 @@ async def tenant_edit_form(
             "user": user,
             "tenant": tenant,
             "tenant_features": tenant_features,
+            "countries": jurisdiction_service.list_countries(),
+            "currencies": jurisdiction_service.list_currencies(),
+            "timezones": platform_service.COMMON_TIMEZONES,
+            "effective_jurisdiction": effective_jurisdiction,
+            "platform_defaults": platform_defaults,
+            "tenant_country_raw": tenant_country_raw,
+            "tenant_currency_raw": tenant_currency_raw,
+            "tenant_timezone_raw": tenant_timezone_raw,
             "plan_features": plan_features,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(user.role),

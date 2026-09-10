@@ -302,10 +302,12 @@ async def get_child_balance(
 
     # Currency lives on tenant.settings — the invoice row itself has no
     # currency column (single-currency per tenant is the current design).
+    # jurisdiction_service resolves through platform defaults + country
+    # registry so a KE or ZW tenant shows KES / USD, not ZAR.
+    from app.services import jurisdiction_service
     tenant = await db.get(Tenant, tenant_id)
-    currency = "ZAR"
-    if tenant is not None:
-        currency = (tenant.settings or {}).get("billing_currency") or "ZAR"
+    jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
+    currency = jurisdiction.currency_code
 
     child = await db.get(Student, child_id)
     child_name = (
@@ -601,8 +603,9 @@ async def get_child_invoice_pdf(
         for li in (invoice.items or [])
     ]
 
-    currency = (tenant.settings or {}).get("billing_currency") if tenant else None
-    currency = currency or "R"
+    from app.services import jurisdiction_service
+    jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
+    currency = jurisdiction.currency_symbol
     banking_details = (tenant.settings or {}).get("billing_banking_details") or None
     payment_instructions = (tenant.settings or {}).get("billing_payment_instructions") or None
 

@@ -1002,7 +1002,11 @@ class BillingService:
         app_settings = get_settings()
         email_service = get_email_service()
         notification_service = get_notification_service()
-        currency = tenant_settings.get("billing_currency", "ZAR")
+        from app.services import jurisdiction_service
+        # Prefer the resolved jurisdiction so tenants inherit platform
+        # defaults instead of a hardcoded ZAR — matters for ZW/KE schools.
+        jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
+        currency = jurisdiction.currency_symbol
         view_url = f"{app_settings.app_base_url}/billing"
         sent_count = 0
 
@@ -1169,7 +1173,9 @@ class BillingService:
             return
 
         tenant_settings = tenant.settings or {}
-        currency = tenant_settings.get("billing_currency", "ZAR")
+        from app.services import jurisdiction_service
+        jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
+        currency = jurisdiction.currency_symbol
         banking_details = tenant_settings.get("billing_banking_details", "") or None
         payment_instructions = tenant_settings.get("billing_payment_instructions", "") or None
 
@@ -1320,8 +1326,9 @@ class BillingService:
         from app.models import Tenant, User
         tenant = await db.get(Tenant, invoice.tenant_id)
         tenant_name = tenant.name if tenant else "ClassUp"
-        currency = (tenant.settings or {}).get("billing_currency") if tenant else None
-        currency = currency or "R"
+        from app.services import jurisdiction_service
+        jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
+        currency = jurisdiction.currency_symbol
         payment_amount_str = f"{currency} {payment.amount:,.2f}"
         remaining_str = f"{currency} {invoice.balance:,.2f}"
         view_url = (
