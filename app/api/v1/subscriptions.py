@@ -53,8 +53,24 @@ class PlanUpdate(BaseModel):
 
 
 class InitializePayment(BaseModel):
-    """Request to initialize a Paystack checkout for subscription payment."""
+    """Request to start a gateway checkout for the tenant's subscription.
+
+    ``billing_frequency`` lets a trialing tenant opt out of the trial
+    on the spot: pass "ANNUALLY" (with the annual price + 12 months of
+    coverage) or "MONTHLY". Persisted on the subscription so the next
+    renewal keeps the cadence.
+
+    ``plan_id`` lets the tenant switch plans as part of the pay flow —
+    e.g. jumping from Basic trial straight to Premium annual. Omitted =
+    keep the current plan.
+    """
     callback_url: str | None = None
+    billing_frequency: str | None = Field(
+        None, description="MONTHLY or ANNUALLY. Omitted = keep the current subscription's frequency (defaults to MONTHLY)."
+    )
+    plan_id: str | None = Field(
+        None, description="Switch to this plan before creating the invoice. Omitted = keep current plan."
+    )
 
 
 class AssignPlan(BaseModel):
@@ -364,8 +380,16 @@ async def get_my_subscription(db: AsyncSession = Depends(get_db)) -> APIResponse
         status="success",
         data={
             "id": str(sub.id),
+            "plan_id": str(sub.plan_id) if sub.plan_id else None,
             "plan_name": sub.plan.name if sub.plan else None,
             "plan_price": float(sub.plan.price_monthly) if sub.plan else None,
+            # Annual price so the UI can show "or $X/year" and compute
+            # the monthly-equivalent savings hint.
+            "plan_price_annually": (
+                float(sub.plan.price_annually)
+                if sub.plan and sub.plan.price_annually is not None else None
+            ),
+            "billing_frequency": sub.billing_frequency or "MONTHLY",
             "status": sub.status,
             "trial_start": sub.trial_start.isoformat() if sub.trial_start else None,
             "trial_end": sub.trial_end.isoformat() if sub.trial_end else None,
@@ -488,18 +512,55 @@ async def initialize_payment(
     """
     from datetime import date, timedelta
     from app.config import get_settings as get_app_settings
-    from app.models.subscription import PlatformInvoiceStatus
+    from app.models.subscription import (
+        BillingFrequency, PlatformInvoiceStatus, SubscriptionPlan,
+    )
     from app.models.tenant import Tenant
     from app.services import gateway_service
     from sqlalchemy import select
+    import uuid as _uuid
 
     tenant_id = get_tenant_id()
     service = get_subscription_service()
     sub = await service.get_tenant_subscription(db, tenant_id)
     if not sub:
         raise HTTPException(status_code=404, detail="No subscription found")
+
+    # Optional plan switch: happens BEFORE invoice creation so the invoice
+    # reflects the new plan's price. sync_tenant_features runs on payment
+    # success (in handle_payment_success), so features flip only after the
+    # money's in — no free access to a bigger plan.
+    if body.plan_id:
+        try:
+            new_plan_id = _uuid.UUID(body.plan_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid plan_id.")
+        new_plan = await db.get(SubscriptionPlan, new_plan_id)
+        if new_plan is None or not new_plan.is_active:
+            raise HTTPException(status_code=404, detail="Plan not found or inactive.")
+        sub.plan_id = new_plan.id
+        sub.plan = new_plan  # keep the eagerly-loaded relationship consistent
+
     if not sub.plan:
         raise HTTPException(status_code=400, detail="Pick a plan first")
+
+    # Resolve the frequency. Explicit choice wins; otherwise fall back
+    # to whatever's already on the subscription; otherwise MONTHLY.
+    freq_raw = (body.billing_frequency or sub.billing_frequency or "MONTHLY").upper().strip()
+    try:
+        freq = BillingFrequency(freq_raw)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"billing_frequency must be MONTHLY or ANNUALLY, got {freq_raw!r}",
+        )
+    if freq is BillingFrequency.ANNUALLY and not sub.plan.price_annually:
+        raise HTTPException(
+            status_code=400,
+            detail=f"The {sub.plan.name} plan doesn't offer annual billing.",
+        )
+    # Persist so the (future) renewal worker keeps the cadence.
+    sub.billing_frequency = freq.value
 
     # Route through the configured gateway — Paystack no longer hard-coded.
     provider = await gateway_service.get_active_provider(db)
@@ -517,33 +578,45 @@ async def initialize_payment(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Find-or-create a PENDING invoice for this tenant. Reusing a pending
-    # invoice keeps the tenant from stacking up duplicates when they
-    # bounce off the checkout page and click Pay again.
+    # Compute the amount + period FROM the frequency, so an annual invoice
+    # covers 365 days of the annual price, monthly = 30 days of monthly.
+    amount = sub.plan.price_annually if freq is BillingFrequency.ANNUALLY else sub.plan.price_monthly
+    period_days = freq.period_days
+
+    # Find-or-create a PENDING invoice. If one exists but its amount
+    # doesn't match the (possibly-just-changed) plan+frequency choice,
+    # rewrite it — the tenant switched from monthly to annual mid-flow
+    # and we don't want to charge the stale amount.
     q = select(PlatformInvoice).where(
         PlatformInvoice.tenant_id == tenant_id,
         PlatformInvoice.status == PlatformInvoiceStatus.PENDING.value,
     ).order_by(PlatformInvoice.created_at.desc())
     invoice = (await db.execute(q)).scalars().first()
+
+    today = date.today()
+    # If tenant is mid-cycle, extend from current_period_end so we don't
+    # give away the unpaid tail of the current period.
+    start = sub.current_period_end if (sub.current_period_end and sub.current_period_end > today) else today
+
     if invoice is None:
-        # Next period starts today (or when trial ends, whichever is
-        # sooner). Keeping the period 30 days matches handle_payment_success.
-        today = date.today()
-        start = min(sub.trial_end or today, today) if sub.trial_end else today
-        # If tenant is mid-cycle, extend from current_period_end instead.
-        if sub.current_period_end and sub.current_period_end > today:
-            start = sub.current_period_end
         invoice = PlatformInvoice(
             tenant_id=tenant_id,
             subscription_id=sub.id,
-            amount=sub.plan.price_monthly,
+            amount=amount,
             currency=(sub.plan.currency if getattr(sub.plan, "currency", None) else "ZAR"),
             status=PlatformInvoiceStatus.PENDING.value,
             billing_period_start=start,
-            billing_period_end=start + timedelta(days=30),
+            billing_period_end=start + timedelta(days=period_days),
         )
         db.add(invoice)
         await db.flush()  # get invoice.id before create_checkout
+    else:
+        # Realign the pending invoice with the current choice.
+        invoice.amount = amount
+        invoice.billing_period_start = start
+        invoice.billing_period_end = start + timedelta(days=period_days)
+        if getattr(sub.plan, "currency", None):
+            invoice.currency = sub.plan.currency
 
     # Redirect back to the /subscription page after payment; the query
     # string lets the page verify + refresh.

@@ -822,6 +822,11 @@ async def apply_payment_event(
         # as nullable strings, the name's historical
         invoice.paystack_reference = event.provider_reference
         logger.info(f"Invoice {invoice.id} marked PAID via {event.payment_method}")
+
+        # Activate the tenant's subscription. Without this the invoice
+        # is paid but the tenant stays TRIALING — they paid but got no
+        # active plan.
+        await _activate_subscription_from_invoice(db, invoice)
     else:
         # Don't change status on failure — tenant can retry. Just log.
         invoice.failure_reason = event.failure_reason or "Payment failed"
@@ -829,3 +834,56 @@ async def apply_payment_event(
 
     await db.flush()
     return invoice
+
+
+async def _activate_subscription_from_invoice(
+    db: AsyncSession, invoice: PlatformInvoice,
+) -> None:
+    """Flip the subscription linked to a just-paid invoice into ACTIVE
+    and extend its current period to match the invoice's coverage.
+
+    Also syncs the plan's feature flags into the tenant so any newly-
+    entitled features (WhatsApp, AI bot, etc.) light up immediately.
+
+    Best-effort — a failure here logs but doesn't roll back the PAID
+    status. If subscription state drifts, super admin can fix by hand;
+    losing the payment record is far worse.
+    """
+    from app.models.subscription import TenantSubscription, SubscriptionStatus
+
+    try:
+        sub = await db.get(TenantSubscription, invoice.subscription_id)
+        if sub is None:
+            logger.warning(
+                "Paid invoice %s has no subscription %s to activate",
+                invoice.id, invoice.subscription_id,
+            )
+            return
+
+        sub.status = SubscriptionStatus.ACTIVE.value
+        sub.current_period_start = invoice.billing_period_start
+        sub.current_period_end = invoice.billing_period_end
+        sub.failed_payment_count = 0
+        sub.grace_period_end = None
+
+        # Sync plan features into tenant.settings so anything the tenant
+        # was gated out of during trial (per plan) is now live.
+        if sub.plan_id:
+            from app.services.subscription_service import get_subscription_service
+            from app.models.subscription import SubscriptionPlan
+
+            plan = await db.get(SubscriptionPlan, sub.plan_id)
+            if plan is not None:
+                await get_subscription_service().sync_tenant_features(
+                    db, sub.tenant_id, plan,
+                )
+        logger.info(
+            "Subscription %s activated (period %s → %s)",
+            sub.id, sub.current_period_start, sub.current_period_end,
+        )
+    except Exception:
+        # Never fail the webhook handler over subscription bookkeeping —
+        # the money's already been recorded. Log for follow-up.
+        logger.exception(
+            "Failed to activate subscription for invoice %s", invoice.id,
+        )

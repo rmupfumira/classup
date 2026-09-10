@@ -145,6 +145,10 @@ async function loadSubscription() {
         // Adopt the tenant's jurisdiction currency for the whole page.
         if (sub.currency_symbol) currencySymbol = sub.currency_symbol;
 
+        // Seed the frequency chooser from the server-side value.
+        _selectedFrequency = sub.billing_frequency || 'MONTHLY';
+        _lastSub = sub;
+
         const sm = statusMessages[sub.status] || statusMessages.SUSPENDED;
         const isTrialing = sub.status === 'TRIALING';
         const needsPayment = ['TRIALING', 'PAST_DUE', 'SUSPENDED'].includes(sub.status);
@@ -333,37 +337,28 @@ async function loadGateway() {
     renderPayCTA();
 }
 
-function renderPayCTA() {
+// Selected billing frequency for the pending pay action. Persisted only
+// in memory — the server-side sub.billing_frequency is authoritative
+// once the tenant clicks Pay.
+let _selectedFrequency = 'MONTHLY';
+let _lastSub = null;
+
+function renderPayCTA(sub) {
+    if (sub) _lastSub = sub;
+    sub = sub || _lastSub;
     const slot = document.getElementById('pay-cta-slot');
-    if (!slot) return;  // subscription card never rendered
-    const needsPayment = ['TRIALING', 'PAST_DUE', 'SUSPENDED'].includes(currentStatus);
+    if (!slot || !sub) return;
+
+    const needsPayment = ['TRIALING', 'PAST_DUE', 'SUSPENDED'].includes(sub.status);
     if (!needsPayment) { slot.innerHTML = ''; return; }
 
-    const isTrialing = currentStatus === 'TRIALING';
+    const isTrialing = sub.status === 'TRIALING';
     const gatewayName = (_gatewayState && _gatewayState.configured)
         ? _gatewayState.display_name : null;
 
-    if (gatewayName) {
-        // Happy path — gateway configured. One prominent button that
-        // will find-or-create a pending invoice and redirect.
-        const label = isTrialing
-            ? `Pay early with ${gatewayName}`
-            : `Pay with ${gatewayName}`;
-        slot.innerHTML = `
-            <button onclick="startPayment(this)"
-                    class="inline-flex items-center px-5 py-2.5 bg-primary-500 text-white text-sm font-semibold rounded-md hover:bg-primary-600 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                </svg>
-                ${label}
-            </button>
-            ${isTrialing ? `<p class="mt-2 text-xs text-neutral-500">
-                Optional during your trial &mdash; pay now to activate immediately or wait until your trial ends.
-            </p>` : ''}`;
-    } else {
-        // No gateway configured on this instance yet. Point to EFT so
-        // there's still a clear path — the previous UX left a broken
-        // button that just errored.
+    if (!gatewayName) {
+        // No gateway configured yet — friendly amber card instead of
+        // a broken button. EFT is still available below.
         slot.innerHTML = `
             <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <p class="text-sm font-medium text-amber-900">Card payments aren't set up on this instance yet.</p>
@@ -371,7 +366,76 @@ function renderPayCTA() {
                     You can pay by EFT (bank transfer) using the "Pay by EFT" panel below &mdash; upload a proof of payment and it's approved within one business day.
                 </p>
             </div>`;
+        return;
     }
+
+    // Seed frequency from what the server already has, unless a user
+    // click has changed it since load.
+    if (sub.billing_frequency && !_selectedFrequency) {
+        _selectedFrequency = sub.billing_frequency;
+    }
+    _selectedFrequency = _selectedFrequency || sub.billing_frequency || 'MONTHLY';
+
+    const monthly = sub.plan_price;
+    const annual = sub.plan_price_annually;
+    const hasAnnual = annual !== null && annual !== undefined;
+
+    // Compare annual-if-paid-monthly vs annual price to compute savings.
+    let savingsPct = 0;
+    if (hasAnnual && monthly && annual) {
+        savingsPct = Math.round(((monthly * 12 - annual) / (monthly * 12)) * 100);
+    }
+    const activePrice = _selectedFrequency === 'ANNUALLY' && hasAnnual ? annual : monthly;
+    const periodLabel = _selectedFrequency === 'ANNUALLY' ? 'year' : 'month';
+
+    const optIn = isTrialing
+        ? `Opt out of your free trial and pay now to activate your subscription immediately.`
+        : `Your subscription is due &mdash; pay now to stay active.`;
+
+    slot.innerHTML = `
+        <div class="border border-neutral-200 rounded-lg p-4 bg-white">
+            <p class="text-sm text-neutral-600 mb-3">${optIn}</p>
+
+            <p class="text-xs font-medium text-neutral-500 uppercase mb-2">Billing Frequency</p>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <label class="cursor-pointer">
+                    <input type="radio" name="pay-freq" value="MONTHLY"
+                           ${_selectedFrequency === 'MONTHLY' ? 'checked' : ''}
+                           class="sr-only peer"
+                           onchange="_selectedFrequency='MONTHLY'; renderPayCTA();">
+                    <div class="border rounded-md p-3 text-center peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500">
+                        <p class="text-sm font-semibold text-neutral-800">Monthly</p>
+                        <p class="text-lg font-bold text-neutral-900">${fmtMoney(monthly)}</p>
+                        <p class="text-xs text-neutral-500">per month</p>
+                    </div>
+                </label>
+                <label class="cursor-pointer ${!hasAnnual ? 'opacity-40 pointer-events-none' : ''}">
+                    <input type="radio" name="pay-freq" value="ANNUALLY"
+                           ${_selectedFrequency === 'ANNUALLY' ? 'checked' : ''}
+                           ${!hasAnnual ? 'disabled' : ''}
+                           class="sr-only peer"
+                           onchange="_selectedFrequency='ANNUALLY'; renderPayCTA();">
+                    <div class="border rounded-md p-3 text-center relative peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500">
+                        ${savingsPct > 0 ? `<span class="absolute -top-2 right-2 px-2 py-0.5 bg-green-100 text-green-800 text-[10px] font-semibold rounded-full">Save ${savingsPct}%</span>` : ''}
+                        <p class="text-sm font-semibold text-neutral-800">Annual</p>
+                        <p class="text-lg font-bold text-neutral-900">${hasAnnual ? fmtMoney(annual) : '—'}</p>
+                        <p class="text-xs text-neutral-500">per year</p>
+                    </div>
+                </label>
+            </div>
+
+            <button onclick="startPayment(this)"
+                    class="w-full inline-flex items-center justify-center px-5 py-2.5 bg-primary-500 text-white text-sm font-semibold rounded-md hover:bg-primary-600 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+                Pay ${fmtMoney(activePrice)} with ${gatewayName}
+            </button>
+            <p class="mt-2 text-xs text-neutral-500 text-center">
+                One ${periodLabel} of ${sub.plan_name}. You'll be redirected to ${gatewayName}, then brought back here.
+                ${isTrialing ? '<br>Your trial ends the moment the payment confirms.' : ''}
+            </p>
+        </div>`;
 }
 
 async function payInvoice(invoiceId, btn) {
@@ -454,6 +518,11 @@ async function startPayment(btn) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 callback_url: window.location.origin + '/subscription?paid=1',
+                // Send the chosen frequency so the server sizes the
+                // invoice (monthly vs annual amount, 30 vs 365 days)
+                // and persists the choice on the subscription for
+                // future renewals.
+                billing_frequency: _selectedFrequency || 'MONTHLY',
             }),
         });
         // The server returns redirect_url (new field). authorization_url

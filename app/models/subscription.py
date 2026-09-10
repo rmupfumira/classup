@@ -42,6 +42,20 @@ class PlatformInvoiceStatus(str, Enum):
     REFUNDED = "REFUNDED"
 
 
+class BillingFrequency(str, Enum):
+    """How often a tenant is billed for their subscription. Chosen when
+    the tenant opts out of trial (or switches plan). Drives invoice
+    amount + period length: MONTHLY = 30 days of price_monthly,
+    ANNUALLY = 365 days of price_annually."""
+
+    MONTHLY = "MONTHLY"
+    ANNUALLY = "ANNUALLY"
+
+    @property
+    def period_days(self) -> int:
+        return 365 if self is BillingFrequency.ANNUALLY else 30
+
+
 class SubscriptionPlan(Base, TimestampMixin, SoftDeleteMixin):
     """A subscription plan that tenants can subscribe to."""
 
@@ -114,6 +128,12 @@ class TenantSubscription(Base, TimestampMixin):
     )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=SubscriptionStatus.TRIALING.value
+    )
+    billing_frequency: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=BillingFrequency.MONTHLY.value,
+        server_default=text("'MONTHLY'"),
     )
     trial_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     trial_end: Mapped[date | None] = mapped_column(Date, nullable=True)
