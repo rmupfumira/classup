@@ -7,8 +7,10 @@ and can be managed at runtime via the super admin UI.
 import base64
 import logging
 from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email import encoders as email_encoders
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +81,27 @@ class EmailService:
             html_part.attach(MIMEText(html_body, "html", "utf-8"))
             msg.attach(html_part)
             for att in attachments:
-                part = MIMEApplication(att["content"], Name=att["filename"])
+                # Attachment dict schema: filename (str, required),
+                # content (bytes, required), content_type (str,
+                # optional — full MIME type like "text/calendar;
+                # method=REQUEST", used when we need Gmail/Outlook to
+                # recognise the payload as a calendar invite).
+                content_type = att.get("content_type")
+                if content_type and "/" in content_type:
+                    main, _, sub = content_type.partition(";")
+                    maintype, _, subtype = main.strip().partition("/")
+                    part = MIMEBase(maintype or "application", subtype or "octet-stream")
+                    part.set_payload(att["content"])
+                    email_encoders.encode_base64(part)
+                    if sub:
+                        # Preserve any parameters (e.g. "method=REQUEST",
+                        # "charset=UTF-8") after the base type.
+                        part.replace_header(
+                            "Content-Type",
+                            f"{main.strip()};{sub}",
+                        )
+                else:
+                    part = MIMEApplication(att["content"], Name=att["filename"])
                 part["Content-Disposition"] = f'attachment; filename="{att["filename"]}"'
                 msg.attach(part)
         else:
@@ -152,13 +174,18 @@ class EmailService:
         if bcc:
             params["bcc"] = bcc
         if attachments:
-            params["attachments"] = [
-                {
+            params["attachments"] = []
+            for att in attachments:
+                a = {
                     "filename": att["filename"],
                     "content": base64.b64encode(att["content"]).decode("utf-8"),
                 }
-                for att in attachments
-            ]
+                # Resend passes content_type through as "type". Keeps
+                # ICS calendar invites rendering as "Add to calendar"
+                # buttons instead of a generic file attachment.
+                if att.get("content_type"):
+                    a["content_type"] = att["content_type"]
+                params["attachments"].append(a)
 
         result = resend.Emails.send(params)
         return result.get("id", "resend-ok")
@@ -570,6 +597,75 @@ class EmailService:
                 "app_name": settings.app_name,
             },
             from_name=tenant_name,
+        )
+
+    async def send_event_invitation(
+        self,
+        to: str,
+        *,
+        parent_name: str,
+        tenant_name: str,
+        event_title: str,
+        event_when: str,
+        event_location: str | None,
+        event_description: str | None,
+        event_type_label: str,
+        rsvp_required: bool,
+        rsvp_deadline: str | None,
+        view_url: str,
+        rsvp_yes_url: str | None,
+        rsvp_no_url: str | None,
+        rsvp_maybe_url: str | None,
+        ics_bytes: bytes,
+        ics_filename: str = "event.ics",
+        method: str = "REQUEST",
+    ) -> str | None:
+        """Invite a parent to a school event.
+
+        The ICS attachment is what makes 'Add to calendar' work in
+        Gmail / Outlook / Apple Mail. `method=REQUEST` in the content
+        type is the key hint Gmail keys off to show its native RSVP
+        widget above the message.
+
+        ``method="CANCEL"`` when notifying about a cancelled event —
+        clients update the calendar entry accordingly.
+        """
+        subject = (
+            f"Event: {event_title} — {tenant_name}"
+            if method == "REQUEST"
+            else f"Cancelled: {event_title} — {tenant_name}"
+        )
+        return await self.send(
+            to=to,
+            subject=subject,
+            template_name="event_invitation.html",
+            context={
+                "parent_name": parent_name,
+                "tenant_name": tenant_name,
+                "event_title": event_title,
+                "event_when": event_when,
+                "event_location": event_location,
+                "event_description": event_description,
+                "event_type_label": event_type_label,
+                "rsvp_required": rsvp_required,
+                "rsvp_deadline": rsvp_deadline,
+                "view_url": view_url,
+                "rsvp_yes_url": rsvp_yes_url,
+                "rsvp_no_url": rsvp_no_url,
+                "rsvp_maybe_url": rsvp_maybe_url,
+                "is_cancelled": method == "CANCEL",
+                "app_name": settings.app_name,
+            },
+            from_name=tenant_name,
+            attachments=[
+                {
+                    "filename": ics_filename,
+                    "content": ics_bytes,
+                    # method= param is what turns this from a "download
+                    # this file" into "Add to calendar" in Gmail.
+                    "content_type": f"text/calendar; charset=UTF-8; method={method}",
+                },
+            ],
         )
 
     async def send_teacher_notification(

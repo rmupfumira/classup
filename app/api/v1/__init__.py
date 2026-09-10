@@ -13,6 +13,7 @@ from app.api.v1 import (
     billing,
     classes,
     documents,
+    events,
     files,
     grade_levels,
     imports,
@@ -55,6 +56,7 @@ api_router.include_router(websocket.router)
 api_router.include_router(whatsapp.router)  # Public webhook inside — individual /send endpoint gated below
 api_router.include_router(push.router)  # Web Push — platform capability, not plan-gated
 api_router.include_router(payment_webhooks.router)  # Public webhooks for payment providers
+api_router.include_router(events.router)  # School events + parent RSVPs (email calendar invites work off-plan)
 
 # Plan-gated routers — blocked (402) if the tenant's plan doesn't include the feature
 api_router.include_router(

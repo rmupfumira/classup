@@ -72,6 +72,9 @@ from app.models.accounting import (
 )
 from app.models.push_subscription import PushSubscription
 from app.models.whatsapp_inbound import WhatsAppInboundMessage
+from app.models.school_event import (
+    SchoolEvent, EventRsvp, EventType, EventScope, RsvpResponse,
+)
 
 __all__ = [
     # Base
@@ -192,4 +195,10 @@ __all__ = [
     # Push notifications
     "PushSubscription",
     "WhatsAppInboundMessage",
+    # School events
+    "SchoolEvent",
+    "EventRsvp",
+    "EventType",
+    "EventScope",
+    "RsvpResponse",
 ]

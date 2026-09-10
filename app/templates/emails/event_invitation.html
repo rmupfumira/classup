@@ -1,0 +1,105 @@
+{% extends "base_email.html" %}
+
+{% block title %}{% if is_cancelled %}Cancelled: {% endif %}{{ event_title }}{% endblock %}
+
+{% block content %}
+<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    Hi {{ parent_name or 'there' }},
+</p>
+
+{% if is_cancelled %}
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #B91C1C; line-height: 1.6;">
+    <strong>{{ tenant_name }}</strong> has <strong>cancelled</strong> this event. Your calendar will update automatically if you added it.
+</p>
+{% else %}
+<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+    <strong>{{ tenant_name }}</strong> has scheduled a {{ event_type_label }} and would like you to attend.
+</p>
+{% endif %}
+
+<!-- Event card -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px; background-color: {% if is_cancelled %}#FEF2F2{% else %}#EEF2FF{% endif %}; border: 1px solid {% if is_cancelled %}#FCA5A5{% else %}#C7D2FE{% endif %}; border-radius: 8px;">
+    <tr>
+        <td style="padding: 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em;">{{ event_type_label }}</p>
+            <p style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827; {% if is_cancelled %}text-decoration: line-through;{% endif %}">{{ event_title }}</p>
+
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding-bottom: 10px;">
+                        <p style="margin: 0; font-size: 13px; color: #6B7280;">When</p>
+                        <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #111827;">{{ event_when }}</p>
+                    </td>
+                </tr>
+                {% if event_location %}
+                <tr>
+                    <td style="padding-bottom: 10px;">
+                        <p style="margin: 0; font-size: 13px; color: #6B7280;">Where</p>
+                        <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #111827;">{{ event_location }}</p>
+                    </td>
+                </tr>
+                {% endif %}
+                {% if rsvp_required and rsvp_deadline and not is_cancelled %}
+                <tr>
+                    <td>
+                        <p style="margin: 0; font-size: 13px; color: #6B7280;">RSVP by</p>
+                        <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #B45309;">{{ rsvp_deadline }}</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </table>
+        </td>
+    </tr>
+</table>
+
+{% if event_description %}
+<p style="margin: 0 0 24px 0; font-size: 14px; color: #4B5563; line-height: 1.6; white-space: pre-wrap;">{{ event_description }}</p>
+{% endif %}
+
+{% if not is_cancelled %}
+<!-- Add-to-calendar hint -->
+<p style="margin: 24px 0 8px 0; font-size: 13px; color: #6B7280; text-align: center;">
+    An <strong>event.ics</strong> file is attached — tap "Add to calendar" in Gmail, Outlook or Apple Mail to save it.
+</p>
+
+<!-- RSVP buttons (if RSVP requested) -->
+{% if rsvp_required and rsvp_yes_url %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+    <tr>
+        <td align="center">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                    <td style="padding: 4px;">
+                        <a href="{{ rsvp_yes_url }}" target="_blank" style="display: inline-block; padding: 12px 20px; background-color: #059669; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                            ✓ I'll be there
+                        </a>
+                    </td>
+                    <td style="padding: 4px;">
+                        <a href="{{ rsvp_maybe_url }}" target="_blank" style="display: inline-block; padding: 12px 20px; background-color: #F59E0B; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                            Maybe
+                        </a>
+                    </td>
+                    <td style="padding: 4px;">
+                        <a href="{{ rsvp_no_url }}" target="_blank" style="display: inline-block; padding: 12px 20px; background-color: #6B7280; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                            Can't make it
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<!-- View event button -->
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto 0 auto;">
+    <tr>
+        <td style="border-radius: 8px; background-color: #4F46E5;">
+            <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                View event details
+            </a>
+        </td>
+    </tr>
+</table>
+{% endif %}
+{% endblock %}
