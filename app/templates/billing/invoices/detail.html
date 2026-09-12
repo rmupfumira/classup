@@ -104,13 +104,32 @@
                 </dd>
             </div>
             <div>
-                <dt class="text-neutral-500">Due Date</dt>
-                <dd class="font-medium mt-0.5 {% if invoice.status == 'OVERDUE' %}text-error-600{% else %}text-neutral-900{% endif %}">
+                <dt class="text-neutral-500 flex items-center gap-2">
+                    Due Date
+                    {% if is_admin and invoice.status != 'CANCELLED' %}
+                    <button type="button" id="due-date-edit-btn"
+                            class="text-xs text-primary-600 hover:text-primary-700 underline"
+                            title="Change due date">Edit</button>
+                    {% endif %}
+                </dt>
+                <dd id="due-date-display"
+                    class="font-medium mt-0.5 {% if invoice.status == 'OVERDUE' %}text-error-600{% else %}text-neutral-900{% endif %}">
                     {{ invoice.due_date.strftime('%B %d, %Y') }}
                     {% if invoice.status == 'OVERDUE' %}
                     <span class="text-xs ml-1">(overdue)</span>
                     {% endif %}
                 </dd>
+                {% if is_admin and invoice.status != 'CANCELLED' %}
+                <dd id="due-date-editor" class="hidden mt-1 flex items-center gap-2">
+                    <input type="date" id="due-date-input"
+                           value="{{ invoice.due_date.isoformat() }}"
+                           class="text-sm px-2 py-1 border border-neutral-300 rounded">
+                    <button type="button" id="due-date-save-btn"
+                            class="text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700">Save</button>
+                    <button type="button" id="due-date-cancel-btn"
+                            class="text-xs px-2 py-1 border border-neutral-300 rounded hover:bg-neutral-50">Cancel</button>
+                </dd>
+                {% endif %}
             </div>
             <div>
                 <dt class="text-neutral-500">Created By</dt>
@@ -335,6 +354,56 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             recordPayment();
+        });
+    }
+
+    // Due-date inline edit (admin only, wired if the buttons exist)
+    const dueEditBtn = document.getElementById('due-date-edit-btn');
+    const dueDisplay = document.getElementById('due-date-display');
+    const dueEditor = document.getElementById('due-date-editor');
+    const dueSaveBtn = document.getElementById('due-date-save-btn');
+    const dueCancelBtn = document.getElementById('due-date-cancel-btn');
+    const dueInput = document.getElementById('due-date-input');
+    if (dueEditBtn && dueDisplay && dueEditor && dueSaveBtn && dueCancelBtn && dueInput) {
+        const originalValue = dueInput.value;
+        dueEditBtn.addEventListener('click', () => {
+            dueDisplay.classList.add('hidden');
+            dueEditor.classList.remove('hidden');
+            dueEditor.classList.add('flex');
+            dueInput.focus();
+        });
+        dueCancelBtn.addEventListener('click', () => {
+            dueInput.value = originalValue;
+            dueEditor.classList.add('hidden');
+            dueEditor.classList.remove('flex');
+            dueDisplay.classList.remove('hidden');
+        });
+        dueSaveBtn.addEventListener('click', async () => {
+            const newDate = dueInput.value;
+            if (!newDate) {
+                ClassUp.toast('Pick a date first', 'error');
+                return;
+            }
+            if (newDate === originalValue) {
+                dueCancelBtn.click();
+                return;
+            }
+            dueSaveBtn.disabled = true;
+            try {
+                await ClassUp.fetch(
+                    `/api/v1/billing/invoices/{{ invoice.id }}`,
+                    {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({due_date: newDate}),
+                    },
+                );
+                ClassUp.toast('Due date updated', 'success');
+                window.location.reload();
+            } catch (err) {
+                ClassUp.toast('Failed to update due date', 'error');
+                dueSaveBtn.disabled = false;
+            }
         });
     }
 });

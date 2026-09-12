@@ -41,10 +41,23 @@ async def _get_current_user(db: AsyncSession) -> User | None:
 
 
 def _require_auth(request: Request):
-    """Check authentication and return redirect if not authenticated."""
+    """Check authentication and return redirect if not authenticated.
+
+    Preserves the current URL as ``?next=`` on the login redirect so
+    deep-linked pages (e.g. an invoice URL tapped from WhatsApp) send
+    the user back to the intended page after login instead of the
+    generic dashboard.
+    """
     user_id = get_current_user_id_or_none()
     if not user_id:
-        response = RedirectResponse(url="/login", status_code=302)
+        from urllib.parse import quote
+        next_url = request.url.path
+        if request.url.query:
+            next_url += "?" + request.url.query
+        response = RedirectResponse(
+            url=f"/login?next={quote(next_url, safe='/?&=')}",
+            status_code=302,
+        )
         response.delete_cookie("access_token")
         return response
     return None

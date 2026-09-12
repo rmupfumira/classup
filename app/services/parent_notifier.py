@@ -54,22 +54,38 @@ async def _can_notify_whatsapp(
       3. The tenant's subscription plan includes whatsapp
       4. The WhatsApp service is fully configured (Meta credentials in DB)
 
-    Any missing piece → silent skip. Log at DEBUG so an admin who wants
-    to know why can turn logs up without spamming production.
+    Any missing piece → silent skip. All gate failures log at INFO with a
+    short reason so operators can grep the logs to see WHY a notification
+    didn't fire when a parent complains they didn't get one. The full user
+    id is logged (not the phone) — safe for logs, still traceable.
     """
-    if user is None or not user.is_active or user.deleted_at is not None:
+    if user is None:
+        logger.info("whatsapp gate: user is None — skipping")
         return False
-    if not user.whatsapp_phone or not user.whatsapp_opted_in:
+    if not user.is_active or user.deleted_at is not None:
+        logger.info("whatsapp gate: user %s inactive or deleted — skipping", user.id)
+        return False
+    if not user.whatsapp_phone:
+        logger.info("whatsapp gate: user %s has no whatsapp_phone — skipping", user.id)
+        return False
+    if not user.whatsapp_opted_in:
+        logger.info("whatsapp gate: user %s not opted in — skipping", user.id)
         return False
     if not user.tenant_id:
+        logger.info("whatsapp gate: user %s has no tenant_id — skipping", user.id)
         return False
 
     tenant = await db.get(Tenant, user.tenant_id)
     if tenant is None:
+        logger.info("whatsapp gate: tenant %s not found — skipping", user.tenant_id)
         return False
 
     tenant_features = (tenant.settings or {}).get("features") or {}
     if not tenant_features.get("whatsapp_enabled", False):
+        logger.info(
+            "whatsapp gate: tenant %s has whatsapp_enabled OFF — skipping user %s",
+            user.tenant_id, user.id,
+        )
         return False
 
     # Plan-side gate — reuse the same helper the bot uses so plan and
@@ -85,12 +101,16 @@ async def _can_notify_whatsapp(
         return False
 
     if not plan_features.get("whatsapp_enabled", False):
+        logger.info(
+            "whatsapp gate: plan for tenant %s does not include whatsapp — skipping user %s",
+            user.tenant_id, user.id,
+        )
         return False
 
     svc = await get_whatsapp_service_from_db(db)
     if not svc.is_configured:
         logger.info(
-            "WhatsApp opted in for user %s but service not configured — skipping",
+            "whatsapp gate: user %s opted in but WhatsApp service not configured — skipping",
             user.id,
         )
         return False

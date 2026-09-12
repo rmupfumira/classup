@@ -305,7 +305,7 @@ async def list_events(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     """Staff view: every event on this tenant, most recent first."""
     tenant_id = get_tenant_id()
     events = await event_service.list_events(
@@ -323,7 +323,7 @@ async def list_events(
 async def list_my_events(
     upcoming_only: bool = Query(default=True),
     db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     """Parent view: events the parent is invited to (union of school +
     their children's class + their children's individual events)."""
     tenant_id = get_tenant_id()
@@ -346,7 +346,7 @@ async def list_my_events(
 async def create_event(
     body: EventCreate,
     db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     """Create an event + fire invitations to the audience."""
     tenant_id = get_tenant_id()
     user_id = get_current_user_id()
@@ -395,7 +395,7 @@ async def create_event(
 @require_role("SCHOOL_ADMIN", "TEACHER", "PARENT")
 async def get_event(
     event_id: uuid.UUID, db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     tenant_id = get_tenant_id()
     event = await event_service.get_event(db, event_id, tenant_id)
     if not event:
@@ -409,7 +409,7 @@ async def update_event(
     event_id: uuid.UUID,
     body: EventUpdate,
     db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     tenant_id = get_tenant_id()
     event = await event_service.get_event(db, event_id, tenant_id)
     if not event:
@@ -439,7 +439,7 @@ async def update_event(
 async def cancel_event(
     event_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     tenant_id = get_tenant_id()
     event = await event_service.get_event(db, event_id, tenant_id)
     if not event:
@@ -465,7 +465,7 @@ async def cancel_event(
 async def delete_event(
     event_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     tenant_id = get_tenant_id()
     event = await event_service.get_event(db, event_id, tenant_id)
     if not event:
@@ -481,7 +481,7 @@ async def rsvp_event(
     event_id: uuid.UUID,
     body: RsvpRequest,
     db: AsyncSession = Depends(get_db),
-) -> APIResponse:
+):
     """Record a parent's RSVP. Idempotent — the latest response wins."""
     tenant_id = get_tenant_id()
     user_id = get_current_user_id()

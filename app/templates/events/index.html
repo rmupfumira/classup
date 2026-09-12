@@ -204,7 +204,7 @@ async function loadEvents() {
         if (!items.length) {
             wrap.innerHTML = `
                 <div class="text-center py-12 border-2 border-dashed border-neutral-200 rounded-lg">
-                    <p class="text-neutral-500">${IS_STAFF ? 'No events scheduled yet.' : 'No upcoming events. You\\'ll be notified by email + WhatsApp when the school schedules one.'}</p>
+                    <p class="text-neutral-500">${IS_STAFF ? 'No events scheduled yet.' : 'No upcoming events. You will be notified by email + WhatsApp when the school schedules one.'}</p>
                     ${IS_STAFF ? '<button type="button" onclick="openCreateModal()" class="mt-4 inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">Create your first event</button>' : ''}
                 </div>`;
             return;
