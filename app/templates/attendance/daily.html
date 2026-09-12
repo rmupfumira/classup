@@ -270,8 +270,8 @@
             {% endfor %}
         </div>
 
-        <!-- Save Button (Mobile Fixed) -->
-        <div class="sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-neutral-200 shadow-lg">
+        <!-- Save Button (Mobile Fixed) — sits ABOVE the h-14 mobile bottom nav -->
+        <div class="sm:hidden fixed bottom-14 left-0 right-0 p-4 bg-white border-t border-neutral-200 shadow-lg z-30">
             <button type="button" onclick="saveAttendance()"
                     class="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
                 Save Attendance

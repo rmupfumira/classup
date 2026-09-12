@@ -205,7 +205,8 @@
 
                         {% elif section.type == 'REPEATABLE_ENTRIES' %}
                         <div class="space-y-3">
-                            <table class="w-full" id="table-{{ section.id }}">
+                            <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                            <table class="w-full min-w-[500px]" id="table-{{ section.id }}">
                                 <thead>
                                     <tr class="text-left text-sm text-neutral-500">
                                         {% for field in section.fields %}
@@ -218,6 +219,7 @@
                                     <!-- Entries will be added here -->
                                 </tbody>
                             </table>
+                            </div>
                             <button type="button" onclick="addRepeatableEntry('{{ section.id }}')"
                                     class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,8 +237,8 @@
         </div>
     </div>
 
-    <!-- Sticky Action Bar -->
-    <div id="form-actions" class="{% if not selected_template %}hidden{% endif %} sticky bottom-0 z-10">
+    <!-- Sticky Action Bar (offset above the mobile bottom nav which is h-14) -->
+    <div id="form-actions" class="{% if not selected_template %}hidden{% endif %} sticky bottom-14 md:bottom-0 z-10">
         <div class="bg-white rounded-xl shadow-sm border border-neutral-200 px-4 sm:px-6 py-4">
             <!-- Desktop layout -->
             <div class="hidden sm:flex items-center justify-between">
@@ -546,8 +548,8 @@ function renderAcademicGradesSection(section) {
 
     const gradingSystem = section.grading_system || [];
 
-    let html = '<div class="overflow-x-auto">';
-    html += '<table class="min-w-full border border-neutral-300">';
+    let html = '<div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">';
+    html += '<table class="min-w-[600px] w-full border border-neutral-300">';
     html += `<thead><tr class="bg-neutral-100">
         <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">#</th>
         <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">Subject</th>
