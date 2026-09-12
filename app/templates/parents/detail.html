@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}{{ parent.first_name }} {{ parent.last_name }} - Parents{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+        <a href="/parents" class="text-neutral-500 hover:text-neutral-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <div class="flex-1">
+            <h1 class="text-xl sm:text-2xl font-bold text-neutral-900">
+                {{ parent.first_name }} {{ parent.last_name }}
+            </h1>
+            <p class="text-sm text-neutral-500">
+                {{ parent.email }}
+                {% if not parent.is_active %}
+                <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-700">Inactive</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Profile form -->
+    <form id="profile-form" class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-neutral-900">Profile</h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">First Name</label>
+                <input type="text" name="first_name" value="{{ parent.first_name }}"
+                       class="w-full h-10 px-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Last Name</label>
+                <input type="text" name="last_name" value="{{ parent.last_name }}"
+                       class="w-full h-10 px-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Email</label>
+                <input type="email" name="email" value="{{ parent.email }}"
+                       class="w-full h-10 px-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
+                <input type="tel" name="phone" value="{{ parent.phone or '' }}" placeholder="+27821234567"
+                       class="w-full h-10 px-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">
+                    WhatsApp number
+                    <span class="text-xs font-normal text-neutral-500">(leave blank to reuse Phone)</span>
+                </label>
+                <input type="tel" name="whatsapp_phone" value="{{ parent.whatsapp_phone or '' }}" placeholder="+27821234567"
+                       class="w-full h-10 px-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">Language</label>
+                <select name="language"
+                        class="w-full h-10 px-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <option value="en" {% if parent.language == 'en' %}selected{% endif %}>English</option>
+                    <option value="af" {% if parent.language == 'af' %}selected{% endif %}>Afrikaans</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="pt-2 border-t border-neutral-100">
+            <label class="inline-flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" name="whatsapp_opted_in" id="whatsapp_opted_in"
+                       {% if parent.whatsapp_opted_in %}checked{% endif %}
+                       class="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <span>
+                    <span class="block text-sm font-medium text-neutral-900">
+                        WhatsApp notifications enabled
+                    </span>
+                    <span class="block text-xs text-neutral-500">
+                        When on, attendance / report / invoice / event messages go to this parent's WhatsApp too.
+                        Confirm with the parent in person before flipping this on their behalf.
+                    </span>
+                </span>
+            </label>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+            <button type="submit"
+                    class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
+                Save changes
+            </button>
+        </div>
+    </form>
+
+    <!-- Children -->
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900">Children linked</h2>
+            <button type="button" id="link-child-btn"
+                    class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                + Link child
+            </button>
+        </div>
+        {% set active_children = parent.parent_students|selectattr('student')|selectattr('student.deleted_at', 'none')|list %}
+        {% if active_children %}
+        <ul class="divide-y divide-neutral-100">
+            {% for ps in active_children %}
+            <li class="py-3 flex items-center justify-between gap-3">
+                <div>
+                    <a href="/students/{{ ps.student.id }}" class="text-sm font-medium text-neutral-900 hover:text-primary-700">
+                        {{ ps.student.first_name }} {{ ps.student.last_name }}
+                    </a>
+                    <p class="text-xs text-neutral-500">
+                        {{ ps.relationship_type|title }}
+                        {% if ps.is_primary %}
+                        <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-primary-100 text-primary-700">Primary</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <button type="button" class="unlink-child-btn text-xs text-red-600 hover:text-red-700 font-medium"
+                        data-student-id="{{ ps.student.id }}"
+                        data-student-name="{{ ps.student.first_name }} {{ ps.student.last_name }}">
+                    Unlink
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-neutral-500">No children linked. Use "+ Link child" to attach one.</p>
+        {% endif %}
+    </div>
+
+    <!-- Password + account actions -->
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 space-y-3">
+        <h2 class="text-lg font-semibold text-neutral-900">Password & account</h2>
+        <div class="flex flex-col sm:flex-row gap-2">
+            <button type="button" id="send-reset-btn"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-primary-300 text-primary-700 bg-white text-sm font-medium rounded-lg hover:bg-primary-50">
+                Send password reset email
+            </button>
+            <button type="button" id="set-password-btn"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-neutral-300 text-neutral-700 bg-white text-sm font-medium rounded-lg hover:bg-neutral-50">
+                Set a temporary password…
+            </button>
+            {% if parent.is_active %}
+            <button type="button" id="deactivate-btn"
+                    class="sm:ml-auto inline-flex items-center justify-center px-4 py-2 border border-red-300 text-red-700 bg-white text-sm font-medium rounded-lg hover:bg-red-50">
+                Deactivate account
+            </button>
+            {% else %}
+            <button type="button" id="activate-btn"
+                    class="sm:ml-auto inline-flex items-center justify-center px-4 py-2 border border-green-300 text-green-700 bg-white text-sm font-medium rounded-lg hover:bg-green-50">
+                Reactivate account
+            </button>
+            {% endif %}
+        </div>
+        <p class="text-xs text-neutral-500">
+            <strong>Send reset email</strong> is the recommended path — the parent picks their own new password
+            and you never see it. <strong>Set a temporary password</strong> is for cases where the parent has no email
+            access; share it over a safe channel and ask them to change it immediately.
+        </p>
+    </div>
+</div>
+
+<!-- Link child dialog -->
+<dialog id="link-child-dialog" class="rounded-xl p-0 backdrop:bg-black/50 w-11/12 max-w-md">
+    <form method="dialog" class="p-6 space-y-4">
+        <h3 class="text-lg font-semibold text-neutral-900">Link a child to this parent</h3>
+        <div class="relative">
+            <input type="text" id="link-child-search" autocomplete="off"
+                   placeholder="Search students by name…"
+                   class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            <div id="link-child-suggestions"
+                 class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-md shadow-lg max-h-56 overflow-y-auto"></div>
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm text-neutral-700">
+            <input type="checkbox" id="link-child-primary" class="rounded border-neutral-300 text-primary-600">
+            Set as primary contact for this child
+        </label>
+        <div class="flex justify-end">
+            <button type="button" id="link-child-cancel"
+                    class="px-3 py-2 text-sm text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50">
+                Cancel
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Set password dialog -->
+<dialog id="set-password-dialog" class="rounded-xl p-0 backdrop:bg-black/50 w-11/12 max-w-md">
+    <form method="dialog" id="set-password-form" class="p-6 space-y-4">
+        <h3 class="text-lg font-semibold text-neutral-900">Set temporary password</h3>
+        <p class="text-xs text-neutral-500">
+            Minimum 8 characters. Share it over a safe channel and remind the parent to change it after they log in.
+        </p>
+        <input type="text" id="set-password-input" minlength="8" required
+               class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+        <div class="flex justify-end gap-2">
+            <button type="button" id="set-password-cancel"
+                    class="px-3 py-2 text-sm text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="px-3 py-2 text-sm text-white bg-primary-600 rounded-lg hover:bg-primary-700">
+                Set password
+            </button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const parentId = "{{ parent.id }}";
+
+    // ─── Profile save ─────────────────────────────────────────────
+    document.getElementById('profile-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const payload = {
+            first_name: fd.get('first_name'),
+            last_name: fd.get('last_name'),
+            email: fd.get('email'),
+            phone: fd.get('phone') || '',
+            whatsapp_phone: fd.get('whatsapp_phone') || '',
+            whatsapp_opted_in: document.getElementById('whatsapp_opted_in').checked,
+            language: fd.get('language'),
+        };
+        try {
+            const res = await ClassUp.fetch(`/api/v1/users/parents/${parentId}`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            ClassUp.toast(res.message || 'Saved', 'success');
+            setTimeout(() => window.location.reload(), 500);
+        } catch (err) {
+            ClassUp.toast(err.message || 'Failed to save', 'error');
+        }
+    });
+
+    // ─── Send reset email ────────────────────────────────────────
+    document.getElementById('send-reset-btn').addEventListener('click', async () => {
+        const ok = await ClassUp.confirm(
+            `Send a password-reset email to {{ parent.email }}? They'll pick a new password themselves and you won't see it.`,
+            {confirmText: 'Send email'},
+        );
+        if (!ok) return;
+        try {
+            const res = await ClassUp.fetch(`/api/v1/users/parents/${parentId}/reset-password`, {method: 'POST'});
+            ClassUp.toast(res.message || 'Reset email sent', 'success');
+        } catch (err) {
+            ClassUp.toast(err.message || 'Failed to send reset email', 'error');
+        }
+    });
+
+    // ─── Set temporary password ──────────────────────────────────
+    const setPwdDialog = document.getElementById('set-password-dialog');
+    document.getElementById('set-password-btn').addEventListener('click', () => setPwdDialog.showModal());
+    document.getElementById('set-password-cancel').addEventListener('click', () => setPwdDialog.close());
+    document.getElementById('set-password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const pwd = document.getElementById('set-password-input').value;
+        if (pwd.length < 8) {
+            ClassUp.toast('Password must be at least 8 characters', 'error');
+            return;
+        }
+        try {
+            const res = await ClassUp.fetch(`/api/v1/users/parents/${parentId}/set-password`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: pwd}),
+            });
+            ClassUp.toast(res.message || 'Password updated', 'success');
+            setPwdDialog.close();
+        } catch (err) {
+            ClassUp.toast(err.message || 'Failed to set password', 'error');
+        }
+    });
+
+    // ─── Deactivate / Activate ───────────────────────────────────
+    const deactivateBtn = document.getElementById('deactivate-btn');
+    if (deactivateBtn) {
+        deactivateBtn.addEventListener('click', async () => {
+            const ok = await ClassUp.confirm(
+                `Deactivate {{ parent.first_name }}? They lose login access. Their history stays intact and you can reactivate any time.`,
+                {confirmText: 'Deactivate', danger: true},
+            );
+            if (!ok) return;
+            try {
+                const res = await ClassUp.fetch(`/api/v1/users/parents/${parentId}/deactivate`, {method: 'POST'});
+                ClassUp.toast(res.message || 'Deactivated', 'success');
+                setTimeout(() => window.location.reload(), 500);
+            } catch (err) {
+                ClassUp.toast(err.message || 'Failed to deactivate', 'error');
+            }
+        });
+    }
+    const activateBtn = document.getElementById('activate-btn');
+    if (activateBtn) {
+        activateBtn.addEventListener('click', async () => {
+            try {
+                const res = await ClassUp.fetch(`/api/v1/users/parents/${parentId}/activate`, {method: 'POST'});
+                ClassUp.toast(res.message || 'Reactivated', 'success');
+                setTimeout(() => window.location.reload(), 500);
+            } catch (err) {
+                ClassUp.toast(err.message || 'Failed to activate', 'error');
+            }
+        });
+    }
+
+    // ─── Unlink child ────────────────────────────────────────────
+    document.querySelectorAll('.unlink-child-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const studentId = btn.dataset.studentId;
+            const studentName = btn.dataset.studentName;
+            const ok = await ClassUp.confirm(
+                `Unlink ${studentName} from this parent? The parent will lose access to this child's data.`,
+                {confirmText: 'Unlink', danger: true},
+            );
+            if (!ok) return;
+            try {
+                await ClassUp.fetch(`/api/v1/students/${studentId}/parents/${parentId}`, {method: 'DELETE'});
+                ClassUp.toast(`${studentName} unlinked`, 'success');
+                setTimeout(() => window.location.reload(), 500);
+            } catch (err) {
+                ClassUp.toast(err.message || 'Failed to unlink', 'error');
+            }
+        });
+    });
+
+    // ─── Link child ──────────────────────────────────────────────
+    const linkDialog = document.getElementById('link-child-dialog');
+    const linkSearch = document.getElementById('link-child-search');
+    const linkSuggestions = document.getElementById('link-child-suggestions');
+    const linkPrimary = document.getElementById('link-child-primary');
+
+    document.getElementById('link-child-btn').addEventListener('click', () => {
+        linkSearch.value = '';
+        linkSuggestions.classList.add('hidden');
+        linkPrimary.checked = false;
+        linkDialog.showModal();
+        setTimeout(() => linkSearch.focus(), 100);
+    });
+    document.getElementById('link-child-cancel').addEventListener('click', () => linkDialog.close());
+
+    let searchTimer = null;
+    linkSearch.addEventListener('input', () => {
+        const q = linkSearch.value.trim();
+        clearTimeout(searchTimer);
+        if (q.length < 2) {
+            linkSuggestions.classList.add('hidden');
+            return;
+        }
+        searchTimer = setTimeout(async () => {
+            try {
+                const res = await ClassUp.fetch(`/api/v1/students?search=${encodeURIComponent(q)}&page_size=8`);
+                renderStudentMatches(res.data || []);
+            } catch (err) { /* silent */ }
+        }, 200);
+    });
+
+    function renderStudentMatches(students) {
+        if (!students.length) {
+            linkSuggestions.classList.add('hidden');
+            return;
+        }
+        linkSuggestions.innerHTML = students.map((s, idx) => `
+            <button type="button" data-idx="${idx}" class="link-sug w-full text-left px-3 py-2 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50">
+                <p class="text-sm font-medium text-neutral-900">${s.first_name} ${s.last_name}</p>
+                <p class="text-xs text-neutral-500">${s.class_name || (s.grade_level || 'No class assigned')}</p>
+            </button>
+        `).join('');
+        linkSuggestions.classList.remove('hidden');
+        linkSuggestions.querySelectorAll('.link-sug').forEach(btn => {
+            btn.addEventListener('click', () => linkChild(students[Number(btn.dataset.idx)]));
+        });
+    }
+
+    async function linkChild(student) {
+        try {
+            await ClassUp.fetch(`/api/v1/students/${student.id}/parents`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    parent_id: parentId,
+                    relationship_type: 'PARENT',
+                    is_primary: linkPrimary.checked,
+                }),
+            });
+            ClassUp.toast(`${student.first_name} linked`, 'success');
+            linkDialog.close();
+            setTimeout(() => window.location.reload(), 500);
+        } catch (err) {
+            ClassUp.toast(err.message || 'Failed to link', 'error');
+        }
+    }
+});
+</script>
+{% endblock %}

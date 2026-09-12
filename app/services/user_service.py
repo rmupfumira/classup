@@ -305,6 +305,183 @@ class UserService:
         await db.refresh(teacher)
         return teacher
 
+    # =========================================================================
+    # Parent management (admin-side)
+    #
+    # Symmetric with the teacher block above — every mutation guards on
+    # role == PARENT so a stray call can't corrupt a teacher or staff
+    # user through this surface. Kept separate rather than role-generic
+    # because parent flows have subtly different rules (WhatsApp opt-in,
+    # child linkage, invitation lifecycle) that a generic update would
+    # blur.
+    # =========================================================================
+
+    async def list_parents(
+        self,
+        db: AsyncSession,
+        search: str | None = None,
+        include_inactive: bool = False,
+        opted_in_only: bool = False,
+        page: int = 1,
+        page_size: int = 25,
+    ) -> tuple[list[User], int]:
+        """List parents on the current tenant with pagination + total count.
+
+        Distinct from ``get_parents_paginated`` (the typeahead) — this
+        one is the admin's full management list: pagination, filters,
+        the full User row plus eager-loaded children.
+        """
+        from app.models.student import ParentStudent
+
+        tenant_id = get_tenant_id()
+
+        filters = [
+            User.tenant_id == tenant_id,
+            User.role == Role.PARENT.value,
+            User.deleted_at.is_(None),
+        ]
+        if not include_inactive:
+            filters.append(User.is_active.is_(True))
+        if opted_in_only:
+            filters.append(User.whatsapp_opted_in.is_(True))
+        if search:
+            term = f"%{search.strip()}%"
+            filters.append(
+                (User.first_name.ilike(term))
+                | (User.last_name.ilike(term))
+                | (User.email.ilike(term))
+                | (User.phone.ilike(term))
+                | (User.whatsapp_phone.ilike(term))
+            )
+
+        count_q = select(func.count(User.id)).where(*filters)
+        total = (await db.execute(count_q)).scalar() or 0
+
+        query = (
+            select(User)
+            .where(*filters)
+            .options(
+                selectinload(User.parent_students).selectinload(
+                    ParentStudent.student
+                ),
+            )
+            .order_by(User.first_name, User.last_name)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        result = await db.execute(query)
+        return list(result.scalars().all()), total
+
+    async def get_parent(self, db: AsyncSession, parent_id: uuid.UUID) -> User:
+        """Return one parent (with children eager-loaded). 404 if the
+        target isn't a PARENT on this tenant — guards against a caller
+        passing a teacher/admin id and mutating the wrong row through
+        the parent endpoints."""
+        from app.models.student import ParentStudent
+
+        tenant_id = get_tenant_id()
+        stmt = (
+            select(User)
+            .where(
+                User.id == parent_id,
+                User.tenant_id == tenant_id,
+                User.role == Role.PARENT.value,
+                User.deleted_at.is_(None),
+            )
+            .options(
+                selectinload(User.parent_students).selectinload(
+                    ParentStudent.student
+                ),
+            )
+        )
+        parent = (await db.execute(stmt)).scalar_one_or_none()
+        if parent is None:
+            raise NotFoundException("Parent")
+        return parent
+
+    async def update_parent(
+        self,
+        db: AsyncSession,
+        parent_id: uuid.UUID,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        email: str | None = None,
+        phone: str | None = ...,
+        whatsapp_phone: str | None = ...,
+        whatsapp_opted_in: bool | None = None,
+        language: str | None = None,
+    ) -> User:
+        """Admin edits a parent's profile on their behalf. Same email-
+        uniqueness rule as the teacher path. ``phone`` and
+        ``whatsapp_phone`` use the sentinel `...` to distinguish
+        "clear to NULL" from "leave alone" — a plain ``None`` clears
+        the field."""
+        parent = await self.get_parent(db, parent_id)
+
+        if first_name is not None:
+            parent.first_name = first_name.strip()
+        if last_name is not None:
+            parent.last_name = last_name.strip()
+        if email is not None:
+            email = email.lower().strip()
+            if email != parent.email:
+                tenant_id = get_tenant_id()
+                existing = await db.execute(
+                    select(User).where(
+                        User.tenant_id == tenant_id,
+                        User.email == email,
+                        User.deleted_at.is_(None),
+                        User.id != parent_id,
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    raise ConflictException("A user with this email already exists")
+                parent.email = email
+        if phone is not ...:
+            parent.phone = phone.strip() if phone else None
+        if whatsapp_phone is not ...:
+            parent.whatsapp_phone = whatsapp_phone.strip() if whatsapp_phone else None
+        if whatsapp_opted_in is not None:
+            # If the admin flips opt-in ON but there's no whatsapp_phone,
+            # fall back to the regular phone so the flag actually means
+            # something. Silent on the outbound gate side.
+            if whatsapp_opted_in and not parent.whatsapp_phone and parent.phone:
+                parent.whatsapp_phone = parent.phone
+            parent.whatsapp_opted_in = whatsapp_opted_in
+        if language is not None:
+            parent.language = language.strip()
+
+        await db.commit()
+        await db.refresh(parent)
+        return parent
+
+    async def deactivate_parent(
+        self, db: AsyncSession, parent_id: uuid.UUID
+    ) -> User:
+        parent = await self.get_parent(db, parent_id)
+        parent.is_active = False
+        await db.commit()
+        await db.refresh(parent)
+        return parent
+
+    async def activate_parent(
+        self, db: AsyncSession, parent_id: uuid.UUID
+    ) -> User:
+        parent = await self.get_parent(db, parent_id)
+        parent.is_active = True
+        await db.commit()
+        await db.refresh(parent)
+        return parent
+
+    async def admin_set_parent_password(
+        self, db: AsyncSession, parent_id: uuid.UUID, new_password: str
+    ) -> User:
+        parent = await self.get_parent(db, parent_id)
+        parent.password_hash = hash_password(new_password)
+        await db.commit()
+        await db.refresh(parent)
+        return parent
+
     async def count_users_by_role(
         self,
         db: AsyncSession,

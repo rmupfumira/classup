@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Parents - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-neutral-900">Parents</h1>
+            <p class="text-sm text-neutral-500">
+                Manage parent accounts on your school.
+                Edit contacts, reset passwords, toggle WhatsApp opt-in, or link children.
+            </p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <input type="text" name="search" value="{{ search }}"
+               placeholder="Search name / email / phone / WhatsApp number…"
+               class="flex-1 h-10 px-3 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+        <label class="inline-flex items-center gap-2 text-sm text-neutral-700">
+            <input type="checkbox" name="opted_in_only" value="1" {% if opted_in_only %}checked{% endif %}
+                   class="rounded border-neutral-300 text-primary-600">
+            WhatsApp opted-in
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm text-neutral-700">
+            <input type="checkbox" name="include_inactive" value="1" {% if include_inactive %}checked{% endif %}
+                   class="rounded border-neutral-300 text-primary-600">
+            Include inactive
+        </label>
+        <button type="submit"
+                class="inline-flex items-center justify-center h-10 px-4 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
+            Filter
+        </button>
+    </form>
+
+    <!-- Count -->
+    <p class="text-xs text-neutral-500">
+        Showing {{ parents|length }} of {{ total }} parent{{ '' if total == 1 else 's' }}.
+    </p>
+
+    {% if parents %}
+    <!-- Desktop table -->
+    <div class="hidden md:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-neutral-50 border-b border-neutral-200">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Email</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Phone</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider">WhatsApp</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Children</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Last Login</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-100">
+                {% for parent in parents %}
+                <tr class="{% if not parent.is_active %}bg-neutral-50 opacity-70{% endif %}">
+                    <td class="px-4 py-3">
+                        <a href="/parents/{{ parent.id }}" class="font-medium text-neutral-900 hover:text-primary-700">
+                            {{ parent.first_name }} {{ parent.last_name }}
+                        </a>
+                        {% if not parent.is_active %}
+                        <span class="ml-2 text-xs px-1.5 py-0.5 bg-neutral-200 text-neutral-700 rounded">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-neutral-700">{{ parent.email }}</td>
+                    <td class="px-4 py-3 text-neutral-600">{{ parent.phone or '—' }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% if parent.whatsapp_opted_in and parent.whatsapp_phone %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700" title="{{ parent.whatsapp_phone }}">
+                            Opted in
+                        </span>
+                        {% elif parent.whatsapp_phone %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                            Phone only
+                        </span>
+                        {% else %}
+                        <span class="text-xs text-neutral-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% set active_children = parent.parent_students|selectattr('student')|selectattr('student.deleted_at', 'none')|list %}
+                        {% if active_children %}
+                        <span class="text-xs text-neutral-700">
+                            {% for ps in active_children[:3] %}
+                            {{ ps.student.first_name }} {{ ps.student.last_name }}{% if not loop.last %},{% endif %}
+                            {% endfor %}
+                            {% if active_children|length > 3 %}
+                            <span class="text-neutral-500"> +{{ active_children|length - 3 }} more</span>
+                            {% endif %}
+                        </span>
+                        {% else %}
+                        <span class="text-xs text-neutral-400">No children linked</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-neutral-500 text-xs">
+                        {{ parent.last_login_at.strftime('%d %b %Y') if parent.last_login_at else 'Never' }}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <a href="/parents/{{ parent.id }}"
+                           class="text-primary-600 hover:text-primary-700 text-xs font-medium">Manage →</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Mobile card list -->
+    <div class="md:hidden space-y-3">
+        {% for parent in parents %}
+        <a href="/parents/{{ parent.id }}"
+           class="block bg-white rounded-lg shadow-sm border border-neutral-200 p-4 {% if not parent.is_active %}opacity-70{% endif %}">
+            <div class="flex items-center justify-between mb-1">
+                <p class="font-medium text-neutral-900">
+                    {{ parent.first_name }} {{ parent.last_name }}
+                </p>
+                {% if parent.whatsapp_opted_in and parent.whatsapp_phone %}
+                <span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700">WhatsApp</span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-neutral-600">{{ parent.email }}</p>
+            <p class="text-xs text-neutral-500">{{ parent.phone or 'No phone' }}</p>
+            {% set active_children = parent.parent_students|selectattr('student')|selectattr('student.deleted_at', 'none')|list %}
+            {% if active_children %}
+            <p class="text-xs text-neutral-500 mt-1">
+                {{ active_children|length }} child{{ '' if active_children|length == 1 else 'ren' }}
+            </p>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between text-sm">
+        {% set qs_base = 'search=' ~ search ~ ('&opted_in_only=1' if opted_in_only else '') ~ ('&include_inactive=1' if include_inactive else '') %}
+        <div>
+            {% if page > 1 %}
+            <a href="?{{ qs_base }}&page={{ page - 1 }}"
+               class="px-3 py-1.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50">← Previous</a>
+            {% endif %}
+        </div>
+        <p class="text-xs text-neutral-500">Page {{ page }} of {{ total_pages }}</p>
+        <div>
+            {% if page < total_pages %}
+            <a href="?{{ qs_base }}&page={{ page + 1 }}"
+               class="px-3 py-1.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50">Next →</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
+        <p class="text-neutral-500">
+            {% if search or opted_in_only or include_inactive %}
+            No parents match those filters.
+            {% else %}
+            No parents on your tenant yet.
+            Invite parents from the <a href="/students" class="text-primary-600 underline">student page</a>.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
