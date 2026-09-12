@@ -34,6 +34,7 @@
 
     {% if timetables %}
     <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="min-w-full">
             <thead>
                 <tr class="bg-neutral-50 border-b border-neutral-200">
@@ -68,6 +69,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
     {% else %}
     <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">

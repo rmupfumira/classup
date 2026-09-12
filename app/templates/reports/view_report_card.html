@@ -336,7 +336,7 @@
         {% if section.type == 'SIGNATURES' %}
         {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
         <div class="p-6 border-t border-neutral-200">
-            <div class="grid grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
                 <div class="text-center">
                     <div class="h-12 border-b border-neutral-400 mb-2"></div>
                     <p class="text-sm text-neutral-600">Class Teacher</p>

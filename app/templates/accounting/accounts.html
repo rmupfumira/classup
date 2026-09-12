@@ -25,7 +25,7 @@
     <form class="p-6" onsubmit="submitAccount(event)">
         <h3 class="text-lg font-semibold text-neutral-800 mb-4" id="acct-title">Add account</h3>
         <input type="hidden" id="a-id">
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Code</label>
                 <input type="text" id="a-code" required maxlength="20" placeholder="e.g. 5120"
@@ -40,12 +40,12 @@
                     <option value="LIABILITY">Liability</option>
                 </select>
             </div>
-            <div class="col-span-2">
+            <div class="sm:col-span-2">
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Name</label>
                 <input type="text" id="a-name" required maxlength="120"
                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
             </div>
-            <div class="col-span-2">
+            <div class="sm:col-span-2">
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Description (optional)</label>
                 <textarea id="a-desc" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
             </div>
@@ -86,6 +86,7 @@ async function load() {
                     <h2 class="text-sm font-semibold ${meta.colour}">${meta.label}</h2>
                     <span class="text-xs text-neutral-500">${arr.length} account${arr.length === 1 ? '' : 's'}</span>
                 </div>
+                <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <tbody class="divide-y divide-neutral-100">
                         ${arr.map(a => `
@@ -105,6 +106,7 @@ async function load() {
                         `).join('')}
                     </tbody>
                 </table>
+                </div>
             </div>
         `;
         wrap.insertAdjacentHTML('beforeend', html);

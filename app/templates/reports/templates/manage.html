@@ -44,7 +44,7 @@
                             </span>
                             {% endif %}
                         </div>
-                        <div class="flex items-center gap-2 mt-1">
+                        <div class="flex items-center flex-wrap gap-x-2 gap-y-1 mt-1">
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
                                 {% if template.report_type == 'DAILY_ACTIVITY' %}bg-blue-100 text-blue-700
                                 {% elif template.report_type == 'PROGRESS_REPORT' %}bg-purple-100 text-purple-700
@@ -56,7 +56,7 @@
                             <span class="text-xs text-neutral-500">{{ template.sections | length }} section(s)</span>
                             {% if template.applies_to_grade_level %}
                             <span class="text-xs text-neutral-300">|</span>
-                            <span class="text-xs text-neutral-500">{{ template.applies_to_grade_level }}</span>
+                            <span class="text-xs text-neutral-500 break-all">{{ template.applies_to_grade_level }}</span>
                             {% endif %}
                         </div>
                         {% if template.description %}
