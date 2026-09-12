@@ -30,6 +30,23 @@ WHATSAPP_SETTINGS_KEY = "whatsapp_config"
 MASKED = "********"
 
 
+def _describe_payload(payload: dict) -> str:
+    """Compact one-word summary of a Meta send payload for log lines.
+
+    ``template:<name>`` for template sends, otherwise the top-level
+    ``type`` (``text`` / ``image`` / ``document`` / ``interactive``).
+    Used by the temporary diagnostic logging in ``_send_request``.
+    """
+    kind = payload.get("type")
+    if kind == "template":
+        name = ((payload.get("template") or {}).get("name")) or "template"
+        return f"template:{name}"
+    if kind == "interactive":
+        sub = ((payload.get("interactive") or {}).get("type")) or "interactive"
+        return f"interactive:{sub}"
+    return str(kind or "unknown")
+
+
 @dataclass(frozen=True)
 class WhatsAppConfig:
     """Resolved WhatsApp credentials — from DB if set, else env vars."""
@@ -263,7 +280,10 @@ class WhatsAppService:
             API response dict, or None if WhatsApp isn't configured.
         """
         if not self.is_configured:
-            logger.warning("WhatsApp not configured, skipping message")
+            logger.warning(
+                "WhatsApp not configured, skipping message to +%s",
+                str(to_phone or "").lstrip("+"),
+            )
             return None
 
         clean_phone = to_phone.lstrip("+")
@@ -344,7 +364,10 @@ class WhatsAppService:
             API response dict or None if failed
         """
         if not self.is_configured:
-            logger.warning("WhatsApp not configured, skipping message")
+            logger.warning(
+                "WhatsApp not configured, skipping message to +%s",
+                str(to_phone or "").lstrip("+"),
+            )
             return None
 
         clean_phone = to_phone.lstrip("+")
@@ -498,6 +521,10 @@ class WhatsAppService:
         this call will fail with a 24hr window error.
         """
         if not self.is_configured:
+            logger.warning(
+                "WhatsApp not configured, skipping message to +%s",
+                str(to_phone or "").lstrip("+"),
+            )
             return None
         payload = {
             "messaging_product": "whatsapp",
@@ -524,6 +551,10 @@ class WhatsAppService:
         appears below the image.
         """
         if not self.is_configured:
+            logger.warning(
+                "WhatsApp not configured, skipping message to +%s",
+                str(to_phone or "").lstrip("+"),
+            )
             return None
         payload = {
             "messaging_product": "whatsapp",
@@ -593,7 +624,10 @@ class WhatsAppService:
         400 doesn't.
         """
         if not self.is_configured:
-            logger.warning("WhatsApp not configured, skipping message")
+            logger.warning(
+                "WhatsApp not configured, skipping message to +%s",
+                str(to_phone or "").lstrip("+"),
+            )
             return None
 
         if not buttons:
@@ -657,7 +691,10 @@ class WhatsAppService:
             footer: Optional footer (max 60 chars).
         """
         if not self.is_configured:
-            logger.warning("WhatsApp not configured, skipping message")
+            logger.warning(
+                "WhatsApp not configured, skipping message to +%s",
+                str(to_phone or "").lstrip("+"),
+            )
             return None
 
         total_rows = sum(len(s.get("rows", [])) for s in sections)
@@ -701,8 +738,21 @@ class WhatsAppService:
         })
 
     async def _send_request(self, payload: dict) -> dict | None:
-        """Send a request to the WhatsApp API."""
+        """Send a request to the WhatsApp API.
+
+        DIAGNOSTIC LOGGING (temporary): every send now logs the target
+        phone + payload type on both success and failure paths, at INFO,
+        so we can watch messages flow in the tail during testing. Remove
+        the phone-number fields from these log lines once send failures
+        are diagnosed — WhatsApp numbers count as PII under POPIA and
+        shouldn't sit in long-term application logs unnecessarily.
+        """
         url = f"{self.api_url}/{self.phone_number_id}/messages"
+
+        # Pull out what we want to log up front so every code path
+        # below can use the same values, regardless of where it exits.
+        to_phone = str(payload.get("to") or "")
+        msg_kind = _describe_payload(payload)
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -717,14 +767,25 @@ class WhatsAppService:
 
                 if response.status_code == 200:
                     result = response.json()
-                    logger.info(f"WhatsApp message sent: {result.get('messages', [{}])[0].get('id')}")
+                    meta_id = (result.get("messages") or [{}])[0].get("id")
+                    logger.info(
+                        "WhatsApp SEND OK  to=+%s kind=%s meta_id=%s",
+                        to_phone, msg_kind, meta_id,
+                    )
                     return result
                 else:
-                    logger.error(f"WhatsApp API error: {response.status_code} - {response.text}")
+                    logger.error(
+                        "WhatsApp SEND FAIL  to=+%s kind=%s status=%s body=%s",
+                        to_phone, msg_kind, response.status_code,
+                        response.text[:500],
+                    )
                     return None
 
         except Exception as e:
-            logger.error(f"Failed to send WhatsApp message: {e}")
+            logger.error(
+                "WhatsApp SEND EXC  to=+%s kind=%s error=%s",
+                to_phone, msg_kind, e,
+            )
             return None
 
     def parse_webhook_message(self, body: dict) -> list[dict]:
