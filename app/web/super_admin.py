@@ -499,6 +499,54 @@ async def whatsapp_settings_page(request: Request, db: AsyncSession = Depends(ge
     )
 
 
+@router.get("/whatsapp-conversations", response_class=HTMLResponse)
+async def whatsapp_conversations_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Super admin: conversation log — every WhatsApp thread between
+    the platform and a parent, grouped by phone."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    _require_super_admin()
+
+    return templates.TemplateResponse(
+        "super_admin/whatsapp_conversations.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
+@router.get("/whatsapp-conversations/{phone}", response_class=HTMLResponse)
+async def whatsapp_conversation_thread_page(
+    phone: str, request: Request, db: AsyncSession = Depends(get_db),
+):
+    """Super admin: single-conversation thread view."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    _require_super_admin()
+
+    return templates.TemplateResponse(
+        "super_admin/whatsapp_conversation_thread.html",
+        {
+            "request": request,
+            "user": user,
+            "phone": phone,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
 @router.get("/ai-settings", response_class=HTMLResponse)
 async def ai_settings_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Super admin page: Anthropic API key + model for the AI-mode bot."""

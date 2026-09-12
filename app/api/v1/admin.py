@@ -5,6 +5,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
+import sqlalchemy as sa
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1036,6 +1037,278 @@ async def list_recent_whatsapp_messages(
             }
             for r in rows
         ],
+    )
+
+
+# ==========================================================================
+# WhatsApp conversations — full inbound + outbound thread per phone
+#
+# The ``/whatsapp-messages`` endpoint above is a one-sided firehose of
+# inbound messages. This section adds the outbound side (from the new
+# ``whatsapp_outbound_messages`` table) and joins the two into a
+# proper chronological thread per parent, so super admin can review
+# the full conversation — what a parent asked, what the bot said back,
+# what notifications went out.
+# ==========================================================================
+
+
+@router.get("/whatsapp-conversations")
+@require_super_admin()
+async def list_whatsapp_conversations(
+    q: str | None = Query(None, max_length=200),
+    tenant_id: uuid.UUID | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Grouped-by-phone list of everyone who has messaged (or been
+    messaged by) the school on WhatsApp.
+
+    Each row: phone, matched parent (if any), tenant, last-message
+    preview (with direction), last-message timestamp, message count.
+    Newest activity first — the top of the list is who most recently
+    talked to the bot or received a notification.
+    """
+    from app.models import Tenant, User, WhatsAppInboundMessage, WhatsAppOutboundMessage
+    from sqlalchemy import select as sa_select, union_all, literal, func
+
+    # Union of every message to/from every phone so we can rank by the
+    # most recent activity across both sides.
+    inb = sa_select(
+        WhatsAppInboundMessage.from_phone.label("phone"),
+        WhatsAppInboundMessage.text.label("body"),
+        WhatsAppInboundMessage.message_type.label("msg_type"),
+        WhatsAppInboundMessage.matched_user_id.label("user_id"),
+        WhatsAppInboundMessage.tenant_id.label("tenant_id"),
+        literal("IN").label("direction"),
+        WhatsAppInboundMessage.created_at.label("created_at"),
+    )
+    outb = sa_select(
+        WhatsAppOutboundMessage.to_phone.label("phone"),
+        WhatsAppOutboundMessage.body_text.label("body"),
+        WhatsAppOutboundMessage.message_type.label("msg_type"),
+        WhatsAppOutboundMessage.target_user_id.label("user_id"),
+        WhatsAppOutboundMessage.tenant_id.label("tenant_id"),
+        literal("OUT").label("direction"),
+        WhatsAppOutboundMessage.created_at.label("created_at"),
+    )
+    stream = union_all(inb, outb).subquery()
+
+    # Aggregate per phone — latest message + total count.
+    agg = sa_select(
+        stream.c.phone,
+        func.max(stream.c.created_at).label("last_at"),
+        func.count().label("msg_count"),
+    ).group_by(stream.c.phone).subquery()
+
+    # Join back to grab the latest row per phone for the preview.
+    latest = sa_select(stream).order_by(stream.c.created_at.desc()).subquery("latest")
+
+    query = (
+        sa_select(agg.c.phone, agg.c.last_at, agg.c.msg_count)
+        .order_by(agg.c.last_at.desc())
+    )
+
+    if q:
+        term = f"%{q.strip()}%"
+        query = query.where(agg.c.phone.ilike(term))
+
+    if tenant_id:
+        # Filter to phones that have at least one message tagged with
+        # this tenant on either side.
+        query = query.where(
+            agg.c.phone.in_(
+                sa_select(stream.c.phone)
+                .where(stream.c.tenant_id == tenant_id)
+                .distinct()
+            )
+        )
+
+    # Total count for pagination
+    count_q = sa_select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
+
+    query = query.offset((page - 1) * page_size).limit(page_size)
+    rows = (await db.execute(query)).all()
+
+    # Enrich each row with the latest message preview + matched user + tenant.
+    phones = [r.phone for r in rows]
+    if not phones:
+        return APIResponse(
+            status="success",
+            data={"conversations": [], "page": page, "page_size": page_size, "total": total},
+        )
+
+    # For each phone, grab the single most recent inbound OR outbound row.
+    # SQLAlchemy doesn't do a lateral join here easily — one query per
+    # phone is fine at page_size 25.
+    conversations = []
+    user_ids: set[uuid.UUID] = set()
+    tenant_ids: set[uuid.UUID] = set()
+
+    for row in rows:
+        recent_stmt = (
+            union_all(
+                sa_select(
+                    WhatsAppInboundMessage.text.label("body"),
+                    WhatsAppInboundMessage.matched_user_id.label("user_id"),
+                    WhatsAppInboundMessage.tenant_id.label("tenant_id"),
+                    literal("IN").label("direction"),
+                    WhatsAppInboundMessage.created_at.label("created_at"),
+                ).where(WhatsAppInboundMessage.from_phone == row.phone),
+                sa_select(
+                    WhatsAppOutboundMessage.body_text.label("body"),
+                    WhatsAppOutboundMessage.target_user_id.label("user_id"),
+                    WhatsAppOutboundMessage.tenant_id.label("tenant_id"),
+                    literal("OUT").label("direction"),
+                    WhatsAppOutboundMessage.created_at.label("created_at"),
+                ).where(WhatsAppOutboundMessage.to_phone == row.phone),
+            )
+            .order_by(sa.text("created_at DESC"))
+            .limit(1)
+        )
+        rec = (await db.execute(recent_stmt)).first()
+        preview_body = (rec.body if rec else "") or ""
+        preview_dir = rec.direction if rec else "IN"
+        user_id_for_row = rec.user_id if rec else None
+        tenant_id_for_row = rec.tenant_id if rec else None
+        if user_id_for_row:
+            user_ids.add(user_id_for_row)
+        if tenant_id_for_row:
+            tenant_ids.add(tenant_id_for_row)
+        conversations.append({
+            "phone": row.phone,
+            "last_at": row.last_at.isoformat(),
+            "msg_count": int(row.msg_count),
+            "preview": preview_body[:200],
+            "preview_direction": preview_dir,
+            "_user_id": user_id_for_row,
+            "_tenant_id": tenant_id_for_row,
+        })
+
+    users_map: dict = {}
+    tenants_map: dict = {}
+    if user_ids:
+        users_res = await db.execute(sa_select(User).where(User.id.in_(user_ids)))
+        users_map = {u.id: u for u in users_res.scalars().all()}
+    if tenant_ids:
+        tenants_res = await db.execute(sa_select(Tenant).where(Tenant.id.in_(tenant_ids)))
+        tenants_map = {t.id: t for t in tenants_res.scalars().all()}
+
+    for c in conversations:
+        u = users_map.get(c.pop("_user_id"))
+        t = tenants_map.get(c.pop("_tenant_id"))
+        c["matched_user"] = (
+            {
+                "id": str(u.id),
+                "name": f"{u.first_name} {u.last_name}".strip(),
+                "email": u.email,
+            }
+            if u else None
+        )
+        c["tenant"] = {"id": str(t.id), "name": t.name} if t else None
+
+    return APIResponse(
+        status="success",
+        data={
+            "conversations": conversations,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+        },
+    )
+
+
+@router.get("/whatsapp-conversations/{phone}")
+@require_super_admin()
+async def get_whatsapp_conversation(
+    phone: str,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Full interleaved thread for one phone number — every inbound
+    and every outbound, chronological, oldest first."""
+    from app.models import Tenant, User, WhatsAppInboundMessage, WhatsAppOutboundMessage
+    from sqlalchemy import select as sa_select
+
+    # Trailing '+' is not part of the DB phone format (Meta strips it).
+    normalized = phone.lstrip("+").strip()
+
+    inb_rows = (await db.execute(
+        sa_select(WhatsAppInboundMessage)
+        .where(WhatsAppInboundMessage.from_phone == normalized)
+        .order_by(WhatsAppInboundMessage.created_at.asc())
+    )).scalars().all()
+
+    outb_rows = (await db.execute(
+        sa_select(WhatsAppOutboundMessage)
+        .where(WhatsAppOutboundMessage.to_phone == normalized)
+        .order_by(WhatsAppOutboundMessage.created_at.asc())
+    )).scalars().all()
+
+    # Merge + interleave by timestamp — bot replies always land after
+    # their inbound trigger so ordering is deterministic even at same-
+    # second creation.
+    messages: list[dict] = []
+    for r in inb_rows:
+        messages.append({
+            "id": str(r.id),
+            "direction": "IN",
+            "message_type": r.message_type,
+            "text": r.text,
+            "auto_replied": r.auto_replied,
+            "auto_reply_error": r.auto_reply_error,
+            "created_at": r.created_at.isoformat(),
+        })
+    for r in outb_rows:
+        messages.append({
+            "id": str(r.id),
+            "direction": "OUT",
+            "message_type": r.message_type,
+            "template_name": r.template_name,
+            "text": r.body_text,
+            "meta_message_id": r.meta_message_id,
+            "error": r.error,
+            "inbound_message_id": str(r.inbound_message_id) if r.inbound_message_id else None,
+            "created_at": r.created_at.isoformat(),
+        })
+    messages.sort(key=lambda m: m["created_at"])
+
+    # Resolve matched user + tenant using the most recent inbound (or
+    # outbound if there was no inbound) — same phone might get
+    # multiple matched_user rows over time as users update their
+    # numbers; latest wins.
+    matched_user = None
+    tenant = None
+    all_rows = list(inb_rows) + list(outb_rows)
+    if all_rows:
+        latest = max(all_rows, key=lambda r: r.created_at)
+        user_id = getattr(latest, "matched_user_id", None) or getattr(latest, "target_user_id", None)
+        tenant_id_val = getattr(latest, "tenant_id", None)
+        if user_id:
+            u = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+            if u:
+                matched_user = {
+                    "id": str(u.id),
+                    "name": f"{u.first_name} {u.last_name}".strip(),
+                    "email": u.email,
+                    "phone": u.phone,
+                    "whatsapp_phone": u.whatsapp_phone,
+                    "whatsapp_opted_in": u.whatsapp_opted_in,
+                }
+        if tenant_id_val:
+            t = (await db.execute(sa_select(Tenant).where(Tenant.id == tenant_id_val))).scalar_one_or_none()
+            if t:
+                tenant = {"id": str(t.id), "name": t.name}
+
+    return APIResponse(
+        status="success",
+        data={
+            "phone": normalized,
+            "matched_user": matched_user,
+            "tenant": tenant,
+            "messages": messages,
+            "total": len(messages),
+        },
     )
 
 

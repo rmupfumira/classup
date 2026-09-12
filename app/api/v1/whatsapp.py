@@ -212,7 +212,13 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
             )
             if reply is not None and mode is not BotMode.OFF:
                 svc = await get_whatsapp_service_from_db(db)
-                await _send_reply(svc, from_phone, reply)
+                await _send_reply(
+                    svc, from_phone, reply,
+                    db=db,
+                    tenant_id=(tenant.id if tenant else None),
+                    target_user_id=(matched_user.id if matched_user else None),
+                    inbound_message_id=record.id,
+                )
                 record.auto_replied = True
         except Exception as e:
             logger.exception(
@@ -224,26 +230,64 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
         await db.commit()
 
 
-async def _send_reply(svc, from_phone: str, reply) -> None:
+async def _send_reply(
+    svc,
+    from_phone: str,
+    reply,
+    *,
+    db=None,
+    tenant_id=None,
+    target_user_id=None,
+    inbound_message_id=None,
+) -> None:
     """Dispatch one bot reply through the right WhatsApp API method.
 
     Split out so both the main path and future async workers can share
     the send logic. MultiReply recurses so a caller can chain multiple
     parts (e.g. "here's Sarah's balance" text + the invoice PDF)
     without knowing the wire-level details.
+
+    When ``db`` is provided, each part is also persisted to
+    ``whatsapp_outbound_messages`` linked back to the inbound that
+    triggered it, so super admin can reconstruct the conversation.
+    Best-effort — persistence failures never bubble.
     """
+    from app.services.whatsapp_log import record_outbound
+
+    async def _log(message_type: str, body_text: str | None, response, error=None):
+        if db is None:
+            return
+        await record_outbound(
+            db,
+            to_phone=from_phone,
+            message_type=message_type,
+            body_text=body_text,
+            tenant_id=tenant_id,
+            target_user_id=target_user_id,
+            inbound_message_id=inbound_message_id,
+            response=response,
+            error=error,
+        )
+
     if isinstance(reply, TextReply):
-        await svc.send_text_message(to_phone=from_phone, body=reply.body)
+        resp = await svc.send_text_message(to_phone=from_phone, body=reply.body)
+        await _log("text", reply.body, resp)
     elif isinstance(reply, ButtonReply):
-        await svc.send_interactive_buttons(
+        resp = await svc.send_interactive_buttons(
             to_phone=from_phone,
             body=reply.body,
             buttons=reply.buttons,
             header=reply.header,
             footer=reply.footer,
         )
+        btn_titles = ", ".join(b.get("title", "") for b in reply.buttons)
+        await _log(
+            "interactive_buttons",
+            f"{reply.body}\n[buttons: {btn_titles}]",
+            resp,
+        )
     elif isinstance(reply, ListReply):
-        await svc.send_interactive_list(
+        resp = await svc.send_interactive_list(
             to_phone=from_phone,
             body=reply.body,
             button_text=reply.button_text,
@@ -251,20 +295,40 @@ async def _send_reply(svc, from_phone: str, reply) -> None:
             header=reply.header,
             footer=reply.footer,
         )
+        row_titles = [
+            r.get("title", "")
+            for sec in reply.sections
+            for r in sec.get("rows", [])
+        ]
+        await _log(
+            "interactive_list",
+            f"{reply.body}\n[list: {', '.join(row_titles)}]",
+            resp,
+        )
     elif isinstance(reply, DocumentReply):
-        await svc.send_document_from_bytes(
+        resp = await svc.send_document_from_bytes(
             to_phone=from_phone,
             file_bytes=reply.file_bytes,
             mime_type=reply.mime_type,
             filename=reply.filename,
             caption=reply.caption,
         )
+        await _log(
+            "document",
+            f"[document: {reply.filename}]{(' — ' + reply.caption) if reply.caption else ''}",
+            resp,
+        )
     elif isinstance(reply, ImageReply):
-        await svc.send_image_from_bytes(
+        resp = await svc.send_image_from_bytes(
             to_phone=from_phone,
             image_bytes=reply.image_bytes,
             mime_type=reply.mime_type,
             caption=reply.caption,
+        )
+        await _log(
+            "image",
+            f"[image]{(' — ' + reply.caption) if reply.caption else ''}",
+            resp,
         )
     elif isinstance(reply, MultiReply):
         # Send each part in sequence — order matters (text intro → doc).
@@ -272,7 +336,12 @@ async def _send_reply(svc, from_phone: str, reply) -> None:
         # semantics everywhere else.
         for part in reply.parts:
             try:
-                await _send_reply(svc, from_phone, part)
+                await _send_reply(
+                    svc, from_phone, part,
+                    db=db, tenant_id=tenant_id,
+                    target_user_id=target_user_id,
+                    inbound_message_id=inbound_message_id,
+                )
             except Exception:
                 logger.exception(
                     "MultiReply part failed to send to %s", from_phone,

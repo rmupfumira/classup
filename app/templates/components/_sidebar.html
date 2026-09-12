@@ -126,6 +126,22 @@
                     WhatsApp Settings
                 </a>
 
+                <!-- WhatsApp Conversations -->
+                <a href="/admin/whatsapp-conversations"
+                   class="group flex items-center px-3 py-2.5 text-sm rounded-md
+                          {% if '/admin/whatsapp-conversations' in request.url.path %}
+                          bg-primary-50 text-primary-600 font-medium
+                          {% else %}
+                          text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900
+                          {% endif %}">
+                    <svg class="mr-3 h-4 w-4 {% if '/admin/whatsapp-conversations' in request.url.path %}text-primary-500{% else %}text-neutral-400 group-hover:text-neutral-600{% endif %}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.019z"/>
+                    </svg>
+                    Conversations
+                </a>
+
                 <!-- AI Settings -->
                 <a href="/admin/ai-settings"
                    class="group flex items-center px-3 py-2.5 text-sm rounded-md

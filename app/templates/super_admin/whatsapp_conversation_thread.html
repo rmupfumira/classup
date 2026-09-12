@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation with {{ phone }} - Super Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+        <a href="/admin/whatsapp-conversations" class="text-neutral-500 hover:text-neutral-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <div class="flex-1 min-w-0">
+            <h1 id="conv-title" class="text-xl sm:text-2xl font-bold text-neutral-900 truncate">
+                Loading conversation…
+            </h1>
+            <p id="conv-subtitle" class="text-sm text-neutral-500 truncate"></p>
+        </div>
+    </div>
+
+    <!-- Thread -->
+    <div id="thread"
+         class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 min-h-[300px]">
+        <p class="text-sm text-neutral-500 text-center py-8">Loading messages…</p>
+    </div>
+
+    <p class="text-xs text-neutral-400 text-center">
+        Oldest first. Bot replies are logged with a summary of what was sent.
+    </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const phone = "{{ phone }}";
+    const titleEl = document.getElementById('conv-title');
+    const subtitleEl = document.getElementById('conv-subtitle');
+    const threadEl = document.getElementById('thread');
+
+    try {
+        const res = await ClassUp.fetch(`/api/v1/admin/whatsapp-conversations/${encodeURIComponent(phone)}`);
+        const {matched_user, tenant, messages} = res.data;
+
+        titleEl.textContent = matched_user
+            ? matched_user.name
+            : `+${phone}`;
+        const subtitle = [
+            matched_user ? `+${phone}` : 'Unknown sender',
+            matched_user ? matched_user.email : null,
+            tenant ? tenant.name : null,
+            matched_user && !matched_user.whatsapp_opted_in ? '⚠ WhatsApp not opted in' : null,
+        ].filter(Boolean).join(' · ');
+        subtitleEl.textContent = subtitle;
+
+        if (!messages.length) {
+            threadEl.innerHTML = '<p class="text-sm text-neutral-500 text-center py-8">No messages found for this phone.</p>';
+            return;
+        }
+
+        threadEl.innerHTML = messages.map(m => renderMessage(m)).join('');
+
+        // Scroll the last message into view — feels more natural than
+        // landing at the top when a thread is long.
+        const last = threadEl.querySelector('.msg-bubble:last-child');
+        if (last) last.scrollIntoView({behavior: 'instant', block: 'nearest'});
+    } catch (err) {
+        threadEl.innerHTML = `<p class="text-sm text-red-500 text-center py-8">Failed to load: ${escapeHtml(err.message || 'error')}</p>`;
+    }
+
+    function renderMessage(m) {
+        const when = new Date(m.created_at).toLocaleString('en-ZA', {
+            day: 'numeric', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+        });
+        const isOut = m.direction === 'OUT';
+        const bubbleCls = isOut
+            ? 'ml-auto bg-primary-50 border-primary-200'
+            : 'mr-auto bg-neutral-50 border-neutral-200';
+        const arrowCls = isOut ? 'text-primary-600' : 'text-neutral-500';
+        const arrow = isOut ? '→' : '←';
+        const typeBadge = m.template_name
+            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-neutral-200 text-neutral-600 font-mono">${escapeHtml(m.template_name)}</span>`
+            : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-neutral-200 text-neutral-500">${escapeHtml(m.message_type || 'text')}</span>`;
+        const errorLine = m.error
+            ? `<p class="mt-1 text-xs text-red-600">⚠ ${escapeHtml(m.error)}</p>`
+            : '';
+        const inboundNote = (m.direction === 'IN' && m.auto_replied)
+            ? `<span class="text-[10px] text-green-600 ml-1">✓ auto-replied</span>`
+            : (m.direction === 'IN' && m.auto_reply_error)
+                ? `<span class="text-[10px] text-red-600 ml-1" title="${escapeHtml(m.auto_reply_error)}">⚠ auto-reply failed</span>`
+                : '';
+        return `
+            <div class="msg-bubble mb-3 max-w-[85%] ${bubbleCls} border rounded-lg p-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-medium ${arrowCls}">${arrow} ${isOut ? 'Sent' : 'Received'}</span>
+                    ${typeBadge}
+                    ${inboundNote}
+                </div>
+                <p class="text-sm text-neutral-800 whitespace-pre-wrap break-words">${escapeHtml(m.text || '(no body)')}</p>
+                ${errorLine}
+                <p class="mt-1 text-[10px] text-neutral-400">${when}</p>
+            </div>
+        `;
+    }
+
+    function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[ch]);
+    }
+});
+</script>
+{% endblock %}

@@ -134,8 +134,16 @@ async def _send_template(
     ``language`` is always injected from the user's preference.
 
     Returns True if Meta accepted the send. Catches every exception —
-    the caller must never care whether this succeeded.
+    the caller must never care whether this succeeded. Every attempt
+    (success OR failure) is persisted to ``whatsapp_outbound_messages``
+    so the conversation log picks it up.
     """
+    from app.services.whatsapp_log import record_outbound
+
+    template_name = _template_name_from_method(template_method)
+    body_preview = _body_preview_from_args(args, extra_kwargs)
+    result = None
+    err_msg: str | None = None
     try:
         svc = await get_whatsapp_service_from_db(db)
         fn = getattr(svc, template_method, None)
@@ -148,12 +156,63 @@ async def _send_template(
         kwargs = {"language": language or (user.language or "en"), **extra_kwargs}
         result = await fn(user.whatsapp_phone, *args, **kwargs)
         return result is not None
-    except Exception:
+    except Exception as e:
+        err_msg = str(e)[:500]
         logger.exception(
             "WhatsApp notification via %s failed for user %s (%s)",
             template_method, user.id, user.whatsapp_phone,
         )
         return False
+    finally:
+        # Persist the attempt regardless of outcome. Failure to persist
+        # never blocks the caller — record_outbound swallows internally.
+        try:
+            await record_outbound(
+                db,
+                to_phone=user.whatsapp_phone or "",
+                message_type="template",
+                template_name=template_name,
+                body_text=body_preview,
+                tenant_id=user.tenant_id,
+                target_user_id=user.id,
+                response=result if isinstance(result, dict) else None,
+                error=err_msg if result is None else None,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to record outbound WhatsApp for user %s", user.id,
+            )
+
+
+def _template_name_from_method(method: str) -> str:
+    """Strip the ``send_`` prefix off a service method name to recover
+    the Meta template name (``send_attendance_alert`` → ``attendance_alert``).
+    """
+    return method[5:] if method.startswith("send_") else method
+
+
+def _body_preview_from_args(args: tuple, kwargs: dict) -> str:
+    """Compact preview of what the parent will see, for the log column.
+
+    We don't have the rendered template body here (that lives on Meta's
+    servers) — just the substituted values. Concatenate them so a
+    reviewer can identify the message ("Sarah Moyo · ABSENT · Kingsway
+    Primary") at a glance.
+    """
+    parts: list[str] = []
+    for a in args:
+        if a is None:
+            continue
+        parts.append(str(a)[:120])
+    for k, v in kwargs.items():
+        # Drop noise + secrets — invoice_id / event_id are UUIDs the
+        # admin doesn't care to eyeball in the log.
+        if k in {"invoice_id", "event_id", "language", "code", "pdf_media_id"}:
+            continue
+        if v is None:
+            continue
+        parts.append(f"{k}={str(v)[:120]}")
+    return " · ".join(parts)[:2000]
 
 
 # ---------------------------------------------------------------------------
