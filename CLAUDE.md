@@ -1,7 +1,7 @@
 # ClassUp v2 — Architecture Specification
 
 > Single source of truth for building ClassUp. Multi-tenant SaaS for schools/daycares.
-> Last Updated: 2026-03-09
+> Last Updated: 2026-09-12
 ## Testing Requirements
 - Every new feature must have unit tests before marking complete
 - Integration tests required for all API endpoints
@@ -31,28 +31,36 @@
 ```
 app/
 ├── main.py, config.py, database.py, dependencies.py
-├── middleware/          # tenant.py, auth.py, i18n.py
+├── middleware/          # tenant.py, auth.py, audit.py, subscription.py, i18n.py
 ├── models/             # base.py, tenant.py, user.py, student.py, school_class.py,
 │                       # attendance.py, message.py, report.py, file_entity.py,
 │                       # invitation.py, teacher_invitation.py, notification.py,
 │                       # system_settings.py, webhook.py, import_job.py,
-│                       # billing.py, academic.py
+│                       # billing.py, academic.py, school_event.py, event_rsvp.py,
+│                       # announcement.py, whatsapp_inbound.py, tenant_subscription.py,
+│                       # subscription_plan.py, accounting.py
 ├── schemas/            # common.py, auth.py, tenant.py, user.py, student.py, etc.
 ├── services/           # auth, tenant, user, student, class, attendance, message,
 │                       # report, file, invitation, teacher_invitation, notification,
 │                       # email, whatsapp, webhook, import, i18n, realtime,
-│                       # billing_service, academic_service
+│                       # billing_service, academic_service, event_service,
+│                       # announcement_service, parent_notifier, whatsapp_menu_bot,
+│                       # whatsapp_ai_bot, whatsapp_bot_tools, subscription_service,
+│                       # gateway_service (Paystack, PayNow), jurisdiction_service,
+│                       # accounting_service, ai_config, report_pdf, invoice_pdf
 ├── api/v1/             # auth, tenants, users, students, classes, attendance,
 │                       # messages, reports, files, invitations, admin, webhooks,
-│                       # imports, websocket, billing, academic
+│                       # imports, websocket, billing, academic, events,
+│                       # announcements, subscriptions, whatsapp, accounting, push
 ├── web/                # auth, dashboard, students, classes, attendance, messages,
 │                       # reports, photos, documents, settings, admin, super_admin,
 │                       # onboarding, imports, invitations, teachers, profile, helpers,
-│                       # billing
+│                       # billing, events, accounting, timetable, subscription
 ├── templates/          # base.html, components/*, auth/*, dashboard/*, students/*,
 │                       # classes/*, attendance/*, messages/*, reports/*, photos/*,
 │                       # documents/*, settings/*, onboarding/*, imports/*,
-│                       # invitations/*, teachers/*, super_admin/*, emails/*
+│                       # invitations/*, teachers/*, super_admin/*, emails/*,
+│                       # billing/*, events/*, accounting/*, timetable/*, subscription/*
 ├── static/             # css/app.css, js/{app,websocket,attendance,messages,
 │                       # reports,import,onboarding,search}.js, img/
 └── utils/              # security.py, pagination.py, tenant_context.py,
@@ -109,7 +117,7 @@ Email provider config stored in `system_settings` DB table (not env vars), switc
 
 **teacher_invitations**: id, tenant_id, email, first_name, last_name, invitation_code (8-char unique), status (PENDING|ACCEPTED|EXPIRED|CANCELLED), created_by FK, expires_at, accepted_at, created_at
 
-**notifications**: id, tenant_id, user_id FK, title, body, notification_type, reference_type, reference_id, is_read, read_at, created_at. Types: ATTENDANCE_MARKED, ATTENDANCE_LATE, REPORT_FINALIZED, REPORT_READY, MESSAGE_RECEIVED, ANNOUNCEMENT, PHOTO_SHARED, DOCUMENT_SHARED, INVITATION_SENT, TEACHER_ADDED, STUDENT_ADDED, CLASS_CREATED, SETTINGS_CHANGED, IMPORT_COMPLETED, WHATSAPP_MESSAGE, INVOICE_SENT, INVOICE_OVERDUE, PAYMENT_RECEIVED
+**notifications**: id, tenant_id, user_id FK, title, body, notification_type, reference_type, reference_id, is_read, read_at, created_at. Types: ATTENDANCE_MARKED, ATTENDANCE_LATE, REPORT_FINALIZED, REPORT_READY, MESSAGE_RECEIVED, ANNOUNCEMENT, PHOTO_SHARED, DOCUMENT_SHARED, INVITATION_SENT, TEACHER_ADDED, STUDENT_ADDED, CLASS_CREATED, SETTINGS_CHANGED, IMPORT_COMPLETED, WHATSAPP_MESSAGE, INVOICE_SENT, INVOICE_OVERDUE, PAYMENT_RECEIVED, EVENT_INVITED, EVENT_REMINDER, EVENT_RSVP_CONFIRMED, EVENT_CANCELLED, CHILD_LINKED
 
 **webhook_endpoints**: id, tenant_id, url, secret (HMAC), events (JSONB []), is_active, timestamps
 
@@ -141,6 +149,18 @@ Email provider config stored in `system_settings` DB table (not env vars), switc
 
 **accounting_transactions**: id, tenant_id, date, type (INCOME|EXPENSE|TRANSFER), amount (Numeric 14,2), currency (default ZAR), account_id FK chart_accounts, bank_account_id FK bank_accounts, transfer_to_bank_account_id FK bank_accounts (for TRANSFER), vendor_id FK vendors, student_id FK students, billing_payment_id FK billing_payments (UNIQUE — for idempotent auto-link), description, reference, vat_amount, vat_rate, receipt_file_id FK file_entities, created_by FK users, deleted_at, timestamps. Single-entry: one row = one money movement. P&L / cash position derived by aggregating these rows.
 
+**school_events**: id, tenant_id, created_by FK users, title, description, event_type (PARENT_MEETING|PARENT_TEACHER_CONFERENCE|ASSEMBLY|OUTING|SPORTS|OTHER), scope (SCHOOL|CLASS|STUDENT), class_id FK (nullable), student_id FK (nullable), starts_at, ends_at (nullable), timezone (IANA), location, rsvp_required, rsvp_deadline, reminder_24h_sent_at, reminder_1h_sent_at, cancelled_at, deleted_at, timestamps. Audience resolved by scope: SCHOOL → all opted-in parents; CLASS → parents of students in that class; STUDENT → parents of that student.
+
+**event_rsvps**: id, event_id FK CASCADE, user_id FK users, response (YES|NO|MAYBE), responded_at, created_at. UNIQUE(event_id, user_id) — latest response overwrites (upsert). Signed public URL (`/events/{id}/rsvp?u=&r=&sig=`) lets a parent RSVP from the email/WhatsApp without logging in — HMAC of `(event_id, user_id, response)` with `app_secret_key`.
+
+**announcements**: id, tenant_id, created_by FK, title, body, severity (INFO|IMPORTANT|URGENT|EMERGENCY), scope (SCHOOL|CLASS), class_id FK (nullable), deleted_at, timestamps. Notifications: in-app for all, email + WhatsApp for URGENT/EMERGENCY (URGENT/EMERGENCY always trigger the external channels; INFO/IMPORTANT stay in-app unless the tenant opts in).
+
+**whatsapp_inbound_messages**: id, from_phone (indexed), message_type, text (up to 8000 chars), meta_message_id (unique), raw_payload (JSONB), tenant_id FK (nullable — NULL for unknown senders), matched_user_id FK (nullable), auto_replied (bool), auto_reply_error (text), created_at (indexed). Dedup boundary for Meta webhook retries. Written from `app/api/v1/whatsapp.py:process_inbound_message`.
+
+**subscription_plans**: id, code (unique — STARTER / GROWTH / SCALE / etc.), name, description, price_monthly, price_annually (Numeric 12,2), currency (ZAR by default), max_students, max_staff, features (JSONB — attendance_tracking, messaging, billing, accounting, whatsapp_enabled, whatsapp_ai_enabled, etc.), trial_days, is_active, display_order, timestamps. Platform-wide catalogue managed by super admin at `/admin/subscription-plans`.
+
+**tenant_subscriptions**: id, tenant_id FK (indexed, unique per active row), plan_id FK subscription_plans, status (TRIALING|ACTIVE|PAST_DUE|CANCELLED|SUSPENDED), billing_frequency (MONTHLY|ANNUAL), trial_start, trial_end, current_period_start, current_period_end, grace_period_end, cancelled_at, failed_payment_count, paystack_customer_code, paystack_subscription_code, paystack_email_token, paystack_authorization_code, timestamps. Enforced by `SubscriptionMiddleware` — non-ACTIVE/TRIALING tenants redirect to `/subscription`.
+
 ### ER Summary
 
 ```
@@ -148,7 +168,8 @@ tenants → users, students, school_classes, attendance_records, messages,
           daily_reports, report_templates, file_entities, parent_invitations,
           teacher_invitations, notifications, webhook_endpoints, bulk_import_jobs,
           subjects, grading_systems, billing_fee_items, billing_invoices, billing_payments,
-          chart_accounts, bank_accounts, vendors, accounting_transactions
+          chart_accounts, bank_accounts, vendors, accounting_transactions,
+          school_events, announcements, tenant_subscriptions, whatsapp_inbound_messages
 students ←→ users (via parent_students)
 school_classes ←→ users (via teacher_classes)
 school_classes ←→ subjects (via class_subjects)
@@ -157,6 +178,9 @@ billing_invoices → billing_invoice_items, billing_payments
 billing_invoices → students (student_id)
 billing_payments → accounting_transactions (auto-link, idempotent)
 accounting_transactions → chart_accounts, bank_accounts, vendors, students, file_entities
+school_events → event_rsvps → users
+tenant_subscriptions → subscription_plans
+whatsapp_inbound_messages → users (matched_user_id), tenants (nullable)
 ```
 
 ## Multi-Tenancy
@@ -195,16 +219,32 @@ Shared DB, row-level isolation. TenantMiddleware extracts tenant_id from JWT →
 | Billing: view own invoices/statement | Yes | No | Own children |
 | Academic: subjects, grading CRUD | Yes | No | No |
 | Academic: view class subjects | Yes | Own classes | No |
+| Events: create/edit/cancel | Yes | Yes | No |
+| Events: view + RSVP | Yes | Own classes | Own children |
+| Announcements: create | Yes | Yes | No |
+| Announcements: view | Yes | Own classes | Own children |
+| WhatsApp bot | — | — | Own opt-in |
+| Accounting: transactions, banks, vendors | Yes | No | No |
 
 ### Parent Registration Flow
 
-1. Admin/Teacher creates invitation (email, first_name, last_name, student_id)
-2. System generates 8-char code, sends email
-3. Parent clicks link → `/register?code=XXXXXXXX&email=parent@example.com`
-4. System looks up invitation → pre-fills form (name/email read-only)
-5. Parent sets password → account created → auto-linked to student → auto-login
+Two entry paths — the admin picks one when adding a student.
+
+**A. Captured during student enrollment (recommended default)** — the Add Student form has a Parent/Guardian section (`app/templates/students/create.html`). Admin fills first/last/email/phone/relationship/is_primary/send_whatsapp_invite for each parent (`+ Add another parent` for multiples). On submit:
+- Existing PARENT user on this tenant matched by email → link via `parent_students`, flip `whatsapp_opted_in=True` + set `whatsapp_phone` if the admin ticked the WhatsApp box, fire the "new child added to your profile" email + WhatsApp mirror.
+- No existing user → create a `ParentInvitation`, send email invite; if the admin gave a phone + ticked WhatsApp, also fire the `parent_signup` template so the parent gets a one-tap signup link on WhatsApp.
+- Per-parent failure never rolls back the student — the response returns `{student, parent_results}` so the UI can surface which invites succeeded / failed. Sibling case handled: if the admin picked a sibling with parents to inherit, the parent section dims (parents are inherited via `link_parent`, which also fires the "new child added" notifications).
+
+**B. Standalone invite (from the student detail page or `/invitations`)** — same underlying `InvitationService` path.
+
+**Registration completion (same for both paths)**:
+1. Parent clicks the link → `/register?code=XXXXXXXX&email=parent@example.com`
+2. System looks up invitation → pre-fills form (name/email read-only)
+3. Parent sets password → account created → auto-linked to student → auto-login
 
 > Registration URL includes both `code` and `email` as query params. The `register_url` is built in the invitation API — email template must NOT append additional params.
+
+**Orphan cleanup (POPIA/GDPR)** — when a student is soft-deleted or a parent is unlinked, any parent whose ONLY child at this tenant was that student gets their User row soft-deleted (`is_active=False`, `deleted_at` set). Historical `parent_students` rows survive so old messages/attendance stay accurate. Any PENDING `parent_invitations` for the departing student are marked EXPIRED so a stale link can't create a link to a tombstoned student.
 
 ## API Design
 
@@ -248,9 +288,17 @@ Shared DB, row-level isolation. TenantMiddleware extracts tenant_id from JWT →
 
 **Accounting** `/api/v1/accounting` (gated by `accounting` feature): CRUD /accounts, /banks, /vendors; POST /expenses, /income, /transfers; GET /transactions; PUT/DELETE /transactions/{id}; GET /dashboard, /reports/profit-loss, /reports/expenses-by-category, /reports/cash-position
 
+**Events** `/api/v1/events`: GET / (staff — all events on tenant), GET /my (parent — events they're invited to), POST /, PUT /{id}, DELETE /{id} (soft cancel), POST /{id}/rsvp (authenticated — records the parent's response), GET /{id} (detail with RSVP summary)
+
+**Announcements** `/api/v1/announcements`: CRUD; GET /my (parent view)
+
+**Subscriptions** `/api/v1/subscriptions`: GET / (current tenant's plan + status), GET /plans (public catalogue), POST /initialize-payment (Paystack/PayNow — returns hosted-checkout URL), POST /webhook/paystack, POST /webhook/paynow
+
 **WhatsApp** `/api/v1/whatsapp`: GET/POST /webhook (Meta); POST /send
 
 **WebSocket**: `/api/v1/ws/{token}` — JWT in URL path
+
+**Super Admin** `/api/v1/admin` (SUPER_ADMIN only, in addition to email settings above): GET /whatsapp-messages (last N inbound); GET/PUT /whatsapp-settings; POST /whatsapp-settings/test-connection; POST /whatsapp-settings/send-test; GET/PUT /ai-config; PUT /tenants/{id}/features (toggle whatsapp / whatsapp_ai / accounting / billing / etc.)
 
 ## Frontend Architecture
 
@@ -289,7 +337,7 @@ Config shape: `{provider, enabled, from_email, from_name, smtp_host, smtp_port, 
 
 Tenant-scoped emails use tenant name as sender display name. Service loads config from DB on every send; skips silently if not configured.
 
-**Triggers**: tenant created (welcome), parent invited (parent_invite), report finalized (report_ready), password reset, attendance absence, admin notifications, invoice sent, invoice overdue reminder, payment received.
+**Triggers**: tenant created (welcome), parent invited (`parent_signup`), report finalized (`report_ready`), password reset, attendance absence, admin notifications, invoice sent, invoice overdue reminder, payment received, event invitation (with ICS attachment), event reminder (T-24h / T-1h), event RSVP confirmed, new child linked to existing parent account.
 
 ## Billing
 
@@ -317,9 +365,54 @@ In-house single-entry bookkeeping for schools — eliminates the need for a sepa
 
 UI: `/accounting` (admin only when feature enabled). Sub-nav: Dashboard, Expenses, Income, Vendors, Banks, Chart of Accounts, Reports. Print-friendly CSS on Reports page.
 
+## Events
+
+School events with per-parent RSVP. Staff create events with a scope (SCHOOL / CLASS / STUDENT), the audience is resolved from the scope, and each parent in that audience gets email + WhatsApp invitations with tap-to-respond controls.
+
+**Types**: `PARENT_MEETING`, `PARENT_TEACHER_CONFERENCE`, `ASSEMBLY`, `OUTING`, `SPORTS`, `OTHER`.
+
+**Audience resolution** (in `event_service.resolve_audience`):
+- SCHOOL → every opted-in parent in the tenant.
+- CLASS → parents of students in `class_id`.
+- STUDENT → parents of `student_id`.
+
+**Notification chain (per parent, best-effort each channel)**:
+- Email with a `.ics` attachment (`event_service.build_ics`) — RFC 5545 compliant, stable UID = `classup-event-{id}@classup.co.za` so updating an event replaces the calendar entry instead of duplicating. Method REQUEST on create/update, CANCEL on soft-cancel; SEQUENCE bumps with `updated_at`.
+- Email carries a signed RSVP URL: `/events/{id}/rsvp?u=<user_id>&r=<YES|NO|MAYBE>&sig=<HMAC>`. The HMAC of `(event_id, user_id, response)` with `app_secret_key` is the authorisation — the endpoint bypasses auth for signed-link RSVPs (see `AuthMiddleware` exempt list).
+- WhatsApp: `event_invited` template if opted-in.
+
+**Reminders** — arq periodic worker checks every 15 minutes for events starting in the next 24h (`reminder_24h_sent_at` NULL) and next 1h (`reminder_1h_sent_at` NULL). Fires WhatsApp `event_reminder` + updates the sent-at column so it fires exactly once per window.
+
+**RSVP** — one row per (event, user) in `event_rsvps`, upserted so the latest response wins. Recording an RSVP fires the `event_rsvp_confirmed` template (WhatsApp) so the parent has a receipt.
+
+**UI**:
+- Staff at `/events` — list (upcoming / all tabs) + Create Event modal + per-event detail with RSVP roll-up.
+- Parent at `/events` — the same list filtered to events they're invited to, with inline YES/MAYBE/NO buttons that call `POST /api/v1/events/{id}/rsvp`.
+- Cancelling an event soft-cancels (sets `cancelled_at`), fires the CANCEL calendar update to every parent, and shows the event with `line-through` styling in the list.
+
 ## WhatsApp Integration
 
-Meta Cloud API. Pre-approved templates: `attendance_alert`, `report_ready`, `announcement`, `parent_invite`, `welcome`. Outbound via httpx POST to `graph.facebook.com`. Inbound via webhook (HMAC verified) → lookup parent by whatsapp_phone → create Message. Opt-in required (`users.whatsapp_opted_in`).
+Meta Cloud API. Config lives in `system_settings.whatsapp_config` (managed via `/admin/whatsapp-settings`) — env vars are fallback only. Outbound via httpx POST to `graph.facebook.com`. Inbound webhook is HMAC-verified, persisted to `whatsapp_inbound_messages`, deduped by `meta_message_id`, and dispatched to the bot.
+
+**Meta-approved templates (11)**:
+- Utility: `attendance_alert`, `welcome`, `report_ready`, `event_invited`, `event_rsvp_confirmed`, `invoice_sent`, `payment_received`, `invoice_overdue`
+- Marketing (Meta forced the reclassification on these — auto-opt-in via `users.whatsapp_opted_in` covers us): `announcement`, `event_reminder`, `parent_signup`
+- `parent_signup` replaced the old `parent_invite` — Meta locks a deleted template name for 30 days, so a rename was required. The code moves out of the body into a dynamic URL button so the template reads as pure copy.
+
+**Outbound flow** — `WhatsAppService.send_template_message` accepts `parameters` (body vars), `button_url_variables` (dynamic URL button suffixes, one per button), and `header_document_media_id` (for a doc-header template — upload via `upload_media()` first). Media sends: `send_document_from_bytes` / `send_image_from_bytes` are the one-call helpers.
+
+**Parent notification gate** — every parent-facing WhatsApp send goes through `parent_notifier._can_notify_whatsapp(db, user)`. Requires (all of): user active + `whatsapp_phone` set + `whatsapp_opted_in=True`, tenant `settings.features.whatsapp_enabled`, plan `features.whatsapp_enabled`, service configured. Any missing piece is a silent skip — logged at INFO with the specific reason so operators can grep. Sends never raise; a failure logs and returns False.
+
+**Inbound bot modes** — resolved by `resolve_bot_mode(tenant, plan)`:
+- **MENU** (default) — `whatsapp_menu_bot.py` state machine with interactive buttons + lists, backed by 6 read-only tool functions (attendance, reports, balance, invoices, events, children).
+- **AI** (opt-in per tenant + plan feature `whatsapp_ai_enabled`) — `whatsapp_ai_bot.py` runs a Claude tool-use loop against the same tools, session cached in Redis with 24h TTL. Falls back to MENU if `ai_config` isn't set.
+- **STOP / START** replies are handled first: STOP flips `whatsapp_opted_in=False`, START flips it back on.
+
+**Onboarding for unknown-but-recognized numbers** — an inbound from an E.164 phone that matches `users.phone` (but not `whatsapp_phone`) offers the parent a one-tap "Yes, opt me in" flow that copies the phone to `whatsapp_phone` and sets `whatsapp_opted_in=True`.
+
+**Media in the bot** — the AI bot can attach PDFs (invoice, report card via WeasyPrint) and images (photos) as native WhatsApp media, uploaded via Meta's Media API so no public URLs leak.
+
+**Testing / send-test** — Super admin `/admin/whatsapp-settings` has a live inbound feed (last 20 messages) plus a per-template test-send that lets an admin fire a real template to their own number.
 
 ## WebSocket Real-Time
 
@@ -346,7 +439,7 @@ Languages: en (default), af (Afrikaans). JSON translation files at `translations
 
 ## Webhooks
 
-Events: student.created/updated/deleted, attendance.marked/bulk, report.created/finalized, message.sent, teacher.added, parent.registered, class.created, import.completed, invoice.sent, payment.recorded. HMAC-signed delivery (`X-ClassUp-Signature: sha256=...`). Retry: 3 attempts, exponential backoff (1m, 5m, 30m).
+Events: student.created/updated/deleted, attendance.marked/bulk, report.created/finalized, message.sent, teacher.added, parent.registered, class.created, import.completed, invoice.sent, payment.recorded, event.created/cancelled, event.rsvp_received, announcement.published. HMAC-signed delivery (`X-ClassUp-Signature: sha256=...`). Retry: 3 attempts, exponential backoff (1m, 5m, 30m).
 
 ## Background Tasks (arq)
 
@@ -371,6 +464,22 @@ Services: classup-web (Uvicorn, 2 workers), classup-worker (arq), PostgreSQL, Re
 - HTML: Semantic elements, aria attributes. CSS: Tailwind only. JS: ES2022+, const/let, no jQuery.
 - Naming: snake_case (Python/SQL), camelCase (JS), kebab-case (CSS/URLs).
 
+## SaaS Subscriptions
+
+The platform runs as a monetised SaaS. Every tenant has a `TenantSubscription` on one of the `subscription_plans` (STARTER / GROWTH / SCALE — configurable per market). The `SubscriptionMiddleware` gates every non-exempt request: a status of `TRIALING` (and `trial_end >= today`), `ACTIVE`, or `PAST_DUE` (still within grace) passes; everything else is redirected to `/subscription`.
+
+**Feature gates** — plans carry a `features` JSONB dict (`whatsapp_enabled`, `whatsapp_ai_enabled`, `billing`, `accounting`, `timetable_management`, etc.). The `require_feature("<key>")` dependency (`app/utils/permissions.py`) enforces per-endpoint: raises `FeatureLockedException` (402 JSON for APIs, redirect to `/subscription?locked=<key>` for web).
+
+**Payment providers** — `gateway_service` abstracts Paystack and PayNow. Each has its own credentials table entry; the checkout flow is `POST /api/v1/subscriptions/initialize-payment` → returns a hosted-checkout URL → parent completes on provider → webhook (`/webhook/paystack` or `/webhook/paynow`) verifies HMAC + updates the subscription. Idempotent by transaction reference.
+
+**Jurisdiction** — `jurisdiction_service` maps tenant country → currency + timezone + tax rules + preferred payment provider. Set via super admin at `/admin/tenants/{id}`.
+
+**Billing frequency** — subscriptions carry `billing_frequency` (MONTHLY | ANNUAL). Plans expose `price_monthly` and `price_annually`; the parent picks at checkout.
+
+## Deep-link handling (WhatsApp / email URLs)
+
+Every URL we drop into a WhatsApp template button or email hyperlink must survive an unauthenticated tap: the browser opens the URL cold, the user isn't logged in, and they need to land back on the intended page after login. The `_require_auth` helper in each `app/web/*` module preserves `?next=<url>` on the login redirect; the login POST handler honours it. **Any new deep-linkable route must go through `_require_auth`** (not raw `RedirectResponse(url="/login")`) so the `next=` survives.
+
 ## Build Order
 
 1. **Foundation**: Scaffolding, config, DB setup, base models, Alembic, health check
@@ -382,4 +491,21 @@ Services: classup-web (Uvicorn, 2 workers), classup-worker (arq), PostgreSQL, Re
 7. **Reports**: Templates + reports models, template CRUD, dynamic form, finalization + notifications
 8. **Communication**: Email service (dual provider), email templates, notifications, WebSocket, WhatsApp
 9. **Advanced**: Invitations, onboarding wizard, CSV import, i18n, webhooks
-10. **Polish**: Error pages, empty states, loading states, mobile audit, worker setup, seed data, deployment
+10. **Events**: school_events + event_rsvps, ICS-attached email, WhatsApp templates, arq reminder worker
+11. **Accounting**: chart of accounts, banks, vendors, transactions, P&L / cash-position reports, billing auto-link
+12. **SaaS**: subscription_plans + tenant_subscriptions, subscription middleware, Paystack + PayNow, jurisdiction service
+13. **WhatsApp Bot**: menu-mode state machine, AI-mode Claude tool-use loop, media (PDF/image), parent_notifier gate
+14. **Polish**: Error pages, empty states, loading states, mobile audit, worker setup, seed data, deployment
+
+## Recent architecture changes (since 2026-03-09)
+
+Kept as a running log — most-recent first.
+
+- **Parent capture at student enrollment** (`StudentCreate.parents[]` + inline UI section in `students/create.html`) — admins now attach parent details (name, email, phone, primary flag, "send WhatsApp signup link" checkbox) as part of Add Student. Existing parents get linked + notified "new child added"; new parents get invited (email + optional WhatsApp signup nudge). Per-parent failures never roll back the student — response returns `{student, parent_results}`.
+- **Parent-notifier gate** — every parent-facing WhatsApp goes through `parent_notifier._can_notify_whatsapp` with 6 conditions; each fail path logs at INFO with the specific reason so operators can grep.
+- **`parent_signup` template** — replaces `parent_invite` (Meta locked the deleted name for 30 days). Body is pure copy, invitation code moved to a dynamic URL button. Category is Marketing (Meta forced it — the auto-opt-in gate covers us).
+- **Events module** — full end-to-end: create, audience resolution by scope, ICS calendar invites, signed one-tap RSVP URLs, T-24h and T-1h WhatsApp reminders via an arq worker.
+- **Orphan cleanup** — student deletes and parent-unlinks now cascade to soft-delete parents whose only child at this tenant has left; pending invitations for departing students get marked EXPIRED.
+- **11 Meta-approved templates** — the full transactional set (attendance, welcome, reports, invoices trio, events trio, announcement, parent_signup) with proper spacing, dynamic URL buttons where appropriate, and per-template category assignments.
+- **Deep-link auth preservation** — `billing._require_auth` preserves `?next=` on login redirects so WhatsApp URL buttons land the parent on the target page after login. Same pattern still needed across other web modules (see task #124).
+- **Mobile-friendliness first pass** — reports create/edit tables scroll edge-to-edge, sticky Save bar clears the mobile bottom nav, attendance floating Save button repositioned, timetable list stops clipping, accounting report tables wrapped for scroll.
