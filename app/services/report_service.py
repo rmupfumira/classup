@@ -626,7 +626,17 @@ class ReportService:
         db: AsyncSession,
         data: ReportCreate,
     ) -> DailyReport:
-        """Create a new report."""
+        """Create a new report.
+
+        When ``term_id`` is supplied on the request, we overlay a
+        ``_term_summary`` block on ``report_data`` with term + academic
+        year + attendance totals (owner directive 2026-10-06). This is
+        a derived snapshot — if the admin edits attendance later,
+        regenerate the report or re-fire the summary via
+        :meth:`refresh_term_summary` (not exposed as a route yet).
+        """
+        from app.services import academic_terms as _terms
+
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
@@ -636,13 +646,21 @@ class ReportService:
         if data.report_date.weekday() >= 5:
             raise ValidationException("Cannot create a report on weekends")
 
+        report_data = dict(data.report_data or {})
+        if data.term_id:
+            summary = await _terms.term_report_context(
+                db, tenant_id, data.student_id, data.term_id,
+            )
+            if summary:
+                report_data["_term_summary"] = summary
+
         report = DailyReport(
             tenant_id=tenant_id,
             student_id=data.student_id,
             class_id=data.class_id,
             template_id=data.template_id,
             report_date=data.report_date,
-            report_data=data.report_data,
+            report_data=report_data,
             status=ReportStatus.DRAFT.value,
             created_by=user_id,
         )

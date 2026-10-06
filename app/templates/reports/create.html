@@ -129,6 +129,30 @@
                         Cannot create reports on weekends. Date reset to today.
                     </div>
                 </div>
+
+                <!-- Academic Term (optional) — auto-fills Term/Year
+                     and attendance totals (days present/absent/late/
+                     excused) when the report saves. -->
+                <div>
+                    <label for="term_id" class="block text-sm font-medium text-neutral-700 mb-1">
+                        Academic Term <span class="text-xs text-neutral-500">(for report cards)</span>
+                    </label>
+                    <select id="term_id" name="term_id"
+                            onchange="handleTermChange()"
+                            class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">None (daily / non-term report)</option>
+                    </select>
+                    <div id="term-summary-preview"
+                         class="hidden mt-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-900">
+                        <p class="font-medium" id="term-summary-label"></p>
+                        <p id="term-summary-attendance" class="mt-0.5"></p>
+                    </div>
+                    <p class="mt-1 text-xs text-neutral-500">
+                        Pick a term and the report card will auto-fill the term
+                        number, academic year, and attendance totals from your
+                        records. Configure terms at <a href="/settings/academic/terms" class="underline">Settings &rarr; Academic Terms</a>.
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -883,6 +907,7 @@ async function saveReport(finalize = false) {
     if (activeBtn) activeBtn.textContent = finalize ? 'Saving & Finalizing...' : 'Saving...';
 
     try {
+        const termId = (document.getElementById('term_id') || {}).value || null;
         const createResult = await ClassUp.fetch('/api/v1/reports', {
             method: 'POST',
             body: {
@@ -890,7 +915,8 @@ async function saveReport(finalize = false) {
                 class_id: classId,
                 template_id: templateId,
                 report_date: reportDate,
-                report_data: reportData
+                report_data: reportData,
+                term_id: termId || null,
             }
         });
 
@@ -910,8 +936,58 @@ async function saveReport(finalize = false) {
     }
 }
 
+// Populate the Academic Term dropdown + preview helper.
+async function loadAcademicTerms() {
+    const sel = document.getElementById('term_id');
+    if (!sel) return;
+    try {
+        const res = await fetch('/api/v1/academic/terms', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const result = await res.json();
+        const terms = result.data || [];
+        for (const t of terms) {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = `${t.label} (${t.start} → ${t.end})`;
+            sel.appendChild(opt);
+        }
+    } catch (e) { /* term feature optional */ }
+}
+
+async function handleTermChange() {
+    const termId = document.getElementById('term_id').value;
+    const studentId = document.getElementById('student_id').value;
+    const preview = document.getElementById('term-summary-preview');
+    const label = document.getElementById('term-summary-label');
+    const att = document.getElementById('term-summary-attendance');
+    if (!preview) return;
+    if (!termId || !studentId) {
+        preview.classList.add('hidden');
+        return;
+    }
+    try {
+        const res = await fetch(
+            `/api/v1/academic/terms/${encodeURIComponent(termId)}/student/${studentId}/summary`,
+            { credentials: 'same-origin' },
+        );
+        if (!res.ok) {
+            preview.classList.add('hidden');
+            return;
+        }
+        const result = await res.json();
+        const d = result.data || {};
+        const a = d.attendance || {};
+        label.textContent = `${d.term_label} — Term ${d.term_number}, ${d.academic_year}`;
+        att.textContent = `Present ${a.present || 0} · Absent ${a.absent || 0} · Late ${a.late || 0} · Excused ${a.excused || 0}`;
+        preview.classList.remove('hidden');
+    } catch (e) {
+        preview.classList.add('hidden');
+    }
+}
+
 // Initialize step indicator based on pre-selected state
 document.addEventListener('DOMContentLoaded', async function() {
+    loadAcademicTerms();
     {% if selected_template %}
     updateStepIndicator(3);
     // Fetch class subjects and re-render with JS (handles ACADEMIC_GRADES)

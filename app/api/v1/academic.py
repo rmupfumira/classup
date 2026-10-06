@@ -547,3 +547,119 @@ async def setup_default_academic_config(
             "grading_system_name": grading_system.name,
         },
     }
+
+
+# ==================== ACADEMIC TERMS ====================
+# Owner directive 2026-10-06: let admins configure academic terms
+# (number, year, start / end dates) so report cards can auto-fill
+# "Term X, Academic Year YYYY, Days present/absent/late/excused".
+
+
+class TermPayload(BaseModel):
+    """Create / update an academic term."""
+    id: str | None = Field(None, max_length=50)
+    number: int = Field(..., ge=1, le=4)
+    year: int = Field(..., ge=2000, le=2100)
+    label: str | None = Field(None, max_length=100)
+    start: str  # ISO date
+    end: str    # ISO date
+
+
+class TermResponse(BaseModel):
+    id: str
+    number: int
+    year: int
+    label: str
+    start: str
+    end: str
+
+
+@router.get("/terms", response_model=dict)
+@require_role("SCHOOL_ADMIN", "TEACHER")
+async def list_academic_terms(db: AsyncSession = Depends(get_db)):
+    """List this tenant's configured academic terms, newest-first."""
+    from app.services import academic_terms as _terms
+    from app.utils.tenant_context import get_tenant_id
+
+    terms = await _terms.list_terms(db, get_tenant_id())
+    return {
+        "status": "success",
+        "data": [t.to_dict() for t in terms],
+    }
+
+
+@router.post("/terms", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def upsert_academic_term(
+    body: TermPayload,
+    db: AsyncSession = Depends(get_db),
+):
+    """Add or replace an academic term (keyed by id)."""
+    from datetime import date as _date
+
+    from app.services import academic_terms as _terms
+    from app.utils.tenant_context import get_tenant_id
+
+    try:
+        start = _date.fromisoformat(body.start)
+        end = _date.fromisoformat(body.end)
+    except ValueError:
+        raise HTTPException(
+            status_code=422, detail="start / end must be ISO dates (YYYY-MM-DD)",
+        )
+
+    term = _terms.AcademicTerm(
+        id=body.id or f"t{body.number}-{body.year}",
+        number=body.number,
+        year=body.year,
+        label=body.label or f"Term {body.number} {body.year}",
+        start=start,
+        end=end,
+    )
+    try:
+        saved = await _terms.upsert_term(db, get_tenant_id(), term)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    return {
+        "status": "success",
+        "data": saved.to_dict(),
+        "message": "Term saved",
+    }
+
+
+@router.delete("/terms/{term_id}", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def delete_academic_term(term_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete an academic term by id."""
+    from app.services import academic_terms as _terms
+    from app.utils.tenant_context import get_tenant_id
+
+    removed = await _terms.delete_term(db, get_tenant_id(), term_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Term not found")
+    return {"status": "success", "message": "Term deleted"}
+
+
+@router.get("/terms/{term_id}/student/{student_id}/summary", response_model=dict)
+@require_role("SCHOOL_ADMIN", "TEACHER")
+async def preview_term_summary(
+    term_id: str,
+    student_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Preview the term summary (term meta + attendance totals) that
+    report-card create will attach to ``report_data._term_summary``.
+
+    Useful for the Create Report UI — the admin picks a term, this
+    endpoint shows them what will auto-fill before they save.
+    """
+    from app.services import academic_terms as _terms
+    from app.utils.tenant_context import get_tenant_id
+
+    summary = await _terms.term_report_context(
+        db, get_tenant_id(), student_id, term_id,
+    )
+    if not summary:
+        raise HTTPException(status_code=404, detail="Term not found")
+    return {"status": "success", "data": summary}

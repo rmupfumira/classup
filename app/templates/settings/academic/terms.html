@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Academic Terms - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="/settings"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Academic Terms</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Define the terms in your academic year. Report cards use these
+                to auto-fill the term, academic year, and days present / absent
+                / late / excused for the term window.
+            </p>
+        </div>
+    </div>
+
+    <!-- Add / Edit form -->
+    <div class="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
+        <h2 class="text-base font-semibold text-neutral-800 mb-3" id="form-heading">Add a term</h2>
+        <form id="term-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="hidden" id="term-form-id" value="">
+            <div>
+                <label for="term-number" class="block text-sm font-medium text-neutral-700 mb-1">Term number</label>
+                <select id="term-number" required
+                        class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                    <option value="1">Term 1</option>
+                    <option value="2">Term 2</option>
+                    <option value="3">Term 3</option>
+                    <option value="4">Term 4</option>
+                </select>
+            </div>
+            <div>
+                <label for="term-year" class="block text-sm font-medium text-neutral-700 mb-1">Academic year</label>
+                <input type="number" id="term-year" required min="2000" max="2100"
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+            </div>
+            <div>
+                <label for="term-start" class="block text-sm font-medium text-neutral-700 mb-1">Start date</label>
+                <input type="date" id="term-start" required
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+            </div>
+            <div>
+                <label for="term-end" class="block text-sm font-medium text-neutral-700 mb-1">End date</label>
+                <input type="date" id="term-end" required
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+            </div>
+            <div class="sm:col-span-2">
+                <label for="term-label" class="block text-sm font-medium text-neutral-700 mb-1">
+                    Label <span class="text-xs text-neutral-500">(optional — defaults to "Term N YYYY")</span>
+                </label>
+                <input type="text" id="term-label" maxlength="100"
+                       placeholder="e.g. Term 1 2026 or Autumn 2026"
+                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+            </div>
+            <div class="sm:col-span-2 flex justify-end gap-2">
+                <button type="button" id="term-reset" class="hidden px-4 py-2 text-sm text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50">
+                    Cancel edit
+                </button>
+                <button type="submit" class="px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">
+                    Save term
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- List -->
+    <div class="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-neutral-50 text-left text-xs text-neutral-500 uppercase">
+                    <tr>
+                        <th class="px-4 py-2">Label</th>
+                        <th class="px-4 py-2">Term</th>
+                        <th class="px-4 py-2">Year</th>
+                        <th class="px-4 py-2">Start</th>
+                        <th class="px-4 py-2">End</th>
+                        <th class="px-4 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody id="terms-body" class="divide-y divide-neutral-100">
+                    <tr><td colspan="6" class="px-4 py-6 text-center text-neutral-400">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+async function fetchTerms() {
+    const tbody = document.getElementById('terms-body');
+    try {
+        const res = await ClassUp.fetch('/api/v1/academic/terms');
+        const rows = res.data || [];
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-neutral-400">No terms configured yet. Add one above to enable report-card auto-fill.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(t => `
+            <tr>
+                <td class="px-4 py-3 font-medium text-neutral-800">${t.label}</td>
+                <td class="px-4 py-3">Term ${t.number}</td>
+                <td class="px-4 py-3">${t.year}</td>
+                <td class="px-4 py-3">${t.start || ''}</td>
+                <td class="px-4 py-3">${t.end || ''}</td>
+                <td class="px-4 py-3 text-right">
+                    <button type="button" data-edit="${t.id}" data-row='${JSON.stringify(t).replace(/'/g, "&apos;")}'
+                            class="text-primary-600 hover:text-primary-700 text-xs font-medium">Edit</button>
+                    <button type="button" data-delete="${t.id}"
+                            class="ml-3 text-red-600 hover:text-red-700 text-xs font-medium">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+        tbody.querySelectorAll('[data-edit]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const t = JSON.parse(btn.dataset.row);
+                loadIntoForm(t);
+            });
+        });
+        tbody.querySelectorAll('[data-delete]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.delete;
+                const ok = await ClassUp.confirm('Delete this term? Report cards already saved with it will keep their snapshot.', { danger: true, confirmText: 'Delete' });
+                if (!ok) return;
+                await ClassUp.fetch(`/api/v1/academic/terms/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                ClassUp.toast('Term deleted.', 'success');
+                fetchTerms();
+            });
+        });
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-red-500">Could not load terms.</td></tr>';
+    }
+}
+
+function loadIntoForm(t) {
+    document.getElementById('form-heading').textContent = 'Edit term';
+    document.getElementById('term-form-id').value = t.id;
+    document.getElementById('term-number').value = t.number;
+    document.getElementById('term-year').value = t.year;
+    document.getElementById('term-start').value = t.start || '';
+    document.getElementById('term-end').value = t.end || '';
+    document.getElementById('term-label').value = t.label || '';
+    document.getElementById('term-reset').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetForm() {
+    document.getElementById('form-heading').textContent = 'Add a term';
+    document.getElementById('term-form').reset();
+    document.getElementById('term-form-id').value = '';
+    document.getElementById('term-reset').classList.add('hidden');
+}
+
+document.getElementById('term-reset').addEventListener('click', resetForm);
+
+document.getElementById('term-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const number = Number(document.getElementById('term-number').value);
+    const year = Number(document.getElementById('term-year').value);
+    const start = document.getElementById('term-start').value;
+    const end = document.getElementById('term-end').value;
+    const label = document.getElementById('term-label').value.trim() || null;
+    const existingId = document.getElementById('term-form-id').value || null;
+    try {
+        await ClassUp.fetch('/api/v1/academic/terms', {
+            method: 'POST',
+            body: { id: existingId, number, year, start, end, label },
+        });
+        ClassUp.toast(existingId ? 'Term updated.' : 'Term added.', 'success');
+        resetForm();
+        fetchTerms();
+    } catch (e) {
+        // ClassUp.fetch already toasted
+    }
+});
+
+document.getElementById('term-year').value = new Date().getFullYear();
+fetchTerms();
+</script>
+{% endblock %}

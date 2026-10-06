@@ -161,13 +161,21 @@ class ReportTemplateListResponse(BaseModel):
 
 
 class ReportCreate(BaseModel):
-    """Schema for creating a daily report."""
+    """Schema for creating a daily report.
+
+    ``term_id`` — optional. When supplied, the server fills in a
+    ``_term_summary`` block on ``report_data`` with term + academic
+    year + attendance totals (days present/absent/late/excused for
+    the term range). Report-card renderers consume that block so
+    teachers don't re-count attendance (owner directive 2026-10-06).
+    """
 
     student_id: uuid.UUID
     class_id: uuid.UUID
     template_id: uuid.UUID
     report_date: date
     report_data: dict = Field(default_factory=dict)
+    term_id: str | None = Field(None, max_length=50)
 
 
 class ReportUpdate(BaseModel):

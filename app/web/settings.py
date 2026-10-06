@@ -432,6 +432,38 @@ async def settings_billing_save(
 # === Grade Levels ===
 
 
+@router.get("/academic/terms", response_class=HTMLResponse)
+async def settings_academic_terms(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Academic terms settings page.
+
+    Lets admins add / edit / delete academic terms. Terms live in
+    ``tenant.settings.academic_terms`` and feed the report-card
+    autopopulate flow (owner directive 2026-10-06).
+    """
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login?next=/settings/academic/terms", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    current_user = await auth_service.get_current_user(db, user_id)
+
+    return templates.TemplateResponse(
+        "settings/academic/terms.html",
+        {
+            "request": request,
+            "user": current_user,
+            "active_tab": "academic_terms",
+        },
+    )
+
+
 @router.get("/grade-levels", response_class=HTMLResponse)
 async def settings_grade_levels(
     request: Request,
