@@ -285,14 +285,21 @@ class StudentService:
                 f"{settings.app_base_url}/register?"
                 + urlencode({"code": invitation.invitation_code, "email": invitation.email})
             )
+            email_sent = False
             try:
-                await email_service.send_parent_invitation(
+                send_result = await email_service.send_parent_invitation(
                     to=invitation.email,
                     tenant_name=tenant_name,
                     student_name=f"{student.first_name} {student.last_name}",
                     invitation_code=invitation.invitation_code,
                     register_url=register_url,
                 )
+                email_sent = bool(send_result)
+                if not email_sent:
+                    logger.warning(
+                        "Parent invitation email returned no id for %s (student %s)",
+                        email, student.id,
+                    )
             except Exception:
                 logger.exception(
                     "Invitation email failed for %s (student %s)", email, student.id,
@@ -315,13 +322,27 @@ class StudentService:
                         info.phone, student.id,
                     )
 
-            channels = "email"
+            channels = []
+            if email_sent:
+                channels.append("email")
             if whatsapp_sent:
-                channels += " + WhatsApp"
+                channels.append("WhatsApp")
+            if channels:
+                return {
+                    "email": email,
+                    "status": "invited",
+                    "message": f"Invitation sent by {' + '.join(channels)}.",
+                }
+            # Neither channel delivered — invitation row still exists so
+            # the admin can resend it or share the code manually.
             return {
                 "email": email,
-                "status": "invited",
-                "message": f"Invitation sent by {channels}.",
+                "status": "warning",
+                "message": (
+                    f"Invitation created but neither email nor WhatsApp "
+                    f"delivered. Share code {invitation.invitation_code} "
+                    "manually or resend from the student page."
+                ),
             }
         except ValueError as e:
             # invitation service raises ValueError for duplicates etc.

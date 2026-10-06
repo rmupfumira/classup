@@ -1192,7 +1192,17 @@ async def list_whatsapp_conversations(
         users_res = await db.execute(sa_select(User).where(User.id.in_(user_ids)))
         users_map = {u.id: u for u in users_res.scalars().all()}
     if tenant_ids:
-        tenants_res = await db.execute(sa_select(Tenant).where(Tenant.id.in_(tenant_ids)))
+        # Exclude soft-deleted tenants so a conversation tagged to a
+        # dead tenant renders with tenant=None instead of surfacing
+        # the deleted school name. The row itself still shows (so
+        # support can still see the chat happened) — it just loses
+        # the tenant badge.
+        tenants_res = await db.execute(
+            sa_select(Tenant).where(
+                Tenant.id.in_(tenant_ids),
+                Tenant.deleted_at.is_(None),
+            )
+        )
         tenants_map = {t.id: t for t in tenants_res.scalars().all()}
 
     for c in conversations:

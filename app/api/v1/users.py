@@ -139,9 +139,14 @@ async def invite_teacher(
         f"{settings.app_base_url}/register/teacher?code={invitation.invitation_code}"
     )
 
+    # Track delivery outcome — ``send_teacher_invitation`` returns the
+    # message-id on success and ``None`` on any failure. Previously
+    # this always surfaced "Invitation sent" even if the email never
+    # went out (tester bug #6, 2026-10-06).
+    email_sent = False
     email_service = get_email_service()
     try:
-        await email_service.send_teacher_invitation(
+        send_result = await email_service.send_teacher_invitation(
             to=invitation.email,
             tenant_name=tenant_name,
             teacher_name=data.first_name,
@@ -149,12 +154,24 @@ async def invite_teacher(
             register_url=register_url,
             expires_in_days=settings.invitation_code_expiry_days,
         )
+        email_sent = bool(send_result)
+        if not email_sent:
+            logger.warning(
+                "Teacher invitation email returned no id (not sent) for %s",
+                invitation.email,
+            )
     except Exception:
         logger.exception("Failed to send teacher invitation email")
 
     return APIResponse(
         status="success",
-        message=f"Invitation sent to {invitation.email}",
+        message=(
+            f"Invitation sent to {invitation.email}"
+            if email_sent
+            else f"Invitation created but email delivery FAILED — share the "
+                 f"code ({invitation.invitation_code}) with {invitation.email} "
+                 "directly or check /admin/email-settings."
+        ),
         data={
             "id": str(invitation.id),
             "email": invitation.email,
@@ -203,9 +220,10 @@ async def resend_teacher_invitation(
         f"{settings.app_base_url}/register/teacher?code={invitation.invitation_code}"
     )
 
+    email_sent = False
     email_service = get_email_service()
     try:
-        await email_service.send_teacher_invitation(
+        send_result = await email_service.send_teacher_invitation(
             to=invitation.email,
             tenant_name=tenant_name,
             teacher_name=invitation.first_name,
@@ -213,12 +231,24 @@ async def resend_teacher_invitation(
             register_url=register_url,
             expires_in_days=settings.invitation_code_expiry_days,
         )
+        email_sent = bool(send_result)
+        if not email_sent:
+            logger.warning(
+                "Teacher invitation resend returned no id (not sent) for %s",
+                invitation.email,
+            )
     except Exception:
         logger.exception("Failed to resend teacher invitation email")
 
     return APIResponse(
         status="success",
-        message=f"Invitation resent to {invitation.email}",
+        message=(
+            f"Invitation resent to {invitation.email}"
+            if email_sent
+            else f"New code generated, but email delivery FAILED — share the "
+                 f"code ({invitation.invitation_code}) directly or check "
+                 "/admin/email-settings."
+        ),
     )
 
 

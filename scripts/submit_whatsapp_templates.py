@@ -117,9 +117,14 @@ TEMPLATES: list[dict[str, Any]] = [
                     {
                         "type": "URL",
                         "text": "Complete signup",
-                        "url": "https://classup.co.za/register?code={{1}}",
+                        # NOTE: the host MUST be app.classup.co.za
+                        # (the app). classup.co.za is the marketing
+                        # site which has no /register route and will
+                        # 404. If you change this, re-submit the
+                        # template via /admin/whatsapp-templates.
+                        "url": "https://app.classup.co.za/register?code={{1}}",
                         "example": [
-                            "https://classup.co.za/register?code=A3F7B2K9"
+                            "https://app.classup.co.za/register?code=A3F7B2K9"
                         ],
                     }
                 ],

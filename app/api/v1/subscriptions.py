@@ -218,12 +218,27 @@ async def list_subscriptions(
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse:
-    """List all tenant subscriptions (super admin)."""
+    """List all tenant subscriptions (super admin).
+
+    Explicitly joins Tenant and filters out soft-deleted tenants so
+    the page can't display subscriptions whose school has been
+    deleted (which previously allowed admins to extend trials on
+    dead tenants).
+    """
     from sqlalchemy import select, func
     from app.models.subscription import TenantSubscription
+    from app.models import Tenant
 
-    stmt = select(TenantSubscription)
-    count_stmt = select(func.count(TenantSubscription.id))
+    stmt = (
+        select(TenantSubscription)
+        .join(Tenant, TenantSubscription.tenant_id == Tenant.id)
+        .where(Tenant.deleted_at.is_(None))
+    )
+    count_stmt = (
+        select(func.count(TenantSubscription.id))
+        .join(Tenant, TenantSubscription.tenant_id == Tenant.id)
+        .where(Tenant.deleted_at.is_(None))
+    )
 
     if status:
         stmt = stmt.where(TenantSubscription.status == status.upper())

@@ -259,10 +259,60 @@ class TenantService:
         return tenant
 
     async def delete_tenant(self, db: AsyncSession, tenant_id: uuid.UUID) -> None:
-        """Soft delete a tenant."""
+        """Soft delete a tenant and detach it from forward-facing views.
+
+        The tenant row itself soft-deletes (deleted_at set, is_active
+        false). The DB-level ``ondelete`` rules on child tables never
+        fire — nothing is actually removed — so we explicitly:
+
+        - Cancel any active TenantSubscription so the super-admin
+          Subscriptions page doesn't still show the dead tenant as
+          TRIALING/ACTIVE and let an admin extend trial on a corpse.
+        - Null the ``tenant_id`` on WhatsApp inbound/outbound logs so
+          the super-admin Conversations page doesn't still bucket
+          their history under the deleted tenant. The rows survive for
+          forensic purposes but no longer surface tenant metadata.
+
+        Child tables with their own ``deleted_at`` (students, users,
+        classes, invoices, etc.) are left alone — the TenantMiddleware
+        + login flow make them unreachable, and leaving them intact
+        preserves historical data if the tenant is ever restored.
+        """
+        from sqlalchemy import update
+        from app.models import WhatsAppInboundMessage, WhatsAppOutboundMessage
+        from app.models.subscription import TenantSubscription, SubscriptionStatus
+
         tenant = await self.get_tenant(db, tenant_id)
-        tenant.deleted_at = datetime.utcnow()
+        now = datetime.utcnow()
+        tenant.deleted_at = now
         tenant.is_active = False
+
+        # Cancel active subscriptions tied to this tenant.
+        await db.execute(
+            update(TenantSubscription)
+            .where(
+                TenantSubscription.tenant_id == tenant_id,
+                TenantSubscription.status != SubscriptionStatus.CANCELLED.value,
+            )
+            .values(
+                status=SubscriptionStatus.CANCELLED.value,
+                cancelled_at=now,
+            )
+        )
+
+        # Detach WhatsApp history so the deleted tenant's name no
+        # longer appears in Conversations. The rows themselves stay.
+        await db.execute(
+            update(WhatsAppInboundMessage)
+            .where(WhatsAppInboundMessage.tenant_id == tenant_id)
+            .values(tenant_id=None)
+        )
+        await db.execute(
+            update(WhatsAppOutboundMessage)
+            .where(WhatsAppOutboundMessage.tenant_id == tenant_id)
+            .values(tenant_id=None)
+        )
+
         await db.commit()
 
     async def get_platform_stats(self, db: AsyncSession) -> dict:

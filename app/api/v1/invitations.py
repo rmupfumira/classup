@@ -183,7 +183,13 @@ async def create_invitation(
         student = await db.get(Student, invitation.student_id)
         tenant = await db.get(Tenant, invitation.tenant_id)
 
-        # Send invitation email
+        # Send invitation email. ``send_parent_invitation`` returns a
+        # message-id on success and ``None`` on any failure (missing
+        # config, provider error, template error). We need to report
+        # the actual outcome back to the admin — previously this always
+        # said "email sent" even if nothing went out, which is what
+        # tester bug #5 (2026-10-06) was experiencing.
+        email_sent = False
         if student and tenant:
             from urllib.parse import urlencode
             params = urlencode({
@@ -192,13 +198,20 @@ async def create_invitation(
             })
             register_url = f"{settings.app_base_url}/register?{params}"
             try:
-                await email_service.send_parent_invitation(
+                send_result = await email_service.send_parent_invitation(
                     to=invitation.email,
                     tenant_name=tenant.name,
                     student_name=f"{student.first_name} {student.last_name}",
                     invitation_code=invitation.invitation_code,
                     register_url=register_url,
                 )
+                email_sent = bool(send_result)
+                if not email_sent:
+                    logger.warning(
+                        "Parent invitation email returned no id (not sent) for %s — "
+                        "check email provider config and server logs",
+                        invitation.email,
+                    )
             except Exception as e:
                 logger.error(f"Failed to send invitation email: {e}")
             # Invitation flow doesn't collect a phone yet — no WhatsApp
@@ -220,7 +233,13 @@ async def create_invitation(
                 created_at=invitation.created_at,
                 student_name=f"{student.first_name} {student.last_name}" if student else None,
             ),
-            message="Invitation created and email sent",
+            message=(
+                "Invitation created and email sent"
+                if email_sent
+                else "Invitation created but email delivery FAILED — check email "
+                     "settings at /admin/email-settings or share the code "
+                     f"({invitation.invitation_code}) with the parent directly."
+            ),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -319,7 +338,10 @@ async def resend_invitation(
         student = await db.get(Student, invitation.student_id)
         tenant = await db.get(Tenant, invitation.tenant_id)
 
-        # Send invitation email
+        # Send invitation email — track actual delivery outcome so the
+        # admin learns whether a resend succeeded (previously always
+        # claimed success).
+        email_sent = False
         if student and tenant:
             from urllib.parse import urlencode
             params = urlencode({
@@ -328,13 +350,19 @@ async def resend_invitation(
             })
             register_url = f"{settings.app_base_url}/register?{params}"
             try:
-                await email_service.send_parent_invitation(
+                send_result = await email_service.send_parent_invitation(
                     to=invitation.email,
                     tenant_name=tenant.name,
                     student_name=f"{student.first_name} {student.last_name}",
                     invitation_code=invitation.invitation_code,
                     register_url=register_url,
                 )
+                email_sent = bool(send_result)
+                if not email_sent:
+                    logger.warning(
+                        "Parent invitation resend returned no id (not sent) for %s",
+                        invitation.email,
+                    )
             except Exception as e:
                 logger.error(f"Failed to send invitation email: {e}")
             # Invitation flow doesn't collect a phone yet — no WhatsApp
@@ -356,7 +384,13 @@ async def resend_invitation(
                 created_at=invitation.created_at,
                 student_name=f"{student.first_name} {student.last_name}" if student else None,
             ),
-            message="Invitation resent with new code",
+            message=(
+                "Invitation resent with new code"
+                if email_sent
+                else "New code generated, but email delivery FAILED — share "
+                     f"the code ({invitation.invitation_code}) with the "
+                     "parent directly or check /admin/email-settings."
+            ),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
