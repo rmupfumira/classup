@@ -578,6 +578,38 @@ document.addEventListener('DOMContentLoaded', function() {
             && siblingState.parents.length > 0
         );
 
+        // Hard-block: sibling checkbox is ticked but no actual sibling
+        // was selected. Previously the system fell through to the
+        // soft-confirm below and saved without any parent info — tester
+        // bug #11 (2026-10-06).
+        if (siblingCheckbox.checked && !siblingState.studentId) {
+            ClassUp.toast(
+                'You ticked "sibling" — pick an existing student from the search box, '
+                + 'or untick the box to enter parents manually.',
+                'error',
+            );
+            siblingSearch.focus();
+            return;
+        }
+
+        // Hard-block: sibling picked, "inherit parents" ticked, but the
+        // sibling has no linked parents yet AND no parents entered here.
+        // Nothing to inherit means saving with no parent info.
+        if (
+            siblingState.studentId
+            && document.getElementById('inherit-parents').checked
+            && siblingState.parents.length === 0
+            && parents.length === 0
+        ) {
+            ClassUp.toast(
+                `${siblingState.studentName} has no linked parents yet, so there's nothing `
+                + 'to inherit. Untick "inherit parents" and enter parent details here, '
+                + 'or link parents to the sibling first.',
+                'error',
+            );
+            return;
+        }
+
         // Soft-required: warn (don't block) if we're saving a student
         // with no parent info at all and no sibling to inherit from.
         if (parents.length === 0 && !willInheritFromSibling) {

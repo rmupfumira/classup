@@ -40,6 +40,12 @@
                         disabled>
                     <option value="">Select a student first...</option>
                 </select>
+                <p id="recipient-empty-hint" class="text-xs text-amber-600 mt-1 hidden">
+                    This student has no registered parents yet. The parent needs
+                    to accept their invitation (or be added) before they can
+                    receive messages.
+                    <a href="/students" class="underline">Manage students</a>.
+                </p>
             </div>
 
             <!-- Subject -->
@@ -91,9 +97,11 @@
     }
 
     // Update recipients when student changes
+    const emptyHint = document.getElementById('recipient-empty-hint');
     studentSelect.addEventListener('change', function() {
         const sid = studentSelect.value;
         recipientSelect.innerHTML = '';
+        if (emptyHint) emptyHint.classList.add('hidden');
 
         if (!sid) {
             recipientSelect.innerHTML = '<option value="">Select a student first...</option>';
@@ -103,8 +111,9 @@
 
         const recipients = recipientMap[sid] || [];
         if (recipients.length === 0) {
-            recipientSelect.innerHTML = '<option value="">No recipients available</option>';
+            recipientSelect.innerHTML = '<option value="">No registered parents yet</option>';
             recipientSelect.disabled = true;
+            if (emptyHint) emptyHint.classList.remove('hidden');
             return;
         }
 

@@ -933,7 +933,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     {% endif %}
 
     {% if selected_student and selected_student.class_id %}
-    handleClassChange();
+    // When the user lands here from a student profile with ?student_id=...,
+    // the server pre-selects both the class and the student. But
+    // handleClassChange() re-fetches the class's student list and resets
+    // the student dropdown — which wiped out the preselection (tester
+    // bug #13, 2026-10-06). Preserve the preselected id across the
+    // repopulate, then trigger template loading so the admin lands on
+    // Step 2 with the student ready.
+    const preselectedStudentId = "{{ selected_student.id }}";
+    await handleClassChange();
+    const studentSelect = document.getElementById('student_id');
+    if (studentSelect && preselectedStudentId) {
+        studentSelect.value = preselectedStudentId;
+        if (studentSelect.value === preselectedStudentId) {
+            await handleStudentChange();
+        }
+    }
     {% endif %}
 });
 </script>
