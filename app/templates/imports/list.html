@@ -29,6 +29,7 @@
 
     {% if jobs %}
     <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-neutral-200">
             <thead class="bg-neutral-50">
                 <tr>
@@ -106,6 +107,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
     {% else %}
     <div class="bg-white shadow-sm rounded-lg p-12 text-center">

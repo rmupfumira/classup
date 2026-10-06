@@ -269,9 +269,11 @@
                what makes mouse-wheel scrolling work anywhere on the page.
                md:ml-56 leaves room for the fixed sidebar on desktop.
                pb-24 + md:pb-0 keeps content above the mobile bottom nav.
-               pb-safe handles the iPhone home-indicator. #}
+               pb-safe handles the iPhone home-indicator. max-w-[1600px]
+               keeps content from stretching edge-to-edge on ultra-wide
+               monitors. #}
             <main class="flex-1 pb-24 md:pb-0 md:ml-56 min-w-0">
-                <div class="p-6 pb-safe md:pb-6">
+                <div class="p-6 pb-safe md:pb-6 max-w-[1600px] mx-auto w-full">
                     <!-- Toast Container -->
                     <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3"></div>
 
