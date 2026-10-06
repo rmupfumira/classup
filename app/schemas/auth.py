@@ -23,6 +23,17 @@ class LoginResponse(BaseModel):
     expires_in: int  # Seconds until token expires
 
 
+def _phone_e164_optional(v: str | None) -> str | None:
+    """Normalise an optional phone to E.164 or raise."""
+    from app.utils.phone import PhoneValidationError, normalise_phone
+    if v is None or not str(v).strip():
+        return None
+    try:
+        return normalise_phone(v)
+    except PhoneValidationError as e:
+        raise ValueError(str(e))
+
+
 class RegisterRequest(BaseModel):
     """Parent registration request (via invitation code)."""
 
@@ -41,6 +52,8 @@ class RegisterRequest(BaseModel):
         if "password" in info.data and v != info.data["password"]:
             raise ValueError("Passwords do not match")
         return v
+
+    _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
 
 
 class RegisterResponse(BaseModel):
@@ -138,6 +151,9 @@ class UpdateProfileRequest(BaseModel):
     whatsapp_phone: str | None = Field(None, max_length=50)
     whatsapp_opted_in: bool | None = None
 
+    _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
+    _wa_phone_e164 = field_validator("whatsapp_phone")(lambda cls, v: _phone_e164_optional(v))
+
 
 class VerifyInvitationRequest(BaseModel):
     """Verify invitation code request."""
@@ -164,7 +180,22 @@ class TrialSignupRequest(BaseModel):
     contact_name: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
     phone: str = Field(..., min_length=1, max_length=50)
-    country: str = Field("South Africa", max_length=100)
+    country: str = Field("Zimbabwe", max_length=100)
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_e164(cls, v: str) -> str:
+        from app.utils.phone import PhoneValidationError, normalise_phone
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Phone is required for trial signup")
+        try:
+            n = normalise_phone(v)
+            if n is None:
+                raise ValueError("Phone is required for trial signup")
+            return n
+        except PhoneValidationError as e:
+            raise ValueError(str(e))
     province: str | None = Field(None, max_length=100)
     school_type: str = Field(..., pattern=r"^(daycare|primary_school|high_school|combined|other)$")
     school_type_other: str | None = Field(None, max_length=200)

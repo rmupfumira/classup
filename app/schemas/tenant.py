@@ -3,9 +3,19 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.tenant import EducationType
+
+
+def _phone_e164_optional(v: str | None) -> str | None:
+    from app.utils.phone import PhoneValidationError, normalise_phone
+    if v is None or not str(v).strip():
+        return None
+    try:
+        return normalise_phone(v)
+    except PhoneValidationError as e:
+        raise ValueError(str(e))
 
 
 class TenantCreateRequest(BaseModel):
@@ -18,6 +28,8 @@ class TenantCreateRequest(BaseModel):
     education_type: EducationType = EducationType.DAYCARE
     slug: str | None = Field(None, max_length=100, pattern=r"^[a-z0-9-]+$")
 
+    _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
+
 
 class TenantUpdateRequest(BaseModel):
     """Schema for updating a tenant."""
@@ -29,6 +41,8 @@ class TenantUpdateRequest(BaseModel):
     address: str | None = None
     is_active: bool | None = None
     settings: dict | None = None
+
+    _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
 
 
 class TenantSettingsUpdate(BaseModel):

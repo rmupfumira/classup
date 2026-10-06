@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.student import AgeGroup, Gender
 
@@ -14,6 +14,24 @@ class EmergencyContact(BaseModel):
     name: str
     phone: str
     relationship: str = "Parent"
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_e164(cls, v: str) -> str:
+        from app.utils.phone import PhoneValidationError, normalise_phone
+        v = (v or "").strip()
+        if not v:
+            # Emergency contacts without a phone are useless — but we
+            # let the required-field check elsewhere drive this, we
+            # just refuse to let an invalid value through.
+            raise ValueError("Emergency contact phone is required")
+        try:
+            n = normalise_phone(v)
+            if n is None:
+                raise ValueError("Phone is required")
+            return n
+        except PhoneValidationError as e:
+            raise ValueError(str(e))
 
 
 class MedicalAidInfo(BaseModel):
@@ -71,6 +89,17 @@ class ParentEnrollmentInfo(BaseModel):
     relationship_type: str = Field("PARENT", max_length=32)
     is_primary: bool = True
     send_whatsapp_invite: bool = True
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_e164(cls, v: str | None) -> str | None:
+        from app.utils.phone import PhoneValidationError, normalise_phone
+        if v is None or not str(v).strip():
+            return None
+        try:
+            return normalise_phone(v)
+        except PhoneValidationError as e:
+            raise ValueError(str(e))
 
 
 class StudentCreate(StudentBase):
