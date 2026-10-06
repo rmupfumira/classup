@@ -188,6 +188,114 @@ def create_exception_handlers(templates: Jinja2Templates):
                 status_code=exc.status_code,
             )
 
+    async def http_exception_handler(request: Request, exc):
+        """Translate FastAPI HTTPException to the ClassUp JSON shape.
+
+        FastAPI's default is ``{"detail": "..."}`` which ClassUp.fetch
+        reads as missing ``message`` + missing ``errors``, and surfaces
+        the useless "Something went wrong" toast. Normalising to the
+        ClassUp envelope lets the admin see the real reason — e.g. a
+        validator complaint from an event-create endpoint (tester bug
+        #17, 2026-10-06).
+        """
+        from starlette.exceptions import HTTPException as StarletteHTTPException
+        from fastapi.exceptions import HTTPException as FastAPIHTTPException
+
+        detail = getattr(exc, "detail", None)
+        status_code = getattr(exc, "status_code", 500)
+
+        if wants_json(request):
+            # detail may be a string, a dict, or a list depending on
+            # how the raiser constructed it.
+            if isinstance(detail, str):
+                payload = {"status": "error", "message": detail}
+            elif isinstance(detail, dict):
+                payload = {"status": "error", "message": detail.get("message") or str(detail), **detail}
+            elif isinstance(detail, list):
+                # Pydantic sometimes bundles a list in detail — surface
+                # each item's msg for the toast chain.
+                payload = {
+                    "status": "error",
+                    "message": "; ".join(
+                        str(item.get("msg") if isinstance(item, dict) else item)
+                        for item in detail
+                    ) or "Request failed",
+                    "errors": detail,
+                }
+            else:
+                payload = {"status": "error", "message": str(detail or "Request failed")}
+            return JSONResponse(status_code=status_code, content=payload)
+
+        # Non-JSON (ordinary web request) — defer to the generic 500
+        # template so we get a themed error page.
+        try:
+            return templates.TemplateResponse(
+                f"errors/{status_code}.html",
+                {"request": request, "message": str(detail or "")},
+                status_code=status_code,
+            )
+        except Exception:
+            return templates.TemplateResponse(
+                "errors/generic.html",
+                {
+                    "request": request,
+                    "message": str(detail or "An error occurred"),
+                    "status_code": status_code,
+                },
+                status_code=status_code,
+            )
+
+    async def request_validation_handler(request: Request, exc):
+        """Translate Pydantic/body-validation 422s to the ClassUp JSON
+        shape so the UI can actually show the field-level errors."""
+        errors = getattr(exc, "errors", lambda: [])()
+        if callable(errors):
+            errors = errors()
+
+        if wants_json(request):
+            # Build a readable toast message from the per-field msgs.
+            msgs: list[str] = []
+            for err in errors or []:
+                if isinstance(err, dict):
+                    loc = err.get("loc") or []
+                    field = loc[-1] if loc else None
+                    msg = err.get("msg") or err.get("message") or "Invalid value"
+                    msgs.append(f"{field}: {msg}" if field else msg)
+                else:
+                    msgs.append(str(err))
+            summary = "; ".join(msgs) or "Validation failed"
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "status": "error",
+                    "message": summary,
+                    "errors": [
+                        {
+                            "field": (
+                                err.get("loc", [None])[-1] if isinstance(err, dict) else None
+                            ),
+                            "message": (
+                                err.get("msg") if isinstance(err, dict) else str(err)
+                            ),
+                        }
+                        for err in errors or []
+                    ],
+                },
+            )
+
+        try:
+            return templates.TemplateResponse(
+                "errors/422.html",
+                {"request": request, "message": "Validation failed", "errors": errors},
+                status_code=422,
+            )
+        except Exception:
+            return templates.TemplateResponse(
+                "errors/generic.html",
+                {"request": request, "message": "Validation failed", "status_code": 422},
+                status_code=422,
+            )
+
     async def generic_exception_handler(request: Request, exc: Exception):
         """Handle unexpected exceptions."""
         # Log the full exception with traceback
@@ -218,9 +326,15 @@ def create_exception_handlers(templates: Jinja2Templates):
                 status_code=500,
             )
 
+    from fastapi.exceptions import HTTPException as FastAPIHTTPException, RequestValidationError
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
     return {
         FeatureLockedException: feature_locked_exception_handler,
         ClassUpException: classup_exception_handler,
         ValidationException: validation_exception_handler,
+        RequestValidationError: request_validation_handler,
+        FastAPIHTTPException: http_exception_handler,
+        StarletteHTTPException: http_exception_handler,
         Exception: generic_exception_handler,
     }

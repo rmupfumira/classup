@@ -73,13 +73,31 @@ class ImportService:
         reader = csv.DictReader(io.StringIO(csv_content))
         headers = reader.fieldnames or []
 
-        # Get sample rows (up to 5)
-        sample_rows = []
+        # Get sample rows (up to 5). csv.DictReader fills missing cells
+        # with None and bundles extras under a None key — normalise both
+        # so the Pydantic preview response accepts them and the preview
+        # table in the UI renders empty cells instead of crashing on a
+        # ragged row (tester bug #19, 2026-10-06).
+        sample_rows: list[dict] = []
         total_rows = 0
         for i, row in enumerate(reader):
             total_rows += 1
             if i < 5:
-                sample_rows.append(dict(row))
+                clean: dict = {}
+                for key, value in row.items():
+                    if key is None:
+                        # DictReader puts overrun cells under None.
+                        # Expose them as a joined "_extra" column so
+                        # the admin notices.
+                        if isinstance(value, list):
+                            clean["_extra"] = ", ".join(
+                                str(v) for v in value if v is not None
+                            )
+                        else:
+                            clean["_extra"] = str(value or "")
+                    else:
+                        clean[key] = "" if value is None else str(value)
+                sample_rows.append(clean)
 
         # Create job record
         job = BulkImportJob(
@@ -167,6 +185,16 @@ class ImportService:
 
         for row_num, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
             processed_count += 1
+            # Normalise ragged rows — csv.DictReader uses None for missing
+            # cells and bundles extras under a None key. The per-type row
+            # importers below call .strip() on every mapped value, which
+            # would crash on a None. Replace nulls with empty strings and
+            # drop the overflow bucket entirely.
+            row = {
+                k: ("" if v is None else v)
+                for k, v in row.items()
+                if k is not None
+            }
             try:
                 if job.import_type == "STUDENTS":
                     await self._import_student_row(db, job.tenant_id, row, field_to_csv)
@@ -177,6 +205,16 @@ class ImportService:
 
                 success_count += 1
             except Exception as e:
+                # Row-level exception may leave the AsyncSession in an
+                # aborted state (if the error came from a flush). The
+                # next periodic commit / final commit would then explode
+                # and mark the whole job FAILED. Roll back explicitly so
+                # the next row starts clean (tester bug #19 secondary,
+                # 2026-10-06).
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
                 errors.append({
                     "row": row_num,
                     "field": None,

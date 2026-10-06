@@ -297,14 +297,23 @@ function createSectionElement(section, index) {
         fieldsContainer.appendChild(fieldEl);
     });
 
-    // Event listeners
-    sectionEl.querySelector('.section-title').addEventListener('change', function() {
-        sections[index].title = this.value;
-        sections[index].id = this.value.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    // Event listeners — bind to 'input' so state syncs on every
+    // keystroke. The old 'change' event only fired on blur, which
+    // meant clicking "Add Field" mid-type lost the typed title
+    // because state still had the initial '' value and
+    // renderSections() rebuilt the DOM from that stale state.
+    sectionEl.querySelector('.section-title').addEventListener('input', function() {
+        // Look up current index dynamically — the closure's `index`
+        // goes stale after a re-render.
+        const si = Number(sectionEl.dataset.sectionIndex);
+        if (!sections[si]) return;
+        sections[si].title = this.value;
+        sections[si].id = this.value.toLowerCase().replace(/[^a-z0-9]/g, '_');
     });
 
     sectionEl.querySelector('.section-type').addEventListener('change', function() {
-        sections[index].type = this.value;
+        const si = Number(sectionEl.dataset.sectionIndex);
+        if (sections[si]) sections[si].type = this.value;
     });
 
     sectionEl.querySelector('.toggle-section').addEventListener('click', function() {
@@ -316,13 +325,19 @@ function createSectionElement(section, index) {
 
     sectionEl.querySelector('.remove-section').addEventListener('click', async function() {
         if (await ClassUp.confirm('Remove this section?', { danger: true, confirmText: 'Remove' })) {
-            sections.splice(index, 1);
-            renderSections();
+            // Dynamic lookup — the `index` captured in the closure
+            // goes stale after any prior renderSections() call.
+            const si = Number(sectionEl.dataset.sectionIndex);
+            if (sections[si]) {
+                sections.splice(si, 1);
+                renderSections();
+            }
         }
     });
 
     sectionEl.querySelector('.add-field').addEventListener('click', function() {
-        addField(index);
+        const si = Number(sectionEl.dataset.sectionIndex);
+        if (sections[si] !== undefined) addField(si);
     });
 
     return sectionEl;
@@ -334,10 +349,15 @@ function createFieldElement(field, fieldIndex) {
     const fieldEl = clone.querySelector('.field-item');
 
     fieldEl.dataset.fieldIndex = fieldIndex;
-    fieldEl.querySelector('.field-label').value = field.label || '';
-    fieldEl.querySelector('.field-type').value = field.type || 'TEXT';
-    fieldEl.querySelector('.field-options').value = (field.options || []).join(', ');
-    fieldEl.querySelector('.field-required').checked = field.required || false;
+    const labelInput = fieldEl.querySelector('.field-label');
+    const typeInput = fieldEl.querySelector('.field-type');
+    const optionsInput = fieldEl.querySelector('.field-options');
+    const requiredInput = fieldEl.querySelector('.field-required');
+
+    labelInput.value = field.label || '';
+    typeInput.value = field.type || 'TEXT';
+    optionsInput.value = (field.options || []).join(', ');
+    requiredInput.checked = field.required || false;
 
     // Show/hide options based on type
     const optionsContainer = fieldEl.querySelector('.field-options-container');
@@ -347,8 +367,43 @@ function createFieldElement(field, fieldIndex) {
         optionsContainer.classList.add('hidden');
     }
 
-    // Event listeners
-    fieldEl.querySelector('.field-type').addEventListener('change', function() {
+    // Resolve state slot dynamically each change — the fieldIndex +
+    // sectionIndex closures go stale after a re-render, so look them
+    // up via the DOM ancestry on every write.
+    function stateSlot() {
+        const sectionEl = fieldEl.closest('.section-item');
+        if (!sectionEl) return null;
+        const si = Number(sectionEl.dataset.sectionIndex);
+        const fi = Number(fieldEl.dataset.fieldIndex);
+        if (!sections[si] || !sections[si].fields[fi]) return null;
+        return sections[si].fields[fi];
+    }
+
+    // Keep state in sync with every keystroke so a subsequent
+    // renderSections() (triggered by Add Field, Remove Field, Add
+    // Section) rebuilds with the user's typed values instead of
+    // wiping them. Previously typed labels/options were lost because
+    // state only carried the initial '' default (tester bug #14,
+    // 2026-10-06).
+    labelInput.addEventListener('input', function() {
+        const slot = stateSlot();
+        if (slot) slot.label = this.value;
+    });
+    optionsInput.addEventListener('input', function() {
+        const slot = stateSlot();
+        if (!slot) return;
+        slot.options = this.value
+            .split(',')
+            .map(o => o.trim())
+            .filter(o => o);
+    });
+    requiredInput.addEventListener('change', function() {
+        const slot = stateSlot();
+        if (slot) slot.required = this.checked;
+    });
+    typeInput.addEventListener('change', function() {
+        const slot = stateSlot();
+        if (slot) slot.type = this.value;
         if (['SELECT', 'MULTISELECT'].includes(this.value)) {
             optionsContainer.classList.remove('hidden');
         } else {
@@ -357,9 +412,15 @@ function createFieldElement(field, fieldIndex) {
     });
 
     fieldEl.querySelector('.remove-field').addEventListener('click', function() {
-        const sectionIndex = fieldEl.closest('.section-item').dataset.sectionIndex;
-        sections[sectionIndex].fields.splice(fieldIndex, 1);
-        renderSections();
+        // sectionIndex + fieldIndex closures may be stale after a
+        // previous re-render; look up live indices from the DOM.
+        const sectionEl = fieldEl.closest('.section-item');
+        const si = Number(sectionEl.dataset.sectionIndex);
+        const fi = Number(fieldEl.dataset.fieldIndex);
+        if (sections[si] && sections[si].fields[fi]) {
+            sections[si].fields.splice(fi, 1);
+            renderSections();
+        }
     });
 
     return fieldEl;

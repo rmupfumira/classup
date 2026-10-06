@@ -74,10 +74,19 @@ class ImportJobResponse(BaseModel):
 
 
 class ImportPreviewResponse(BaseModel):
-    """Response for CSV preview (headers + sample rows)."""
+    """Response for CSV preview (headers + sample rows).
+
+    ``sample_rows`` values are nullable because ``csv.DictReader``
+    yields ``None`` for missing fields on ragged rows (shorter than
+    the header) and ``list[str]`` under a ``None`` key for overrun
+    rows. Previously typed as ``dict[str, str]``, which rejected
+    those rows and bubbled a Pydantic ValidationError up to the
+    generic 500 handler — showing the admin a bare "Something went
+    wrong" (tester bug #19, 2026-10-06).
+    """
 
     headers: list[str]
-    sample_rows: list[dict[str, str]]
+    sample_rows: list[dict[str, str | list[str] | None]]
     total_rows: int
     available_fields: dict[str, list[str]]  # import_type -> list of valid fields
 
