@@ -7,11 +7,18 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
-    """Login request schema."""
+    """Login request schema.
+
+    ``tenant_slug`` scopes the login to a specific school when the
+    same email is registered at more than one. Optional — when
+    missing, the server returns the chooser payload (see
+    MultipleTenantsException in auth_service).
+    """
 
     email: EmailStr
     password: str = Field(..., min_length=8)
     remember_me: bool = False
+    tenant_slug: str | None = Field(None, max_length=100, pattern=r"^[a-z0-9-]+$")
 
 
 class LoginResponse(BaseModel):

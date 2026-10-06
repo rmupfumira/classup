@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.schemas.auth import LoginRequest, RegisterRequest
-from app.services.auth_service import get_auth_service
+from app.services.auth_service import MultipleTenantsException, get_auth_service
 from app.templates_config import templates
 from app.utils.tenant_context import get_current_language
 
@@ -49,12 +49,23 @@ async def login_submit(
     password: str = Form(...),
     remember_me: bool = Form(False),
     next: str = Form("/dashboard"),
+    tenant_slug: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Handle login form submission."""
+    """Handle login form submission.
+
+    Owner directive 2026-10-06: when the same email is registered at
+    multiple schools, catch MultipleTenantsException and re-render
+    with a school chooser instead of logging in blindly.
+    """
     try:
         auth_service = get_auth_service()
-        login_request = LoginRequest(email=email, password=password, remember_me=remember_me)
+        login_request = LoginRequest(
+            email=email,
+            password=password,
+            remember_me=remember_me,
+            tenant_slug=(tenant_slug or None),
+        )
         login_response, user = await auth_service.login(db, login_request)
 
         # Create redirect response
@@ -75,6 +86,25 @@ async def login_submit(
         )
 
         return redirect
+
+    except MultipleTenantsException as e:
+        # Re-render with the school chooser. The password stays in a
+        # hidden field so the next submit re-authenticates — we don't
+        # keep server-side session state for the half-finished login.
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {
+                "request": request,
+                "error": None,
+                "email": email,
+                "next": next,
+                "tenant_choices": e.tenants,
+                "pending_password": password,
+                "remember_me": remember_me,
+                "current_language": get_current_language(),
+            },
+            status_code=200,
+        )
 
     except Exception as e:
         # Re-render login page with error

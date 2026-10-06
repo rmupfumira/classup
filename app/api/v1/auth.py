@@ -50,9 +50,30 @@ async def login(
 
     Sets an HttpOnly cookie for web clients in addition to returning
     tokens in the response body for API clients.
+
+    Multi-tenant resolution (owner directive 2026-10-06): if the email
+    is registered at multiple schools and no ``tenant_slug`` was
+    provided, returns a 300-level status payload listing the tenants
+    the API client should offer the user. The client re-POSTs with
+    ``tenant_slug`` set.
     """
+    from app.services.auth_service import MultipleTenantsException
+
     auth_service = get_auth_service()
-    login_response, user = await auth_service.login(db, body)
+    try:
+        login_response, user = await auth_service.login(db, body)
+    except MultipleTenantsException as e:
+        # Return 300 Multiple Choices with the tenant list. API callers
+        # should present a chooser and re-POST with tenant_slug.
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=300,
+            content={
+                "status": "choose_tenant",
+                "message": str(e),
+                "tenants": [{"slug": slug, "name": name} for slug, name in e.tenants],
+            },
+        )
 
     # Set HttpOnly cookie for web clients
     cookie_max_age = settings.jwt_access_token_expire_minutes * 60

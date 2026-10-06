@@ -136,6 +136,43 @@
             </div>
             {% endif %}
 
+            {% if tenant_choices %}
+            <!-- School chooser — the same email is registered at more
+                 than one school. Pick which one to sign in to. Password
+                 is hidden so the next submit re-authenticates (we
+                 never store half-finished login state server-side). -->
+            <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                This email is registered at <strong>{{ tenant_choices|length }}</strong>
+                schools. Pick which one you're signing in to.
+            </div>
+            <form method="POST" action="/login" class="space-y-6">
+                <input type="hidden" name="next" value="{{ next }}">
+                <input type="hidden" name="email" value="{{ email }}">
+                <input type="hidden" name="password" value="{{ pending_password }}">
+                {% if remember_me %}
+                <input type="hidden" name="remember_me" value="true">
+                {% endif %}
+                <div>
+                    <label for="tenant_slug" class="block text-sm font-medium text-neutral-700">School</label>
+                    <select id="tenant_slug" name="tenant_slug" required
+                            class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
+                                   focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-neutral-800">
+                        {% for slug, name in tenant_choices %}
+                        <option value="{{ slug }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit"
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg
+                               shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700
+                               transition-colors duration-200">
+                    Continue to school
+                </button>
+                <a href="/login" class="block text-center text-xs text-neutral-500 hover:text-neutral-700">
+                    &larr; Use a different email
+                </a>
+            </form>
+            {% else %}
             <!-- Login Form -->
             <form method="POST" action="/login" class="space-y-6">
                 <input type="hidden" name="next" value="{{ next }}">
@@ -195,6 +232,7 @@
                     {{ t('auth.login', current_language) }}
                 </button>
             </form>
+            {% endif %}
 
             <!-- Invitation-only notice -->
             <p class="mt-8 text-center text-sm text-neutral-500">

@@ -13,7 +13,7 @@ from app.exceptions import (
     UnauthorizedException,
     ValidationException,
 )
-from app.models import ParentInvitation, ParentStudent, User, Role, InvitationStatus
+from app.models import ParentInvitation, ParentStudent, User, Role, InvitationStatus, Tenant
 from app.models.teacher_invitation import TeacherInvitation
 from app.schemas.auth import (
     LoginRequest,
@@ -22,6 +22,23 @@ from app.schemas.auth import (
     RegisterResponse,
     UserProfile,
 )
+
+
+class MultipleTenantsException(Exception):
+    """Raised when a login email matches users in multiple tenants and
+    the correct one must be chosen by the caller.
+
+    ``tenants`` is a list of ``(slug, name)`` tuples for every tenant
+    where the (email, password) pair verified. The UI renders a chooser
+    and the next login attempt includes ``tenant_slug``.
+    """
+
+    def __init__(self, tenants: list[tuple[str, str]]):
+        self.tenants = tenants
+        super().__init__(
+            f"This email is registered at {len(tenants)} schools. "
+            "Pick which one you're signing in to."
+        )
 from app.utils.security import (
     create_access_token,
     create_refresh_token,
@@ -39,30 +56,93 @@ class AuthService:
     ) -> tuple[LoginResponse, User]:
         """Authenticate a user and return tokens.
 
+        Owner directive 2026-10-06: the same email can be registered at
+        multiple schools (a parent at two campuses, an admin running
+        a group). Resolution:
+
+        - If ``tenant_slug`` is supplied, scope the lookup to that
+          tenant. Standard single-row flow.
+        - Otherwise, find every User with this email and verify the
+          password against each. 0 verified → UnauthorizedException.
+          1 verified → log that one in. 2+ verified → raise
+          :class:`MultipleTenantsException` so the UI can render a
+          school chooser and the caller re-submits with ``tenant_slug``.
+
+        Super admin rows (``tenant_id = NULL``) are included — a super
+        admin's email is unique by convention, so they never hit the
+        chooser.
+
         Args:
             db: Database session
-            request: Login request with email and password
+            request: Login request with email, password, and optional
+                tenant_slug.
 
         Returns:
             Tuple of (LoginResponse, User)
 
         Raises:
             UnauthorizedException: If credentials are invalid
+            MultipleTenantsException: If the email + password matched
+                multiple tenants and the caller must pick one.
         """
-        # Find user by email
-        stmt = select(User).where(
-            User.email == request.email,
-            User.deleted_at.is_(None),
+        slug = (request.tenant_slug or "").strip() or None
+
+        # Find candidate users. With a tenant_slug, scope to that
+        # tenant's row. Without, we might get several rows (same email
+        # at multiple schools) and we fan the password-verify across them.
+        stmt = (
+            select(User)
+            .where(
+                User.email == request.email,
+                User.deleted_at.is_(None),
+            )
         )
+        if slug:
+            stmt = stmt.join(
+                Tenant, User.tenant_id == Tenant.id
+            ).where(
+                Tenant.slug == slug,
+                Tenant.deleted_at.is_(None),
+            )
         result = await db.execute(stmt)
-        user = result.scalar_one_or_none()
+        candidates = list(result.scalars().all())
 
-        if not user:
+        if not candidates:
             raise UnauthorizedException("Invalid email or password")
 
-        # Verify password
-        if not verify_password(request.password, user.password_hash):
+        matches = [
+            u for u in candidates
+            if verify_password(request.password, u.password_hash)
+        ]
+
+        if not matches:
             raise UnauthorizedException("Invalid email or password")
+
+        if len(matches) > 1:
+            # Multiple distinct tenants verified — ask the caller to
+            # pick. Load tenant names for the chooser UI. Super admin
+            # (no tenant) can't collide with tenant-scoped rows under
+            # the UNIQUE(email, tenant_id) constraint, so this list is
+            # purely tenant-scoped users.
+            tenant_ids = [u.tenant_id for u in matches if u.tenant_id]
+            tenant_rows = []
+            if tenant_ids:
+                tres = await db.execute(
+                    select(Tenant).where(Tenant.id.in_(tenant_ids))
+                )
+                tenant_rows = list(tres.scalars().all())
+            by_id = {t.id: t for t in tenant_rows}
+            choices = sorted(
+                (
+                    (by_id[u.tenant_id].slug, by_id[u.tenant_id].name)
+                    for u in matches
+                    if u.tenant_id and u.tenant_id in by_id
+                ),
+                key=lambda x: x[1].lower(),
+            )
+            raise MultipleTenantsException(choices)
+
+        user = matches[0]
 
         # Check if account is active
         if not user.is_active:
