@@ -384,7 +384,7 @@ def list_currencies() -> list[dict[str, str]]:
                 "symbol": CURRENCY_SYMBOLS.get(extra, extra),
                 "name": extra,
             }
-    top = ["ZAR", "USD", "EUR", "GBP"]
+    top = ["USD", "ZAR", "EUR", "GBP"]
     top_items = [seen[c] for c in top if c in seen]
     rest = sorted(
         (v for k, v in seen.items() if k not in top),

@@ -363,7 +363,7 @@ class AccountingService:
         account_number: str | None = None,
         branch_code: str | None = None,
         account_type: str = "OPERATING",
-        currency: str = "ZAR",
+        currency: str = "USD",
         opening_balance: Decimal = Decimal("0"),
         opening_balance_date: date | None = None,
         is_default: bool = False,
@@ -386,7 +386,7 @@ class AccountingService:
             account_number=account_number.strip() if account_number else None,
             branch_code=branch_code.strip() if branch_code else None,
             account_type=account_type.upper(),
-            currency=(currency or "ZAR").strip().upper()[:3],
+            currency=(currency or "USD").strip().upper()[:3],
             opening_balance=opening_balance or Decimal("0"),
             opening_balance_date=opening_balance_date,
             is_default=is_default,
@@ -422,7 +422,7 @@ class AccountingService:
             if k == "account_type" and v.upper() not in {a.value for a in BankAccountType}:
                 raise ValidationException([{"field": "account_type", "message": "Invalid"}])
             if k == "currency":
-                v = (v or "ZAR").strip().upper()[:3]
+                v = (v or "USD").strip().upper()[:3]
             elif k == "account_type":
                 v = v.upper()
             setattr(bank, k, v)

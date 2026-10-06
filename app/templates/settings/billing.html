@@ -58,7 +58,7 @@
                 <label for="billing_currency" class="block text-sm font-medium text-neutral-700">Invoice Currency</label>
                 <select name="billing_currency" id="billing_currency"
                         class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:max-w-xs">
-                    {% set current_currency = (tenant.settings or {}).get('billing_currency', 'ZAR') %}
+                    {% set current_currency = (tenant.settings or {}).get('billing_currency', 'USD') %}
                     {% for cur in currencies %}
                     <option value="{{ cur.code }}" {% if current_currency == cur.code %}selected{% endif %}>
                         {{ cur.code }} ({{ cur.symbol }})

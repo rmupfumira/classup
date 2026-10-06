@@ -505,7 +505,7 @@ class EmailService:
         view_url: str,
         tenant_name: str,
         line_items: list[dict[str, Any]] | None = None,
-        currency: str = "ZAR",
+        currency: str = "USD",
         tenant_address: str | None = None,
         tenant_phone: str | None = None,
         tenant_email: str | None = None,

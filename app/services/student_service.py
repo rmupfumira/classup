@@ -156,6 +156,8 @@ class StudentService:
             allergies=data.allergies,
             emergency_contacts=[c.model_dump() for c in data.emergency_contacts],
             notes=data.notes,
+            national_id=(data.national_id or "").strip() or None,
+            medical_aid=(data.medical_aid.model_dump() if data.medical_aid else None),
             enrollment_date=date.today(),
             is_active=True,
         )
@@ -423,6 +425,11 @@ class StudentService:
                 c.model_dump() if hasattr(c, "model_dump") else c
                 for c in update_data["emergency_contacts"]
             ]
+        # Normalise optional strings — turn a blank national_id into
+        # None so DB stays clean.
+        if "national_id" in update_data:
+            v = update_data["national_id"]
+            update_data["national_id"] = (v or "").strip() or None if isinstance(v, str) else v
 
         for field, value in update_data.items():
             setattr(student, field, value)

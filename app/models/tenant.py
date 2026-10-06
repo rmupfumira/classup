@@ -113,7 +113,7 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     @property
     def timezone(self) -> str:
         """Get the tenant's timezone."""
-        return self.settings.get("timezone", "Africa/Johannesburg")
+        return self.settings.get("timezone", "Africa/Harare")
 
     @property
     def language(self) -> str:
@@ -258,9 +258,9 @@ def get_default_tenant_settings(
             "primary_color": "#1B3A6B",
             "secondary_color": "#C9962A",
         },
-        "timezone": pd.get("default_timezone", "Africa/Johannesburg"),
+        "timezone": pd.get("default_timezone", "Africa/Harare"),
         "language": pd.get("default_language", "en"),
-        "billing_currency": pd.get("default_currency", "ZAR"),
+        "billing_currency": pd.get("default_currency", "USD"),
         "country": pd.get("default_country", "ZA"),
         "billing_banking_details": "",
         "billing_payment_instructions": "",

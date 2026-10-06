@@ -82,7 +82,7 @@ class SubscriptionPlan(Base, TimestampMixin, SoftDeleteMixin):
         Numeric(12, 2), nullable=True
     )
     currency: Mapped[str] = mapped_column(
-        String(3), nullable=False, default="ZAR"
+        String(3), nullable=False, default="USD"
     )
     max_students: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_staff: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -193,7 +193,7 @@ class PlatformInvoice(Base, TimestampMixin):
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(
-        String(3), nullable=False, default="ZAR"
+        String(3), nullable=False, default="USD"
     )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=PlatformInvoiceStatus.PENDING.value
@@ -268,7 +268,7 @@ class PlatformEftPayment(Base, TimestampMixin):
         Numeric(precision=12, scale=2), nullable=False
     )
     currency: Mapped[str] = mapped_column(
-        String(3), nullable=False, default="ZAR", server_default="ZAR"
+        String(3), nullable=False, default="USD", server_default="USD"
     )
     reference: Mapped[str] = mapped_column(String(100), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -119,7 +119,7 @@ async def billing_dashboard(
 
     # Get tenant for currency
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     context = {
         "request": request,
@@ -158,7 +158,7 @@ async def fee_items_page(
     classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     context = {
         "request": request,
@@ -197,7 +197,7 @@ async def arrears_report(
     classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     # Totals
     from decimal import Decimal
@@ -247,7 +247,7 @@ async def arrears_export_csv(
     arrears_data = await billing_service.get_arrears_report(db, class_id=class_id)
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -306,7 +306,7 @@ async def invoices_list(
     total_pages = (total + 19) // 20
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     context = {
         "request": request,
@@ -349,7 +349,7 @@ async def generate_invoices_page(
     classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     context = {
         "request": request,
@@ -392,7 +392,7 @@ async def invoice_detail(
     invoice = await billing_service.get_invoice(db, invoice_id)
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     context = {
         "request": request,
@@ -429,7 +429,7 @@ async def payments_list(
     total_pages = (total + 19) // 20
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     context = {
         "request": request,
@@ -498,7 +498,7 @@ async def statement_page(
     balances = await billing_service.get_children_balances(db, user_id)
 
     tenant = await _get_tenant(db)
-    currency = tenant.get_setting("billing_currency", "ZAR") if tenant else "ZAR"
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
 
     context = {
         "request": request,

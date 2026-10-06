@@ -58,20 +58,20 @@ _CURRENCY_SYMBOLS = {
 
 
 def _currency_symbol(code: str) -> str:
-    return _CURRENCY_SYMBOLS.get((code or "ZAR").upper(), code or "ZAR")
+    return _CURRENCY_SYMBOLS.get((code or "USD").upper(), code or "USD")
 
 
 async def _tenant_currency(db: AsyncSession) -> tuple[str, str]:
     """Return (currency_code, currency_symbol) for the current tenant. Falls
-    back to ZAR/R so the page never blanks if settings haven't been touched."""
+    back to USD/$ so the page never blanks if settings haven't been touched."""
     from app.models import Tenant
     tenant_id = get_tenant_id_or_none()
     if not tenant_id:
-        return ("ZAR", "R")
+        return ("USD", "$")
     tenant = await db.get(Tenant, tenant_id)
     if not tenant:
-        return ("ZAR", "R")
-    code = (tenant.settings or {}).get("billing_currency", "ZAR")
+        return ("USD", "$")
+    code = (tenant.settings or {}).get("billing_currency", "USD")
     return (code, _currency_symbol(code))
 
 

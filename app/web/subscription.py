@@ -77,7 +77,7 @@ async def eft_payment_page(
     # tenant override → platform default → country default → ZA fallback.
     from app.models.tenant import Tenant
     from app.services import jurisdiction_service
-    currency_code = "ZAR"
+    currency_code = "USD"
     if user.tenant_id:
         tenant = await db.get(Tenant, user.tenant_id)
         jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)

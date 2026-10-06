@@ -246,7 +246,7 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id):
 
     # Get billing balances (feature-gated)
     billing_balances = []
-    billing_currency = "ZAR"
+    billing_currency = "USD"
     try:
         from app.models import Tenant
         tenant_id = get_tenant_id()
@@ -255,7 +255,7 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id):
             from app.services.billing_service import get_billing_service
             billing_service = get_billing_service()
             billing_balances = await billing_service.get_children_balances(db, user_id)
-            billing_currency = tenant.get_setting("billing_currency", "ZAR")
+            billing_currency = tenant.get_setting("billing_currency", "USD")
     except Exception:
         pass
 

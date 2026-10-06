@@ -177,12 +177,14 @@ class TestReferenceData:
         assert codes[0] == "ZA"  # South Africa first
         assert set(codes) == set(jur.COUNTRY_REGISTRY.keys())
 
-    def test_list_currencies_puts_zar_first(self):
+    def test_list_currencies_puts_usd_first(self):
+        """USD is the platform default (owner directive 2026-10-06
+        — Rands removed completely), so it leads the picker."""
         currencies = jur.list_currencies()
-        assert currencies[0]["code"] == "ZAR"
+        assert currencies[0]["code"] == "USD"
         codes = [c["code"] for c in currencies]
         # Every country's currency plus the standalone EUR is exposed.
-        assert "USD" in codes
+        assert "ZAR" in codes
         assert "EUR" in codes
 
 

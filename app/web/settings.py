@@ -396,7 +396,7 @@ async def settings_billing(
 @router.post("/billing", response_class=HTMLResponse)
 async def settings_billing_save(
     request: Request,
-    billing_currency: str = Form("ZAR"),
+    billing_currency: str = Form("USD"),
     billing_banking_details: str = Form(""),
     billing_payment_instructions: str = Form(""),
     billing_overdue_reminders_enabled: str | None = Form(None),

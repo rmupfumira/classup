@@ -27,11 +27,13 @@ async def _reset_platform_row(db: AsyncSession):
 
 class TestPlatformDefaults:
     async def test_get_returns_built_in_when_no_row(self, db: AsyncSession):
+        # Owner directive 2026-10-06: USD / ZW / Africa/Harare are the
+        # new platform defaults (Rands removed completely).
         d = await platform_service.get_defaults(db)
-        assert d.default_currency == "ZAR"
-        assert d.default_country == "ZA"
+        assert d.default_currency == "USD"
+        assert d.default_country == "ZW"
         assert d.default_language == "en"
-        assert d.default_timezone == "Africa/Johannesburg"
+        assert d.default_timezone == "Africa/Harare"
         assert d.platform_name == "ClassUp"
 
     async def test_update_persists_changes(self, db: AsyncSession):
@@ -138,9 +140,10 @@ class TestTenantInheritsPlatformDefaults:
         assert settings["language"] == "en"
 
     async def test_get_default_tenant_settings_without_platform_uses_built_in(self):
-        # Backward-compat: existing callers that don't pass platform_defaults
-        # still get the original hard-coded ZAR / Joburg / en values.
+        # Backward-compat: callers that don't pass platform_defaults still
+        # get the built-in values. Updated 2026-10-06 to USD / Africa/Harare
+        # (owner directive — Rands removed completely).
         settings = get_default_tenant_settings(EducationType.PRIMARY_SCHOOL)
-        assert settings["billing_currency"] == "ZAR"
-        assert settings["timezone"] == "Africa/Johannesburg"
+        assert settings["billing_currency"] == "USD"
+        assert settings["timezone"] == "Africa/Harare"
         assert settings["language"] == "en"

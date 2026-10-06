@@ -178,7 +178,7 @@ class YocoProvider(PaymentProvider):
 
         payload = {
             "amount": amount_cents,
-            "currency": (invoice.currency or "ZAR").upper(),
+            "currency": (invoice.currency or "USD").upper(),
             "successUrl": return_url,
             "cancelUrl": cancel_url,
             "failureUrl": cancel_url,

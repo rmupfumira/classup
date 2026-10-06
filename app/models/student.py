@@ -89,6 +89,28 @@ class Student(TenantScopedModel):
     photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     medical_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     allergies: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Optional government / national identifier. Free-form so the field
+    # can hold any country's ID shape (Zimbabwe 7-11 digits + letter + 2
+    # digits, SA 13-digit, etc.). Not required at creation and not
+    # validated — the admin can leave it blank or paste what they have
+    # (owner directive 2026-10-06: capture but don't block).
+    national_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Medical aid / insurance. Stored as a JSONB blob so we can grow the
+    # shape (name, number, package, currency, …) without column churn.
+    # Parents can also fill this in from their own profile — it is NOT
+    # tenant-visible by default beyond admins and the parent themselves.
+    # Expected shape:
+    #   {
+    #     "has_medical_aid": bool,
+    #     "name": str,
+    #     "number": str,
+    #     "currency": str (ISO 4217),
+    #     "package": str,
+    #   }
+    # Null means "no information captured yet" (distinct from has_medical_aid=False).
+    medical_aid: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     emergency_contacts: Mapped[list] = mapped_column(
         JSONB,
         nullable=False,

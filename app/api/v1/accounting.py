@@ -315,7 +315,7 @@ async def create_bank(body: BankAccountIn, db: AsyncSession = Depends(get_db)):
         tenant_id = get_tenant_id()
         tenant = await db.get(Tenant, tenant_id) if tenant_id else None
         payload["currency"] = (
-            (tenant.settings or {}).get("billing_currency", "ZAR") if tenant else "ZAR"
+            (tenant.settings or {}).get("billing_currency", "USD") if tenant else "USD"
         )
     b = await get_accounting_service().create_bank_account(db, **payload)
     await db.commit()

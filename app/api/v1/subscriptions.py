@@ -141,7 +141,7 @@ async def create_plan(
     currency = (body.currency or "").upper().strip()
     if not currency:
         pd = await platform_service.get_defaults(db)
-        currency = pd.default_currency or "ZAR"
+        currency = pd.default_currency or "USD"
 
     service = get_subscription_service()
     plan = await service.create_plan(
@@ -642,7 +642,7 @@ async def initialize_payment(
             tenant_id=tenant_id,
             subscription_id=sub.id,
             amount=amount,
-            currency=(sub.plan.currency if getattr(sub.plan, "currency", None) else "ZAR"),
+            currency=(sub.plan.currency if getattr(sub.plan, "currency", None) else "USD"),
             status=PlatformInvoiceStatus.PENDING.value,
             billing_period_start=start,
             billing_period_end=start + timedelta(days=period_days),

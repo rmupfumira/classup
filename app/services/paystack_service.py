@@ -70,7 +70,7 @@ class PaystackService:
 
     async def create_plan(
         self, name: str, amount_cents: int, interval: str = "monthly",
-        description: str | None = None, currency: str = "ZAR",
+        description: str | None = None, currency: str = "USD",
     ) -> dict:
         """Create a subscription plan on Paystack.
 
@@ -155,7 +155,7 @@ class PaystackService:
     async def initialize_transaction(
         self, email: str, amount_cents: int, reference: str | None = None,
         callback_url: str | None = None, metadata: dict | None = None,
-        plan_code: str | None = None, currency: str = "ZAR",
+        plan_code: str | None = None, currency: str = "USD",
     ) -> dict:
         """Initialize a transaction (returns authorization_url for redirect).
 
@@ -184,7 +184,7 @@ class PaystackService:
 
     async def charge_authorization(
         self, authorization_code: str, email: str, amount_cents: int,
-        reference: str | None = None, currency: str = "ZAR",
+        reference: str | None = None, currency: str = "USD",
     ) -> dict:
         """Charge a previously authorized card."""
         payload = {

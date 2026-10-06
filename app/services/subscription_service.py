@@ -654,7 +654,7 @@ class SubscriptionService:
         reference: str,
         pop_file_id: uuid.UUID,
         notes: str | None = None,
-        currency: str = "ZAR",
+        currency: str = "USD",
     ) -> PlatformEftPayment:
         """Tenant submits proof of payment. Status starts PENDING."""
         if amount <= 0:
@@ -669,7 +669,7 @@ class SubscriptionService:
             tenant_id=tenant_id,
             subscription_id=sub.id if sub else None,
             amount=amount,
-            currency=currency or "ZAR",
+            currency=currency or "USD",
             reference=reference.strip(),
             notes=notes,
             pop_file_id=pop_file_id,

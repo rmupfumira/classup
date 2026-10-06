@@ -35,11 +35,16 @@ BUILT_IN_DEFAULTS: dict[str, Any] = {
     "platform_name": "ClassUp",
     "support_email": "support@classup.co.za",
     "support_phone": "",
-    # Locale & money — what new tenants inherit on signup
-    "default_currency": "ZAR",     # ISO 4217
-    "default_country": "ZA",       # ISO 3166 alpha-2
+    # Locale & money — what new tenants inherit on signup. Platform
+    # default currency is USD platform-wide (owner directive 2026-10-06
+    # — Rands removed completely). A tenant in a specific country can
+    # still override via tenant.settings.billing_currency; the
+    # jurisdiction_service picks a sensible country default when the
+    # tenant explicitly sets its country.
+    "default_currency": "USD",     # ISO 4217
+    "default_country": "ZW",       # ISO 3166 alpha-2 — ZW uses USD
     "default_language": "en",      # must be in app.config.supported_languages
-    "default_timezone": "Africa/Johannesburg",  # IANA tz
+    "default_timezone": "Africa/Harare",  # IANA tz
 }
 
 # What we accept on write. Anything else gets ignored. Keeps the API
@@ -65,10 +70,10 @@ class PlatformDefaults:
             platform_name=str(merged.get("platform_name", "ClassUp")).strip() or "ClassUp",
             support_email=str(merged.get("support_email", "") or "").strip(),
             support_phone=str(merged.get("support_phone", "") or "").strip(),
-            default_currency=str(merged.get("default_currency", "ZAR")).upper().strip() or "ZAR",
-            default_country=str(merged.get("default_country", "ZA")).upper().strip() or "ZA",
+            default_currency=str(merged.get("default_currency", "USD")).upper().strip() or "USD",
+            default_country=str(merged.get("default_country", "ZW")).upper().strip() or "ZW",
             default_language=str(merged.get("default_language", "en")).lower().strip() or "en",
-            default_timezone=str(merged.get("default_timezone", "Africa/Johannesburg")).strip() or "Africa/Johannesburg",
+            default_timezone=str(merged.get("default_timezone", "Africa/Harare")).strip() or "Africa/Harare",
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -130,8 +135,8 @@ async def update_defaults(
 # Order: ZAR first (primary market), then USD/EUR/GBP, then African
 # currencies, then a sprinkling of others. Add more as needed.
 SUPPORTED_CURRENCIES: list[dict[str, str]] = [
-    {"code": "ZAR", "name": "South African Rand (R)"},
     {"code": "USD", "name": "US Dollar ($)"},
+    {"code": "ZAR", "name": "South African Rand (R)"},
     {"code": "EUR", "name": "Euro (€)"},
     {"code": "GBP", "name": "British Pound (£)"},
     {"code": "KES", "name": "Kenyan Shilling (KSh)"},

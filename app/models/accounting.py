@@ -115,7 +115,7 @@ class BankAccount(TenantScopedModel):
         String(20), nullable=False, default=BankAccountType.OPERATING.value,
         server_default=BankAccountType.OPERATING.value,
     )
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="ZAR", server_default="ZAR")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
     opening_balance: Mapped[Decimal] = mapped_column(
         Numeric(precision=14, scale=2), nullable=False, default=0,
         server_default="0",
@@ -178,7 +178,7 @@ class AccountingTransaction(TenantScopedModel):
     amount: Mapped[Decimal] = mapped_column(
         Numeric(precision=14, scale=2), nullable=False
     )
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="ZAR", server_default="ZAR")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
 
     # For INCOME / EXPENSE: which P&L category. NULL for transfers.
     account_id: Mapped[uuid.UUID | None] = mapped_column(

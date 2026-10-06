@@ -16,6 +16,21 @@ class EmergencyContact(BaseModel):
     relationship: str = "Parent"
 
 
+class MedicalAidInfo(BaseModel):
+    """Medical aid / health insurance for a student.
+
+    All fields optional except ``has_medical_aid``. When
+    ``has_medical_aid`` is False, the rest should be empty — the UI
+    treats the whole block as a tick-to-expand.
+    """
+
+    has_medical_aid: bool = False
+    name: str | None = Field(None, max_length=100)
+    number: str | None = Field(None, max_length=50)
+    currency: str | None = Field(None, min_length=3, max_length=3)
+    package: str | None = Field(None, max_length=100)
+
+
 class StudentBase(BaseModel):
     """Base schema for student data."""
 
@@ -30,6 +45,11 @@ class StudentBase(BaseModel):
     allergies: str | None = None
     emergency_contacts: list[EmergencyContact] = Field(default_factory=list)
     notes: str | None = None
+    # Optional government / national identifier — captured but not
+    # validated or required (owner directive 2026-10-06).
+    national_id: str | None = Field(None, max_length=50)
+    # Medical aid blob; see MedicalAidInfo above.
+    medical_aid: MedicalAidInfo | None = None
 
 
 class ParentEnrollmentInfo(BaseModel):
@@ -84,6 +104,8 @@ class StudentUpdate(BaseModel):
     emergency_contacts: list[EmergencyContact] | None = None
     notes: str | None = None
     is_active: bool | None = None
+    national_id: str | None = Field(None, max_length=50)
+    medical_aid: MedicalAidInfo | None = None
 
 
 class StudentResponse(StudentBase):

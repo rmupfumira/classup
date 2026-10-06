@@ -275,7 +275,7 @@ async def subscriptions_page(
     # not any single tenant's override). Feeds the fmtMoney JS helper.
     from app.services import platform_service, jurisdiction_service
     pd = await platform_service.get_defaults(db)
-    currency_code = pd.default_currency or "ZAR"
+    currency_code = pd.default_currency or "USD"
     currency_symbol = jurisdiction_service.CURRENCY_SYMBOLS.get(currency_code, currency_code)
 
     return templates.TemplateResponse(
