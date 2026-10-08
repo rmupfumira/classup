@@ -126,14 +126,45 @@ async def _load_plan_features(
     return None
 
 
-STOP_KEYWORDS = frozenset({
-    "stop", "stop all", "stopall", "unsubscribe", "unsub",
-    "cancel", "end", "quit", "opt out", "optout", "opt-out",
-})
-START_KEYWORDS = frozenset({
-    "start", "resubscribe", "resub", "opt in", "optin", "opt-in",
-    "subscribe", "yes",
-})
+import re
+
+# STOP / START are matched as whole words anywhere in the message, not
+# just exact-equal to the full text (Principal AI review 2026-10-08).
+# Exact-set membership missed "stop please", "please stop", "please
+# unsubscribe me", "staak" and so on — all of which a parent would
+# reasonably expect to opt them out.
+STOP_WORDS = (
+    "stop", "stopall", "unsubscribe", "unsub",
+    "cancel", "end", "quit", "optout",
+    "staak",   # Afrikaans
+)
+START_WORDS = (
+    "start", "resubscribe", "resub", "optin",
+    "subscribe",
+)
+_STOP_RE = re.compile(
+    r"\b(" + "|".join(re.escape(w) for w in STOP_WORDS) + r")\b",
+    re.IGNORECASE,
+)
+_START_RE = re.compile(
+    r"\b(" + "|".join(re.escape(w) for w in START_WORDS) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_stop(text: str) -> bool:
+    """Match any STOP word as a whole word in the message.
+
+    Also treats "opt out" / "opt-out" (two tokens / hyphenated) as STOP
+    by first collapsing those forms to a single ``optout`` token.
+    """
+    normalised = re.sub(r"opt[\s\-]?out", "optout", text, flags=re.IGNORECASE)
+    return bool(_STOP_RE.search(normalised))
+
+
+def _is_start(text: str) -> bool:
+    normalised = re.sub(r"opt[\s\-]?in", "optin", text, flags=re.IGNORECASE)
+    return bool(_START_RE.search(normalised))
 
 
 async def _handle_opt_out(
@@ -231,11 +262,11 @@ async def handle_inbound_message(
     # after STOP no more free-form messages) plus a UX must-have (the
     # AI bot's system prompt already tells parents "Reply STOP to opt
     # out" — that promise has to work).
-    normalized_text = (text or "").strip().lower()
-    if user is not None and normalized_text:
-        if normalized_text in STOP_KEYWORDS:
+    message_text = (text or "").strip()
+    if user is not None and message_text:
+        if _is_stop(message_text):
             return mode, await _handle_opt_out(db, user)
-        if normalized_text in START_KEYWORDS:
+        if _is_start(message_text):
             return mode, await _handle_opt_in(db, user)
 
     if mode is BotMode.OFF:
@@ -245,6 +276,27 @@ async def handle_inbound_message(
     # can't tell whose data to fetch, so stay silent.
     if user is None:
         return BotMode.OFF, None
+
+    # Opt-out gate — added 2026-10-08 (Principal AI review). Before
+    # this check, an opted-out parent who texted in still got AI/MENU
+    # replies: ``_can_notify_whatsapp`` only gated outbound templates,
+    # not bot replies. Honour the opt-out for both directions: send a
+    # single-use "reply START to resume" and stop. The STOP/START
+    # branches above still fire first, so a parent toggling back on is
+    # unaffected.
+    if not getattr(user, "whatsapp_opted_in", True):
+        from app.services.whatsapp_menu_bot import TextReply
+        logger.info(
+            "Opted-out user %s texted in — replying with resume instructions",
+            user.id,
+        )
+        return mode, TextReply(
+            body=(
+                "You've opted out of ClassUp WhatsApp messages. Reply "
+                "*START* to resume, or sign in at classup.co.za to "
+                "manage this from your profile."
+            )
+        )
 
     if mode is BotMode.MENU:
         # Lazy import — whatsapp_menu_bot imports whatsapp_bot_tools which

@@ -49,6 +49,10 @@ class AIConfig:
     model: str
     daily_message_cap_per_user: int  # sanity limit; keeps a broken loop cheap
     max_conversation_turns: int      # last N turns kept in Redis (rolling)
+    # Added 2026-10-08: platform-wide ceiling on AI messages per tenant
+    # per day. 0 disables. Enforced in ``handle_ai_message`` — breach
+    # downgrades to MENU for the rest of the day.
+    daily_message_cap_per_tenant: int = 0
 
     @property
     def configured(self) -> bool:
@@ -60,6 +64,7 @@ class AIConfig:
             "api_key": MASKED if self.api_key else "",
             "model": self.model,
             "daily_message_cap_per_user": self.daily_message_cap_per_user,
+            "daily_message_cap_per_tenant": self.daily_message_cap_per_tenant,
             "max_conversation_turns": self.max_conversation_turns,
             "configured": self.configured,
         }
@@ -86,6 +91,7 @@ async def get_config(db: AsyncSession) -> AIConfig:
         api_key=str(v.get("api_key") or env_key or "").strip(),
         model=str(v.get("model") or DEFAULT_MODEL).strip(),
         daily_message_cap_per_user=int(v.get("daily_message_cap_per_user") or 200),
+        daily_message_cap_per_tenant=int(v.get("daily_message_cap_per_tenant") or 0),
         max_conversation_turns=int(v.get("max_conversation_turns") or 10),
     )
 
@@ -96,12 +102,22 @@ async def save_config(db: AsyncSession, updates: dict[str, Any]) -> AIConfig:
     key."""
     existing = await get_config(db)
 
-    allowed = {"api_key", "model", "daily_message_cap_per_user", "max_conversation_turns"}
+    allowed = {
+        "api_key", "model",
+        "daily_message_cap_per_user",
+        "daily_message_cap_per_tenant",
+        "max_conversation_turns",
+    }
+    numeric_keys = {
+        "daily_message_cap_per_user",
+        "daily_message_cap_per_tenant",
+        "max_conversation_turns",
+    }
     clean: dict[str, Any] = {}
     for k, v in (updates or {}).items():
         if k not in allowed:
             continue
-        if k in {"daily_message_cap_per_user", "max_conversation_turns"}:
+        if k in numeric_keys:
             try:
                 clean[k] = int(v)
             except (TypeError, ValueError):

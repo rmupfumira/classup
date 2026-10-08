@@ -20,11 +20,14 @@ tool can serve both menu buttons and free-form AI answers.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from enum import Enum
 
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -38,6 +41,115 @@ from app.models import (
     Student,
     User,
 )
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Error contract — the LLM never sees str(e). Always one of these codes.
+# ---------------------------------------------------------------------------
+
+class ToolErrorCode(str, Enum):
+    """Codes the AI tool-use loop may return to the model as structured
+    errors. The caller promises never to leak raw exception text — that
+    was a prompt-injection vector (Principal AI review, 2026-10-08).
+
+    Each code has one, curated, non-templated message string.
+    """
+    NOT_ALLOWED = "not_allowed"      # ownership / tenant mismatch
+    NOT_FOUND = "not_found"          # record genuinely absent
+    BAD_INPUT = "bad_input"          # schema / UUID / clamp violation
+    UNAVAILABLE = "unavailable"      # upstream PDF/image/service failure
+    INTERNAL_ERROR = "internal_error"  # unknown — model gets no detail
+
+
+_ERROR_MESSAGES = {
+    ToolErrorCode.NOT_ALLOWED: "This child is not linked to the parent's account.",
+    ToolErrorCode.NOT_FOUND: "No matching record found.",
+    ToolErrorCode.BAD_INPUT: "The tool input was invalid or out of range.",
+    ToolErrorCode.UNAVAILABLE: "The service is temporarily unavailable.",
+    ToolErrorCode.INTERNAL_ERROR: "An internal error occurred.",
+}
+
+
+def tool_error(code: ToolErrorCode) -> dict[str, str]:
+    """Build the structured error payload fed back to the model.
+
+    Deliberately curated — no ``str(e)``, no field names, no UUIDs,
+    no tenant hints. The model gets a code it can branch on and a
+    short human-readable sentence. Everything else is logged
+    server-side.
+    """
+    return {"error": code.value, "message": _ERROR_MESSAGES[code]}
+
+
+# ---------------------------------------------------------------------------
+# Pydantic tool-input models — the authoritative contract.
+#
+# The JSON Schema we hand to Claude is advisory; these models are the
+# enforcement point. Server-side clamping (days ≤ 30, limit ≤ 10) lives
+# here, not in the dispatcher's ``int(x or 7)`` extractions.
+# ---------------------------------------------------------------------------
+
+class EmptyToolInput(BaseModel):
+    """For tools with no parameters (get_my_children)."""
+
+
+class ChildIdInput(BaseModel):
+    """Shared by every single-child tool."""
+    child_id: uuid.UUID
+
+
+class AttendanceInput(BaseModel):
+    child_id: uuid.UUID
+    days: int = Field(default=7, ge=1, le=30)
+
+
+class AnnouncementsInput(BaseModel):
+    limit: int = Field(default=5, ge=1, le=10)
+
+
+class InvoicePdfInput(BaseModel):
+    child_id: uuid.UUID
+    # Invoice numbers are human-typed; keep a conservative cap so a
+    # hallucinated 10kb string doesn't fan out into the DB query.
+    invoice_number: str | None = Field(default=None, max_length=50)
+
+
+class PhotosInput(BaseModel):
+    limit: int = Field(default=3, ge=1, le=3)
+
+
+# ---------------------------------------------------------------------------
+# Untrusted-content labelling for free text that reaches the LLM.
+# ---------------------------------------------------------------------------
+
+# Max characters of staff-authored free text we hand to the model per
+# field. The threshold is high enough that genuine content fits (a
+# teacher's attendance comment or an announcement body is almost always
+# well under 500 chars) but low enough to blunt a long payload-smuggling
+# attempt (Principal AI review, 2026-10-08).
+UNTRUSTED_TEXT_MAX = 500
+
+
+def label_untrusted(text: str | None, *, source: str = "staff") -> dict | None:
+    """Wrap staff/user-authored free text so the model handles it as data.
+
+    Any string that reaches the LLM from a human-editable column — a
+    teacher's attendance note, an announcement body, a photo caption —
+    is a potential prompt-injection surface. We can't scrub the content
+    (schools legitimately write prose), so we wrap it in a structured
+    envelope with a ``trust`` marker. The system prompt instructs the
+    model to never follow directives inside ``trust="..."`` payloads.
+
+    Returns ``None`` on empty input (don't bother wrapping a null) so
+    callers can keep the key out of the tool result entirely.
+    """
+    if not text:
+        return None
+    body = str(text)[:UNTRUSTED_TEXT_MAX]
+    truncated = len(str(text)) > UNTRUSTED_TEXT_MAX
+    return {"content": body, "trust": source, "truncated": truncated}
 
 
 # ---------------------------------------------------------------------------
@@ -181,20 +293,34 @@ async def _resolve_tenant_id(
 
 
 async def _verify_parent_owns_child(
-    db: AsyncSession, parent_id: uuid.UUID, child_id: uuid.UUID
+    db: AsyncSession,
+    parent_id: uuid.UUID,
+    child_id: uuid.UUID,
+    tenant_id: uuid.UUID,
 ) -> None:
-    """Raise ForbiddenException if the parent isn't linked to this child.
+    """Raise ForbiddenException if the parent isn't linked to this child
+    at this tenant.
 
-    This is the tool layer's authorization boundary — every tool that takes
-    a child_id calls it before touching the child's data. Do not skip it,
-    even when the caller "already knows" the parent owns the child, because
-    Phase 2C will let an LLM invent child_ids.
+    Defence-in-depth: historically this helper only checked
+    (parent_id, child_id) on ``parent_students`` and relied on the
+    data-model invariant that a parent is only ever linked to
+    children in their own tenant. The Principal AI review flagged
+    this as a dangerous dependency on an invariant with no DB
+    constraint (2026-10-08). The join now dual-keys on
+    ``Student.tenant_id`` and filters ``Student.deleted_at IS NULL``
+    so a stale child_id cached in Redis conversation history
+    (24h TTL) also refuses to resolve after soft-delete.
     """
     result = await db.execute(
-        select(ParentStudent.id).where(
+        select(ParentStudent.id)
+        .join(Student, Student.id == ParentStudent.student_id)
+        .where(
             ParentStudent.parent_id == parent_id,
             ParentStudent.student_id == child_id,
-        ).limit(1)
+            Student.tenant_id == tenant_id,
+            Student.deleted_at.is_(None),
+        )
+        .limit(1)
     )
     if result.scalar_one_or_none() is None:
         raise ForbiddenException(
@@ -268,11 +394,10 @@ async def get_child_balance(
     Filters out DRAFT (parents should never see those) and CANCELLED.
     Only rows with a positive ``balance`` are treated as unpaid.
     """
-    await _verify_parent_owns_child(db, parent_id, child_id)
-
     from app.models import BillingInvoice, Tenant
 
     tenant_id = await _resolve_tenant_id(db, parent_id)
+    await _verify_parent_owns_child(db, parent_id, child_id, tenant_id)
 
     result = await db.execute(
         select(BillingInvoice)
@@ -335,9 +460,10 @@ async def get_child_attendance(
     entries. If the school hasn't marked attendance recently the list
     will be short; the caller should note that in the reply.
     """
-    await _verify_parent_owns_child(db, parent_id, child_id)
-
     from app.services.attendance_service import get_attendance_service
+
+    tenant_id = await _resolve_tenant_id(db, parent_id)
+    await _verify_parent_owns_child(db, parent_id, child_id, tenant_id)
 
     date_to = date.today()
     date_from = date_to - timedelta(days=max(days, 1))
@@ -378,11 +504,11 @@ async def get_child_latest_report(
     """Most recent FINALIZED daily_report for the child, or None if the
     school hasn't finalized any yet.
     """
-    await _verify_parent_owns_child(db, parent_id, child_id)
-
     from app.config import get_settings
 
     tenant_id = await _resolve_tenant_id(db, parent_id)
+    await _verify_parent_owns_child(db, parent_id, child_id, tenant_id)
+
     result = await db.execute(
         select(DailyReport)
         .where(
@@ -425,11 +551,19 @@ async def get_child_teacher(
     class yet; class has no teacher assigned) — the caller decides how to
     phrase the "not set up yet" case.
     """
-    await _verify_parent_owns_child(db, parent_id, child_id)
+    tenant_id = await _resolve_tenant_id(db, parent_id)
+    await _verify_parent_owns_child(db, parent_id, child_id, tenant_id)
 
+    # Dual-key the Student fetch by tenant + soft-delete so this follow-up
+    # cannot ever surface another tenant's row even if a future bug in the
+    # ownership helper let one through (Principal AI review, 2026-10-08).
     result = await db.execute(
         select(Student)
-        .where(Student.id == child_id)
+        .where(
+            Student.id == child_id,
+            Student.tenant_id == tenant_id,
+            Student.deleted_at.is_(None),
+        )
         .options(
             selectinload(Student.school_class)
             .selectinload(SchoolClass.teacher_classes)
@@ -553,13 +687,12 @@ async def get_child_invoice_pdf(
     that produces the email attachment) so parents get the same PDF
     they'd get by email — no rendering divergence.
     """
-    await _verify_parent_owns_child(db, parent_id, child_id)
-
     from app.models import BillingInvoice, Tenant
     from app.services.invoice_pdf import generate_invoice_pdf
     from sqlalchemy.orm import selectinload as _sel
 
     tenant_id = await _resolve_tenant_id(db, parent_id)
+    await _verify_parent_owns_child(db, parent_id, child_id, tenant_id)
 
     filters = [
         BillingInvoice.tenant_id == tenant_id,
@@ -659,12 +792,12 @@ async def get_child_report_pdf(
     system deps). Cached to R2 on first render so subsequent parent
     requests are cheap.
     """
-    await _verify_parent_owns_child(db, parent_id, child_id)
-
     from app.models import DailyReport
     from app.services.report_pdf import render_report_pdf
 
     tenant_id = await _resolve_tenant_id(db, parent_id)
+    await _verify_parent_owns_child(db, parent_id, child_id, tenant_id)
+
     result = await db.execute(
         select(DailyReport)
         .where(

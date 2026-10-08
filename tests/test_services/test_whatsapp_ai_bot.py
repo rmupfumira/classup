@@ -260,12 +260,15 @@ class TestToolExecutor:
     async def test_run_tool_unknown_name(
         self, db: AsyncSession, parent_with_child
     ):
+        # Unknown-tool handling was tightened in the 2026-10-08 hardening:
+        # the model gets a curated error code (bad_input), never the
+        # verbatim tool name reflected back into context.
         result = await whatsapp_ai_bot._run_tool(
             db=db, parent_id=parent_with_child.parent.id,
             name="delete_the_school",
             tool_input={},
         )
-        assert "Unknown tool" in result["error"]
+        assert result["error"] == "bad_input"
 
     async def test_get_my_children_via_executor(
         self, db: AsyncSession, parent_with_child
@@ -471,12 +474,16 @@ class TestAILoop:
             daily_message_cap_per_user=200, max_conversation_turns=10,
         )
 
-        # First call: raise a 400 mimicking Anthropic's exact error
-        # text. Second call: succeed with a text reply (proves the
-        # retry ran).
-        bad_400 = RuntimeError(
-            "Error code: 400 - messages.0.content.0: unexpected "
-            "tool_use_id found in tool_result blocks"
+        # First call: raise the exact anthropic.BadRequestError the SDK
+        # emits on corrupt history. Second call: succeed with a text
+        # reply (proves the retry ran). The 2026-10-08 hardening moved
+        # off substring-matched error text to typed exceptions, so the
+        # test must raise the real class.
+        from anthropic import BadRequestError
+        bad_400 = BadRequestError(
+            message="messages.0.content.0: unexpected tool_use_id found in tool_result blocks",
+            response=MagicMock(status_code=400),
+            body={"error": {"type": "invalid_request_error", "message": "bad"}},
         )
         mock_client = MagicMock()
         mock_client.messages.create = AsyncMock(side_effect=[

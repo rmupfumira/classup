@@ -73,6 +73,7 @@ from app.models.accounting import (
 from app.models.push_subscription import PushSubscription
 from app.models.whatsapp_inbound import WhatsAppInboundMessage
 from app.models.whatsapp_outbound import WhatsAppOutboundMessage
+from app.models.ai_tool_calls import AIToolCall
 from app.models.school_event import (
     SchoolEvent, EventRsvp, EventType, EventScope, RsvpResponse,
 )
@@ -197,6 +198,7 @@ __all__ = [
     "PushSubscription",
     "WhatsAppInboundMessage",
     "WhatsAppOutboundMessage",
+    "AIToolCall",
     # School events
     "SchoolEvent",
     "EventRsvp",

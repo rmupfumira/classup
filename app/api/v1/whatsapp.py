@@ -127,6 +127,19 @@ async def process_inbound_message(msg: dict, raw_body: dict) -> None:
         logger.warning("Inbound WhatsApp message with no from_phone; skipping")
         return
 
+    # Per-phone rate limit — added 2026-10-08 (Principal AI review).
+    # 30 inbound messages / minute per phone is generous for a human
+    # and still bounds the attack surface for a probe trying to burn
+    # Claude tokens. Over the cap, drop silently (we already 200'd Meta
+    # so there's nothing to signal upstream).
+    from app.services import ai_telemetry
+
+    if not await ai_telemetry.check_phone_rate_limit(from_phone, max_per_minute=30):
+        logger.warning(
+            "Dropping inbound from %s — over 30/min rate limit", from_phone,
+        )
+        return
+
     # Use a dedicated write session so a failure here doesn't leak into
     # the request's main session (the webhook handler doesn't need to
     # commit the message row atomically with anything else).
@@ -406,14 +419,23 @@ async def _find_user_by_phone(
 
     # Slow path: normalise DB values in Python. Only fires when the
     # direct spellings all missed — usually because the admin typed
-    # spaces / dashes ("+27 72 262 1278"). Bounded by whatsapp_phone
-    # NOT NULL so it doesn't scan the whole users table.
+    # spaces / dashes ("+27 72 262 1278").
+    #
+    # Narrow the scan to rows whose stored string contains the last
+    # 7-9 digits of the incoming number — that's the subscriber-part
+    # which is distinctive enough to find a handful of rows instead
+    # of pulling every user with ``whatsapp_phone NOT NULL`` into
+    # Python (an O(users) scan on every unmatched inbound was flagged
+    # as a DoS vector in the Principal AI review, 2026-10-08).
+    suffix = incoming[-9:] if len(incoming) >= 9 else incoming[-7:]
     result = await db.execute(
         select(User).where(
             User.whatsapp_phone.is_not(None),
+            User.whatsapp_phone.like(f"%{suffix}%"),
             User.is_active.is_(True),
             User.deleted_at.is_(None),
         )
+        .limit(20)
     )
     for u in result.scalars().all():
         stored = _digits(u.whatsapp_phone or "")
@@ -477,12 +499,18 @@ async def _find_user_by_regular_phone(
     if not incoming_digits:
         return None
 
+    # Narrow the scan with a suffix match (same reasoning as
+    # ``_find_user_by_phone``'s slow path) so unmatched inbound
+    # messages don't pull the whole users table into Python.
+    suffix = incoming_digits[-9:] if len(incoming_digits) >= 9 else incoming_digits[-7:]
     result = await db.execute(
         select(User).where(
             User.phone.is_not(None),
+            User.phone.like(f"%{suffix}%"),
             User.is_active.is_(True),
             User.deleted_at.is_(None),
         )
+        .limit(20)
     )
     for u in result.scalars().all():
         if not _same_number(u.phone, from_phone):
