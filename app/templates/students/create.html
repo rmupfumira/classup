@@ -449,6 +449,19 @@ document.addEventListener('DOMContentLoaded', function() {
         addParentBtn.classList.toggle('opacity-40', disabled);
         addParentBtn.classList.toggle('pointer-events-none', disabled);
         parentsDisabledMsg.classList.toggle('hidden', !disabled);
+        // CRITICAL: pointer-events-none dims the visual UI but does NOT
+        // disable HTML5 validation — a `required` field inside still
+        // blocks submit with "Please fill out this field" tooltip even
+        // though the parent can't be typed in. The browser spec only
+        // skips validation for FORM-DISABLED controls, so we have to
+        // explicitly toggle `disabled` on every input + select in the
+        // dimmed container. Disabled fields are also excluded from
+        // FormData, which is what we want: a sibling-inheriting save
+        // sends no parent rows (sibling parents are linked via a
+        // separate /parents endpoint later). Fix: tester bug 2026-10-09.
+        parentsContainer.querySelectorAll('input, select, textarea').forEach(el => {
+            el.disabled = disabled;
+        });
     }
 
     // ── Sibling picker ──────────────────────────────────────────────
@@ -488,6 +501,40 @@ document.addEventListener('DOMContentLoaded', function() {
         siblingSelected.classList.add('hidden');
         siblingSearch.value = '';
         setParentsSectionDisabled(false);
+        removeInheritedEmergencyRows();
+    }
+
+    // Insert inherited emergency contact rows into the Emergency
+    // Contacts section with a visible banner, so the admin can see
+    // what will be carried over from the sibling before saving.
+    // Rows are tagged `data-inherited="1"` so we can remove them
+    // cleanly when the admin unticks the box or clears the sibling.
+    // Earlier design appended inherited contacts straight into the
+    // POST payload at submit time — the user never saw them, which
+    // left them wondering whether anything would actually inherit.
+    function applyInheritedEmergencyContacts() {
+        removeInheritedEmergencyRows();
+        const list = siblingState.emergencyContacts || [];
+        list.forEach(contact => {
+            const clone = contactTemplate.content.cloneNode(true);
+            const item = clone.querySelector('.contact-item');
+            item.setAttribute('data-inherited', '1');
+            item.classList.add('bg-primary-50', 'border-primary-200');
+            // Add a small badge so the row is clearly distinct from
+            // ones the admin typed.
+            const badge = document.createElement('p');
+            badge.className = 'absolute -top-2 left-3 bg-primary-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded';
+            badge.textContent = 'Inherited from sibling';
+            item.appendChild(badge);
+            item.querySelector('input[name="emergency_contacts[][name]"]').value = contact.name || '';
+            item.querySelector('input[name="emergency_contacts[][phone]"]').value = contact.phone || '';
+            item.querySelector('input[name="emergency_contacts[][relationship]"]').value = contact.relationship || 'Parent';
+            contactsContainer.appendChild(clone);
+        });
+    }
+
+    function removeInheritedEmergencyRows() {
+        contactsContainer.querySelectorAll('.contact-item[data-inherited="1"]').forEach(row => row.remove());
     }
 
     // Sync the parents-section dimming with sibling+inherit state.
@@ -611,6 +658,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (inheritClassCheckbox.checked && siblingState.classId) {
             classSelect.value = siblingState.classId;
         }
+        // If the admin ticked "Emergency contacts" BEFORE picking the
+        // sibling, render the inherited rows now that we have them.
+        if (document.getElementById('inherit-emergency').checked) {
+            applyInheritedEmergencyContacts();
+        }
     }
 
     inheritClassCheckbox.addEventListener('change', function() {
@@ -620,6 +672,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('inherit-parents').addEventListener('change', syncParentsSectionState);
+
+    // Emergency contacts inherit toggle — render/remove the inherited
+    // rows live so the admin sees exactly what's about to be saved.
+    document.getElementById('inherit-emergency').addEventListener('change', function() {
+        if (this.checked && siblingState.studentId) {
+            applyInheritedEmergencyContacts();
+        } else {
+            removeInheritedEmergencyRows();
+        }
+    });
 
     document.addEventListener('click', (e) => {
         if (!siblingSuggestions.contains(e.target) && e.target !== siblingSearch) {
@@ -755,7 +817,12 @@ document.addEventListener('DOMContentLoaded', function() {
             parents: willInheritFromSibling ? [] : parents,
         };
 
-        // Emergency contacts from the form UI.
+        // Emergency contacts from the form UI. Inherited rows are
+        // already rendered into contactsContainer (see
+        // applyInheritedEmergencyContacts), so we just read whatever
+        // is in the DOM — no separate append-at-submit path to keep
+        // in sync. Rows the admin unticked ("inherit-emergency" off)
+        // were removed from the DOM, so they never reach the payload.
         const contactItems = contactsContainer.querySelectorAll('.contact-item');
         contactItems.forEach(item => {
             const name = item.querySelector('input[name="emergency_contacts[][name]"]').value;
@@ -765,13 +832,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.emergency_contacts.push({ name, phone, relationship });
             }
         });
-
-        // Inherit emergency contacts from the sibling if requested.
-        if (siblingState.studentId && document.getElementById('inherit-emergency').checked) {
-            (siblingState.emergencyContacts || []).forEach(c => {
-                data.emergency_contacts.push(c);
-            });
-        }
 
         // Double-submit guard — without this, a quick second click
         // (or Enter-key race on a focused input) can fire TWO POSTs,
