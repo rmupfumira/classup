@@ -8,7 +8,10 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <a href="/billing/invoices" class="text-neutral-500 hover:text-neutral-700 transition-colors">
+            {# Back arrow — parents can't access the admin /billing/invoices list,
+               so send them to their statement instead. #}
+            {% set back_url = '/billing/invoices' if is_admin else '/billing/statement' %}
+            <a href="{{ back_url }}" class="text-neutral-500 hover:text-neutral-700 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
