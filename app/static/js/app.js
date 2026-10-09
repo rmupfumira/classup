@@ -125,9 +125,20 @@ const ClassUp = {
             </svg>`
         };
 
+        // Dedup — if the exact same message is already on screen,
+        // don't stack another copy. The service worker fires one
+        // "offline" toast per intercepted request; without this a
+        // bad connection pastes 3-5 identical banners over the
+        // navbar on narrow phones.
+        for (const existing of container.querySelectorAll('[data-toast-message]')) {
+            if (existing.dataset.toastMessage === message) return;
+        }
+
         const toast = document.createElement('div');
         toast.className = `flex items-center p-4 rounded-lg shadow-md ${colors[type]}
-                          transform transition-all duration-300 translate-x-full toast-enter`;
+                          transform transition-all duration-300 translate-x-full toast-enter
+                          pointer-events-auto`;
+        toast.dataset.toastMessage = message;
         toast.innerHTML = `
             <span class="flex-shrink-0 mr-3">${icons[type]}</span>
             <span class="flex-1 text-sm font-medium">${this.escapeHtml(message)}</span>

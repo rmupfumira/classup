@@ -118,6 +118,14 @@
                 {% set btn_class = 'bg-primary-600 hover:bg-primary-700 text-white' %}
             {% endif %}
 
+            {#
+              Responsive card layout:
+              - <sm (phones): CTA sits on its own row below the title +
+                detail so the title gets the full card width and never
+                wraps to two lines fighting the button. Full-width CTA
+                also hits a comfortable 44px touch target.
+              - >=sm (tablet/desktop): CTA inline on the right (compact).
+            #}
             <article class="relative bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden hover:shadow-md hover:border-neutral-200 transition-all">
                 <!-- Accent bar -->
                 <span class="absolute top-0 bottom-0 left-0 w-1 {{ accent_bar }}"></span>
@@ -143,9 +151,9 @@
                         {% endif %}
                     </div>
 
-                    <!-- Body -->
+                    <!-- Body: title + detail row + mobile CTA -->
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm sm:text-[0.95rem] font-semibold text-neutral-900 leading-tight">
+                        <p class="text-sm sm:text-[0.95rem] font-semibold text-neutral-900 leading-snug">
                             {{ item.title }}
                         </p>
                         <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
@@ -154,14 +162,38 @@
                                 {{ item.badge_text }}
                             </span>
                             {% endif %}
+                            {#
+                              When a badge chip is present it already
+                              carries the urgency context, so the invoice
+                              number is secondary. Hide it on mobile
+                              (prevents mid-identifier ellipsis like
+                              "INV-2026-DE…") and show it inline on tablet+
+                              where there's room. For items without a badge,
+                              detail stays visible on every breakpoint.
+                            #}
+                            {% if item.badge_text %}
+                            <span class="hidden sm:inline truncate">{{ item.detail }}</span>
+                            {% else %}
                             <span class="truncate">{{ item.detail }}</span>
+                            {% endif %}
                         </div>
+
+                        {# Mobile CTA — full-width under the body for comfortable tap target. #}
+                        {% if item.primary_url %}
+                        <a href="{{ item.primary_url }}"
+                           class="sm:hidden mt-3 w-full inline-flex items-center justify-center gap-1 px-3 py-2.5 text-sm font-semibold rounded-lg transition-colors {{ btn_class }}">
+                            {{ item.primary_label or 'Open' }}
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                        {% endif %}
                     </div>
 
-                    <!-- CTA -->
+                    <!-- Desktop CTA — inline right. -->
                     {% if item.primary_url %}
                     <a href="{{ item.primary_url }}"
-                       class="flex-shrink-0 self-center inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors {{ btn_class }}">
+                       class="hidden sm:inline-flex flex-shrink-0 self-center items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors {{ btn_class }}">
                         {{ item.primary_label or 'Open' }}
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
@@ -216,6 +248,13 @@
     {% endif %}
 
     <!-- 4. Quick actions -->
+    {#
+      Pulled the "unread messages" pill into the same Quick Actions
+      grid — it was floating as a separate card below the grid with
+      no section header, creating a dead gap. Merging gives the three
+      related entry-points a shared visual rhythm, and the inbox
+      shortcut only renders when there's actually something to open.
+    #}
     {% if pd.selected_child %}
     <section class="space-y-3">
         <h2 class="text-lg font-semibold text-neutral-800">Quick actions</h2>
@@ -246,30 +285,31 @@
                     <p class="text-xs text-neutral-500">Ask a question or share an update</p>
                 </div>
             </a>
+
+            {% if pd.unread_messages > 0 %}
+            <a href="/messages"
+               class="sm:col-span-2 bg-white rounded-xl shadow-sm border border-primary-200 p-4 hover:shadow-md transition-shadow flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0 relative">
+                    <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"></path>
+                    </svg>
+                    <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                        {{ pd.unread_messages }}
+                    </span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-neutral-800">
+                        {{ pd.unread_messages }} unread message{{ 's' if pd.unread_messages != 1 else '' }}
+                    </p>
+                    <p class="text-xs text-neutral-500">Tap to view your inbox</p>
+                </div>
+                <svg class="w-5 h-5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </a>
+            {% endif %}
         </div>
     </section>
-    {% endif %}
-
-    <!-- Unread messages pill (shortcut) -->
-    {% if pd.unread_messages > 0 %}
-    <a href="/messages" class="block bg-white rounded-xl shadow-sm border border-primary-200 p-4 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"></path>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <p class="text-sm font-semibold text-neutral-800">
-                    {{ pd.unread_messages }} unread message{{ 's' if pd.unread_messages != 1 else '' }}
-                </p>
-                <p class="text-xs text-neutral-500">Tap to view your inbox</p>
-            </div>
-            <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-            </svg>
-        </div>
-    </a>
     {% endif %}
 
     {% endif %} {# /if pd.children #}
