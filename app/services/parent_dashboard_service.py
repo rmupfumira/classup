@@ -265,7 +265,14 @@ async def _unpaid_invoices(
             kind="invoice",
             title=title,
             detail=detail,
-            primary_label="Pay now" if overdue else "View invoice",
+            # No "Pay now" button — ClassUp doesn't collect parent
+            # payments. Fees are settled via the school's own banking
+            # details on the invoice (EFT / cash / however that school
+            # already handles it). The ONLY in-app payment flow is
+            # tenants paying their ClassUp subscription. CTA stays as
+            # "View invoice" everywhere — the parent opens the invoice
+            # to see banking details and reference number.
+            primary_label="View invoice",
             primary_url=f"/billing/invoices/{inv.id}",
             ordering_key=order,
             urgency=urgency,

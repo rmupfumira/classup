@@ -180,7 +180,12 @@ class TestNeedsAttentionInvoices:
         assert invoice_items[0].urgency == "critical"
         assert invoice_items[0].icon == "invoice"
         assert invoice_items[0].badge_text == "OVERDUE"
-        assert invoice_items[0].primary_label == "Pay now"
+        # Both overdue and due-soon invoices share the "View invoice"
+        # CTA — ClassUp doesn't collect parent payments (fees settle
+        # out-of-band via the school's own banking details), so "Pay
+        # now" would be a lie. The only in-app payment flow is tenants
+        # paying their ClassUp subscription.
+        assert invoice_items[0].primary_label == "View invoice"
         # Currency symbol must appear in the title (tenant default USD → $).
         assert "$" in invoice_items[0].title
         assert "100.00" in invoice_items[0].title
