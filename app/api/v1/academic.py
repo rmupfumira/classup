@@ -663,3 +663,85 @@ async def preview_term_summary(
     if not summary:
         raise HTTPException(status_code=404, detail="Term not found")
     return {"status": "success", "data": summary}
+
+
+# ==================== CURRICULUM PACKS ====================
+# Jurisdiction (country) → list of supported curricula → bulk-seed subjects
+# into the tenant. The country comes from tenant.settings (super admin
+# field); the admin here picks which curriculum to apply. Custom is
+# always offered as a universal fallback so a tenant whose jurisdiction
+# we don't have a pack for can still proceed.
+
+@router.get("/curriculum-packs", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def list_curriculum_packs(db: AsyncSession = Depends(get_db)):
+    """List curriculum packs available to the current tenant.
+
+    The result's ``options`` list is filtered by the tenant's country
+    (``tenant.settings.country`` → set by super admin) and always ends
+    with the universal **Custom** option. ``active`` reports the pack
+    the admin last applied, so the UI can preselect it.
+    """
+    from app.models import Tenant
+    from app.utils.curriculum_packs import (
+        CUSTOM_PACK_CODE,
+        get_packs_for_country,
+    )
+    from app.utils.tenant_context import get_tenant_id
+
+    tenant = await db.get(Tenant, get_tenant_id())
+    country = (tenant.get_setting("country") if tenant else None) or ""
+    packs = get_packs_for_country(country)
+
+    options = [
+        {
+            "code": p.code,
+            "name": p.name,
+            "description": p.description,
+            "subject_count": len(p.subjects),
+        }
+        for p in packs
+    ]
+    # Universal fallback — always present. Admin can pick this if
+    # nothing fits their school.
+    options.append({
+        "code": CUSTOM_PACK_CODE,
+        "name": "Custom",
+        "description": "I'll set my subjects up manually.",
+        "subject_count": 0,
+    })
+
+    active = tenant.get_setting("curriculum_pack") if tenant else None
+
+    return {
+        "status": "success",
+        "data": {
+            "country": country or None,
+            "active": active,
+            "options": options,
+        },
+    }
+
+
+class CurriculumPackApply(BaseModel):
+    """Request body for applying a curriculum pack."""
+    pack_code: str = Field(..., min_length=1, max_length=64)
+
+
+@router.post("/curriculum-packs/apply", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def apply_curriculum_pack(
+    body: CurriculumPackApply,
+    db: AsyncSession = Depends(get_db),
+):
+    """Apply a curriculum pack: seed its subjects into the tenant and
+    remember the choice.
+
+    Idempotent — subjects whose ``code`` already exists on the tenant
+    are skipped, not re-added. The response reports exactly what
+    happened so the UI can show "Added 24 new subjects, skipped 6
+    duplicates."
+    """
+    service = get_academic_service()
+    result = await service.apply_curriculum_pack(db, body.pack_code)
+    return {"status": "success", "data": result}

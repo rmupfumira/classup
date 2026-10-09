@@ -605,6 +605,89 @@ class AcademicService:
         await db.refresh(grading_system)
         return grading_system
 
+    # ==================== CURRICULUM PACKS ====================
+
+    async def apply_curriculum_pack(
+        self, db: AsyncSession, pack_code: str,
+    ) -> dict:
+        """Apply a curriculum pack to the current tenant.
+
+        Idempotent: subjects whose ``code`` already exists (case-
+        insensitive, within this tenant) are skipped; only new ones are
+        added. Also persists the choice onto
+        ``tenant.settings.curriculum_pack`` so the Subjects page can
+        show "Currently using: ZIMSEC" and the picker knows what's
+        active.
+
+        A pack code of ``CUSTOM`` (or any unknown code) seeds nothing;
+        it just records that the tenant opted for custom and returns
+        a zero-add summary. That lets the UI treat Custom as a first-
+        class choice without a special code path.
+        """
+        from sqlalchemy.orm.attributes import flag_modified
+
+        from app.models import Tenant
+        from app.utils.curriculum_packs import CUSTOM_PACK_CODE, get_pack
+
+        tenant_id = get_tenant_id()
+        tenant = await db.get(Tenant, tenant_id)
+        if tenant is None:
+            raise ValueError(f"Tenant {tenant_id} not found")
+
+        pack = get_pack(pack_code)
+        added = 0
+        skipped = 0
+        subject_names: list[str] = []
+
+        if pack is not None:
+            # Pre-fetch existing subject codes once to avoid an insert
+            # storm when the pack has many subjects.
+            existing_rows = (await db.execute(
+                select(Subject.code).where(
+                    Subject.tenant_id == tenant_id,
+                    Subject.deleted_at.is_(None),
+                )
+            )).all()
+            existing_codes = {row[0].upper() for row in existing_rows if row[0]}
+
+            for i, sdef in enumerate(pack.subjects):
+                code_upper = sdef.code.upper()
+                if code_upper in existing_codes:
+                    skipped += 1
+                    continue
+                db.add(Subject(
+                    tenant_id=tenant_id,
+                    name=sdef.name,
+                    code=code_upper,
+                    description=sdef.description or None,
+                    default_total_marks=sdef.default_total_marks,
+                    category=sdef.category,
+                    display_order=i,
+                    is_active=True,
+                ))
+                existing_codes.add(code_upper)
+                added += 1
+                subject_names.append(sdef.name)
+
+        # Record the choice on the tenant so the UI can show it and the
+        # picker can preselect. Store the raw code even for Custom.
+        settings = dict(tenant.settings or {})
+        settings["curriculum_pack"] = (
+            CUSTOM_PACK_CODE if pack is None else pack.code
+        )
+        tenant.settings = settings
+        flag_modified(tenant, "settings")
+
+        await db.commit()
+
+        return {
+            "pack_code": settings["curriculum_pack"],
+            "pack_name": pack.name if pack else "Custom",
+            "added": added,
+            "skipped": skipped,
+            "sample_names": subject_names[:5],
+        }
+
 
 # Singleton instance
 _academic_service: AcademicService | None = None
