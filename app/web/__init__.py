@@ -29,6 +29,7 @@ from app.web import (
     teachers,
     tenant_slug,
     timetable,
+    unsubscribe,
 )
 
 web_router = APIRouter(include_in_schema=False)
@@ -52,6 +53,7 @@ web_router.include_router(subscription.router)
 web_router.include_router(super_admin.router)
 web_router.include_router(help_web.router)
 web_router.include_router(events.router)  # School events + parent RSVPs — always available
+web_router.include_router(unsubscribe.router)  # Public List-Unsubscribe handler (no auth)
 
 # Plan-gated pages — redirect to /subscription?locked=X when feature is off
 web_router.include_router(

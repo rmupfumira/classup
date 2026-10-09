@@ -45,6 +45,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/api/v1/paynow/webhook",
         "/api/v1/plans",
         "/api/v1/auth/trial-signup",
+        # Public List-Unsubscribe endpoint — Gmail / Yahoo POST here
+        # on one-click unsubscribe. The ``?email=`` query string is
+        # the identifier; there is no cookie or JWT to work with.
+        "/unsubscribe",
     }
 
     # Path prefixes that don't require authentication

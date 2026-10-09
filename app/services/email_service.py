@@ -6,13 +6,19 @@ and can be managed at runtime via the super admin UI.
 
 import base64
 import logging
+import re
+import uuid as _uuid
+from datetime import datetime, timezone
 from email.mime.application import MIMEApplication
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate, make_msgid
 from email import encoders as email_encoders
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import aiosmtplib
 import resend
@@ -30,6 +36,159 @@ settings = get_settings()
 EMAIL_CONFIG_KEY = "email_config"
 
 
+# ---------------------------------------------------------------------------
+# Deliverability helpers (2026-10-09)
+# ---------------------------------------------------------------------------
+#
+# Gmail and friends flag mail as spam when:
+#  - the only body part is HTML (no text/plain alternative),
+#  - the From display name is a brand but the domain is a generic sender,
+#  - there's no List-Unsubscribe header,
+#  - there's no Reply-To or it goes to a no-one address,
+#  - Message-ID / Date headers are missing.
+#
+# These helpers patch all five at the code level. SPF/DKIM/DMARC on the
+# classup.co.za DNS zone (plus flipping the sender address off "test@...")
+# are the remaining pieces, and have to happen outside the code.
+
+
+class _HtmlToTextParser(HTMLParser):
+    """Minimal HTML→plain-text converter for the text/plain MIME part.
+
+    Not a full renderer — just enough to preserve paragraph breaks and
+    anchor hrefs so the plaintext fallback is readable (bad plaintext
+    bumps Gmail's spam score). We feed in server-rendered Jinja HTML
+    which is predictable, so the heuristics work.
+    """
+
+    _BLOCK_TAGS = {
+        "p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6",
+        "section", "article", "header", "footer",
+    }
+    _SKIP_TAGS = {"script", "style", "head", "title", "meta", "link"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._out: list[str] = []
+        self._skip_depth = 0
+        self._current_href: str | None = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self._SKIP_TAGS:
+            self._skip_depth += 1
+            return
+        if tag == "a":
+            for k, v in attrs:
+                if k == "href" and v:
+                    self._current_href = v
+                    break
+        if tag in self._BLOCK_TAGS:
+            self._out.append("\n")
+        if tag == "li":
+            self._out.append("* ")
+
+    def handle_endtag(self, tag):
+        if tag in self._SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+            return
+        if tag == "a" and self._current_href:
+            self._out.append(f" ({self._current_href})")
+            self._current_href = None
+        if tag in self._BLOCK_TAGS:
+            self._out.append("\n")
+
+    def handle_data(self, data):
+        if self._skip_depth > 0:
+            return
+        self._out.append(data)
+
+    def get_text(self) -> str:
+        raw = "".join(self._out)
+        # Collapse 3+ newlines → 2, trim trailing spaces on each line.
+        lines = [re.sub(r"[ \t]+", " ", ln).strip() for ln in raw.splitlines()]
+        collapsed: list[str] = []
+        blank = 0
+        for ln in lines:
+            if ln:
+                collapsed.append(ln)
+                blank = 0
+            else:
+                blank += 1
+                if blank < 2:
+                    collapsed.append("")
+        return "\n".join(collapsed).strip() + "\n"
+
+
+def _html_to_plain(html: str) -> str:
+    """Turn Jinja-rendered HTML into a readable text/plain fallback."""
+    parser = _HtmlToTextParser()
+    try:
+        parser.feed(html)
+        parser.close()
+        return parser.get_text()
+    except Exception:
+        # Last resort: strip tags with a regex. Not pretty but better
+        # than shipping no plaintext part at all.
+        bare = re.sub(r"<[^>]+>", " ", html)
+        return re.sub(r"\s+", " ", bare).strip() + "\n"
+
+
+def _list_unsubscribe_headers(
+    recipient: str, from_email: str, app_base_url: str,
+) -> dict[str, str]:
+    """Return the ``List-Unsubscribe`` + ``List-Unsubscribe-Post`` pair.
+
+    - ``List-Unsubscribe`` uses a ``mailto:`` so a reply with
+      "unsubscribe" in the subject lands at a mailbox we own. Also
+      includes an ``https://`` form for Gmail's one-click button when
+      the deployment has an app_base_url set.
+    - ``List-Unsubscribe-Post: List-Unsubscribe=One-Click`` is the
+      RFC 8058 signal Gmail's one-click uses; without it the button
+      falls back to opening the URL in a browser.
+
+    ``recipient`` is URL-encoded into the mailto subject so the
+    unsubscribe handler can match the right user without any extra
+    lookups.
+    """
+    base = (app_base_url or "").rstrip("/")
+    mailto = f"mailto:unsubscribe@{from_email.split('@', 1)[-1]}?subject=unsubscribe-{recipient}"
+    headers: dict[str, str] = {"List-Unsubscribe": f"<{mailto}>"}
+    if base:
+        from urllib.parse import quote as _quote
+        unsubscribe_url = f"{base}/unsubscribe?email={_quote(recipient)}"
+        headers["List-Unsubscribe"] = f"<{unsubscribe_url}>, <{mailto}>"
+        headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+    return headers
+
+
+_FROM_WARNED_FOR: set[str] = set()
+
+
+def _warn_if_suspicious_from(from_email: str) -> None:
+    """Flag from_email prefixes that look like spam-fodder.
+
+    Gmail penalises senders whose local part is a generic word like
+    ``test``, ``demo``, ``admin``, ``info`` — the heuristics flag
+    these as low-reputation. We log once per process so operators
+    see it in logs without filling disk with warnings.
+    """
+    if not from_email or "@" not in from_email:
+        return
+    local = from_email.split("@", 1)[0].lower()
+    if from_email in _FROM_WARNED_FOR:
+        return
+    bad_prefixes = {"test", "demo", "temp", "admin"}
+    if local in bad_prefixes:
+        logger.warning(
+            "Email from_address uses low-reputation local part '%s' — "
+            "spam filters flag this. Change to notifications@, "
+            "no-reply@, or school@ in Admin → Email Settings before "
+            "going live.",
+            from_email,
+        )
+        _FROM_WARNED_FOR.add(from_email)
+
+
 async def _load_email_config() -> dict[str, Any] | None:
     """Load email configuration from the system_settings table."""
     try:
@@ -39,7 +198,9 @@ async def _load_email_config() -> dict[str, Any] | None:
             )
             row = result.scalar_one_or_none()
             if row and row.value and row.value.get("enabled"):
-                return row.value
+                cfg = row.value
+                _warn_if_suspicious_from(cfg.get("from_email") or "")
+                return cfg
             return None
     except Exception as e:
         logger.error(f"Failed to load email config from DB: {e}")
@@ -66,20 +227,31 @@ class EmailService:
         self,
         config: dict[str, Any],
         from_address: str,
+        from_email: str,
         recipients: list[str],
         subject: str,
         html_body: str,
+        text_body: str,
         reply_to: str | None,
         cc: list[str] | None,
         bcc: list[str] | None,
         attachments: list[dict[str, Any]] | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> str:
-        """Send email via SMTP."""
+        """Send email via SMTP.
+
+        Builds a multipart/alternative body (plain + HTML) so Gmail
+        and friends see a legitimate text fallback. ``extra_headers``
+        carries List-Unsubscribe + anything else the caller computes.
+        """
+        # Build the plain/HTML alternative first; attachments wrap it.
+        alt_part = MIMEMultipart("alternative")
+        alt_part.attach(MIMEText(text_body, "plain", "utf-8"))
+        alt_part.attach(MIMEText(html_body, "html", "utf-8"))
+
         if attachments:
             msg = MIMEMultipart("mixed")
-            html_part = MIMEMultipart("alternative")
-            html_part.attach(MIMEText(html_body, "html", "utf-8"))
-            msg.attach(html_part)
+            msg.attach(alt_part)
             for att in attachments:
                 # Attachment dict schema: filename (str, required),
                 # content (bytes, required), content_type (str,
@@ -105,17 +277,34 @@ class EmailService:
                 part["Content-Disposition"] = f'attachment; filename="{att["filename"]}"'
                 msg.attach(part)
         else:
-            msg = MIMEMultipart("alternative")
-            msg.attach(MIMEText(html_body, "html", "utf-8"))
+            msg = alt_part
 
         msg["From"] = from_address
         msg["To"] = ", ".join(recipients)
         msg["Subject"] = subject
+        # Explicit Date + Message-ID — mail without these looks like
+        # a bot handoff and spam filters notice. Message-ID uses the
+        # from_email's domain so DMARC alignment holds.
+        msg["Date"] = formatdate(localtime=False)
+        try:
+            msg_domain = from_email.split("@", 1)[1]
+        except IndexError:
+            msg_domain = "classup.co.za"
+        msg["Message-ID"] = make_msgid(domain=msg_domain)
 
         if reply_to:
             msg["Reply-To"] = reply_to
         if cc:
             msg["Cc"] = ", ".join(cc)
+
+        if extra_headers:
+            for header_name, header_value in extra_headers.items():
+                # Skip anything already set (From/To/Subject/etc.) to
+                # avoid duplicate headers; Python's email package
+                # happily appends and that breaks DKIM.
+                if header_name in msg:
+                    continue
+                msg[header_name] = header_value
 
         all_recipients = list(recipients)
         if cc:
@@ -143,21 +332,28 @@ class EmailService:
             **tls_kwargs,
         )
 
-        return f"smtp-{id(msg)}"
+        return msg["Message-ID"] or f"smtp-{id(msg)}"
 
     async def _send_via_resend(
         self,
         config: dict[str, Any],
         from_address: str,
+        from_email: str,
         recipients: list[str],
         subject: str,
         html_body: str,
+        text_body: str,
         reply_to: str | None,
         cc: list[str] | None,
         bcc: list[str] | None,
         attachments: list[dict[str, Any]] | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> str:
-        """Send email via Resend."""
+        """Send email via Resend.
+
+        Mirrors the SMTP path: plain + HTML, custom headers for
+        List-Unsubscribe, Reply-To when provided.
+        """
         resend.api_key = config["resend_api_key"]
 
         params: dict[str, Any] = {
@@ -165,6 +361,7 @@ class EmailService:
             "to": recipients,
             "subject": subject,
             "html": html_body,
+            "text": text_body,
         }
 
         if reply_to:
@@ -173,6 +370,8 @@ class EmailService:
             params["cc"] = cc
         if bcc:
             params["bcc"] = bcc
+        if extra_headers:
+            params["headers"] = dict(extra_headers)
         if attachments:
             params["attachments"] = []
             for att in attachments:
@@ -220,6 +419,7 @@ class EmailService:
 
         try:
             html_body = self._render_template(template_name, context)
+            text_body = _html_to_plain(html_body)
 
             sender_name = from_name or config.get("from_name") or settings.email_from_name
             from_email = config.get("from_email") or settings.email_from_address
@@ -227,15 +427,35 @@ class EmailService:
 
             recipients = to if isinstance(to, list) else [to]
 
+            # List-Unsubscribe headers — Gmail / Yahoo bulk-sender
+            # policy expects these on anything that resembles bulk
+            # transactional mail. Built per-recipient so the signed
+            # URL maps to the right account.
+            app_base_url = getattr(settings, "app_base_url", "") or ""
+            extra_headers = _list_unsubscribe_headers(
+                recipients[0], from_email, app_base_url,
+            )
+
+            final_reply_to = reply_to
+            if not final_reply_to:
+                # Prefer a per-tenant Reply-To so a parent hitting
+                # "Reply" lands at the school, not a shared noreply@
+                # inbox. The tenant_email context key is populated by
+                # most of our template-side callers (invoice,
+                # attendance, invitations).
+                final_reply_to = context.get("tenant_email") or context.get("reply_to")
+
             if provider == "resend":
                 result_id = await self._send_via_resend(
-                    config, from_address, recipients, subject, html_body,
-                    reply_to, cc, bcc, attachments,
+                    config, from_address, from_email, recipients,
+                    subject, html_body, text_body,
+                    final_reply_to, cc, bcc, attachments, extra_headers,
                 )
             else:
                 result_id = await self._send_via_smtp(
-                    config, from_address, recipients, subject, html_body,
-                    reply_to, cc, bcc, attachments,
+                    config, from_address, from_email, recipients,
+                    subject, html_body, text_body,
+                    final_reply_to, cc, bcc, attachments, extra_headers,
                 )
 
             logger.info(f"Email sent via {provider} to {recipients}: {result_id}")
@@ -719,18 +939,25 @@ class EmailService:
             sender_name = from_name or config.get("from_name") or settings.email_from_name
             from_email = config.get("from_email") or settings.email_from_address
             from_address = f"{sender_name} <{from_email}>"
+            text_body = _html_to_plain(html_body)
 
             recipients = to if isinstance(to, list) else [to]
+            app_base_url = getattr(settings, "app_base_url", "") or ""
+            extra_headers = _list_unsubscribe_headers(
+                recipients[0], from_email, app_base_url,
+            )
 
             if provider == "resend":
                 result_id = await self._send_via_resend(
-                    config, from_address, recipients, subject, html_body,
-                    None, None, None,
+                    config, from_address, from_email, recipients,
+                    subject, html_body, text_body,
+                    None, None, None, None, extra_headers,
                 )
             else:
                 result_id = await self._send_via_smtp(
-                    config, from_address, recipients, subject, html_body,
-                    None, None, None,
+                    config, from_address, from_email, recipients,
+                    subject, html_body, text_body,
+                    None, None, None, None, extra_headers,
                 )
 
             logger.info(f"Raw email sent via {provider} to {recipients}: {result_id}")

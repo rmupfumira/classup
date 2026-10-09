@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unsubscribed — ClassUp</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{font-family:'Inter',system-ui,sans-serif}</style>
+</head>
+<body class="bg-neutral-50 min-h-screen">
+<div class="max-w-md mx-auto mt-16 bg-white rounded-xl shadow-sm border border-neutral-200 p-8 text-center">
+    {% if changed %}
+    <svg class="w-12 h-12 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <h1 class="text-xl font-bold text-neutral-800 mb-2">You're unsubscribed</h1>
+    <p class="text-sm text-neutral-600">
+        We've stopped bulk notifications to <strong>{{ email }}</strong>.
+        You'll still receive essential account mail (password resets,
+        invoices you asked for).
+    </p>
+    {% else %}
+    <svg class="w-12 h-12 mx-auto text-neutral-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <h1 class="text-xl font-bold text-neutral-800 mb-2">Nothing to unsubscribe</h1>
+    <p class="text-sm text-neutral-600">
+        We don't have <strong>{{ email }}</strong> on file. If you're still
+        receiving mail, forward it to your school admin.
+    </p>
+    {% endif %}
+</div>
+</body>
+</html>

@@ -37,6 +37,7 @@ EXEMPT_PATHS = {
     "/api/v1/invitations/verify",
     "/api/v1/whatsapp/webhook",
     "/api/v1/paystack/webhook",
+    "/unsubscribe",
 }
 
 EXEMPT_PREFIXES = (
