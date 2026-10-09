@@ -1,5 +1,9 @@
 """Role-based permission decorators and utilities."""
 
+import inspect
+import logging
+import sys
+import typing
 from functools import wraps
 from typing import Callable
 
@@ -13,6 +17,58 @@ from app.utils.tenant_context import (
     get_current_user_role,
     get_tenant_id_or_none,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _materialise_annotations(wrapper: Callable, func: Callable) -> None:
+    """Resolve ``func``'s string annotations in its OWN module and copy
+    them onto BOTH the wrapper and the original function.
+
+    PEP 563 ``from __future__ import annotations`` turns every type
+    hint into a string. FastAPI resolves these via
+    ``typing.get_type_hints`` with ``follow_wrapped=True``, which walks
+    ``__wrapped__`` back to the original function and uses THAT
+    function's ``__globals__`` to resolve the strings. In most cases
+    that works, but for a request-body model under PEP 563 FastAPI's
+    schema generator ends up treating the still-partially-unresolved
+    annotation as a Query parameter (ForwardRef) instead of a body —
+    the request then fails with ``'data: Field required'`` and the
+    OpenAPI generator crashes trying to build the schema.
+
+    We work around this by materialising the resolved annotations
+    onto both the wrapper AND the wrapped function so any read path
+    (direct, follow_wrapped, or re-read via typing) sees real classes.
+
+    Failures are logged, not raised — a module that genuinely can't
+    have its hints resolved should still boot; it will just fail at
+    request time the way it did before.
+    """
+    try:
+        module = sys.modules.get(getattr(func, "__module__", "") or "")
+        globalns = getattr(module, "__dict__", {}) if module else {}
+        resolved = typing.get_type_hints(func, globalns=globalns)
+        if resolved:
+            # Replace strings with real classes everywhere FastAPI /
+            # Pydantic might look.
+            wrapper.__annotations__ = dict(resolved)
+            try:
+                func.__annotations__ = dict(resolved)
+            except (AttributeError, TypeError):
+                pass
+        # Pin the signature too — some FastAPI code paths read it directly
+        # instead of calling get_type_hints again.
+        try:
+            wrapper.__signature__ = inspect.signature(func)
+        except (ValueError, TypeError):
+            pass
+    except Exception:
+        logger.debug(
+            "require_role: could not pre-resolve annotations for %s.%s",
+            getattr(func, "__module__", "?"),
+            getattr(func, "__qualname__", getattr(func, "__name__", "?")),
+            exc_info=True,
+        )
 
 
 def require_role(*allowed_roles: Role | str) -> Callable:
@@ -55,6 +111,7 @@ def require_role(*allowed_roles: Role | str) -> Callable:
 
             return await func(*args, **kwargs)
 
+        _materialise_annotations(wrapper, func)
         return wrapper
 
     return decorator
