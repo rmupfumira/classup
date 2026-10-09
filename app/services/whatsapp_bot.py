@@ -250,9 +250,38 @@ async def handle_inbound_message(
     plan_features = await _load_plan_features(db, tenant_id)
     mode = resolve_bot_mode(tenant, plan_features)
 
+    # Explain exactly WHY mode is OFF on each dispatch log line.
+    # Without this, "mode=OFF" alone makes diagnosis a Slack ping. The
+    # three failure flavours are (in order of likelihood):
+    #   1. no tenant match       — sender phone isn't on any user row
+    #   2. no plan                — tenant has no active subscription
+    #   3. plan gate              — plan.features.whatsapp_enabled false
+    #   4. tenant opt-in gate     — tenant.settings.features.whatsapp_enabled false
+    off_reason = ""
+    if mode is BotMode.OFF:
+        if tenant is None:
+            off_reason = " off_reason=no-tenant-match"
+        elif plan_features is None:
+            off_reason = " off_reason=no-active-subscription"
+        else:
+            plan_ok = bool(plan_features.get(_PLAN_WHATSAPP_KEY, False))
+            tenant_ok = bool(
+                ((tenant.settings or {}).get("features") or {})
+                .get(_TENANT_WHATSAPP_KEY, False)
+            )
+            if not plan_ok and not tenant_ok:
+                off_reason = " off_reason=plan+tenant-both-off"
+            elif not plan_ok:
+                off_reason = " off_reason=plan-whatsapp-disabled"
+            elif not tenant_ok:
+                off_reason = (
+                    " off_reason=tenant-whatsapp-disabled "
+                    "(toggle at /admin/tenants/<id>)"
+                )
+
     logger.info(
-        "WhatsApp bot dispatch: tenant=%s user=%s mode=%s interactive=%s",
-        tenant_id, from_phone, mode.value, interactive_id,
+        "WhatsApp bot dispatch: tenant=%s user=%s mode=%s interactive=%s%s",
+        tenant_id, from_phone, mode.value, interactive_id, off_reason,
     )
 
     # STOP / START are honoured BEFORE mode resolution and BEFORE the
