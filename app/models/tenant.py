@@ -58,12 +58,31 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    users = relationship("User", back_populates="tenant", lazy="selectin")
-    students = relationship("Student", back_populates="tenant", lazy="selectin")
-    school_classes = relationship("SchoolClass", back_populates="tenant", lazy="selectin")
-    subjects = relationship("Subject", back_populates="tenant", lazy="selectin")
-    grading_systems = relationship("GradingSystem", back_populates="tenant", lazy="selectin")
-    grade_levels = relationship("GradeLevel", back_populates="tenant", lazy="selectin")
+    # ``passive_deletes=True`` on every tenant child relationship —
+    # without it, SQLAlchemy's ORM issues UPDATE child SET tenant_id = NULL
+    # before the parent DELETE, which collides with NOT NULL on
+    # grade_levels (and would miss cascading cleanup on other children too).
+    # With passive_deletes, the ORM lets Postgres's ON DELETE CASCADE on
+    # the FK handle the children in one shot during the DELETE. This is
+    # the correct pattern for every tenant-scoped relationship.
+    users = relationship(
+        "User", back_populates="tenant", lazy="selectin", passive_deletes=True,
+    )
+    students = relationship(
+        "Student", back_populates="tenant", lazy="selectin", passive_deletes=True,
+    )
+    school_classes = relationship(
+        "SchoolClass", back_populates="tenant", lazy="selectin", passive_deletes=True,
+    )
+    subjects = relationship(
+        "Subject", back_populates="tenant", lazy="selectin", passive_deletes=True,
+    )
+    grading_systems = relationship(
+        "GradingSystem", back_populates="tenant", lazy="selectin", passive_deletes=True,
+    )
+    grade_levels = relationship(
+        "GradeLevel", back_populates="tenant", lazy="selectin", passive_deletes=True,
+    )
 
     def get_setting(self, key: str, default: any = None) -> any:
         """Get a setting value by dot-notation key."""
