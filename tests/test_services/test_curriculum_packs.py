@@ -183,12 +183,13 @@ class TestApplyCurriculumPack:
         assert rows[0].grades[0]["grade"] == "A"
 
     @pytest.mark.asyncio
-    async def test_apply_does_not_clobber_existing_grading_system(
+    async def test_apply_adds_pack_scale_without_overriding_default(
         self, db: AsyncSession, tenant_with_country,
     ):
-        """If the admin already set up a grading scale, applying a pack
-        must NOT overwrite it. The pack's grading system is a nice-to-
-        have default, not a mandate."""
+        """2026-10-09 updated behaviour: the pack's grading system is
+        ADDED to the tenant (so it's available for per-class inference)
+        but is_default is NOT flipped when another scale is already
+        the default. Admin's choice of default stands."""
         from app.models.academic import GradingSystem
 
         existing = GradingSystem(
@@ -204,15 +205,21 @@ class TestApplyCurriculumPack:
 
         service = get_academic_service()
         result = await service.apply_curriculum_pack(db, "ZW_ZIMSEC")
-        assert result["grading_system_added"] is None
+        # Pack's scale IS added now (previously it was skipped
+        # entirely) so classes can later infer from it.
+        assert result["grading_system_added"] == "ZIMSEC Standard"
 
         rows = (await db.execute(
             select(GradingSystem).where(
                 GradingSystem.tenant_id == tenant_with_country.id,
-            )
+            ).order_by(GradingSystem.name)
         )).scalars().all()
-        assert len(rows) == 1
-        assert rows[0].name == "My Custom Scale"
+        # Two scales now: the admin's custom one AND the pack's one.
+        assert {r.name for r in rows} == {"My Custom Scale", "ZIMSEC Standard"}
+        # Admin's default was NOT clobbered.
+        defaults = [r for r in rows if r.is_default]
+        assert len(defaults) == 1
+        assert defaults[0].name == "My Custom Scale"
 
     @pytest.mark.asyncio
     async def test_apply_can_switch_from_zimsec_to_cambridge(

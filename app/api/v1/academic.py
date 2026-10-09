@@ -745,3 +745,73 @@ async def apply_curriculum_pack(
     service = get_academic_service()
     result = await service.apply_curriculum_pack(db, body.pack_code)
     return {"status": "success", "data": result}
+
+
+class ClassGradingSystemUpdate(BaseModel):
+    """Request body for setting (or clearing) a class's grading system."""
+    grading_system_id: uuid.UUID | None = Field(
+        default=None,
+        description="UUID of the grading system to use, or null to clear "
+                    "the override and fall back to the tenant default.",
+    )
+
+
+@router.put("/classes/{class_id}/grading-system", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def set_class_grading_system(
+    class_id: uuid.UUID,
+    body: ClassGradingSystemUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Pin or clear a class's grading system.
+
+    When ``grading_system_id`` is provided, that scale wins over the
+    tenant default and over anything the curriculum inferrer would
+    pick. Passing ``null`` clears the override — the next subject
+    assignment will re-infer from the class's curriculum.
+    """
+    svc = get_academic_service()
+    ok = await svc.set_class_grading_system(db, class_id, body.grading_system_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Class or grading system not found")
+    gs = await svc.resolve_class_grading_system(db, class_id)
+    return {
+        "status": "success",
+        "data": {
+            "class_id": str(class_id),
+            "grading_system": (
+                {"id": str(gs.id), "name": gs.name} if gs else None
+            ),
+        },
+    }
+
+
+@router.get("/classes/{class_id}/grading-system", response_model=dict)
+@require_role("SCHOOL_ADMIN", "TEACHER")
+async def get_class_grading_system(
+    class_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the grading system a class actually uses right now
+    (per-class override → tenant default → None).
+    Includes a flag so the UI knows whether the admin pinned it."""
+    from app.models.school_class import SchoolClass
+
+    svc = get_academic_service()
+    klass = await db.get(SchoolClass, class_id)
+    pinned = bool(klass and klass.grading_system_id)
+    gs = await svc.resolve_class_grading_system(db, class_id)
+    return {
+        "status": "success",
+        "data": {
+            "class_id": str(class_id),
+            "pinned": pinned,
+            "grading_system": (
+                {"id": str(gs.id), "name": gs.name,
+                 "description": gs.description, "grades": gs.grades}
+                if gs else None
+            ),
+        },
+    }
+
+

@@ -42,10 +42,25 @@ class SchoolClass(TenantScopedModel):
     )
     capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Per-class grading scale. NULL = inherit the tenant's default
+    # (``grading_systems.is_default=True``). Set automatically the
+    # first time subjects are mapped to the class — the service infers
+    # from the most-used curriculum among those subjects. Admins can
+    # change it from the class edit page at any time.
+    grading_system_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grading_systems.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
     tenant = relationship("Tenant", back_populates="school_classes", lazy="selectin")
     grade_level_rel = relationship("GradeLevel", back_populates="school_classes", lazy="selectin")
+    grading_system = relationship(
+        "GradingSystem",
+        foreign_keys=[grading_system_id],
+        lazy="selectin",
+    )
     students = relationship(
         "Student",
         back_populates="school_class",

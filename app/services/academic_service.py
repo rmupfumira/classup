@@ -151,7 +151,14 @@ class AcademicService:
         is_compulsory: bool = True,
         display_order: int = 0,
     ) -> ClassSubject:
-        """Assign a subject to a class."""
+        """Assign a subject to a class.
+
+        If the class has no ``grading_system_id`` set, this call also
+        infers one from the subject's curriculum pack (plus any other
+        subjects already assigned to the class) so the class starts
+        following the right scale as soon as its first subject lands.
+        School admin can override from the class edit page.
+        """
         # Check if already assigned
         existing = await db.execute(
             select(ClassSubject).where(
@@ -170,6 +177,15 @@ class AcademicService:
             display_order=display_order,
         )
         db.add(class_subject)
+        await db.flush()
+
+        # Infer the class grading system from its subjects' packs if
+        # not already set. Runs on every assign so a mid-term switch
+        # (e.g. dropping all ZIMSEC subjects and adding Cambridge) can
+        # update the default — unless the admin has pinned a custom
+        # system, in which case we don't touch it.
+        await self._infer_class_grading_system(db, class_id)
+
         await db.commit()
         await db.refresh(class_subject)
         return class_subject
@@ -241,6 +257,11 @@ class AcademicService:
                 created.append(class_subject)
 
         if created:
+            await db.flush()
+            # Same inferrer as the single-assign path, so a bulk pick
+            # on an empty class lands with the right grading scale on
+            # the first commit.
+            await self._infer_class_grading_system(db, class_id)
             await db.commit()
             for cs in created:
                 await db.refresh(cs)
@@ -605,6 +626,127 @@ class AcademicService:
         await db.refresh(grading_system)
         return grading_system
 
+    # ==================== CLASS GRADING INFERENCE ====================
+
+    async def _infer_class_grading_system(
+        self, db: AsyncSession, class_id: uuid.UUID,
+    ) -> None:
+        """Set ``school_classes.grading_system_id`` from the most-used
+        curriculum among the class's current subjects.
+
+        No-op when:
+        - the class already has a grading system set (we never clobber
+          a value the admin may have picked), or
+        - the class has no subjects with a curriculum tag, or
+        - the tenant has no GradingSystem matching the inferred pack's
+          name (e.g. the admin deleted it).
+
+        Called from assign_subject_to_class and
+        bulk_assign_subjects_to_class after the ClassSubject rows have
+        been flushed, so the SELECT below sees the just-added rows.
+        """
+        from collections import Counter
+        from app.models.school_class import SchoolClass
+        from app.utils.curriculum_packs import get_pack
+
+        tenant_id = get_tenant_id()
+
+        klass = await db.get(SchoolClass, class_id)
+        if klass is None or klass.tenant_id != tenant_id:
+            return
+        if klass.grading_system_id is not None:
+            # Admin has pinned a scale — leave it alone.
+            return
+
+        # Collect curriculum_pack_codes of subjects currently on this class.
+        rows = (await db.execute(
+            select(Subject.curriculum_pack_code)
+            .join(ClassSubject, ClassSubject.subject_id == Subject.id)
+            .where(
+                ClassSubject.class_id == class_id,
+                Subject.deleted_at.is_(None),
+                Subject.curriculum_pack_code.is_not(None),
+            )
+        )).all()
+        pack_codes = [row[0] for row in rows if row[0]]
+        if not pack_codes:
+            return
+
+        # Majority wins. Ties resolve to Counter's internal insertion
+        # order, which matches the order subjects were assigned — stable
+        # enough for our purposes.
+        dominant_code = Counter(pack_codes).most_common(1)[0][0]
+        pack = get_pack(dominant_code)
+        if pack is None or pack.grading_system is None:
+            return
+
+        # Find the tenant's grading system that matches this pack's
+        # name. Pack-seeded grading systems carry the pack's name
+        # verbatim (see apply_curriculum_pack), so this is a reliable
+        # lookup. If the admin renamed it, inference quietly stops —
+        # same as the "no match" case.
+        gs = (await db.execute(
+            select(GradingSystem).where(
+                GradingSystem.tenant_id == tenant_id,
+                GradingSystem.name == pack.grading_system.name,
+                GradingSystem.deleted_at.is_(None),
+            )
+            .limit(1)
+        )).scalar_one_or_none()
+        if gs is None:
+            return
+
+        klass.grading_system_id = gs.id
+
+    async def resolve_class_grading_system(
+        self, db: AsyncSession, class_id: uuid.UUID,
+    ) -> GradingSystem | None:
+        """Return the grading system a class actually uses.
+
+        Resolution order:
+        1. ``class.grading_system`` — the per-class scale (admin pick
+           or inferred from curriculum).
+        2. tenant default (``grading_systems.is_default=True``).
+        3. ``None`` — report cards fall back to template-embedded
+           bands.
+        """
+        from app.models.school_class import SchoolClass
+
+        klass = await db.get(SchoolClass, class_id)
+        if klass is None:
+            return None
+        if klass.grading_system_id:
+            gs = await db.get(GradingSystem, klass.grading_system_id)
+            if gs and gs.deleted_at is None:
+                return gs
+        return await self.get_default_grading_system(db)
+
+    async def set_class_grading_system(
+        self,
+        db: AsyncSession,
+        class_id: uuid.UUID,
+        grading_system_id: uuid.UUID | None,
+    ) -> bool:
+        """Admin override: pin a grading system on a class, or clear it
+        (pass None) to go back to inferred / tenant-default behaviour.
+        Returns False if the class or the grading system doesn't exist
+        on this tenant."""
+        from app.models.school_class import SchoolClass
+
+        tenant_id = get_tenant_id()
+        klass = await db.get(SchoolClass, class_id)
+        if klass is None or klass.tenant_id != tenant_id:
+            return False
+
+        if grading_system_id is not None:
+            gs = await db.get(GradingSystem, grading_system_id)
+            if gs is None or gs.tenant_id != tenant_id or gs.deleted_at is not None:
+                return False
+
+        klass.grading_system_id = grading_system_id
+        await db.commit()
+        return True
+
     # ==================== CURRICULUM PACKS ====================
 
     async def apply_curriculum_pack(
@@ -664,17 +806,27 @@ class AcademicService:
                     category=sdef.category,
                     display_order=i,
                     is_active=True,
+                    # Stamp the subject with its origin pack — powers
+                    # the class→grading-system inferrer in
+                    # assign_subject_to_class.
+                    curriculum_pack_code=pack.code,
                 ))
                 existing_codes.add(code_upper)
                 added += 1
                 subject_names.append(sdef.name)
 
-        # Seed the pack's default grading system — but only if the
-        # tenant has none yet. We never clobber an existing scale,
-        # because the admin may have hand-tuned the bands.
+        # Seed the pack's grading system. We ADD it if a scale with
+        # the same NAME isn't already on the tenant — so loading
+        # ZIMSEC then Cambridge gives the tenant both scales, each
+        # available for per-class inference and admin override. We
+        # mark the pack's scale as ``is_default=True`` only when the
+        # tenant had NO scales before this call, protecting the
+        # admin's existing default. ``is_default`` on an additional
+        # scale would silently flip the tenant's default, which is
+        # surprising.
         grading_system_name: str | None = None
         if pack is not None and pack.grading_system is not None:
-            existing_gs = (await db.execute(
+            existing_gs_count = (await db.execute(
                 select(func.count()).select_from(
                     select(GradingSystem).where(
                         GradingSystem.tenant_id == tenant_id,
@@ -682,12 +834,26 @@ class AcademicService:
                     ).subquery()
                 )
             )).scalar() or 0
-            if existing_gs == 0:
+
+            # Does one with THIS name already exist? Preserves
+            # idempotency on re-apply and respects admin-renamed
+            # scales.
+            same_name_exists = (await db.execute(
+                select(func.count()).select_from(
+                    select(GradingSystem).where(
+                        GradingSystem.tenant_id == tenant_id,
+                        GradingSystem.name == pack.grading_system.name,
+                        GradingSystem.deleted_at.is_(None),
+                    ).subquery()
+                )
+            )).scalar() or 0
+
+            if same_name_exists == 0:
                 gs = GradingSystem(
                     tenant_id=tenant_id,
                     name=pack.grading_system.name,
                     description=pack.grading_system.description,
-                    is_default=True,
+                    is_default=(existing_gs_count == 0),
                     is_active=True,
                     grades=[
                         {

@@ -225,10 +225,20 @@ async def reports_view(
         from app.services.academic_service import get_academic_service
         academic_service = get_academic_service()
 
-        # Use template's grading system or default
+        # Grading system resolution — in priority order:
+        #   1. Template's explicit grading system (pinned by whoever
+        #      built this template — most specific, wins everything).
+        #   2. The class's grading system (set by the curriculum
+        #      inferrer, or pinned by the admin on the class edit
+        #      page). This is the 2026-10-09 curriculum→class link.
+        #   3. The tenant default.
         if report.template.grading_system_id:
             grading_system = await academic_service.get_grading_system(
                 db, report.template.grading_system_id
+            )
+        if not grading_system and report.class_id:
+            grading_system = await academic_service.resolve_class_grading_system(
+                db, report.class_id
             )
         if not grading_system:
             grading_system = await academic_service.get_default_grading_system(db)

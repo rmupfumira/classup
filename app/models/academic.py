@@ -45,6 +45,14 @@ class Subject(TenantScopedModel):
     category: Mapped[str | None] = mapped_column(String(50), nullable=True)  # e.g., "Core", "Elective", "Language"
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Which curriculum pack this subject was seeded from (ZW_ZIMSEC,
+    # ZA_CAPS, ZA_IEB, ZW_CAMBRIDGE, ZA_CAMBRIDGE, ...). NULL for
+    # subjects created manually or seeded by legacy code paths. Used
+    # by the class→grading-system inferrer so a class full of ZIMSEC
+    # subjects gets the ZIMSEC grading scale by default.
+    curriculum_pack_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True,
+    )
 
     # Relationships
     tenant = relationship("Tenant", back_populates="subjects", lazy="selectin")
