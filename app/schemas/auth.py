@@ -41,8 +41,33 @@ def _phone_e164_optional(v: str | None) -> str | None:
         raise ValueError(str(e))
 
 
+def _phone_e164_required(v: str) -> str:
+    """Normalise a required phone to E.164 or raise."""
+    from app.utils.phone import PhoneValidationError, normalise_phone
+    v = (v or "").strip() if v else ""
+    if not v:
+        raise ValueError("Mobile number is required")
+    try:
+        normalised = normalise_phone(v)
+        if normalised is None:
+            raise ValueError("Mobile number is required")
+        return normalised
+    except PhoneValidationError as e:
+        raise ValueError(str(e))
+
+
 class RegisterRequest(BaseModel):
-    """Parent registration request (via invitation code)."""
+    """Parent registration request (via invitation code).
+
+    2026-10-09 onboarding redesign:
+    - ``phone`` is now required (was optional). Enforced here so API
+      callers get an immediate 422; the registration form also marks
+      the field required.
+    - ``whatsapp_opt_in`` / ``email_opt_in`` carry the parent's
+      explicit channel choices. The admin's "Suggest WhatsApp opt-in"
+      flag on the invitation only pre-ticks these on the form; the
+      parent's final value is what lands here.
+    """
 
     invitation_code: str = Field(..., min_length=8, max_length=8)
     email: EmailStr
@@ -50,7 +75,9 @@ class RegisterRequest(BaseModel):
     confirm_password: str = Field(..., min_length=8)
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
-    phone: str | None = Field(None, max_length=50)
+    phone: str = Field(..., max_length=50)
+    whatsapp_opt_in: bool = False
+    email_opt_in: bool = True
 
     @field_validator("confirm_password")
     @classmethod
@@ -60,7 +87,7 @@ class RegisterRequest(BaseModel):
             raise ValueError("Passwords do not match")
         return v
 
-    _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
+    _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_required(v))
 
 
 class RegisterResponse(BaseModel):

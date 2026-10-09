@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from enum import Enum
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -62,6 +62,19 @@ class ParentInvitation(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     last_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    # Mobile the admin typed when adding the student. Pre-fills the
+    # registration page so the parent doesn't retype their own number.
+    # Optional at the invitation layer — some admins may not know the
+    # parent's phone when creating the student. The registration page
+    # still requires one before account creation (2026-10-09 redesign).
+    parent_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Did the admin tick "Suggest WhatsApp opt-in" when sending this
+    # invitation? If true, the registration page pre-ticks the WhatsApp
+    # opt-in checkbox (parent can confirm or untick). Default false so
+    # a parent who was invited by email alone sees the box unticked.
+    suggest_whatsapp_opt_in: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false"),
+    )
     invitation_code: Mapped[str] = mapped_column(
         String(8),
         unique=True,

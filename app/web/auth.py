@@ -151,29 +151,48 @@ async def register_page(
     if not code:
         return RedirectResponse(url="/login", status_code=302)
 
-    # Pre-fill from invitation if code + email provided
+    # 2026-10-09 redesign: pre-fill everything we know from the
+    # invitation so the parent has as little to type as possible.
+    # Email is derived from the invitation (previously had to be in
+    # the URL — but the WhatsApp `parent_signup` template only carries
+    # the code, not the email). Mobile + WhatsApp suggestion also come
+    # from the invitation row.
     first_name = ""
     last_name = ""
     student_name = ""
     school_name = ""
-    if code and email:
+    pre_email = email or ""
+    pre_phone = ""
+    suggest_whatsapp = False
+    if code:
         from app.services.invitation_service import get_invitation_service
         inv_service = get_invitation_service()
-        result = await inv_service.verify_invitation(db, code=code, email=email)
-        if result.get("valid"):
-            first_name = result.get("first_name", "")
-            last_name = result.get("last_name", "")
-            student_name = result.get("student_name", "")
-            school_name = result.get("school_name", "")
+        invitation = await inv_service.get_invitation_by_code(db, code)
+        if invitation and invitation.status == "PENDING":
+            first_name = invitation.first_name or ""
+            last_name = invitation.last_name or ""
+            pre_email = invitation.email
+            pre_phone = invitation.parent_phone or ""
+            suggest_whatsapp = bool(invitation.suggest_whatsapp_opt_in)
+            # Load student + tenant names for the welcome header.
+            from app.models import Student, Tenant
+            student = await db.get(Student, invitation.student_id)
+            tenant = await db.get(Tenant, invitation.tenant_id)
+            if student:
+                student_name = f"{student.first_name} {student.last_name}".strip()
+            if tenant:
+                school_name = tenant.name
 
     return templates.TemplateResponse(
         "auth/register.html",
         {
             "request": request,
             "code": code or "",
-            "email": email or "",
+            "email": pre_email,
             "first_name": first_name,
             "last_name": last_name,
+            "phone": pre_phone,
+            "suggest_whatsapp": suggest_whatsapp,
             "student_name": student_name,
             "school_name": school_name,
             "error": error,
@@ -191,10 +210,20 @@ async def register_submit(
     confirm_password: str = Form(...),
     first_name: str = Form(...),
     last_name: str = Form(...),
-    phone: str = Form(None),
+    phone: str = Form(...),
+    whatsapp_opt_in: str | None = Form(None),
+    email_opt_in: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Handle registration form submission."""
+    """Handle registration form submission.
+
+    2026-10-09 redesign: mobile is required. ``whatsapp_opt_in`` /
+    ``email_opt_in`` come from the two checkboxes on the form —
+    unticked checkboxes don't post, so we coerce to bool via "is
+    this value set".
+    """
+    wants_whatsapp = whatsapp_opt_in is not None
+    wants_email = email_opt_in is not None if email_opt_in is not None else True
     try:
         auth_service = get_auth_service()
         register_request = RegisterRequest(
@@ -205,6 +234,8 @@ async def register_submit(
             first_name=first_name,
             last_name=last_name,
             phone=phone,
+            whatsapp_opt_in=wants_whatsapp,
+            email_opt_in=wants_email,
         )
         await auth_service.register_parent(db, register_request)
 
@@ -226,6 +257,7 @@ async def register_submit(
                 "first_name": first_name,
                 "last_name": last_name,
                 "phone": phone,
+                "suggest_whatsapp": wants_whatsapp,
                 "current_language": get_current_language(),
             },
             status_code=400,

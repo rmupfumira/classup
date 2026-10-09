@@ -34,8 +34,17 @@ class InvitationService:
         email: str,
         first_name: str = "",
         last_name: str = "",
+        parent_phone: str | None = None,
+        suggest_whatsapp_opt_in: bool = False,
     ) -> ParentInvitation:
-        """Create a new parent invitation."""
+        """Create a new parent invitation.
+
+        ``parent_phone`` and ``suggest_whatsapp_opt_in`` carry the
+        admin's inputs through to the registration page: the mobile
+        pre-fills the parent's phone field, the opt-in flag pre-ticks
+        the WhatsApp checkbox (parent still confirms). See the
+        2026-10-09 onboarding redesign.
+        """
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
@@ -86,6 +95,8 @@ class InvitationService:
             email=email.lower(),
             first_name=first_name,
             last_name=last_name,
+            parent_phone=(parent_phone or "").strip() or None,
+            suggest_whatsapp_opt_in=bool(suggest_whatsapp_opt_in),
             invitation_code=code,
             status="PENDING",
             created_by=user_id,
@@ -165,6 +176,10 @@ class InvitationService:
             "email": invitation.email,
             "first_name": invitation.first_name,
             "last_name": invitation.last_name,
+            # 2026-10-09 redesign: carry the admin-supplied phone +
+            # WhatsApp suggestion through to the registration page.
+            "parent_phone": invitation.parent_phone,
+            "suggest_whatsapp_opt_in": invitation.suggest_whatsapp_opt_in,
         }
 
     async def accept_invitation(

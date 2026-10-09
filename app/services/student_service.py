@@ -272,7 +272,11 @@ class StudentService:
                     ),
                 }
 
-            # No account yet — create + send invitation.
+            # No account yet — create + send invitation. Pass the
+            # admin's phone + "suggest WhatsApp" tick through to the
+            # invitation row; the registration page uses them to pre-
+            # fill the mobile field and pre-tick the WhatsApp opt-in
+            # (2026-10-09 onboarding redesign).
             invitation_service = get_invitation_service()
             invitation = await invitation_service.create_invitation(
                 db,
@@ -280,6 +284,8 @@ class StudentService:
                 email=email,
                 first_name=info.first_name,
                 last_name=info.last_name,
+                parent_phone=info.phone,
+                suggest_whatsapp_opt_in=bool(info.send_whatsapp_invite),
             )
 
             from urllib.parse import urlencode

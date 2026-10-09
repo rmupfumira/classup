@@ -208,7 +208,13 @@ class AuthService:
         if existing_user:
             raise ConflictException("An account with this email already exists")
 
-        # Create user
+        # Create user. ``phone`` is now required on the request (2026-
+        # 10-09 redesign); if the parent ticks WhatsApp opt-in, mirror
+        # the same number into ``whatsapp_phone`` so the bot can match
+        # them from the first inbound. ``whatsapp_opted_in`` and
+        # ``email_opted_in`` are the parent's own explicit decisions
+        # — the admin's "Suggest WhatsApp opt-in" only pre-ticked the
+        # form field.
         user = User(
             tenant_id=invitation.tenant_id,
             email=request.email,
@@ -216,6 +222,9 @@ class AuthService:
             first_name=request.first_name,
             last_name=request.last_name,
             phone=request.phone,
+            whatsapp_phone=request.phone if request.whatsapp_opt_in else None,
+            whatsapp_opted_in=bool(request.whatsapp_opt_in),
+            email_opted_in=bool(request.email_opt_in),
             role=Role.PARENT.value,
             is_active=True,
         )

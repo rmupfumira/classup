@@ -76,6 +76,16 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     language: Mapped[str] = mapped_column(String(5), nullable=False, default="en")
     whatsapp_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     whatsapp_opted_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Per-channel email opt-out. Default True (email is the baseline
+    # channel). A parent can turn this off from Profile; the Principal
+    # AI review flagged notifications sent through disabled channels
+    # as a parent-notifier gap, and the 2026-10-09 redesign adds a
+    # matching email gate so disabling here really stops sends. Admins
+    # and super admins keep email on by default — the toggle only
+    # surfaces on the parent profile page.
+    email_opted_in: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true"),
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
