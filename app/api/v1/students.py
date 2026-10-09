@@ -263,18 +263,50 @@ async def update_student(
     )
 
 
+@router.get("/{student_id}/deletion-preview", response_model=APIResponse[dict])
+@require_role(Role.SCHOOL_ADMIN)
+async def student_deletion_preview(
+    student_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return exactly what deleting this student will purge.
+
+    Powers the admin confirmation modal — the admin sees counts for
+    attendance records, reports, invoices, which parents will be fully
+    removed (freeing their email + phone for reuse) vs kept because a
+    sibling is still enrolled. Read-only.
+    """
+    service = get_student_service()
+    data = await service.preview_student_deletion(db, student_id)
+    return APIResponse(status="success", data=data)
+
+
 @router.delete("/{student_id}", response_model=APIResponse[None])
 @require_role(Role.SCHOOL_ADMIN)
 async def delete_student(
     student_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Soft delete a student (school admin only)."""
+    """Permanently delete a student + every related record.
+
+    Hard delete — reverses nothing. The admin UI gates this behind a
+    typed-name confirmation after showing the preview, so this
+    endpoint doesn't need its own further guards beyond the role
+    check. Orphan parents (parents left with no active children on
+    this tenant) are also hard-deleted so their email + phone can be
+    reused immediately on the same tenant.
+    """
     service = get_student_service()
-    await service.delete_student(db, student_id)
+    summary = await service.hard_delete_student(db, student_id)
     await db.commit()
 
-    return APIResponse(message="Student deleted successfully")
+    msg = f"{summary['student_name']} permanently deleted"
+    if summary["parents_removed"]:
+        msg += (
+            f" (plus {summary['parents_removed']} orphaned parent"
+            f"{'s' if summary['parents_removed'] != 1 else ''})"
+        )
+    return APIResponse(message=msg)
 
 
 @router.get("/{student_id}/parents", response_model=APIResponse[list[ParentInfo]])

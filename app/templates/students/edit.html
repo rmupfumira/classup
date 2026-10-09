@@ -191,6 +191,89 @@
     </form>
 </div>
 
+<!-- Permanent-delete confirmation modal — 2026-10-09.
+     Admin clicks "Delete Student" → GET /deletion-preview populates
+     this modal with exact counts of what will be purged → admin must
+     type the student's full name to enable the final Delete button. -->
+<dialog id="purge-modal" class="rounded-2xl shadow-2xl border-0 p-0 w-full max-w-lg backdrop:bg-black/60">
+    <div class="p-6">
+        <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-neutral-800">Permanently delete student</h3>
+            </div>
+            <button type="button" onclick="document.getElementById('purge-modal').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div id="purge-loading" class="py-8 text-center text-sm text-neutral-500">
+            Checking what will be deleted…
+        </div>
+
+        <div id="purge-detail" class="hidden space-y-4">
+            <p class="text-sm text-neutral-700">
+                You're about to <strong>permanently delete</strong>
+                <strong id="purge-name"></strong>. This cannot be undone.
+            </p>
+
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-xs font-semibold text-red-800 uppercase tracking-wide mb-2">Will be deleted</p>
+                <ul id="purge-destroy-list" class="text-sm text-red-900 space-y-1"></ul>
+            </div>
+
+            <div id="purge-detach-wrap" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p class="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-2">Kept but anonymised</p>
+                <ul id="purge-detach-list" class="text-sm text-amber-900 space-y-1"></ul>
+                <p class="text-xs text-amber-700 mt-2">
+                    These rows survive for audit totals, with the student link removed.
+                </p>
+            </div>
+
+            <div id="purge-parents-remove-wrap" class="hidden bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-xs font-semibold text-red-800 uppercase tracking-wide mb-2">
+                    Parent accounts removed (email + phone become reusable)
+                </p>
+                <ul id="purge-parents-remove-list" class="text-sm text-red-900 space-y-1"></ul>
+            </div>
+
+            <div id="purge-parents-kept-wrap" class="hidden bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                <p class="text-xs font-semibold text-neutral-800 uppercase tracking-wide mb-2">
+                    Parent accounts kept (sibling still enrolled)
+                </p>
+                <ul id="purge-parents-kept-list" class="text-sm text-neutral-800 space-y-1"></ul>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">
+                    Type <strong id="purge-name-echo"></strong> to confirm
+                </label>
+                <input type="text" id="purge-confirm-input"
+                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                       autocomplete="off">
+            </div>
+
+            <div class="flex gap-3 pt-2 border-t border-neutral-100">
+                <button type="button" onclick="document.getElementById('purge-modal').close()"
+                        class="flex-1 py-2.5 text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="purge-confirm-btn" disabled
+                        class="flex-1 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Permanently delete
+                </button>
+            </div>
+        </div>
+    </div>
+</dialog>
+
 <!-- Contact Template -->
 <template id="contact-template">
     <div class="contact-item border border-neutral-200 rounded-lg p-4 relative">
@@ -294,29 +377,147 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Delete student
-    deleteBtn.addEventListener('click', async function() {
-        if (!(await ClassUp.confirm('Are you sure you want to delete this student? This action cannot be undone.', { danger: true, confirmText: 'Delete' }))) {
-            return;
-        }
+    // Delete student — 2-step purge: load preview, show exact counts,
+    // require typed-name confirm, then run the hard delete.
+    deleteBtn.addEventListener('click', openPurgeModal);
+});
 
-        try {
-            const response = await fetch('/api/v1/students/' + studentId, {
-                method: 'DELETE',
-                credentials: 'same-origin'
-            });
+// Human-readable labels keyed by preview response field. Matches the
+// backend's preview counts dict verbatim — new fields show up here
+// with their own label.
+const PURGE_LABELS = {
+    attendance_records:    'attendance records',
+    reports:               'reports',
+    invoices:              'invoices',
+    payments:              'payment records',
+    pending_invitations:   'pending parent invitations',
+    photos_shared:         'photo shares',
+    documents_shared:      'document shares',
+};
+const PURGE_DETACH_LABELS = {
+    messages_mentioning:              'messages that mention this student',
+    accounting_entries_anonymised:    'accounting entries that tag this student',
+    student_events_detached:          'events scoped to just this student',
+};
 
-            if (response.ok) {
-                window.location.href = '/students';
-            } else {
-                const result = await response.json();
-                ClassUp.toast(result.message || 'Failed to delete student', 'error');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            ClassUp.toast('An error occurred. Please try again.', 'error');
+async function openPurgeModal() {
+    const studentId = '{{ student.id }}';
+    const modal = document.getElementById('purge-modal');
+    document.getElementById('purge-loading').classList.remove('hidden');
+    document.getElementById('purge-detail').classList.add('hidden');
+    modal.showModal();
+
+    try {
+        const res = await fetch('/api/v1/students/' + studentId + '/deletion-preview', {
+            credentials: 'same-origin',
+        });
+        if (!res.ok) throw new Error('preview failed');
+        const payload = await res.json();
+        renderPurgePreview(payload.data || {});
+    } catch (err) {
+        console.error(err);
+        ClassUp.toast('Could not load deletion preview.', 'error');
+        modal.close();
+    }
+}
+
+function renderPurgePreview(data) {
+    const studentName = data.student?.name || 'this student';
+    document.getElementById('purge-name').textContent = studentName;
+    document.getElementById('purge-name-echo').textContent = studentName;
+
+    // Destroy list — only show rows with count > 0, plus the row for
+    // the student record itself.
+    const destroyList = document.getElementById('purge-destroy-list');
+    destroyList.innerHTML = '';
+    const addRow = (ul, text) => {
+        const li = document.createElement('li');
+        li.className = 'flex items-start gap-2';
+        li.innerHTML = `<span>•</span><span>${text}</span>`;
+        ul.appendChild(li);
+    };
+    addRow(destroyList, 'the student record itself');
+    const counts = data.counts || {};
+    Object.entries(PURGE_LABELS).forEach(([key, label]) => {
+        const n = counts[key] || 0;
+        if (n > 0) addRow(destroyList, `${n} ${label}`);
+    });
+
+    // Detach / SET NULL list
+    const detachWrap = document.getElementById('purge-detach-wrap');
+    const detachList = document.getElementById('purge-detach-list');
+    detachList.innerHTML = '';
+    let anyDetach = false;
+    Object.entries(PURGE_DETACH_LABELS).forEach(([key, label]) => {
+        const n = counts[key] || 0;
+        if (n > 0) {
+            addRow(detachList, `${n} ${label}`);
+            anyDetach = true;
         }
     });
-});
+    detachWrap.classList.toggle('hidden', !anyDetach);
+
+    // Parents removed
+    const removedWrap = document.getElementById('purge-parents-remove-wrap');
+    const removedList = document.getElementById('purge-parents-remove-list');
+    removedList.innerHTML = '';
+    (data.parents_to_remove || []).forEach(p => {
+        const parts = [p.name || '(no name)'];
+        if (p.email)  parts.push(p.email);
+        if (p.phone)  parts.push(p.phone);
+        addRow(removedList, parts.join(' · '));
+    });
+    removedWrap.classList.toggle('hidden', (data.parents_to_remove || []).length === 0);
+
+    // Parents kept (sibling still enrolled)
+    const keptWrap = document.getElementById('purge-parents-kept-wrap');
+    const keptList = document.getElementById('purge-parents-kept-list');
+    keptList.innerHTML = '';
+    (data.parents_kept || []).forEach(p => {
+        addRow(keptList, `${p.name} · ${p.other_children} other child${p.other_children !== 1 ? 'ren' : ''} on this tenant`);
+    });
+    keptWrap.classList.toggle('hidden', (data.parents_kept || []).length === 0);
+
+    // Wire the typed-name confirmation
+    const input = document.getElementById('purge-confirm-input');
+    const btn = document.getElementById('purge-confirm-btn');
+    input.value = '';
+    btn.disabled = true;
+    input.oninput = () => {
+        btn.disabled = input.value.trim() !== studentName;
+    };
+    btn.onclick = () => runPurge();
+
+    document.getElementById('purge-loading').classList.add('hidden');
+    document.getElementById('purge-detail').classList.remove('hidden');
+    input.focus();
+}
+
+async function runPurge() {
+    const studentId = '{{ student.id }}';
+    const btn = document.getElementById('purge-confirm-btn');
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    try {
+        const res = await fetch('/api/v1/students/' + studentId, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        const result = await res.json();
+        if (res.ok) {
+            ClassUp.toast(result.message || 'Student permanently deleted.', 'success');
+            setTimeout(() => { window.location.href = '/students'; }, 400);
+        } else {
+            ClassUp.toast(result.message || 'Delete failed.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Permanently delete';
+        }
+    } catch (err) {
+        console.error(err);
+        ClassUp.toast('An error occurred. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Permanently delete';
+    }
+}
 </script>
 {% endblock %}
