@@ -2,12 +2,37 @@
 
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification
 from app.utils.tenant_context import get_tenant_id
+
+# Sentinel so callers can pass tenant_id=None explicitly to mean
+# "this is a super-admin notification" (legitimate NULL in DB),
+# versus omitting the argument altogether to mean "read the request
+# context". Plain `None` as the default would conflate the two.
+_UNSET: Any = object()
+
+
+def _resolve_tenant_id(explicit) -> uuid.UUID | None:
+    """Pick the tenant_id for a notification write.
+
+    - ``explicit is _UNSET`` → fall back to the request contextvar.
+    - ``explicit is None`` → caller is writing a super-admin
+      notification (``Notification.tenant_id`` is nullable for
+      exactly this case).
+    - otherwise → use the given UUID.
+
+    This matters for flows outside a request (parent registration,
+    Paystack/PayNow webhooks, arq workers) where ``get_tenant_id()``
+    would raise, AND for super-admin notifications that want NULL.
+    """
+    if explicit is _UNSET:
+        return get_tenant_id()
+    return explicit
 
 
 class NotificationService:
@@ -72,9 +97,20 @@ class NotificationService:
         notification_type: str,
         reference_type: str | None = None,
         reference_id: uuid.UUID | None = None,
+        tenant_id: Any = _UNSET,
     ) -> Notification:
-        """Create a new notification for a user."""
-        tenant_id = get_tenant_id()
+        """Create a new notification for a user.
+
+        ``tenant_id`` may be:
+        - omitted → falls back to the tenant contextvar (pre-existing
+          behaviour; used by every in-request caller).
+        - a UUID → use that tenant. Required for public flows that
+          run without a tenant context (parent registration,
+          Paystack/PayNow webhooks, arq workers).
+        - explicitly ``None`` → write a super-admin notification
+          (``Notification.tenant_id`` is nullable for exactly this).
+        """
+        tenant_id = _resolve_tenant_id(tenant_id)
 
         notification = Notification(
             tenant_id=tenant_id,
@@ -101,9 +137,20 @@ class NotificationService:
         notification_type: str,
         reference_type: str | None = None,
         reference_id: uuid.UUID | None = None,
+        tenant_id: Any = _UNSET,
     ) -> list[Notification]:
-        """Create notifications for multiple users."""
-        tenant_id = get_tenant_id()
+        """Create notifications for multiple users.
+
+        ``tenant_id`` may be:
+        - omitted → falls back to the tenant contextvar (pre-existing
+          behaviour).
+        - a UUID → use that tenant. Required for public flows that
+          run without a tenant context (parent registration,
+          Paystack/PayNow webhooks, arq workers).
+        - explicitly ``None`` → write super-admin notifications
+          (``Notification.tenant_id`` is nullable for this).
+        """
+        tenant_id = _resolve_tenant_id(tenant_id)
 
         notifications = []
         for user_id in user_ids:

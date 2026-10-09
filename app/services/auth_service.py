@@ -320,7 +320,10 @@ class AuthService:
         if not admins:
             return
 
-        # 1) In-app notifications
+        # 1) In-app notifications. Pass tenant_id explicitly — this
+        # method runs on a public registration request so the tenant
+        # contextvar isn't set; create_bulk_notifications would
+        # otherwise crash with TenantContextError.
         try:
             notification_service = get_notification_service()
             await notification_service.create_bulk_notifications(
@@ -331,6 +334,7 @@ class AuthService:
                 notification_type="NEW_PARENT_SIGNED_UP",
                 reference_type="user",
                 reference_id=parent.id,
+                tenant_id=tenant_id,
             )
         except Exception:
             logger.exception("In-app notify failed for parent signup")

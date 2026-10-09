@@ -1035,6 +1035,10 @@ async def submit_eft_payment(
         admin_ids = [row[0] for row in q.all()]
         if admin_ids:
             notif_service = get_notification_service()
+            # Super-admin notification — Notification.tenant_id is
+            # nullable for exactly this. Pass None explicitly so we
+            # don't fall back to the request's tenant contextvar
+            # (which would misattribute the row to the paying tenant).
             await notif_service.create_bulk_notifications(
                 db=db,
                 user_ids=admin_ids,
@@ -1046,6 +1050,7 @@ async def submit_eft_payment(
                 notification_type="PAYMENT_RECEIVED",
                 reference_type="eft_payment",
                 reference_id=payment.id,
+                tenant_id=None,
             )
             await db.commit()
     except Exception:
@@ -1149,6 +1154,9 @@ async def approve_eft_payment(
         admin_ids = [row[0] for row in q.all()]
         if admin_ids:
             notif_service = get_notification_service()
+            # This runs on a SUPER_ADMIN request — the contextvar
+            # tenant_id isn't the tenant we're notifying. Pass it
+            # explicitly so the row lands under the right tenant.
             await notif_service.create_bulk_notifications(
                 db=db,
                 user_ids=admin_ids,
@@ -1160,6 +1168,7 @@ async def approve_eft_payment(
                 notification_type="PAYMENT_RECEIVED",
                 reference_type="eft_payment",
                 reference_id=payment.id,
+                tenant_id=payment.tenant_id,
             )
             await db.commit()
     except Exception:
@@ -1210,6 +1219,7 @@ async def reject_eft_payment(
         admin_ids = [row[0] for row in q.all()]
         if admin_ids:
             notif_service = get_notification_service()
+            # Super-admin request — see EFT-approve above.
             await notif_service.create_bulk_notifications(
                 db=db,
                 user_ids=admin_ids,
@@ -1222,6 +1232,7 @@ async def reject_eft_payment(
                 notification_type="PAYMENT_RECEIVED",
                 reference_type="eft_payment",
                 reference_id=payment.id,
+                tenant_id=payment.tenant_id,
             )
             await db.commit()
     except Exception:

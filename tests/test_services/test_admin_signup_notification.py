@@ -85,6 +85,90 @@ async def tenant_with_two_admins(db: AsyncSession):
 
 
 @pytest.mark.asyncio
+async def test_in_app_notification_fires_without_tenant_contextvar(
+    db: AsyncSession,
+):
+    """Regression (2026-10-09): parent registration runs on an
+    unauthenticated public endpoint, so the tenant contextvar is NOT
+    set when the admin-notify helper fires. The old implementation
+    called ``get_tenant_id()`` which raised TenantContextError and
+    silently swallowed every admin-signup notification.
+
+    This test deliberately does NOT set ``_tenant_id`` — it
+    reproduces the production path and asserts the notifications
+    land under the right tenant anyway.
+    """
+    tid = uuid.uuid4()
+    tenant = Tenant(
+        id=tid, name=f"NoCtx {tid.hex[:6]}", slug=f"noctx-{tid.hex[:8]}",
+        email=f"admin@{tid.hex[:6]}.example.com",
+        education_type="PRIMARY_SCHOOL", settings={}, is_active=True,
+        onboarding_completed=True,
+    )
+    admin = User(
+        id=uuid.uuid4(), tenant_id=tid,
+        email=f"admin-{tid.hex[:6]}@example.com",
+        password_hash=hash_password("x"), first_name="Head", last_name="Teacher",
+        role=Role.SCHOOL_ADMIN.value, is_active=True,
+    )
+    cls = SchoolClass(id=uuid.uuid4(), tenant_id=tid, name="Grade 1", is_active=True)
+    student = Student(
+        id=uuid.uuid4(), tenant_id=tid,
+        first_name="Kid", last_name="Zero", class_id=cls.id, is_active=True,
+    )
+    db.add_all([tenant, admin, cls, student])
+    await db.commit()
+
+    # Create the invitation under a scoped tenant + user context
+    # (an admin created it in reality), then exit the context block
+    # so the registration itself runs context-less — matching the
+    # public parent-registration endpoint.
+    tok_t = _tenant_id.set(tid)
+    tok_u = _current_user_id.set(admin.id)
+    try:
+        inv = await get_invitation_service().create_invitation(
+            db,
+            student_id=student.id,
+            email="noctxparent@example.com",
+            first_name="NoCtx", last_name="Parent",
+        )
+    finally:
+        _current_user_id.reset(tok_u)
+        _tenant_id.reset(tok_t)
+
+    with patch(
+        "app.services.email_service.EmailService.notify_admins",
+        new=AsyncMock(return_value=None),
+    ):
+        # No _tenant_id.set() here — this is the real public-flow
+        # shape. Must not raise.
+        await AuthService().register_parent(db, RegisterRequest(
+            invitation_code=inv.invitation_code,
+            email="noctxparent@example.com",
+            password="s3cretpa$$", confirm_password="s3cretpa$$",
+            first_name="NoCtx", last_name="Parent",
+            phone="+263771119999",
+            whatsapp_opt_in=False, email_opt_in=True,
+        ))
+
+    rows = (await db.execute(
+        select(Notification).where(
+            Notification.tenant_id == tid,
+            Notification.notification_type == "NEW_PARENT_SIGNED_UP",
+        )
+    )).scalars().all()
+    # The admin HAS to be notified even without a request-level
+    # tenant context — that was the production failure.
+    assert admin.id in {r.user_id for r in rows}
+
+    # Clean up — the fixture-less test owns its own tenant.
+    from sqlalchemy import text as _text
+    async with db.bind.connect() as conn:
+        await conn.execute(_text("DELETE FROM tenants WHERE id = :id"), {"id": tid})
+        await conn.commit()
+
+
+@pytest.mark.asyncio
 async def test_admin_in_app_notification_fires_for_every_active_admin(
     db: AsyncSession, tenant_with_two_admins,
 ):
