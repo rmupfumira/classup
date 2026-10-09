@@ -33,6 +33,9 @@ class NotificationType(str, Enum):
     TEACHER_ADDED = "TEACHER_ADDED"
     STUDENT_ADDED = "STUDENT_ADDED"
     CLASS_CREATED = "CLASS_CREATED"
+    # Fires when an invited parent completes signup. Lets school admins
+    # see activation at a glance so they know outreach is converting.
+    NEW_PARENT_SIGNED_UP = "NEW_PARENT_SIGNED_UP"
 
     # Messages
     MESSAGE_RECEIVED = "MESSAGE_RECEIVED"

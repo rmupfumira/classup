@@ -205,13 +205,30 @@
                             {% endif %}
                         </div>
                         <div class="ml-4 min-w-0">
-                            <p class="text-sm font-medium text-neutral-900 truncate">{{ student.student_name }}</p>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="text-sm font-medium text-neutral-900 truncate">{{ student.student_name }}</p>
+                                {# Parent-reported absence badge — shows when a parent used the dashboard to report
+                                   the absence rather than the teacher marking it manually. Teachers can still
+                                   override by pressing a different status button. #}
+                                {% if student.source == 'PARENT_REPORTED' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200"
+                                      title="Parent reported this absence from their dashboard. Press a different status button to override.">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                    Reported by parent
+                                </span>
+                                {% endif %}
+                            </div>
                             <div class="flex items-center gap-3 text-xs text-neutral-500">
                                 {% if student.check_in_time %}
                                 <span>In: {{ student.check_in_time[:5] }}</span>
                                 {% endif %}
                                 {% if student.check_out_time %}
                                 <span class="text-blue-600">Out: {{ student.check_out_time[:5] }}</span>
+                                {% endif %}
+                                {% if student.notes and student.source == 'PARENT_REPORTED' %}
+                                <span class="text-amber-600 truncate" title="{{ student.notes }}">{{ student.notes }}</span>
                                 {% endif %}
                             </div>
                         </div>

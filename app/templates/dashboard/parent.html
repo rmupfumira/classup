@@ -2,226 +2,36 @@
 
 {% block title %}{{ t('nav.dashboard', current_language) }} - {{ app_name }}{% endblock %}
 
+{#-
+    Parent dashboard — three-section layout (2026-10-09 redesign).
+
+    Sections:
+    1. Multi-child selector (card strip, one per child, picks the context child)
+    2. Needs your attention — invoices, RSVPs, urgent announcements
+    3. This week — passive info (attendance rollup, latest report)
+    4. Quick actions — Report absence, Message teacher
+
+    Data comes from `parent_dashboard_service.build_parent_dashboard` via
+    the `parent_dashboard` context var. Everything is pre-sorted and
+    pre-filtered — no further logic in the template.
+-#}
+
 {% block content %}
+{% set pd = parent_dashboard %}
 <div class="space-y-6 max-w-4xl mx-auto">
     {% include "components/_announcement_banners.html" %}
     {% include "components/_push_soft_prompt.html" %}
 
-    <!-- Welcome Header -->
+    <!-- Welcome -->
     <div class="text-center sm:text-left">
         <h1 class="text-2xl sm:text-3xl font-bold text-neutral-800">
             {{ t('dashboard.welcome', current_language, name=user.first_name) }}
         </h1>
-        <p class="mt-1 text-neutral-500">
-            {{ today.strftime('%A, %B %d, %Y') }}
-        </p>
+        <p class="mt-1 text-neutral-500">{{ today.strftime('%A, %B %d, %Y') }}</p>
     </div>
 
-    <!-- Children Section -->
-    {% if children %}
-    <div class="space-y-4">
-        <h2 class="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-            <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-            </svg>
-            Your Children
-        </h2>
-
-        <div class="grid gap-4 sm:grid-cols-2">
-            {% for data in children %}
-            {% set child = data.child %}
-            {% set attendance = data.attendance_today %}
-            <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group/card">
-                <!-- Child Header -->
-                <div class="p-5">
-                    <div class="flex items-start gap-4">
-                        <!-- Avatar with presence dot -->
-                        <div class="relative flex-shrink-0">
-                            {% if child.photo_path %}
-                            <img src="{{ child.photo_path }}" alt="{{ child.first_name }}"
-                                 class="w-16 h-16 rounded-full object-cover ring-2 ring-primary-100 ring-offset-2 group-hover/card:ring-primary-400 transition-all duration-300">
-                            {% else %}
-                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center ring-2 ring-primary-100 ring-offset-2 group-hover/card:ring-primary-400 transition-all duration-300">
-                                <span class="text-xl font-bold text-white">
-                                    {{ child.first_name[0] }}{{ child.last_name[0] }}
-                                </span>
-                            </div>
-                            {% endif %}
-                            <!-- Presence dot -->
-                            {% if attendance %}
-                                {% if attendance.status == 'PRESENT' %}
-                                <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
-                                {% elif attendance.status == 'LATE' %}
-                                <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-amber-500 border-2 border-white rounded-full"></span>
-                                {% elif attendance.status == 'ABSENT' %}
-                                <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-red-500 border-2 border-white rounded-full badge-pulse"></span>
-                                {% elif attendance.status == 'EXCUSED' %}
-                                <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-neutral-400 border-2 border-white rounded-full"></span>
-                                {% endif %}
-                            {% else %}
-                                <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-neutral-300 border-2 border-white rounded-full badge-pulse"></span>
-                            {% endif %}
-                        </div>
-
-                        <!-- Info -->
-                        <div class="flex-1 min-w-0">
-                            <h3 class="text-lg font-semibold text-neutral-800 truncate">
-                                {{ child.first_name }} {{ child.last_name }}
-                            </h3>
-                            <p class="text-sm text-neutral-500">
-                                {% if child.school_class %}
-                                {{ child.school_class.name }}
-                                {% else %}
-                                No class assigned
-                                {% endif %}
-                            </p>
-
-                            <!-- Today's Status Badge -->
-                            <div class="mt-2">
-                                {% if attendance %}
-                                    {% if attendance.status == 'PRESENT' %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-green-50 to-green-100 text-green-700 border border-green-200">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        Present today
-                                        {% if attendance.check_in_time %}
-                                        <span class="text-green-600 ml-1">{{ attendance.check_in_time.strftime('%H:%M') }}</span>
-                                        {% endif %}
-                                    </span>
-                                    {% elif attendance.status == 'LATE' %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 border border-amber-200">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        Arrived late
-                                    </span>
-                                    {% elif attendance.status == 'ABSENT' %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-red-50 to-red-100 text-red-700 border border-red-200">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        Absent today
-                                    </span>
-                                    {% elif attendance.status == 'EXCUSED' %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-neutral-50 to-neutral-100 text-neutral-700 border border-neutral-200">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        Excused absence
-                                    </span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-50 text-neutral-500 border border-dashed border-neutral-300">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-neutral-400 badge-pulse"></span>
-                                        Not checked in yet
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 7-day History -->
-                    {% if data.attendance_history %}
-                    <div class="mt-4 pt-4 border-t border-neutral-100">
-                        <div class="flex items-center justify-between mb-2">
-                            <p class="text-xs font-medium text-neutral-500">Last 7 days</p>
-                            <a href="/attendance?student_id={{ child.id }}" class="text-xs text-primary-600 hover:text-primary-700 font-medium">View all</a>
-                        </div>
-                        <!-- Day labels -->
-                        <div class="flex gap-1 mb-1">
-                            {% for day_offset in range(6, -1, -1) %}
-                            {% set check_date = today - timedelta(days=day_offset) %}
-                            <div class="flex-1 text-center text-[10px] font-medium text-neutral-400">
-                                {{ check_date.strftime('%a')[0:2] }}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <!-- Day cells -->
-                        <div class="flex gap-1">
-                            {% for day_offset in range(6, -1, -1) %}
-                            {% set check_date = today - timedelta(days=day_offset) %}
-                            {% set day_record = none %}
-                            {% for rec in data.attendance_history %}
-                                {% if rec.date == check_date %}
-                                    {% set day_record = rec %}
-                                {% endif %}
-                            {% endfor %}
-                            <div class="flex-1 h-8 rounded-md flex items-center justify-center text-xs font-medium
-                                {% if day_record %}
-                                    {% if day_record.status == 'PRESENT' %}bg-green-100 text-green-700
-                                    {% elif day_record.status == 'LATE' %}bg-amber-100 text-amber-700
-                                    {% elif day_record.status == 'ABSENT' %}bg-red-100 text-red-700
-                                    {% else %}bg-neutral-100 text-neutral-500{% endif %}
-                                {% else %}bg-neutral-50 text-neutral-400{% endif %}"
-                                title="{{ check_date.strftime('%A, %b %d') }}{% if day_record %} - {{ day_record.status }}{% endif %}">
-                                {{ check_date.strftime('%d') }}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <!-- Today indicator -->
-                        <div class="flex gap-1 mt-1">
-                            {% for day_offset in range(6, -1, -1) %}
-                            <div class="flex-1 flex justify-center">
-                                {% if day_offset == 0 %}
-                                <span class="w-1 h-1 rounded-full bg-primary-500"></span>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="px-5 py-3 bg-gradient-to-r from-neutral-50 to-neutral-50/80 border-t border-neutral-100 flex gap-2">
-                    <a href="/reports?student_id={{ child.id }}"
-                       class="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Reports
-                    </a>
-                    <a href="/attendance?student_id={{ child.id }}"
-                       class="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                        </svg>
-                        Attendance
-                    </a>
-                    {% if attendance %}
-                    {# Teacher has already recorded attendance — show read-only label #}
-                    {% if attendance.status == 'EXCUSED' %}
-                    <span class="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-neutral-400 bg-neutral-50/80 border border-dashed border-neutral-200 rounded-lg">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Reported
-                    </span>
-                    {% else %}
-                    <span class="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-green-600 bg-green-50/80 border border-dashed border-green-200 rounded-lg">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Recorded
-                    </span>
-                    {% endif %}
-                    {% else %}
-                    <button type="button" onclick="reportAbsence('{{ child.id }}', '{{ child.first_name }} {{ child.last_name }}')"
-                            class="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-amber-700 bg-amber-50/50 border border-amber-200/60 hover:bg-amber-100 rounded-lg transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                        </svg>
-                        Report Absence
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% else %}
-    <!-- No Children State -->
+    {% if not pd.children %}
+    <!-- No children linked -->
     <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-8 text-center">
         <div class="w-16 h-16 mx-auto bg-primary-100 rounded-full flex items-center justify-center mb-4">
             <svg class="w-8 h-8 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,153 +43,166 @@
             Your children will appear here once they are linked to your account by the school.
         </p>
     </div>
-    {% endif %}
+    {% else %}
 
-    <!-- Outstanding Fees Section -->
-    {% if billing_balances is defined and billing_balances %}
-    {% set total_balance = billing_balances | sum(attribute='balance') %}
-    {% if total_balance > 0 %}
-    <a href="/billing/statement" class="block bg-white rounded-2xl shadow-sm border border-amber-200 p-5 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-4">
-            <div class="flex-shrink-0 w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-                </svg>
+    <!-- 1. Multi-child selector -->
+    <div class="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
+        {% for child in pd.children %}
+        {% set is_selected = pd.selected_child and pd.selected_child.id == child.id %}
+        <a href="?child_id={{ child.id }}"
+           class="flex-shrink-0 inline-flex items-center gap-3 px-4 py-3 rounded-xl border transition-all
+                  {% if is_selected %}bg-primary-50 border-primary-300 shadow-sm{% else %}bg-white border-neutral-200 hover:border-neutral-300{% endif %}">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
+                <span class="text-sm font-bold text-white">
+                    {{ child.first_name[0] }}{{ child.last_name[0] }}
+                </span>
             </div>
-            <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-neutral-800">
-                    {{ t('billing.outstanding_fees', current_language) }}
+            <div class="min-w-0 text-left">
+                <p class="text-sm font-semibold {% if is_selected %}text-primary-900{% else %}text-neutral-800{% endif %} truncate">
+                    {{ child.first_name }}
                 </p>
-                <p class="text-xs text-neutral-500 mt-0.5">
-                    {% for bal in billing_balances %}
-                    {% if bal.balance > 0 %}{{ bal.student_name }}: {{ billing_currency }} {{ "%.2f"|format(bal.balance) }}{% if not loop.last %}, {% endif %}{% endif %}
-                    {% endfor %}
+                <p class="text-xs text-neutral-500 truncate">
+                    {{ child.class_name or 'No class' }}
                 </p>
             </div>
-            <span class="flex-shrink-0 bg-amber-500 text-white text-sm font-bold px-2.5 py-1 rounded-full">
-                {{ billing_currency }} {{ "%.2f"|format(total_balance) }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- 2. Needs your attention -->
+    {% if pd.needs_attention %}
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-neutral-800 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-500 badge-pulse"></span>
+            Needs your attention
+            <span class="text-sm font-normal text-neutral-400">
+                ({{ pd.needs_attention|length }})
             </span>
-            <svg class="w-5 h-5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </h2>
+        <div class="space-y-2">
+            {% for item in pd.needs_attention %}
+            <div class="bg-white rounded-xl shadow-sm border border-neutral-100 p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-neutral-800">{{ item.title }}</p>
+                    <p class="text-xs text-neutral-500 mt-0.5">{{ item.detail }}</p>
+                </div>
+                {% if item.primary_url %}
+                <a href="{{ item.primary_url }}"
+                   class="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+                    {{ item.primary_label or 'Open' }}
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% else %}
+    <section class="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 border border-emerald-200">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
             </svg>
         </div>
-    </a>
-    {% endif %}
+        <div>
+            <p class="text-sm font-semibold text-emerald-900">All caught up</p>
+            <p class="text-xs text-emerald-700">Nothing needs your attention right now.</p>
+        </div>
+    </section>
     {% endif %}
 
-    <!-- Messages Section -->
-    {% if unread_messages and unread_messages > 0 %}
-    <a href="/messages" class="block bg-white rounded-2xl shadow-sm border border-primary-200 p-5 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-4">
-            <div class="flex-shrink-0 w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <!-- 3. This week -->
+    {% if pd.this_week %}
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-neutral-800">
+            This week
+            {% if pd.selected_child %}
+            <span class="text-sm font-normal text-neutral-500">· {{ pd.selected_child.first_name }}</span>
+            {% endif %}
+        </h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+            {% for item in pd.this_week %}
+            {% if item.url %}
+            <a href="{{ item.url }}"
+               class="bg-white rounded-xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:border-neutral-200 transition-all">
+                <p class="text-sm font-semibold text-neutral-800">{{ item.title }}</p>
+                <p class="text-xs text-neutral-500 mt-1">{{ item.detail }}</p>
+            </a>
+            {% else %}
+            <div class="bg-white rounded-xl shadow-sm border border-neutral-100 p-4">
+                <p class="text-sm font-semibold text-neutral-800">{{ item.title }}</p>
+                <p class="text-xs text-neutral-500 mt-1">{{ item.detail }}</p>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- 4. Quick actions -->
+    {% if pd.selected_child %}
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-neutral-800">Quick actions</h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+            <button type="button"
+                    onclick="reportAbsence('{{ pd.selected_child.id }}', '{{ pd.selected_child.first_name }} {{ pd.selected_child.last_name }}')"
+                    class="bg-white rounded-xl shadow-sm border border-neutral-100 p-4 text-left hover:shadow-md hover:border-amber-200 transition-all flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-neutral-800">Report an absence</p>
+                    <p class="text-xs text-neutral-500">Let the school know {{ pd.selected_child.first_name }} will be out</p>
+                </div>
+            </button>
+
+            <a href="/messages/compose?student_id={{ pd.selected_child.id }}"
+               class="bg-white rounded-xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:border-primary-200 transition-all flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-neutral-800">Message the teacher</p>
+                    <p class="text-xs text-neutral-500">Ask a question or share an update</p>
+                </div>
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Unread messages pill (shortcut) -->
+    {% if pd.unread_messages > 0 %}
+    <a href="/messages" class="block bg-white rounded-xl shadow-sm border border-primary-200 p-4 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"></path>
                 </svg>
             </div>
-            <div class="flex-1 min-w-0">
+            <div class="flex-1">
                 <p class="text-sm font-semibold text-neutral-800">
-                    You have {{ unread_messages }} unread message{{ 's' if unread_messages != 1 else '' }}
+                    {{ pd.unread_messages }} unread message{{ 's' if pd.unread_messages != 1 else '' }}
                 </p>
-                <p class="text-xs text-neutral-500 mt-0.5">Tap to view your messages</p>
+                <p class="text-xs text-neutral-500">Tap to view your inbox</p>
             </div>
-            <span class="flex-shrink-0 bg-primary-500 text-white text-sm font-bold px-2.5 py-1 rounded-full">
-                {{ unread_messages }}
-            </span>
-            <svg class="w-5 h-5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
         </div>
     </a>
     {% endif %}
 
-    <!-- Recent Reports Section -->
-    {% if recent_reports %}
-    <div class="space-y-4">
-        <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-                <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Recent Reports
-            </h2>
-            <a href="/reports" class="text-sm font-medium text-primary-600 hover:text-primary-700">
-                View all
-            </a>
-        </div>
+    {% endif %} {# /if pd.children #}
 
-        <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 divide-y divide-neutral-100">
-            {% for report in recent_reports[:5] %}
-            <a href="/reports/{{ report.id }}" class="flex items-center gap-4 p-4 hover:bg-neutral-50 transition-colors">
-                <!-- Child Avatar (small) -->
-                <div class="flex-shrink-0">
-                    {% if report.child.photo_path %}
-                    <img src="{{ report.child.photo_path }}" alt="{{ report.child.first_name }}"
-                         class="w-10 h-10 rounded-full object-cover">
-                    {% else %}
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-                        <span class="text-sm font-bold text-white">
-                            {{ report.child.first_name[0] }}
-                        </span>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <!-- Report Info -->
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-neutral-800">
-                        {{ report.child.first_name }}'s Daily Report
-                    </p>
-                    <p class="text-xs text-neutral-500">
-                        {% if report.report_date %}
-                            {{ report.report_date.strftime('%A, %B %d') }}
-                        {% endif %}
-                    </p>
-                </div>
-
-                <!-- Status Badge -->
-                <div class="flex-shrink-0">
-                    {% if report.status == 'FINALIZED' %}
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        Ready
-                    </span>
-                    {% else %}
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                        Draft
-                    </span>
-                    {% endif %}
-                </div>
-
-                <!-- Arrow -->
-                <svg class="w-5 h-5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </a>
-            {% endfor %}
-        </div>
-    </div>
-    {% elif children %}
-    <!-- No Reports Yet -->
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6">
-        <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-            </div>
-            <div>
-                <h3 class="font-medium text-neutral-800">No reports yet</h3>
-                <p class="text-sm text-neutral-500 mt-1">
-                    Daily reports from your child's teachers will appear here.
-                </p>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- School Info Card -->
+    <!-- School contact card -->
     {% if tenant %}
-    <div class="bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl p-6 border border-primary-200">
+    <div class="bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl p-5 border border-primary-200">
         <div class="flex items-start justify-between">
             <div>
                 <h3 class="font-semibold text-primary-900">{{ tenant.name }}</h3>
@@ -408,10 +231,9 @@
     {% endif %}
 </div>
 
-<!-- Report Absence Modal -->
+<!-- Report Absence Modal (unchanged from pre-redesign — reused as-is) -->
 <dialog id="absence-modal" class="rounded-2xl shadow-2xl border-0 p-0 w-full max-w-md backdrop:bg-black/60 backdrop:backdrop-blur-sm">
     <div class="p-6">
-        <!-- Icon header -->
         <div class="flex items-start justify-between mb-4">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
@@ -442,7 +264,6 @@
                        min="{{ today.isoformat() }}"
                        value="{{ today.isoformat() }}"
                        class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                <!-- Inline weekend warning -->
                 <div id="absence-weekend-warning" class="hidden mt-2 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
@@ -491,7 +312,6 @@ function reportAbsence(studentId, studentName) {
     document.getElementById('absence-modal').showModal();
 }
 
-// Inline weekend warning for absence date
 document.getElementById('absence-date').addEventListener('change', function() {
     const d = new Date(this.value + 'T00:00:00');
     const day = d.getDay();
@@ -518,7 +338,6 @@ async function submitAbsence() {
         return;
     }
 
-    // Show loading state
     btn.disabled = true;
     btnText.textContent = 'Submitting...';
     spinner.classList.remove('hidden');

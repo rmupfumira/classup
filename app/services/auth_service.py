@@ -245,12 +245,129 @@ class AuthService:
 
         await db.commit()
 
+        # Fire-and-forget admin notification — a parent completing
+        # signup is a signal that outreach is converting. Each channel
+        # is independent and failure never breaks registration.
+        try:
+            await self._notify_admins_parent_signed_up(db, user, invitation)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "Failed to notify admins of parent signup (user_id=%s)", user.id,
+            )
+
         return RegisterResponse(
             user_id=user.id,
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
         )
+
+    async def _notify_admins_parent_signed_up(
+        self,
+        db: AsyncSession,
+        parent: User,
+        invitation: ParentInvitation,
+    ) -> None:
+        """Tell every school admin that an invited parent just finished
+        signing up. Fires in-app + email + (opted-in) WhatsApp.
+
+        Each channel is independent — a WhatsApp failure never blocks
+        the email, an email failure never blocks the in-app notification.
+        All exceptions are logged, never raised, so a late crash can't
+        undo a successful registration.
+        """
+        import logging
+
+        from app.models import Student
+        from app.models.user import Role
+        from app.services.email_service import get_email_service
+        from app.services.notification_service import get_notification_service
+
+        logger = logging.getLogger(__name__)
+        tenant_id = parent.tenant_id
+
+        # Look up tenant + student for context strings. Any failure here
+        # just means we fall back to generic text.
+        tenant = await db.get(Tenant, tenant_id)
+        tenant_name = tenant.name if tenant else "Your School"
+        student_name = "a student"
+        try:
+            if invitation.student_id:
+                student = await db.get(Student, invitation.student_id)
+                if student:
+                    student_name = f"{student.first_name} {student.last_name}"
+        except Exception:
+            pass
+
+        parent_name = f"{parent.first_name} {parent.last_name}"
+        title = f"Parent signed up: {parent_name}"
+        body = (
+            f"{parent_name} ({parent.email}) completed signup and is now "
+            f"linked to {student_name}."
+        )
+
+        # Fetch admins once — used for all three channels.
+        admin_result = await db.execute(
+            select(User).where(
+                User.tenant_id == tenant_id,
+                User.role == Role.SCHOOL_ADMIN.value,
+                User.is_active == True,
+                User.deleted_at.is_(None),
+            )
+        )
+        admins = list(admin_result.scalars().all())
+        if not admins:
+            return
+
+        # 1) In-app notifications
+        try:
+            notification_service = get_notification_service()
+            await notification_service.create_bulk_notifications(
+                db=db,
+                user_ids=[a.id for a in admins],
+                title=title,
+                body=body,
+                notification_type="NEW_PARENT_SIGNED_UP",
+                reference_type="user",
+                reference_id=parent.id,
+            )
+        except Exception:
+            logger.exception("In-app notify failed for parent signup")
+
+        # 2) Email broadcast — reuse the generic admin notification helper.
+        try:
+            email_service = get_email_service()
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=tenant_id,
+                notification_type="NEW_PARENT_SIGNED_UP",
+                title=title,
+                body=body,
+                action_url="/admin/parents",
+            )
+        except Exception:
+            logger.exception("Email notify failed for parent signup")
+
+        # 3) WhatsApp — only to opted-in admins. Best effort per admin.
+        try:
+            from app.services import parent_notifier
+            for admin in admins:
+                try:
+                    if await parent_notifier._can_notify_whatsapp(db, admin):
+                        from app.services.whatsapp_service import get_whatsapp_service
+                        wa = get_whatsapp_service()
+                        if wa and admin.whatsapp_phone:
+                            await wa.send_text_message(
+                                to=admin.whatsapp_phone,
+                                text=f"{title}\n\n{body}",
+                            )
+                except Exception:
+                    logger.exception(
+                        "WhatsApp notify failed for admin %s", admin.id,
+                    )
+        except Exception:
+            logger.exception("WhatsApp notify loop failed")
 
     async def register_teacher(
         self, db: AsyncSession, request: RegisterRequest

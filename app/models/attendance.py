@@ -29,6 +29,19 @@ class AttendanceStatus(str, Enum):
     EXCUSED = "EXCUSED"
 
 
+class AttendanceSource(str, Enum):
+    """Where the attendance record came from.
+
+    Added 2026-10-09 to distinguish teacher-marked attendance from
+    parent-reported absences. The teacher's attendance view surfaces
+    parent-reported rows with a visible badge so staff can override
+    if the record is wrong (e.g. the child did show up after all).
+    """
+
+    SCHOOL = "SCHOOL"               # Teacher or admin marked it
+    PARENT_REPORTED = "PARENT_REPORTED"  # Parent reported absence via dashboard
+
+
 class AttendanceRecord(Base, TimestampMixin):
     """Daily attendance record for a student."""
 
@@ -80,6 +93,17 @@ class AttendanceRecord(Base, TimestampMixin):
         nullable=False,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Source of this record: teacher/admin at the school (SCHOOL) vs a
+    # parent reporting the absence themselves (PARENT_REPORTED). Added
+    # 2026-10-09 for the parent "Report an absence" quick action. Old
+    # rows default to SCHOOL; the server-side default keeps existing
+    # inserts valid without having to change every call site.
+    source: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=AttendanceSource.SCHOOL.value,
+        server_default=text("'SCHOOL'"),
+    )
 
     # Relationships
     student = relationship("Student", back_populates="attendance_records", lazy="selectin")

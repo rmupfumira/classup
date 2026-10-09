@@ -12,11 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.auth_service import get_auth_service
-from app.services.student_service import get_student_service
 from app.services.attendance_service import get_attendance_service
 from app.services.report_service import get_report_service
 from app.services.academic_service import get_academic_service
-from app.services.class_service import get_class_service
 from app.services.announcement_service import get_announcement_service
 from app.services.notification_service import get_notification_service
 from app.templates_config import templates
@@ -151,122 +149,37 @@ async def _get_school_admin_dashboard_data(db: AsyncSession):
     }
 
 
-async def _get_parent_dashboard_data(db: AsyncSession, user_id):
-    """Fetch all data needed for parent dashboard."""
-    student_service = get_student_service()
-    attendance_service = get_attendance_service()
-    report_service = get_report_service()
+async def _get_parent_dashboard_data(db: AsyncSession, user_id, request: Request):
+    """Fetch parent dashboard data using the three-section aggregator.
 
-    # Get parent's children
-    children = await student_service.get_my_children(db, user_id)
+    Replaces the per-child dump-everything view with ranked
+    needs-attention / this-week / quick-action buckets. The parent
+    picks a selected child via `?child_id=` on the URL; without one we
+    default to the first child alphabetically (handled inside the
+    aggregator).
+    """
+    from app.services.parent_dashboard_service import build_parent_dashboard
 
-    # Get today's attendance for each child
+    tenant_id = get_tenant_id()
     today = date.today()
-    children_data = []
-    recent_reports = []
 
-    for child in children:
-        # Get today's attendance
-        attendance_today = None
+    # Which child is selected (multi-child parents)
+    selected_child_id = None
+    raw = request.query_params.get("child_id")
+    if raw:
+        import uuid as _uuid
         try:
-            records, _ = await attendance_service.get_attendance_records(
-                db,
-                student_id=child.id,
-                date_from=today,
-                date_to=today,
-                page=1,
-                page_size=1,
-            )
-            if records:
-                attendance_today = records[0]
-        except Exception:
-            pass
+            selected_child_id = _uuid.UUID(raw)
+        except (ValueError, TypeError):
+            selected_child_id = None
 
-        # Get recent attendance (last 7 days)
-        week_ago = today - timedelta(days=7)
-        attendance_history = []
-        try:
-            records, _ = await attendance_service.get_attendance_records(
-                db,
-                student_id=child.id,
-                date_from=week_ago,
-                date_to=today,
-                page=1,
-                page_size=7,
-            )
-            attendance_history = records
-        except Exception:
-            pass
-
-        # Get recent reports for this child (last 5)
-        try:
-            child_reports, _ = await report_service.get_student_reports(
-                db,
-                student_id=child.id,
-                page=1,
-                page_size=5,
-            )
-            for report in child_reports:
-                report['child'] = child
-                recent_reports.append(report)
-        except Exception:
-            pass
-
-        children_data.append({
-            'child': child,
-            'attendance_today': attendance_today,
-            'attendance_history': attendance_history,
-        })
-
-    # Sort reports by date (most recent first)
-    recent_reports.sort(key=lambda r: r.get('report_date', ''), reverse=True)
-    recent_reports = recent_reports[:10]  # Limit to 10 most recent
-
-    # Get active announcements for parent's children's classes
-    active_announcements = []
-    try:
-        announcement_service = get_announcement_service()
-        parent_class_ids = [
-            child.class_id for child in children if child.class_id
-        ]
-        active_announcements = await announcement_service.get_active_announcements(
-            db, user_id, parent_class_ids,
-        )
-    except Exception:
-        pass
-
-    # Get unread message count
-    unread_messages = 0
-    try:
-        from app.services.message_service import get_message_service
-        message_service = get_message_service()
-        unread_messages = await message_service.get_unread_count(db)
-    except Exception:
-        pass
-
-    # Get billing balances (feature-gated)
-    billing_balances = []
-    billing_currency = "USD"
-    try:
-        from app.models import Tenant
-        tenant_id = get_tenant_id()
-        tenant = await db.get(Tenant, tenant_id)
-        if tenant and tenant.features.get("billing", False):
-            from app.services.billing_service import get_billing_service
-            billing_service = get_billing_service()
-            billing_balances = await billing_service.get_children_balances(db, user_id)
-            billing_currency = tenant.get_setting("billing_currency", "USD")
-    except Exception:
-        pass
+    dashboard = await build_parent_dashboard(
+        db, user_id, tenant_id, selected_child_id,
+    )
 
     return {
-        'children': children_data,
-        'recent_reports': recent_reports,
-        'today': today,
-        'active_announcements': active_announcements,
-        'unread_messages': unread_messages,
-        'billing_balances': billing_balances,
-        'billing_currency': billing_currency,
+        "parent_dashboard": dashboard,
+        "today": today,
     }
 
 
@@ -467,7 +380,7 @@ async def dashboard(
 
     # Add parent-specific data
     elif role == "PARENT":
-        parent_data = await _get_parent_dashboard_data(db, user_id)
+        parent_data = await _get_parent_dashboard_data(db, user_id, request)
         context.update(parent_data)
 
         # Get tenant info for the school contact card

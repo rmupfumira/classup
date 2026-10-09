@@ -339,6 +339,11 @@ class AttendanceService:
                 "check_out_time": check_out_time.isoformat() if check_out_time else None,
                 "notes": notes,
                 "record_id": str(record.id) if record else None,
+                # Added 2026-10-09 for the parent-reported badge in the
+                # teacher attendance view. Only the EXCUSED+PARENT_REPORTED
+                # combination carries extra meaning for staff; everything
+                # else is left to the plain status buttons.
+                "source": record.source if record else None,
             })
 
             if status == AttendanceStatus.PRESENT.value:
@@ -535,13 +540,17 @@ class AttendanceService:
                     "Attendance has already been recorded by the teacher for this date"
                 )
 
-        # Create EXCUSED record
+        # Create EXCUSED record. source=PARENT_REPORTED surfaces a
+        # badge in the teacher's attendance view so staff know who
+        # submitted it (parent vs school) and can override if needed.
+        from app.models.attendance import AttendanceSource
         record = AttendanceRecord(
             tenant_id=tenant_id,
             student_id=student_id,
             class_id=student.class_id,
             date=absence_date,
             status=AttendanceStatus.EXCUSED.value,
+            source=AttendanceSource.PARENT_REPORTED.value,
             notes=f"Reported by parent: {reason}",
             recorded_by=user_id,
         )
