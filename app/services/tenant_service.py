@@ -271,6 +271,175 @@ class TenantService:
 
         return tenant
 
+    # ------------------------------------------------------------------
+    # Permanent (hard) tenant deletion + preview
+    # ------------------------------------------------------------------
+    # Super admin's "Delete Tenant" is a full purge: the Tenant row is
+    # physically dropped, DB cascades on tenant_id FKs wipe every
+    # child table (users, students, classes, invoices, reports,
+    # attendance, events, timetable, invitations, etc.), and the
+    # tenant's slug + every parent email + every staff email become
+    # immediately reusable on the platform.
+    #
+    # Rows with ``ondelete='SET NULL'`` on their tenant_id FK survive
+    # with the link anonymised — currently that's audit_logs,
+    # whatsapp_inbound/outbound, and ai_tool_calls. Preserved for
+    # cross-tenant forensic + telemetry history.
+
+    async def preview_tenant_deletion(
+        self, db: AsyncSession, tenant_id: uuid.UUID,
+    ) -> dict:
+        """Return exactly what deleting this tenant will purge.
+
+        Powers the super-admin confirmation modal — nothing is written.
+        Counts the biggest-visibility entities (students, parents,
+        teachers, admins, classes, invoices, payments, reports,
+        events, invitations). The admin sees them before confirming.
+        """
+        from app.models import (
+            AttendanceRecord, BillingInvoice, BillingPayment,
+            DailyReport, Message, ParentInvitation, SchoolClass,
+            SchoolEvent, Student,
+        )
+        from app.models.subscription import TenantSubscription
+        from app.models.teacher_invitation import TeacherInvitation
+        from app.models.user import Role as _Role
+
+        tenant = await self.get_tenant(db, tenant_id)
+        if not tenant:
+            return {}
+
+        async def _count(stmt) -> int:
+            return int((await db.execute(stmt)).scalar() or 0)
+
+        counts: dict[str, int] = {}
+
+        counts["students"] = await _count(
+            select(func.count(Student.id)).where(Student.tenant_id == tenant_id)
+        )
+        counts["parents"] = await _count(
+            select(func.count(User.id)).where(
+                User.tenant_id == tenant_id,
+                User.role == _Role.PARENT.value,
+            )
+        )
+        counts["teachers"] = await _count(
+            select(func.count(User.id)).where(
+                User.tenant_id == tenant_id,
+                User.role == _Role.TEACHER.value,
+            )
+        )
+        counts["school_admins"] = await _count(
+            select(func.count(User.id)).where(
+                User.tenant_id == tenant_id,
+                User.role == _Role.SCHOOL_ADMIN.value,
+            )
+        )
+        counts["classes"] = await _count(
+            select(func.count(SchoolClass.id)).where(
+                SchoolClass.tenant_id == tenant_id,
+            )
+        )
+        counts["attendance_records"] = await _count(
+            select(func.count(AttendanceRecord.id)).where(
+                AttendanceRecord.tenant_id == tenant_id,
+            )
+        )
+        counts["reports"] = await _count(
+            select(func.count(DailyReport.id)).where(
+                DailyReport.tenant_id == tenant_id,
+            )
+        )
+        counts["invoices"] = await _count(
+            select(func.count(BillingInvoice.id)).where(
+                BillingInvoice.tenant_id == tenant_id,
+            )
+        )
+        counts["payments"] = await _count(
+            select(func.count(BillingPayment.id)).where(
+                BillingPayment.tenant_id == tenant_id,
+            )
+        )
+        counts["events"] = await _count(
+            select(func.count(SchoolEvent.id)).where(
+                SchoolEvent.tenant_id == tenant_id,
+            )
+        )
+        counts["messages"] = await _count(
+            select(func.count(Message.id)).where(
+                Message.tenant_id == tenant_id,
+            )
+        )
+        counts["pending_parent_invitations"] = await _count(
+            select(func.count(ParentInvitation.id)).where(
+                ParentInvitation.tenant_id == tenant_id,
+            )
+        )
+        counts["pending_teacher_invitations"] = await _count(
+            select(func.count(TeacherInvitation.id)).where(
+                TeacherInvitation.tenant_id == tenant_id,
+            )
+        )
+        counts["subscriptions"] = await _count(
+            select(func.count(TenantSubscription.id)).where(
+                TenantSubscription.tenant_id == tenant_id,
+            )
+        )
+
+        return {
+            "tenant": {
+                "id": str(tenant.id),
+                "name": tenant.name,
+                "slug": tenant.slug,
+                "email": tenant.email,
+            },
+            "counts": counts,
+        }
+
+    async def hard_delete_tenant(
+        self, db: AsyncSession, tenant_id: uuid.UUID,
+    ) -> dict:
+        """Permanently remove a tenant + every child row that cascades.
+
+        After this returns:
+        - The ``tenants`` row is physically gone.
+        - Every table with a ``tenant_id`` FK + ``ondelete='CASCADE'``
+          has had its matching rows removed by Postgres: users,
+          students, classes, attendance, reports, billing,
+          accounting, events, invitations, timetable, webhooks,
+          subscriptions, notifications, i18n settings, ...
+        - Tables with ``ondelete='SET NULL'`` keep their rows with
+          tenant_id = NULL: audit_logs, whatsapp_inbound/outbound,
+          ai_tool_calls. Preserves cross-tenant history.
+        - The tenant slug + every parent/staff email + phone become
+          immediately reusable on the platform (no stale UNIQUE
+          index entries, no soft-deleted tombstones to work around).
+
+        **Irreversible.** The caller is expected to have gated this
+        on a typed-confirmation UI (super admin only).
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        tenant = await self.get_tenant(db, tenant_id)
+        if tenant is None:
+            raise ValueError(f"Tenant {tenant_id} not found")
+        tenant_name = tenant.name
+        tenant_slug = tenant.slug
+
+        await db.delete(tenant)
+        await db.commit()
+
+        logger.info(
+            "Hard-deleted tenant %s (%s / %s) — all cascading children purged",
+            tenant_id, tenant_slug, tenant_name,
+        )
+
+        return {
+            "tenant_name": tenant_name,
+            "tenant_slug": tenant_slug,
+        }
+
     async def delete_tenant(self, db: AsyncSession, tenant_id: uuid.UUID) -> None:
         """Soft delete a tenant and detach it from forward-facing views.
 

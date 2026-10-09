@@ -303,14 +303,42 @@ async def delete_tenant(
     tenant_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse:
-    """Soft delete a tenant (Super Admin only)."""
+    """Permanently delete a tenant + every cascading child row.
+
+    Super admin only. The admin UI gates this behind a typed-slug
+    confirmation after showing the preview, so this endpoint doesn't
+    layer on more guards. All users (admin / teachers / parents),
+    students, classes, invoices, reports, attendance, events, and
+    invitations are physically removed by Postgres cascades, freeing
+    the slug + every email/phone for immediate reuse.
+    """
     tenant_service = get_tenant_service()
-    await tenant_service.delete_tenant(db, tenant_id)
+    summary = await tenant_service.hard_delete_tenant(db, tenant_id)
 
     return APIResponse(
         status="success",
-        message="Tenant deleted successfully",
+        message=(
+            f"{summary['tenant_name']} ({summary['tenant_slug']}) "
+            f"permanently deleted"
+        ),
     )
+
+
+@router.get("/tenants/{tenant_id}/deletion-preview")
+@require_super_admin()
+async def tenant_deletion_preview(
+    tenant_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Return exactly what deleting this tenant will purge.
+
+    Powers the super-admin confirmation modal with per-category counts
+    (users, students, classes, invoices, payments, reports, events,
+    invitations, subscriptions). Read-only.
+    """
+    tenant_service = get_tenant_service()
+    data = await tenant_service.preview_tenant_deletion(db, tenant_id)
+    return APIResponse(status="success", data=data)
 
 
 @router.get("/tenants/{tenant_id}/stats")
