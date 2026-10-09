@@ -5,7 +5,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.help_content import get_related_topics, get_topic, get_topics_for_role
+from app.help_content import (
+    get_related_topics,
+    get_topic,
+    get_topics_for_role,
+    visible_role_keys,
+)
 from app.models.user import Role, User
 from app.services.auth_service import get_auth_service
 from app.templates_config import templates
@@ -83,15 +88,18 @@ async def help_topic(
     if not topic:
         raise HTTPException(status_code=404, detail="Help topic not found")
 
-    # Role-gate: super_admin topics are hidden from school admins
-    role_key = "super_admin" if user.role == Role.SUPER_ADMIN.value else "school_admin"
-    if role_key not in topic["roles"]:
+    # 2026-10-09 redesign: layered role access — a parent never sees
+    # admin topics even if they guess the slug. See
+    # ``visible_role_keys`` for the hierarchy.
+    visible = visible_role_keys(user.role)
+    topic_roles = set(topic.get("roles") or [])
+    if not (topic_roles & visible):
         raise HTTPException(status_code=404, detail="Help topic not found")
 
     related = get_related_topics(topic.get("related") or [])
-    # Filter related topics by role too
     related = [
-        r for r in related if role_key in r["roles"]
+        r for r in related
+        if set(r.get("roles") or []) & visible
     ]
 
     return templates.TemplateResponse(

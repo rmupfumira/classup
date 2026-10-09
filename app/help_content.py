@@ -1799,15 +1799,282 @@ HELP_TOPICS: dict[str, dict[str, Any]] = {
         ],
         "related": [],
     },
+
+    # ==================== PARENT TOPICS (2026-10-09 redesign) ====================
+    # Six topics shaped around the actual things a parent does on the
+    # app. Scoped ``roles=["parent"]`` — teacher / admin / super_admin
+    # all layer on top via visible_role_keys().
+
+    "parent-attendance": {
+        "title": "Checking your child's attendance",
+        "short": "See which days your child was present, absent, late or excused.",
+        "icon": "calendar",
+        "roles": ["parent"],
+        "category": "For parents",
+        "overview": (
+            "Your dashboard shows this week's attendance at a glance. "
+            "The Attendance page shows the full history, with the reason noted when it's absence or excused."
+        ),
+        "steps": [
+            {
+                "title": "Open the dashboard",
+                "body": "Log in at classup.co.za. The Attendance tile under 'This week' shows a quick total.",
+                "tip": "If you have more than one child, use the selector at the top of the dashboard to switch.",
+            },
+            {
+                "title": "See the full record",
+                "body": "Click Attendance in the sidebar. Each row shows the date, status, and (if there is one) the teacher's note.",
+                "tip": None,
+            },
+            {
+                "title": "Dispute a mark",
+                "body": "If you think the school marked your child incorrectly, use 'Report an absence' from the dashboard (or message the teacher). The school can override.",
+                "tip": None,
+            },
+        ],
+        "examples": [],
+        "related": ["parent-report-absence", "parent-messaging"],
+    },
+
+    "parent-report-absence": {
+        "title": "Reporting an absence",
+        "short": "Let the school know your child won't be in today or tomorrow.",
+        "icon": "chat",
+        "roles": ["parent"],
+        "category": "For parents",
+        "overview": (
+            "The 'Report an absence' card on your dashboard sends a note straight to the class teacher and the school office. "
+            "It also marks the day as EXCUSED on your child's attendance record so nobody has to chase it up."
+        ),
+        "steps": [
+            {
+                "title": "Open the dashboard",
+                "body": "Tap 'Report an absence' under Quick actions.",
+                "tip": None,
+            },
+            {
+                "title": "Pick the date and a short reason",
+                "body": "A few words is enough — 'fever at home', 'family funeral', 'dentist appointment'. The teacher sees exactly what you wrote.",
+                "tip": None,
+            },
+            {
+                "title": "Submit",
+                "body": "The teacher gets an immediate email + WhatsApp (if they're opted in). The attendance record updates automatically.",
+                "tip": "If you need to cancel after submitting, message the teacher — only they can revert the attendance mark.",
+            },
+        ],
+        "examples": [],
+        "related": ["parent-attendance", "parent-messaging"],
+    },
+
+    "parent-invoices": {
+        "title": "Viewing and paying invoices",
+        "short": "See what's owed, download the PDF, or pay online when your school supports it.",
+        "icon": "currency",
+        "roles": ["parent"],
+        "category": "For parents",
+        "overview": (
+            "Invoices appear on your dashboard under 'Needs your attention' when they're due within 7 days or already overdue. "
+            "The Invoices page shows every invoice (paid and unpaid) with a running balance."
+        ),
+        "steps": [
+            {
+                "title": "See what's owed",
+                "body": "The dashboard shows the next invoice due. Click 'View invoice' for the full PDF.",
+                "tip": None,
+            },
+            {
+                "title": "Pay online",
+                "body": "If your school has online payments turned on, tap 'Pay now' to go to the hosted checkout. You'll be redirected back when done.",
+                "tip": "If 'Pay now' isn't shown, your school is EFT-only — the invoice PDF carries the banking details.",
+            },
+            {
+                "title": "Record a payment yourself",
+                "body": "If you paid by cash or EFT and the school hasn't marked it yet, message the office with your proof of payment. The office updates the invoice, and you get a receipt by email + WhatsApp.",
+                "tip": None,
+            },
+        ],
+        "examples": [],
+        "related": ["parent-messaging", "parent-whatsapp"],
+    },
+
+    "parent-events-rsvp": {
+        "title": "RSVP-ing to school events",
+        "short": "Confirm whether you'll attend parent meetings, sports fixtures, outings, and more.",
+        "icon": "calendar",
+        "roles": ["parent"],
+        "category": "For parents",
+        "overview": (
+            "Events your child is invited to appear in your Events tab. When an RSVP is pending, the dashboard surfaces it under 'Needs your attention'. "
+            "You can also RSVP from the email invitation (it includes a one-tap link) or from WhatsApp."
+        ),
+        "steps": [
+            {
+                "title": "From the dashboard",
+                "body": "Tap one of the three buttons on the event card: Yes, Maybe, or Can't make it. Your choice is saved immediately and the school sees it.",
+                "tip": None,
+            },
+            {
+                "title": "From the email",
+                "body": "Each event email has three buttons at the bottom. Clicking one records your RSVP without needing to log in — the link is signed and expires on the event day.",
+                "tip": None,
+            },
+            {
+                "title": "Change your mind",
+                "body": "RSVP as often as you want — the latest answer wins. Open the event (Events tab) and pick a different response.",
+                "tip": None,
+            },
+        ],
+        "examples": [],
+        "related": ["parent-whatsapp", "parent-messaging"],
+    },
+
+    "parent-whatsapp": {
+        "title": "Using ClassUp on WhatsApp",
+        "short": "Turn WhatsApp on, ask questions, and opt out when you want to.",
+        "icon": "chat",
+        "roles": ["parent"],
+        "category": "For parents",
+        "overview": (
+            "When WhatsApp is turned on, ClassUp sends attendance alerts, invoices and event reminders to your mobile — "
+            "and you can chat back to the school assistant to check your child's balance or get a copy of the latest report, right in WhatsApp."
+        ),
+        "steps": [
+            {
+                "title": "Turn it on",
+                "body": "You can turn WhatsApp on from Profile → 'Receive WhatsApp notifications'. Make sure your mobile number is the same one you use for WhatsApp.",
+                "tip": "You can also opt in at signup — the WhatsApp box on the registration page does the same thing.",
+            },
+            {
+                "title": "Try the assistant",
+                "body": "Message the school's WhatsApp number from your phone. Ask 'What's my balance?' or 'When is the next event?'. The assistant replies in seconds.",
+                "tip": None,
+            },
+            {
+                "title": "Opt out any time",
+                "body": "Reply STOP in WhatsApp (or any variation — 'please stop', 'unsubscribe', 'optout'). You'll stop receiving WhatsApp messages immediately. Reply START to turn it back on.",
+                "tip": None,
+            },
+        ],
+        "examples": [
+            {
+                "title": "What the assistant can answer",
+                "body": (
+                    "- 'What's my balance?' — total owed plus unpaid invoices\n"
+                    "- 'How was Sarah's attendance?' — last week's record\n"
+                    "- 'Send me the latest report' — PDF arrives on WhatsApp\n"
+                    "- 'When's the next event?' — upcoming announcements\n"
+                    "- 'Who's Sipho's teacher?' — class + teacher contact"
+                ),
+            },
+        ],
+        "related": ["parent-profile", "parent-report-absence"],
+    },
+
+    "parent-profile": {
+        "title": "Managing your profile and notifications",
+        "short": "Change your name, phone, language, and which channels you receive updates on.",
+        "icon": "settings",
+        "roles": ["parent"],
+        "category": "For parents",
+        "overview": (
+            "Your Profile is where you keep your contact details current and pick which channels you'd like updates on. "
+            "You can turn email off, turn WhatsApp off, or both — the school still sees your messages on the dashboard."
+        ),
+        "steps": [
+            {
+                "title": "Open Profile",
+                "body": "Click your initials in the top-right, then Profile.",
+                "tip": None,
+            },
+            {
+                "title": "Update your contact details",
+                "body": "Change your name, phone number, or language. Save Changes.",
+                "tip": "Changing your mobile here doesn't automatically change your WhatsApp number — update both if they're the same.",
+            },
+            {
+                "title": "Pick notification channels",
+                "body": "Two tick-boxes at the bottom: 'Receive email notifications' and 'Receive WhatsApp notifications'. Turn either off and the school's automated updates stop coming to that channel.",
+                "tip": "You still see everything in-app on the dashboard — opting out of email doesn't opt you out of knowing.",
+            },
+            {
+                "title": "Change your password",
+                "body": "Below Profile, there's a separate 'Change Password' card. Enter your current password + a new one. Save.",
+                "tip": None,
+            },
+        ],
+        "examples": [],
+        "related": ["parent-whatsapp"],
+    },
+
+    "parent-messaging": {
+        "title": "Messaging the teacher or office",
+        "short": "Send a note to your child's teacher, the class, or the school office.",
+        "icon": "chat",
+        "roles": ["parent"],
+        "category": "For parents",
+        "overview": (
+            "Use Messages to start a thread with your child's teacher or the school office. Replies land in your inbox and (if you opted in) WhatsApp."
+        ),
+        "steps": [
+            {
+                "title": "Open Messages",
+                "body": "Click Messages in the sidebar. 'New Message' starts a fresh thread.",
+                "tip": None,
+            },
+            {
+                "title": "Pick the recipient",
+                "body": "Choose the student the message is about, then pick who to message (teacher, class, office).",
+                "tip": "If the dropdown is empty, your child doesn't have a teacher assigned yet — contact the school.",
+            },
+            {
+                "title": "Send + follow up",
+                "body": "Type the message, send. You'll see the reply in the same thread.",
+                "tip": None,
+            },
+        ],
+        "examples": [],
+        "related": ["parent-report-absence", "parent-whatsapp"],
+    },
 }
+
+
+def visible_role_keys(role: str) -> set[str]:
+    """Which topic-role keys should a given User.role see?
+
+    2026-10-09 redesign: role filtering is now layered so each role
+    sees everything it has permission to use.
+
+    - super_admin → every topic
+    - school_admin → school_admin + teacher + parent topics
+    - teacher     → teacher + parent topics
+    - parent      → parent topics only
+
+    The ``roles`` array on each topic in ``HELP_TOPICS`` names the
+    LOWEST role that should see the topic. "A school admin can also
+    do what a teacher can do" is modelled by letting a school admin
+    see topics marked ``roles=["teacher"]`` too.
+    """
+    normalised = str(role or "").upper()
+    if normalised == "SUPER_ADMIN":
+        return {"super_admin", "school_admin", "teacher", "parent"}
+    if normalised == "SCHOOL_ADMIN":
+        return {"school_admin", "teacher", "parent"}
+    if normalised == "TEACHER":
+        return {"teacher", "parent"}
+    if normalised == "PARENT":
+        return {"parent"}
+    # Unknown role → safest default is parent-only.
+    return {"parent"}
 
 
 def get_topics_for_role(role: str) -> list[dict[str, Any]]:
     """Return topics visible to a given role, with their slug attached."""
-    role_key = "super_admin" if role in ("SUPER_ADMIN", "super_admin") else "school_admin"
+    visible = visible_role_keys(role)
     result = []
     for slug, topic in HELP_TOPICS.items():
-        if role_key in topic["roles"]:
+        topic_roles = set(topic.get("roles") or [])
+        if topic_roles & visible:
             result.append({**topic, "slug": slug})
     return result
 
