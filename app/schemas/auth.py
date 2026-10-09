@@ -166,6 +166,7 @@ class UserProfile(BaseModel):
     language: str
     whatsapp_phone: str | None
     whatsapp_opted_in: bool
+    email_opted_in: bool = True
     last_login_at: datetime | None
     created_at: datetime
 
@@ -184,6 +185,7 @@ class UpdateProfileRequest(BaseModel):
     language: str | None = Field(None, max_length=5)
     whatsapp_phone: str | None = Field(None, max_length=50)
     whatsapp_opted_in: bool | None = None
+    email_opted_in: bool | None = None
 
     _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
     _wa_phone_e164 = field_validator("whatsapp_phone")(lambda cls, v: _phone_e164_optional(v))

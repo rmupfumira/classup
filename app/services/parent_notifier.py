@@ -118,6 +118,32 @@ async def _can_notify_whatsapp(
     return True
 
 
+def can_notify_email(user: User | None) -> bool:
+    """Return True iff this user should get an email copy of a notification.
+
+    Added 2026-10-09 alongside the per-channel email opt-out. Any
+    parent-triggered email send that wants to respect the parent's
+    channel preference should pass through this gate first — same
+    silent-skip + log posture as :func:`_can_notify_whatsapp`.
+
+    Admins and super admins keep ``email_opted_in=True`` (the column
+    default) so operational emails are unaffected.
+    """
+    if user is None:
+        logger.info("email gate: user is None — skipping")
+        return False
+    if not user.is_active or user.deleted_at is not None:
+        logger.info("email gate: user %s inactive or deleted — skipping", user.id)
+        return False
+    if not user.email:
+        logger.info("email gate: user %s has no email — skipping", user.id)
+        return False
+    if not getattr(user, "email_opted_in", True):
+        logger.info("email gate: user %s has email_opted_in=False — skipping", user.id)
+        return False
+    return True
+
+
 async def _send_template(
     db: AsyncSession,
     user: User,

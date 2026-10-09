@@ -105,7 +105,13 @@ class TestCreateStudentInvitesNewParent:
     async def test_no_phone_still_sends_email_invite(
         self, db, test_tenant, test_admin,
     ):
-        """Phone is optional — email invite alone is a valid outcome."""
+        """Phone is optional when the admin isn't suggesting WhatsApp —
+        email invite alone is a valid outcome.
+
+        2026-10-09 redesign: ``send_whatsapp_invite=True`` now requires
+        a phone (there's no WhatsApp send to a non-existent number).
+        An email-only invite still allows blank phone.
+        """
         wa_mock = AsyncMock(return_value=False)
         with (
             patch(
@@ -126,7 +132,7 @@ class TestCreateStudentInvitesNewParent:
                         last_name="Moyo",
                         email="nomsa@example.com",
                         phone=None,
-                        send_whatsapp_invite=True,
+                        send_whatsapp_invite=False,
                     ),
                 ]),
             )
@@ -228,6 +234,10 @@ class TestParentFailureDoesNotBlockStudent:
                         first_name="Nomsa",
                         last_name="Moyo",
                         email="nomsa@example.com",
+                        # 2026-10-09 redesign: default True would require
+                        # phone; keep this test focused on the ValueError
+                        # path by sending an email-only invite.
+                        send_whatsapp_invite=False,
                     ),
                 ]),
             )

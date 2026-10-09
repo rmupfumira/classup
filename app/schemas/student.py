@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.models.student import AgeGroup, Gender
 
@@ -100,6 +100,22 @@ class ParentEnrollmentInfo(BaseModel):
             return normalise_phone(v)
         except PhoneValidationError as e:
             raise ValueError(str(e))
+
+    @model_validator(mode="after")
+    def _phone_required_when_whatsapp_invited(self) -> "ParentEnrollmentInfo":
+        """You can't send a WhatsApp signup link to no one.
+
+        If the admin ticked "Suggest WhatsApp opt-in" (``send_whatsapp_invite``)
+        then phone becomes required. Added 2026-10-09 as part of the
+        onboarding redesign — the UI mirrors this with a required
+        marker + hint when the box is ticked.
+        """
+        if self.send_whatsapp_invite and not self.phone:
+            raise ValueError(
+                "Mobile number is required when suggesting WhatsApp "
+                "opt-in to this parent."
+            )
+        return self
 
 
 class StudentCreate(StudentBase):
