@@ -690,7 +690,26 @@ class MessageService:
             if not ps_result.scalar_one_or_none():
                 raise ForbiddenException("You can only message about your own children")
 
-            # Recipient must be a teacher of the student's class
+            # Recipient must be a staff member a parent is expected to
+            # talk to about their child: a SCHOOL_ADMIN of the tenant,
+            # or a teacher of the student's class. The earlier version
+            # only allowed teachers-of-class — that blocked parents
+            # from REPLYING to a thread an admin had started (common
+            # pattern: admin DMs parent about an issue, parent gets
+            # "You have no authority" when hitting Reply). Fix: also
+            # permit any SCHOOL_ADMIN / SUPER_ADMIN of the same tenant.
+            from app.models.user import User as _User, Role as _Role
+
+            recipient = await db.get(_User, recipient_id)
+            if (
+                recipient is not None
+                and recipient.tenant_id == tenant_id
+                and recipient.role in (_Role.SCHOOL_ADMIN.value, _Role.SUPER_ADMIN.value)
+                and recipient.is_active
+                and recipient.deleted_at is None
+            ):
+                return
+
             student = await self._get_student(db, student_id)
             if not student.class_id:
                 raise ForbiddenException("Student is not assigned to a class")
@@ -702,7 +721,10 @@ class MessageService:
                 )
             )
             if not tc_result.scalar_one_or_none():
-                raise ForbiddenException("Recipient is not a teacher of this student's class")
+                raise ForbiddenException(
+                    "Recipient is not a teacher of this student's class "
+                    "(and not an admin at this school)."
+                )
 
         else:
             raise ForbiddenException("You do not have permission to send messages")
