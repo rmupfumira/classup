@@ -58,30 +58,32 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    # ``passive_deletes=True`` on every tenant child relationship —
-    # without it, SQLAlchemy's ORM issues UPDATE child SET tenant_id = NULL
+    # ``passive_deletes="all"`` on every tenant child relationship —
+    # ``passive_deletes=True`` alone is not enough: when children are
+    # eagerly loaded (``lazy="selectin"``), SA still iterates the
+    # loaded collection and emits UPDATE child SET tenant_id = NULL
     # before the parent DELETE, which collides with NOT NULL on
-    # grade_levels (and would miss cascading cleanup on other children too).
-    # With passive_deletes, the ORM lets Postgres's ON DELETE CASCADE on
-    # the FK handle the children in one shot during the DELETE. This is
-    # the correct pattern for every tenant-scoped relationship.
+    # grade_levels. The "all" form tells SA to never touch children
+    # at the ORM level — the DB's ON DELETE CASCADE handles them in
+    # one shot during the parent DELETE. This is the correct pattern
+    # for every tenant-scoped relationship.
     users = relationship(
-        "User", back_populates="tenant", lazy="selectin", passive_deletes=True,
+        "User", back_populates="tenant", lazy="selectin", passive_deletes="all",
     )
     students = relationship(
-        "Student", back_populates="tenant", lazy="selectin", passive_deletes=True,
+        "Student", back_populates="tenant", lazy="selectin", passive_deletes="all",
     )
     school_classes = relationship(
-        "SchoolClass", back_populates="tenant", lazy="selectin", passive_deletes=True,
+        "SchoolClass", back_populates="tenant", lazy="selectin", passive_deletes="all",
     )
     subjects = relationship(
-        "Subject", back_populates="tenant", lazy="selectin", passive_deletes=True,
+        "Subject", back_populates="tenant", lazy="selectin", passive_deletes="all",
     )
     grading_systems = relationship(
-        "GradingSystem", back_populates="tenant", lazy="selectin", passive_deletes=True,
+        "GradingSystem", back_populates="tenant", lazy="selectin", passive_deletes="all",
     )
     grade_levels = relationship(
-        "GradeLevel", back_populates="tenant", lazy="selectin", passive_deletes=True,
+        "GradeLevel", back_populates="tenant", lazy="selectin", passive_deletes="all",
     )
 
     def get_setting(self, key: str, default: any = None) -> any:
