@@ -191,6 +191,56 @@ async def messages_compose(
     if role == "TEACHER":
         class_ctx = await get_teacher_class_context(request, db)
 
+    # Role-aware copy. The same compose form powers all three roles,
+    # but the labels / empty-state messaging has to swap. Teachers
+    # pick a student → see their parents. Parents pick a child →
+    # see their teachers. "No recipients" means "no parents yet"
+    # for a teacher and "no teachers assigned to the class yet" for
+    # a parent — using the wrong one is confusing and misdirects
+    # the admin link.
+    if role == "PARENT":
+        compose_copy = {
+            "student_label": "About your child",
+            "student_placeholder": "Select your child...",
+            "recipient_label": "To the teacher",
+            "recipient_placeholder": "Select a teacher...",
+            "empty_recipient_option": "No teachers assigned yet",
+            "empty_hint": (
+                "Your child's class has no teachers assigned yet. "
+                "Ask the school to add a class teacher before messaging."
+            ),
+            "empty_hint_link_url": None,
+            "empty_hint_link_text": None,
+        }
+    elif role == "TEACHER":
+        compose_copy = {
+            "student_label": "About Student",
+            "student_placeholder": "Select a student...",
+            "recipient_label": "To the parent",
+            "recipient_placeholder": "Select recipient...",
+            "empty_recipient_option": "No registered parents yet",
+            "empty_hint": (
+                "This student has no registered parents yet. The parent "
+                "needs to accept their invitation (or be added) before "
+                "they can receive messages."
+            ),
+            "empty_hint_link_url": "/students",
+            "empty_hint_link_text": "Manage students",
+        }
+    else:  # SCHOOL_ADMIN / SUPER_ADMIN
+        compose_copy = {
+            "student_label": "About Student",
+            "student_placeholder": "Select a student...",
+            "recipient_label": "To",
+            "recipient_placeholder": "Select recipient...",
+            "empty_recipient_option": "No contactable users for this student yet",
+            "empty_hint": (
+                "This student has no registered parents or teachers yet."
+            ),
+            "empty_hint_link_url": "/students",
+            "empty_hint_link_text": "Manage students",
+        }
+
     context = {
         "request": request,
         "user": user,
@@ -199,6 +249,7 @@ async def messages_compose(
         "compose_data_json": json.dumps(compose_context),
         "preselected_student_id": str(student_id) if student_id else None,
         "permissions": permissions,
+        "compose_copy": compose_copy,
     }
     context.update(class_ctx)
 

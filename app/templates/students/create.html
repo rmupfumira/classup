@@ -267,8 +267,8 @@
                class="px-4 py-2 text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
                 Cancel
             </a>
-            <button type="submit"
-                    class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            <button type="submit" id="student-submit-btn"
+                    class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                 Create Student
             </button>
         </div>
@@ -773,6 +773,17 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        // Double-submit guard — without this, a quick second click
+        // (or Enter-key race on a focused input) can fire TWO POSTs,
+        // each creating its own student + firing its own parent
+        // invitation. The parent then gets two identical WhatsApp
+        // "Complete signup" messages.
+        const submitBtn = document.getElementById('student-submit-btn');
+        if (submitBtn.disabled) return;  // already in flight
+        submitBtn.disabled = true;
+        const originalBtnText = submitBtn.textContent;
+        submitBtn.textContent = 'Saving…';
+
         try {
             const response = await fetch('/api/v1/students', {
                 method: 'POST',
@@ -785,6 +796,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!response.ok) {
                 ClassUp.toast(result.message || 'Failed to create student', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
                 return;
             }
 
@@ -854,9 +867,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             window.location.href = '/students/' + newStudentId;
+            // Note: no re-enable on success — we're redirecting away.
         } catch (error) {
             console.error('Error:', error);
             ClassUp.toast('An error occurred. Please try again.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
         }
     });
 });
