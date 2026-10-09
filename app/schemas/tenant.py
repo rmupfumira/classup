@@ -19,7 +19,14 @@ def _phone_e164_optional(v: str | None) -> str | None:
 
 
 class TenantCreateRequest(BaseModel):
-    """Schema for creating a new tenant."""
+    """Schema for creating a new tenant.
+
+    ``country`` + ``curriculum_pack`` are new (2026-10-09). The super
+    admin picks the jurisdiction, and that constrains which curriculum
+    packs are offered; "CUSTOM" is always valid regardless of country.
+    Both default to None/empty so earlier callers (tests, scripts)
+    still work — the UI makes them required.
+    """
 
     name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
@@ -27,6 +34,8 @@ class TenantCreateRequest(BaseModel):
     address: str | None = None
     education_type: EducationType = EducationType.DAYCARE
     slug: str | None = Field(None, max_length=100, pattern=r"^[a-z0-9-]+$")
+    country: str | None = Field(None, max_length=4)
+    curriculum_pack: str | None = Field(None, max_length=64)
 
     _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
 

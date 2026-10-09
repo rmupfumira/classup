@@ -126,8 +126,16 @@ class TenantService:
         phone: str | None = None,
         address: str | None = None,
         slug: str | None = None,
+        country: str | None = None,
     ) -> Tenant:
-        """Create a new tenant."""
+        """Create a new tenant.
+
+        ``country`` is the ISO-3166 alpha-2 jurisdiction code (ZW, ZA,
+        ...). It drives currency (via jurisdiction_service) and which
+        curriculum packs are offered. Stored on
+        ``tenant.settings.country``; when omitted, the platform
+        default's country applies.
+        """
         from app.utils.reserved_slugs import is_reserved_slug
 
         # Generate slug if not provided
@@ -163,6 +171,11 @@ class TenantService:
         settings = get_default_tenant_settings(
             education_type, platform_defaults=platform.to_dict()
         )
+        # Super admin's country choice at tenant-create wins over the
+        # platform default. We still accept None (then the platform
+        # default from `settings` stands).
+        if country:
+            settings["country"] = country.upper()
 
         tenant = Tenant(
             name=name,

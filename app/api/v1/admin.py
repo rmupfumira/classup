@@ -77,7 +77,23 @@ async def create_tenant(
     request: TenantCreateRequest,
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse:
-    """Create a new tenant (Super Admin only)."""
+    """Create a new tenant (Super Admin only).
+
+    Two 2026-10-09 additions:
+
+    - ``country`` is stored on ``tenant.settings.country`` so it drives
+      currency + which curriculum packs the admin can later load.
+    - ``curriculum_pack`` is applied immediately after creation. For a
+      real pack (ZW_ZIMSEC, ZA_CAPS, ...) the pack's subjects and
+      default grading system are seeded in one step. For "CUSTOM" the
+      choice is recorded but nothing is seeded — the admin fills in
+      subjects manually.
+
+    The seeding call runs inside this request after the tenant's own
+    create succeeds, so a seeding failure returns 500 WITHOUT a half-
+    configured tenant hanging around (we don't roll back the tenant row
+    though — the admin can always re-apply the pack from Settings).
+    """
     tenant_service = get_tenant_service()
     tenant = await tenant_service.create_tenant(
         db,
@@ -87,12 +103,39 @@ async def create_tenant(
         phone=request.phone,
         address=request.address,
         slug=request.slug,
+        country=request.country,
     )
+
+    pack_summary: dict | None = None
+    if request.curriculum_pack:
+        # Seed subjects + grading system inside the new tenant's context.
+        from app.services.academic_service import get_academic_service
+        from app.utils.tenant_context import _tenant_id
+
+        token = _tenant_id.set(tenant.id)
+        try:
+            pack_summary = await get_academic_service().apply_curriculum_pack(
+                db, request.curriculum_pack,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to apply curriculum pack '%s' to new tenant %s",
+                request.curriculum_pack, tenant.id,
+            )
+            # Non-fatal: tenant exists and super admin can retry via
+            # the admin's Subjects page.
+        finally:
+            _tenant_id.reset(token)
 
     return APIResponse(
         status="success",
         data=TenantResponse.model_validate(tenant),
-        message="Tenant created successfully",
+        message=(
+            f"Tenant created. Seeded {pack_summary['added']} subjects "
+            f"from {pack_summary['pack_name']}."
+            if pack_summary and pack_summary.get("added", 0) > 0
+            else "Tenant created successfully"
+        ),
     )
 
 

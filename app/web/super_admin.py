@@ -131,6 +131,8 @@ async def tenant_create_form(
     db: AsyncSession = Depends(get_db),
 ):
     """Render the tenant creation form."""
+    import json as _json
+
     user_id = get_current_user_id_or_none()
     if not user_id:
         return RedirectResponse(url="/login", status_code=302)
@@ -141,6 +143,24 @@ async def tenant_create_form(
 
     _require_super_admin()
 
+    # Country list + curriculum pack map — the template renders them
+    # as select options and a JSON blob that the client-side filter
+    # keys into on country change. No extra round-trip at run time.
+    from app.services import jurisdiction_service
+    from app.utils.curriculum_packs import CURRICULUM_PACKS
+
+    curriculum_packs_by_country = {
+        country: [
+            {
+                "code": p.code,
+                "name": p.name,
+                "subject_count": len(p.subjects),
+            }
+            for p in packs.values()
+        ]
+        for country, packs in CURRICULUM_PACKS.items()
+    }
+
     return templates.TemplateResponse(
         "super_admin/tenants/create.html",
         {
@@ -148,6 +168,8 @@ async def tenant_create_form(
             "user": user,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(user.role),
+            "countries": jurisdiction_service.list_countries(),
+            "curriculum_packs_json": _json.dumps(curriculum_packs_by_country),
         },
     )
 

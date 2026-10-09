@@ -62,14 +62,37 @@ class SubjectDef:
 
 
 @dataclass(frozen=True)
+class GradeBand:
+    """One row of a grading system — a % band with its grade letter."""
+
+    min: int
+    max: int
+    grade: str
+    description: str
+    points: float | None = None
+
+
+@dataclass(frozen=True)
+class GradingSystemDef:
+    """Default grading system for a pack. Materialised into a
+    ``GradingSystem`` row the first time the pack is applied to a
+    tenant with no grading systems configured."""
+
+    name: str                             # e.g. "ZIMSEC O-Level"
+    description: str                      # Short note shown in UI
+    bands: tuple[GradeBand, ...]
+
+
+@dataclass(frozen=True)
 class CurriculumPack:
-    """A named catalogue of subjects."""
+    """A named catalogue of subjects + default grading system."""
 
     code: str                       # Stable identifier, e.g. "ZW_ZIMSEC"
     name: str                       # Display name, e.g. "ZIMSEC"
     description: str                # One-sentence summary
     country_code: str               # ISO 3166-1 alpha-2 (ZW, ZA, ...)
     subjects: tuple[SubjectDef, ...]
+    grading_system: GradingSystemDef | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +291,65 @@ _CAMBRIDGE_SUBJECTS: tuple[SubjectDef, ...] = (
 
 
 # ---------------------------------------------------------------------------
+# Grading systems — each pack ships with the scale its examining body
+# uses. Applied the first time the pack is loaded onto a tenant that
+# has no grading system yet (so admins who already set one up don't get
+# it clobbered).
+#
+# ZIMSEC — standard O-Level scale A-G plus U. Primary report cards use
+# the same banding in practice, so one scale covers both.
+# Cambridge — IGCSE / O-Level uses A*-G plus U; newer 9-1 scale exists
+# but A*-G is still the broader-used one across the region.
+# CAPS / IEB — NSC 7-level: 1 Not Achieved → 7 Outstanding. Fixed by
+# the DBE Assessment Policy and shared verbatim by IEB.
+# ---------------------------------------------------------------------------
+
+_ZIMSEC_GRADING = GradingSystemDef(
+    name="ZIMSEC Standard",
+    description="Zimbabwe ZIMSEC grading — Primary and O-Level scale.",
+    bands=(
+        GradeBand(80, 100, "A", "Distinction", 1.0),
+        GradeBand(70, 79,  "B", "Merit",       2.0),
+        GradeBand(60, 69,  "C", "Credit",      3.0),
+        GradeBand(50, 59,  "D", "Pass",        4.0),
+        GradeBand(40, 49,  "E", "Pass",        5.0),
+        GradeBand(30, 39,  "F", "Weak Pass",   6.0),
+        GradeBand(0,  29,  "U", "Ungraded",    7.0),
+    ),
+)
+
+_CAMBRIDGE_GRADING = GradingSystemDef(
+    name="Cambridge A*-U",
+    description="Cambridge IGCSE / O-Level grading, A*-U.",
+    bands=(
+        GradeBand(90, 100, "A*", "Outstanding",     1.0),
+        GradeBand(80, 89,  "A",  "Excellent",       2.0),
+        GradeBand(70, 79,  "B",  "Very Good",       3.0),
+        GradeBand(60, 69,  "C",  "Good",            4.0),
+        GradeBand(50, 59,  "D",  "Satisfactory",    5.0),
+        GradeBand(40, 49,  "E",  "Pass",            6.0),
+        GradeBand(30, 39,  "F",  "Marginal",        7.0),
+        GradeBand(20, 29,  "G",  "Weak",            8.0),
+        GradeBand(0,  19,  "U",  "Ungraded",        9.0),
+    ),
+)
+
+_NSC_GRADING = GradingSystemDef(
+    name="NSC 7-Level",
+    description="South African DBE/IEB NSC 7-level scale (CAPS Assessment Policy).",
+    bands=(
+        GradeBand(80, 100, "7", "Outstanding",   1.0),
+        GradeBand(70, 79,  "6", "Meritorious",   2.0),
+        GradeBand(60, 69,  "5", "Substantial",   3.0),
+        GradeBand(50, 59,  "4", "Adequate",      4.0),
+        GradeBand(40, 49,  "3", "Moderate",      5.0),
+        GradeBand(30, 39,  "2", "Elementary",    6.0),
+        GradeBand(0,  29,  "1", "Not Achieved",  7.0),
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
 # Pack registry — keyed by country code, then pack code.
 #
 # Each country exposes the packs we actively support. "Custom" is a
@@ -283,6 +365,7 @@ CURRICULUM_PACKS: dict[str, dict[str, CurriculumPack]] = {
             description="Zimbabwe Schools Examinations Council — Primary, O-Level and A-Level.",
             country_code="ZW",
             subjects=_ZIMSEC_SUBJECTS,
+            grading_system=_ZIMSEC_GRADING,
         ),
         "ZW_CAMBRIDGE": CurriculumPack(
             code="ZW_CAMBRIDGE",
@@ -290,6 +373,7 @@ CURRICULUM_PACKS: dict[str, dict[str, CurriculumPack]] = {
             description="Cambridge Primary, IGCSE and AS/A-Level.",
             country_code="ZW",
             subjects=_CAMBRIDGE_SUBJECTS,
+            grading_system=_CAMBRIDGE_GRADING,
         ),
     },
     "ZA": {
@@ -299,6 +383,7 @@ CURRICULUM_PACKS: dict[str, dict[str, CurriculumPack]] = {
             description="South African Department of Basic Education — Foundation, Intermediate, Senior and FET phases.",
             country_code="ZA",
             subjects=_CAPS_SUBJECTS,
+            grading_system=_NSC_GRADING,
         ),
         "ZA_IEB": CurriculumPack(
             code="ZA_IEB",
@@ -306,6 +391,7 @@ CURRICULUM_PACKS: dict[str, dict[str, CurriculumPack]] = {
             description="Independent Examinations Board — South African private-school equivalent to CAPS at NSC level.",
             country_code="ZA",
             subjects=_IEB_SUBJECTS,
+            grading_system=_NSC_GRADING,
         ),
         "ZA_CAMBRIDGE": CurriculumPack(
             code="ZA_CAMBRIDGE",
@@ -313,6 +399,7 @@ CURRICULUM_PACKS: dict[str, dict[str, CurriculumPack]] = {
             description="Cambridge Primary, IGCSE and AS/A-Level.",
             country_code="ZA",
             subjects=_CAMBRIDGE_SUBJECTS,
+            grading_system=_CAMBRIDGE_GRADING,
         ),
     },
 }

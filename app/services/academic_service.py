@@ -669,6 +669,37 @@ class AcademicService:
                 added += 1
                 subject_names.append(sdef.name)
 
+        # Seed the pack's default grading system — but only if the
+        # tenant has none yet. We never clobber an existing scale,
+        # because the admin may have hand-tuned the bands.
+        grading_system_name: str | None = None
+        if pack is not None and pack.grading_system is not None:
+            existing_gs = (await db.execute(
+                select(func.count()).select_from(
+                    select(GradingSystem).where(
+                        GradingSystem.tenant_id == tenant_id,
+                        GradingSystem.deleted_at.is_(None),
+                    ).subquery()
+                )
+            )).scalar() or 0
+            if existing_gs == 0:
+                gs = GradingSystem(
+                    tenant_id=tenant_id,
+                    name=pack.grading_system.name,
+                    description=pack.grading_system.description,
+                    is_default=True,
+                    is_active=True,
+                    grades=[
+                        {
+                            "min": b.min, "max": b.max, "grade": b.grade,
+                            "description": b.description, "points": b.points,
+                        }
+                        for b in pack.grading_system.bands
+                    ],
+                )
+                db.add(gs)
+                grading_system_name = pack.grading_system.name
+
         # Record the choice on the tenant so the UI can show it and the
         # picker can preselect. Store the raw code even for Custom.
         settings = dict(tenant.settings or {})
@@ -686,6 +717,7 @@ class AcademicService:
             "added": added,
             "skipped": skipped,
             "sample_names": subject_names[:5],
+            "grading_system_added": grading_system_name,
         }
 
 

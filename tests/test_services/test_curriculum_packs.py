@@ -158,6 +158,63 @@ class TestApplyCurriculumPack:
         assert rows == []
 
     @pytest.mark.asyncio
+    async def test_apply_seeds_default_grading_system(
+        self, db: AsyncSession, tenant_with_country,
+    ):
+        """Pack's default grading system lands as the tenant's default
+        when they had none yet. Returned summary names it."""
+        from app.models.academic import GradingSystem
+
+        service = get_academic_service()
+        result = await service.apply_curriculum_pack(db, "ZW_ZIMSEC")
+
+        assert result["grading_system_added"] == "ZIMSEC Standard"
+
+        rows = (await db.execute(
+            select(GradingSystem).where(
+                GradingSystem.tenant_id == tenant_with_country.id,
+            )
+        )).scalars().all()
+        assert len(rows) == 1
+        assert rows[0].name == "ZIMSEC Standard"
+        assert rows[0].is_default is True
+        # Grades are the full 7 bands from the data file.
+        assert len(rows[0].grades) == 7
+        assert rows[0].grades[0]["grade"] == "A"
+
+    @pytest.mark.asyncio
+    async def test_apply_does_not_clobber_existing_grading_system(
+        self, db: AsyncSession, tenant_with_country,
+    ):
+        """If the admin already set up a grading scale, applying a pack
+        must NOT overwrite it. The pack's grading system is a nice-to-
+        have default, not a mandate."""
+        from app.models.academic import GradingSystem
+
+        existing = GradingSystem(
+            tenant_id=tenant_with_country.id,
+            name="My Custom Scale",
+            description="School already configured",
+            is_default=True,
+            is_active=True,
+            grades=[{"min": 0, "max": 100, "grade": "P", "description": "Pass"}],
+        )
+        db.add(existing)
+        await db.commit()
+
+        service = get_academic_service()
+        result = await service.apply_curriculum_pack(db, "ZW_ZIMSEC")
+        assert result["grading_system_added"] is None
+
+        rows = (await db.execute(
+            select(GradingSystem).where(
+                GradingSystem.tenant_id == tenant_with_country.id,
+            )
+        )).scalars().all()
+        assert len(rows) == 1
+        assert rows[0].name == "My Custom Scale"
+
+    @pytest.mark.asyncio
     async def test_apply_can_switch_from_zimsec_to_cambridge(
         self, db: AsyncSession, tenant_with_country,
     ):
