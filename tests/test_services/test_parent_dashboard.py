@@ -176,6 +176,17 @@ class TestNeedsAttentionInvoices:
         assert len(invoice_items) == 2
         # Overdue sorts first (ordering_key = -10 < positive days)
         assert "overdue" in invoice_items[0].detail.lower()
+        # UI metadata — regressions here hide the whole urgency redesign.
+        assert invoice_items[0].urgency == "critical"
+        assert invoice_items[0].icon == "invoice"
+        assert invoice_items[0].badge_text == "OVERDUE"
+        assert invoice_items[0].primary_label == "Pay now"
+        # Currency symbol must appear in the title (tenant default USD → $).
+        assert "$" in invoice_items[0].title
+        assert "100.00" in invoice_items[0].title
+        # Due-soon invoice uses the warning tier, not critical.
+        assert invoice_items[1].urgency in ("warning", "info")
+        assert invoice_items[1].primary_label == "View invoice"
 
     @pytest.mark.asyncio
     async def test_paid_invoice_not_surfaced(

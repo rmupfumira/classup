@@ -70,6 +70,24 @@
     </div>
 
     <!-- 2. Needs your attention -->
+    {#
+      Card anatomy (left → right):
+        [coloured accent bar] [icon badge] [body: title + detail + badge] [primary CTA]
+
+      Visual language — one urgency maps to one tint, applied to:
+        - 4px left border (vertical accent)
+        - icon badge background
+        - badge-text chip background
+        - CTA button background
+      This repeats the same colour three times per card so a glance
+      tells the parent "that red card is the urgent one" without
+      having to read the text.
+
+      Urgency tiers:
+        critical → red-500 (overdue invoice, EMERGENCY announcement)
+        warning  → amber-500 (due-soon invoice, URGENT announcement, RSVP needed)
+        info     → primary (uncategorised, future-dated)
+    #}
     {% if pd.needs_attention %}
     <section class="space-y-3">
         <h2 class="text-lg font-semibold text-neutral-800 flex items-center gap-2">
@@ -79,23 +97,79 @@
                 ({{ pd.needs_attention|length }})
             </span>
         </h2>
-        <div class="space-y-2">
+        <div class="space-y-2.5">
             {% for item in pd.needs_attention %}
-            <div class="bg-white rounded-xl shadow-sm border border-neutral-100 p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-neutral-800">{{ item.title }}</p>
-                    <p class="text-xs text-neutral-500 mt-0.5">{{ item.detail }}</p>
+            {# Per-urgency class bundles — stored as locals so a template
+               edit doesn't have to touch six interpolations. #}
+            {% if item.urgency == 'critical' %}
+                {% set accent_bar = 'bg-red-500' %}
+                {% set icon_bg = 'bg-red-50 text-red-600 ring-1 ring-red-100' %}
+                {% set badge_bg = 'bg-red-100 text-red-700' %}
+                {% set btn_class = 'bg-red-600 hover:bg-red-700 text-white' %}
+            {% elif item.urgency == 'warning' %}
+                {% set accent_bar = 'bg-amber-400' %}
+                {% set icon_bg = 'bg-amber-50 text-amber-600 ring-1 ring-amber-100' %}
+                {% set badge_bg = 'bg-amber-100 text-amber-800' %}
+                {% set btn_class = 'bg-amber-500 hover:bg-amber-600 text-white' %}
+            {% else %}
+                {% set accent_bar = 'bg-primary-500' %}
+                {% set icon_bg = 'bg-primary-50 text-primary-600 ring-1 ring-primary-100' %}
+                {% set badge_bg = 'bg-primary-100 text-primary-700' %}
+                {% set btn_class = 'bg-primary-600 hover:bg-primary-700 text-white' %}
+            {% endif %}
+
+            <article class="relative bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden hover:shadow-md hover:border-neutral-200 transition-all">
+                <!-- Accent bar -->
+                <span class="absolute top-0 bottom-0 left-0 w-1 {{ accent_bar }}"></span>
+                <div class="pl-4 pr-4 py-3.5 sm:py-4 flex items-start gap-3">
+                    <!-- Icon badge -->
+                    <div class="flex-shrink-0 w-10 h-10 rounded-full {{ icon_bg }} flex items-center justify-center">
+                        {% if item.icon == 'invoice' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-6 4h6m-6 4h4m-7 5h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        {% elif item.icon == 'announcement' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
+                        </svg>
+                        {% elif item.icon == 'rsvp' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        {% else %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+
+                    <!-- Body -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm sm:text-[0.95rem] font-semibold text-neutral-900 leading-tight">
+                            {{ item.title }}
+                        </p>
+                        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
+                            {% if item.badge_text %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded font-semibold tracking-wide text-[10px] {{ badge_bg }}">
+                                {{ item.badge_text }}
+                            </span>
+                            {% endif %}
+                            <span class="truncate">{{ item.detail }}</span>
+                        </div>
+                    </div>
+
+                    <!-- CTA -->
+                    {% if item.primary_url %}
+                    <a href="{{ item.primary_url }}"
+                       class="flex-shrink-0 self-center inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors {{ btn_class }}">
+                        {{ item.primary_label or 'Open' }}
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                    {% endif %}
                 </div>
-                {% if item.primary_url %}
-                <a href="{{ item.primary_url }}"
-                   class="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-                    {{ item.primary_label or 'Open' }}
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                </a>
-                {% endif %}
-            </div>
+            </article>
             {% endfor %}
         </div>
     </section>
