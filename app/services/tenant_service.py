@@ -167,13 +167,18 @@ class TenantService:
         from app.services.platform_service import get_defaults as get_platform_defaults
         platform = await get_platform_defaults(db)
 
-        # Get default settings for education type, seeded with platform values
+        # Get default settings for education type, seeded with platform values.
+        # Country drives terminology (Headmaster vs Principal, etc.) and
+        # terms_per_year (3 for ZW, 4 for ZA) — pass it in so defaults
+        # arrive correct instead of being patched post-hoc.
         settings = get_default_tenant_settings(
-            education_type, platform_defaults=platform.to_dict()
+            education_type,
+            platform_defaults=platform.to_dict(),
+            country_code=country,
         )
-        # Super admin's country choice at tenant-create wins over the
-        # platform default. We still accept None (then the platform
-        # default from `settings` stands).
+        # Explicit country at tenant-create wins over the platform
+        # default. (Already resolved inside get_default_tenant_settings,
+        # but we keep this line in case a caller passes country alone.)
         if country:
             settings["country"] = country.upper()
 
@@ -192,11 +197,14 @@ class TenantService:
         db.add(tenant)
         await db.flush()  # Flush to get tenant.id
 
-        # Seed default grade levels for the tenant based on education type
+        # Seed default grade levels — country-aware so a Zimbabwe
+        # tenant gets ECD A/B + Form 1-6, a South African tenant gets
+        # Grade RRR/RR/R + Grade 1-12, etc.
         from app.services.grade_level_service import get_grade_level_service
         grade_level_service = get_grade_level_service()
         await grade_level_service.seed_grade_levels_for_tenant(
-            db, tenant.id, education_type.value
+            db, tenant.id, education_type.value,
+            country_code=settings.get("country"),
         )
 
         # Seed default chart of accounts + a default bank account so the

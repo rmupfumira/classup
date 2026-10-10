@@ -304,19 +304,63 @@ _CAMBRIDGE_SUBJECTS: tuple[SubjectDef, ...] = (
 # the DBE Assessment Policy and shared verbatim by IEB.
 # ---------------------------------------------------------------------------
 
-_ZIMSEC_GRADING = GradingSystemDef(
-    name="ZIMSEC Standard",
-    description="Zimbabwe ZIMSEC grading — Primary and O-Level scale.",
+# ZIMSEC O-Level grading (2019+ scheme). The pass mark is **C** —
+# anything from A down to C is a pass; D and E are "lower passes" that
+# still carry weight for Form 4 entry to A-Level but do not count for
+# university-admission O-Level requirements. Previous code used an
+# A-F-U scale which was Cambridge-shaped and wrong for ZIMSEC.
+_ZIMSEC_O_LEVEL_GRADING = GradingSystemDef(
+    name="ZIMSEC O-Level",
+    description="Zimbabwe ZIMSEC O-Level grading (2019+ scheme). C or better = pass.",
     bands=(
-        GradeBand(80, 100, "A", "Distinction", 1.0),
-        GradeBand(70, 79,  "B", "Merit",       2.0),
-        GradeBand(60, 69,  "C", "Credit",      3.0),
-        GradeBand(50, 59,  "D", "Pass",        4.0),
-        GradeBand(40, 49,  "E", "Pass",        5.0),
-        GradeBand(30, 39,  "F", "Weak Pass",   6.0),
-        GradeBand(0,  29,  "U", "Ungraded",    7.0),
+        GradeBand(70, 100, "A", "Distinction",    1.0),
+        GradeBand(60, 69,  "B", "Merit",          2.0),
+        GradeBand(50, 59,  "C", "Pass",           3.0),  # Pass mark
+        GradeBand(45, 49,  "D", "Lower Pass",     4.0),
+        GradeBand(40, 44,  "E", "Marginal Pass",  5.0),
+        GradeBand(0,  39,  "U", "Ungraded",       0.0),
     ),
 )
+
+# ZIMSEC Grade 7 national assessment uses a Unit scale: 1 is best,
+# 9 is a fail. A student's aggregate is the sum of their four subject
+# units (English, Maths, Shona/Ndebele, General Paper); a lower
+# aggregate is better. 4 is a theoretical perfect score (1 per paper).
+_ZIMSEC_GRADE_7_GRADING = GradingSystemDef(
+    name="ZIMSEC Grade 7 Units",
+    description="Zimbabwe ZIMSEC Grade 7 unit scale — 1 is best, 9 is fail.",
+    bands=(
+        GradeBand(90, 100, "1", "Outstanding",         1.0),
+        GradeBand(80, 89,  "2", "Excellent",           2.0),
+        GradeBand(70, 79,  "3", "Very Good",           3.0),
+        GradeBand(60, 69,  "4", "Good",                4.0),
+        GradeBand(50, 59,  "5", "Credit",              5.0),
+        GradeBand(40, 49,  "6", "Pass",                6.0),
+        GradeBand(30, 39,  "7", "Lower Pass",          7.0),
+        GradeBand(20, 29,  "8", "Weak",                8.0),
+        GradeBand(0,  19,  "9", "Fail",                9.0),
+    ),
+)
+
+# ZIMSEC A-Level grading with university-aggregate points. A ZIMSEC
+# A-Level pass is any grade A-E; the point total (A=5 → E=1) is what
+# UZ, MSU and other local universities use for admissions. U = 0.
+_ZIMSEC_A_LEVEL_GRADING = GradingSystemDef(
+    name="ZIMSEC A-Level",
+    description="Zimbabwe ZIMSEC A-Level grading with university points (A=5 … E=1).",
+    bands=(
+        GradeBand(80, 100, "A", "Distinction",        5.0),
+        GradeBand(70, 79,  "B", "Very Good",          4.0),
+        GradeBand(60, 69,  "C", "Good",               3.0),
+        GradeBand(50, 59,  "D", "Satisfactory",       2.0),
+        GradeBand(40, 49,  "E", "Pass",               1.0),
+        GradeBand(0,  39,  "U", "Ungraded",           0.0),
+    ),
+)
+
+# Kept under the old name for backwards-compat with any lingering
+# references; new code should pick the right scale per phase.
+_ZIMSEC_GRADING = _ZIMSEC_O_LEVEL_GRADING
 
 _CAMBRIDGE_GRADING = GradingSystemDef(
     name="Cambridge A*-U",
@@ -336,7 +380,7 @@ _CAMBRIDGE_GRADING = GradingSystemDef(
 
 _NSC_GRADING = GradingSystemDef(
     name="NSC 7-Level",
-    description="South African DBE/IEB NSC 7-level scale (CAPS Assessment Policy).",
+    description="South African DBE/IEB NSC 7-level scale (CAPS Assessment Policy, Grade R–12).",
     bands=(
         GradeBand(80, 100, "7", "Outstanding",   1.0),
         GradeBand(70, 79,  "6", "Meritorious",   2.0),

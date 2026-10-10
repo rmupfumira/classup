@@ -127,12 +127,15 @@ class OnboardingService:
 
         tenant.settings = settings
 
-        # If education type changed, seed new grade levels
+        # If education type changed, seed new grade levels. Country
+        # drives the per-jurisdiction catalogue (ZW uses Form 1-6, ZA
+        # uses Grade RRR/RR/R, ...).
         if old_education_type != education_type:
             from app.services.grade_level_service import get_grade_level_service
             grade_level_service = get_grade_level_service()
             await grade_level_service.seed_grade_levels_for_tenant(
-                db, tenant_id, education_type
+                db, tenant_id, education_type,
+                country_code=settings.get("country"),
             )
 
         await db.commit()

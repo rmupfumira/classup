@@ -168,7 +168,11 @@ class TestApplyCurriculumPack:
         service = get_academic_service()
         result = await service.apply_curriculum_pack(db, "ZW_ZIMSEC")
 
-        assert result["grading_system_added"] == "ZIMSEC Standard"
+        # ZIMSEC O-Level scale (2019+ scheme). Previous name was
+        # "ZIMSEC Standard" with an incorrect A/B/C/D/E/F/U band
+        # layout; the 2026-10-10 correction pass replaced it with
+        # the real ZIMSEC O-Level A/B/C/D/E/U (6 bands, pass = C).
+        assert result["grading_system_added"] == "ZIMSEC O-Level"
 
         rows = (await db.execute(
             select(GradingSystem).where(
@@ -176,11 +180,14 @@ class TestApplyCurriculumPack:
             )
         )).scalars().all()
         assert len(rows) == 1
-        assert rows[0].name == "ZIMSEC Standard"
+        assert rows[0].name == "ZIMSEC O-Level"
         assert rows[0].is_default is True
-        # Grades are the full 7 bands from the data file.
-        assert len(rows[0].grades) == 7
+        # 6 bands (A-E + U) — regression guard against reintroducing F.
+        assert len(rows[0].grades) == 6
         assert rows[0].grades[0]["grade"] == "A"
+        # Pass mark is C at 50-59%.
+        c = next(g for g in rows[0].grades if g["grade"] == "C")
+        assert c["min"] == 50 and c["max"] == 59
 
     @pytest.mark.asyncio
     async def test_apply_adds_pack_scale_without_overriding_default(
@@ -207,7 +214,7 @@ class TestApplyCurriculumPack:
         result = await service.apply_curriculum_pack(db, "ZW_ZIMSEC")
         # Pack's scale IS added now (previously it was skipped
         # entirely) so classes can later infer from it.
-        assert result["grading_system_added"] == "ZIMSEC Standard"
+        assert result["grading_system_added"] == "ZIMSEC O-Level"
 
         rows = (await db.execute(
             select(GradingSystem).where(
@@ -215,7 +222,7 @@ class TestApplyCurriculumPack:
             ).order_by(GradingSystem.name)
         )).scalars().all()
         # Two scales now: the admin's custom one AND the pack's one.
-        assert {r.name for r in rows} == {"My Custom Scale", "ZIMSEC Standard"}
+        assert {r.name for r in rows} == {"My Custom Scale", "ZIMSEC O-Level"}
         # Admin's default was NOT clobbered.
         defaults = [r for r in rows if r.is_default]
         assert len(defaults) == 1

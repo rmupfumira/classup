@@ -146,16 +146,24 @@ def get_default_tenant_settings(
     education_type: EducationType,
     *,
     platform_defaults: dict | None = None,
+    country_code: str | None = None,
 ) -> dict:
     """Get default settings for a new tenant.
 
     ``platform_defaults`` (optional) lets the super admin's
     Platform Settings page (timezone, language, currency, etc.)
     seed sensible values for new tenants. When omitted, falls back
-    to the hard-coded ZAR / Africa/Johannesburg / en defaults so
+    to the hard-coded USD / Africa/Harare / en defaults so
     existing callers and tests are unaffected.
+
+    ``country_code`` (ISO-3166 alpha-2) picks the right local
+    terminology ("Headmaster" vs "Principal", "Form" vs "Grade"
+    for secondary) and the right ``terms_per_year`` (3 in ZW,
+    4 in ZA). An unknown country falls back to the generic
+    terminology map keyed by education_type.
     """
     pd = platform_defaults or {}
+    cc = (country_code or pd.get("default_country") or "").upper()
     base_features = {
         "attendance_tracking": True,
         "messaging": True,
@@ -212,36 +220,52 @@ def get_default_tenant_settings(
         EducationType.COMBINED: {**daycare_features, **school_features, "daily_reports": True},
     }
 
+    # Base terminology per education type. Country overrides below
+    # tweak the words that actually differ by jurisdiction (e.g. ZA
+    # uses "Learner" per DBE; ZW uses "Student" + "Form" for secondary;
+    # the local word for principal is "Headmaster/Headmistress" in ZW
+    # and "Principal" in ZA).
     terminology_map = {
         EducationType.DAYCARE: {
-            "student": "child",
-            "students": "children",
-            "teacher": "educator",
-            "teachers": "educators",
-            "class": "class",
-            "classes": "classes",
-            "parent": "parent",
-            "parents": "parents",
+            "student": "child", "students": "children",
+            "teacher": "educator", "teachers": "educators",
+            "class": "class", "classes": "classes",
+            "parent": "parent", "parents": "parents",
+            "principal": "Principal", "principals": "Principals",
         },
         EducationType.PRIMARY_SCHOOL: {
-            "student": "learner",
-            "students": "learners",
-            "teacher": "teacher",
-            "teachers": "teachers",
-            "class": "class",
-            "classes": "classes",
-            "parent": "parent",
-            "parents": "parents",
+            "student": "learner", "students": "learners",
+            "teacher": "teacher", "teachers": "teachers",
+            "class": "class", "classes": "classes",
+            "parent": "parent", "parents": "parents",
+            "principal": "Principal", "principals": "Principals",
         },
         EducationType.HIGH_SCHOOL: {
-            "student": "learner",
-            "students": "learners",
-            "teacher": "teacher",
-            "teachers": "teachers",
-            "class": "class",
-            "classes": "classes",
-            "parent": "parent",
-            "parents": "parents",
+            "student": "learner", "students": "learners",
+            "teacher": "teacher", "teachers": "teachers",
+            "class": "class", "classes": "classes",
+            "parent": "parent", "parents": "parents",
+            "principal": "Principal", "principals": "Principals",
+        },
+    }
+
+    # Country overrides — only the keys that differ from the base.
+    # Admin can still change any of these in Settings → Terminology.
+    country_terminology_overrides: dict[str, dict[str, str]] = {
+        "ZW": {
+            # Zimbabwe uses "Student" (not "Learner") and
+            # "Headmaster/Headmistress" (not "Principal"). Secondary
+            # classes are "Forms"; primary stays "Grades" / "classes".
+            "student": "student", "students": "students",
+            "principal": "Headmaster/Headmistress",
+            "principals": "Heads",
+        },
+        "ZA": {
+            # South Africa — DBE wording. "Learner" is already the
+            # default; "Educator" is the formal word for teacher but
+            # most parents say "Teacher", so keep "teacher" default.
+            "student": "learner", "students": "learners",
+            "principal": "Principal", "principals": "Principals",
         },
     }
 
@@ -257,11 +281,30 @@ def get_default_tenant_settings(
                                  "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6", "GRADE_7"],
     }
 
+    # Merge country-specific terminology on top of the base — base
+    # keys the country doesn't override are preserved.
+    base_terminology = terminology_map.get(
+        education_type, terminology_map[EducationType.DAYCARE],
+    )
+    terminology = {
+        **base_terminology,
+        **country_terminology_overrides.get(cc, {}),
+    }
+
+    # terms_per_year — ZW schools run 3 terms per calendar year
+    # (approx Jan-Apr, May-Aug, Sep-Dec); ZA runs 4 (Jan-Mar,
+    # Apr-Jun, Jul-Sep, Oct-Dec). Default to 3 anywhere else since
+    # that matches the broader African / anglophone pattern.
+    terms_per_year = 3
+    if cc == "ZA":
+        terms_per_year = 4
+
     return {
         "education_type": education_type.value,
         "enabled_grade_levels": grade_levels_map.get(education_type, []),
         "features": features_map.get(education_type, daycare_features),
-        "terminology": terminology_map.get(education_type, terminology_map[EducationType.DAYCARE]),
+        "terminology": terminology,
+        "terms_per_year": terms_per_year,
         "report_config": {
             "default_report_type": "DAILY_ACTIVITY" if education_type == EducationType.DAYCARE else "PROGRESS_REPORT",
             "enabled_sections": ["meals", "nap", "fluids", "bathroom", "activities", "notes"]
@@ -282,7 +325,7 @@ def get_default_tenant_settings(
         "timezone": pd.get("default_timezone", "Africa/Harare"),
         "language": pd.get("default_language", "en"),
         "billing_currency": pd.get("default_currency", "USD"),
-        "country": pd.get("default_country", "ZA"),
+        "country": cc or pd.get("default_country", "ZA"),
         "billing_banking_details": "",
         "billing_payment_instructions": "",
     }
