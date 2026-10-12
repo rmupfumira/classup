@@ -391,11 +391,57 @@ async def student_detail(
         )
         pending_invitations = invitations
 
+    # Effective subject list (with any per-student overrides applied)
+    # — only loaded for staff since parents don't manage overrides
+    # from this page. Combined-curriculum tenants show the override UI;
+    # single-pack tenants just see the subject list for context.
+    from app.models import Tenant
+    from app.services.academic_service import get_academic_service
+    tenant = await db.get(Tenant, get_tenant_id())
+
+    # subject_rows is a list of (class_subject_id, effective_subject)
+    # pairs — the template needs the class_subject_id to call the
+    # override API, and effective_subject.name / curriculum_pack_code
+    # for display. effective_subjects comes back in the same order as
+    # class_subjects (the service builds it that way), so zip is safe.
+    subject_rows: list = []
+    all_subjects: list = []
+    if permissions.is_staff and student.class_id:
+        academic = get_academic_service()
+        effective_subjects = await academic.get_effective_subjects_for_student(
+            db, student_id,
+        )
+        class_subjects_list, _ = await academic.get_class_subjects(
+            db, student.class_id,
+        )
+        for cs, eff in zip(class_subjects_list, effective_subjects):
+            subject_rows.append({
+                "class_subject_id": str(cs.id),
+                "default_subject_id": str(cs.subject_id),
+                "effective_subject": eff,
+                "is_overridden": cs.subject_id != eff.id,
+            })
+        # Available alternates for the override picker. Exposes every
+        # subject on the tenant — admin picks the equivalent (e.g.
+        # Cambridge Math as the alternate for ZIMSEC Math).
+        from sqlalchemy import select as _select
+        from app.models.academic import Subject as _Subject
+        all_subjects = (await db.execute(
+            _select(_Subject).where(
+                _Subject.tenant_id == get_tenant_id(),
+                _Subject.deleted_at.is_(None),
+                _Subject.is_active.is_(True),
+            ).order_by(_Subject.name)
+        )).scalars().all()
+
     context = {
         "request": request,
         "user": user,
         "student": student,
         "pending_invitations": pending_invitations,
+        "tenant": tenant,
+        "subject_rows": subject_rows,
+        "all_subjects": all_subjects,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

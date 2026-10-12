@@ -17,6 +17,7 @@ from app.utils.permissions import PermissionChecker
 from app.utils.tenant_context import (
     get_current_language,
     get_current_user_id_or_none,
+    get_tenant_id,
 )
 from app.web.helpers import get_teacher_class_context
 
@@ -147,12 +148,44 @@ async def class_detail(
     students, _ = await class_service.get_class_students(db, class_id)
     teachers_data = await class_service.get_class_teachers(db, class_id)
 
+    # Class subjects + subject-teacher assignments. Only rendered on
+    # the template when subject_teacher_enabled is on — we still load
+    # them (cheap) so the admin can see the subject list regardless.
+    from app.models import Tenant
+    from app.services.academic_service import get_academic_service
+    tenant = await db.get(Tenant, get_tenant_id())
+    academic = get_academic_service()
+    class_subjects, _ = await academic.get_class_subjects(db, class_id)
+    # Pre-compute teacher assignments per subject so the template
+    # doesn't trigger lazy loads inside the loop (N+1 at page render).
+    subject_teachers_by_subject: dict = {}
+    for cs in class_subjects:
+        subject_teachers_by_subject[str(cs.subject_id)] = (
+            await academic.get_teachers_for_class_subject(db, class_id, cs.subject_id)
+        )
+    # Full teacher list for the "Assign teacher" picker (keeps the
+    # modal self-contained; no second request needed).
+    from sqlalchemy import select
+    from app.models.user import User as _User
+    assignable_teachers = (await db.execute(
+        select(_User).where(
+            _User.tenant_id == get_tenant_id(),
+            _User.role == "TEACHER",
+            _User.is_active.is_(True),
+            _User.deleted_at.is_(None),
+        ).order_by(_User.first_name, _User.last_name)
+    )).scalars().all()
+
     context = {
         "request": request,
         "user": user,
         "school_class": school_class,
         "students": students,
         "teachers": [(u, tc) for u, tc in teachers_data],
+        "tenant": tenant,
+        "class_subjects": class_subjects,
+        "subject_teachers_by_subject": subject_teachers_by_subject,
+        "assignable_teachers": assignable_teachers,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

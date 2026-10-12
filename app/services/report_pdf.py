@@ -389,7 +389,15 @@ def _render_repeatable(pdf: FPDF, section: dict, data: dict) -> None:
 
 def _render_academic_grades(pdf: FPDF, section: dict, data: dict) -> None:
     subjects = section.get("subjects") or []
-    grading = section.get("grading_system") or []
+    # Section-level grading scale is the default. Each subject may
+    # carry its OWN ``grading_system`` key — used by the Combined
+    # ZIMSEC+Cambridge pack where Mathematics (ZIMSEC) uses the
+    # ZIMSEC O-Level bands while Mathematics (Cambridge) uses the
+    # Cambridge A*-U bands on the SAME report card. The resolver in
+    # report_service injects per-subject scales based on the
+    # subject's ``curriculum_pack_code``; the renderer just honours
+    # whichever scale wins (per-subject > section-level).
+    section_grading = section.get("grading_system") or []
     if not subjects:
         pdf.set_font("Helvetica", "I", 9)
         pdf.set_text_color(120, 120, 120)
@@ -407,6 +415,11 @@ def _render_academic_grades(pdf: FPDF, section: dict, data: dict) -> None:
         sid = subject.get("id")
         sname = subject.get("name") or "Subject"
         total = subject.get("total_marks") or 100
+        # Per-subject override wins when present. The injected scale
+        # is a list of {min, max, grade, description, points} dicts
+        # (same shape as the section-level ``grading_system``) so
+        # ``_grade_for`` doesn't care which source it came from.
+        grading = subject.get("grading_system") or section_grading
         entry = (data or {}).get(sid, {}) if isinstance(data, dict) else {}
         marks = entry.get("marks_obtained")
         remarks = entry.get("remarks") or ""

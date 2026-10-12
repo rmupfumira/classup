@@ -146,6 +146,66 @@
                 <p class="text-neutral-700">{{ student.notes }}</p>
             </div>
             {% endif %}
+
+            {# Subject track — staff view only. Shows the student's
+               effective subject list (class defaults + per-student
+               overrides already applied), with Change buttons on
+               Combined-curriculum tenants so admins can swap
+               individual subjects to the alternate body. #}
+            {% if permissions.is_staff and subject_rows %}
+            {% set is_combined = tenant and (tenant.settings or {}).get('curriculum_pack') == 'ZW_COMBINED' %}
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-neutral-900">Subject track</h3>
+                        <p class="text-xs text-neutral-500 mt-0.5">
+                            What this student actually takes.
+                            {% if is_combined %}
+                            Edit a row to swap it for the alternate curriculum body.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <ul class="divide-y divide-neutral-100">
+                    {% for row in subject_rows %}
+                    {% set subject = row.effective_subject %}
+                    <li class="py-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-neutral-800">
+                                {{ subject.name }}
+                                {% if row.is_overridden %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">
+                                    OVERRIDE
+                                </span>
+                                {% endif %}
+                            </p>
+                            {% if subject.curriculum_pack_code %}
+                            <p class="text-xs text-neutral-500 mt-0.5">
+                                {% if subject.curriculum_pack_code == 'ZW_ZIMSEC' %}ZIMSEC
+                                {% elif subject.curriculum_pack_code == 'ZW_CAMBRIDGE' %}Cambridge
+                                {% elif subject.curriculum_pack_code == 'ZA_CAPS' %}CAPS
+                                {% elif subject.curriculum_pack_code == 'ZA_IEB' %}IEB
+                                {% else %}{{ subject.curriculum_pack_code }}
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                        {% if is_combined and permissions.can_manage_students() %}
+                        <button type="button"
+                                data-cs-id="{{ row.class_subject_id }}"
+                                data-default-id="{{ row.default_subject_id }}"
+                                data-subject-name="{{ subject.name | escape }}"
+                                data-overridden="{{ 'true' if row.is_overridden else 'false' }}"
+                                onclick="openSubjectOverrideModal(this)"
+                                class="flex-shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700">
+                            Change
+                        </button>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Sidebar -->
@@ -579,6 +639,111 @@ async function cancelInvitation(invitationId) {
         ClassUp.toast('An error occurred. Please try again.', 'error');
     }
 }
+</script>
+{% endif %}
+
+{# Subject-override modal — Combined-curriculum tenants only. Lets
+   admin swap one of a student's class subjects for an alternate-body
+   subject (ZIMSEC Math → Cambridge Math or vice versa). #}
+{% if permissions.is_staff and all_subjects %}
+<dialog id="subject-override-modal" class="rounded-xl p-0 w-full max-w-md backdrop:bg-black/60">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-neutral-800">
+                Change subject: <span id="sor-subject-name"></span>
+            </h3>
+            <button type="button" onclick="document.getElementById('subject-override-modal').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <p class="text-xs text-neutral-500 mb-3">
+            Swap this subject for an alternate-body equivalent — e.g.
+            Cambridge Mathematics instead of ZIMSEC Mathematics. The
+            student's reports will grade this subject with the new
+            body's scale.
+        </p>
+
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Replace with</label>
+        <select id="sor-subject-picker" class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg">
+            <option value="">Keep class default</option>
+            {% for s in all_subjects %}
+            <option value="{{ s.id }}" data-pack="{{ s.curriculum_pack_code or '' }}">
+                {{ s.name }}{% if s.curriculum_pack_code == 'ZW_ZIMSEC' %} (ZIMSEC){% elif s.curriculum_pack_code == 'ZW_CAMBRIDGE' %} (Cambridge){% elif s.curriculum_pack_code %} ({{ s.curriculum_pack_code }}){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+
+        <div class="mt-5 flex gap-2 justify-end">
+            <button type="button" onclick="document.getElementById('subject-override-modal').close()"
+                    class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50">
+                Cancel
+            </button>
+            <button type="button" id="sor-save-btn"
+                    class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700">
+                Save
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+const SOR_STUDENT_ID = {{ (student.id | string) | tojson }};
+let sorCurrentClassSubjectId = null;
+let sorCurrentDefaultId = null;
+
+function openSubjectOverrideModal(btn) {
+    sorCurrentClassSubjectId = btn.dataset.csId;
+    sorCurrentDefaultId = btn.dataset.defaultId;
+    document.getElementById('sor-subject-name').textContent = btn.dataset.subjectName;
+    // Preselect: if the row is currently overridden, show "Keep class default"
+    // as the sensible "revert" option by leaving the picker blank.
+    document.getElementById('sor-subject-picker').value = '';
+    document.getElementById('subject-override-modal').showModal();
+}
+
+document.getElementById('sor-save-btn')?.addEventListener('click', async () => {
+    const overrideSubjectId = document.getElementById('sor-subject-picker').value;
+    try {
+        if (!overrideSubjectId) {
+            // Blank = revert to class default (DELETE the override row).
+            await ClassUp.fetch(
+                `/api/v1/academic/students/${SOR_STUDENT_ID}/subject-overrides/${sorCurrentClassSubjectId}`,
+                { method: 'DELETE' },
+            );
+            ClassUp.toast('Reverted to class default.', 'success');
+        } else if (overrideSubjectId === sorCurrentDefaultId) {
+            // Same as the class default — just clear any existing override.
+            await ClassUp.fetch(
+                `/api/v1/academic/students/${SOR_STUDENT_ID}/subject-overrides/${sorCurrentClassSubjectId}`,
+                { method: 'DELETE' },
+            );
+            ClassUp.toast('Reverted to class default.', 'success');
+        } else {
+            await ClassUp.fetch(
+                `/api/v1/academic/students/${SOR_STUDENT_ID}/subject-overrides`,
+                {
+                    method: 'POST',
+                    body: {
+                        class_subject_id: sorCurrentClassSubjectId,
+                        override_subject_id: overrideSubjectId,
+                    },
+                },
+            );
+            ClassUp.toast('Subject override saved.', 'success');
+        }
+        document.getElementById('subject-override-modal').close();
+        // Simplest refresh — reload so the subject-row list reflects
+        // the new effective state. Fine on the student detail page
+        // (no unsaved state to lose).
+        setTimeout(() => window.location.reload(), 400);
+    } catch (err) {
+        // ClassUp.fetch already toasted the error.
+    }
+});
 </script>
 {% endif %}
 {% endblock %}

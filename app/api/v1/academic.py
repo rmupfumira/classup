@@ -465,6 +465,69 @@ async def unassign_subject_teacher_api(
     return {"status": "success", "message": "Teacher unassigned from subject"}
 
 
+# ==================== PER-STUDENT SUBJECT OVERRIDES ====================
+# For Combined-curriculum schools — swap one of a student's class
+# subjects for the alternate-body equivalent (e.g. Alice takes
+# Cambridge Math while her ZIMSEC-track class takes ZIMSEC Math).
+
+
+class StudentSubjectOverrideSet(BaseModel):
+    """Payload for setting a per-student subject override."""
+    class_subject_id: uuid.UUID
+    override_subject_id: uuid.UUID
+
+
+@router.post(
+    "/students/{student_id}/subject-overrides",
+    response_model=dict,
+)
+@require_role("SCHOOL_ADMIN")
+async def set_student_subject_override_api(
+    student_id: uuid.UUID,
+    data: StudentSubjectOverrideSet,
+    db: AsyncSession = Depends(get_db),
+):
+    """Set (or update) an override: student takes override_subject
+    instead of the subject that class_subject points to."""
+    service = get_academic_service()
+    row = await service.set_student_subject_override(
+        db,
+        student_id=student_id,
+        class_subject_id=data.class_subject_id,
+        override_subject_id=data.override_subject_id,
+    )
+    return {
+        "status": "success",
+        "message": "Override saved",
+        "data": {
+            "id": str(row.id),
+            "student_id": str(row.student_id),
+            "class_subject_id": str(row.class_subject_id),
+            "override_subject_id": str(row.override_subject_id),
+        },
+    }
+
+
+@router.delete(
+    "/students/{student_id}/subject-overrides/{class_subject_id}",
+    response_model=dict,
+)
+@require_role("SCHOOL_ADMIN")
+async def clear_student_subject_override_api(
+    student_id: uuid.UUID,
+    class_subject_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove an override — student falls back to the class default."""
+    service = get_academic_service()
+    removed = await service.clear_student_subject_override(
+        db, student_id=student_id, class_subject_id=class_subject_id,
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="No override to clear")
+    return {"status": "success", "message": "Override cleared"}
+
+
 # ==================== GRADING SYSTEMS ====================
 
 

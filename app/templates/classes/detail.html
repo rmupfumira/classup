@@ -173,6 +173,51 @@
                 </div>
                 {% endif %}
             </div>
+
+            {# Subject-teacher assignments. Only rendered when the tenant
+               has subject_teacher_enabled on — primary schools don't
+               need it and the clutter would confuse them. Shows each
+               class subject with its currently-assigned specialists and
+               an "Assign" button for admins. #}
+            {% if tenant and tenant.subject_teacher_enabled and class_subjects %}
+            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5 mt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-semibold text-neutral-800">Subject teachers</h3>
+                        <p class="text-xs text-neutral-500 mt-0.5">
+                            Specialists assigned per subject. The general class teacher
+                            still handles attendance and overall oversight.
+                        </p>
+                    </div>
+                </div>
+                <ul class="divide-y divide-neutral-100">
+                    {% for cs in class_subjects %}
+                    {% set assigned = subject_teachers_by_subject.get(cs.subject_id | string, []) %}
+                    <li class="py-3 flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-neutral-800">{{ cs.subject.name }}</p>
+                            {% if assigned %}
+                            <p class="text-xs text-neutral-500 mt-0.5">
+                                {% for t in assigned %}{{ t.first_name }} {{ t.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                            </p>
+                            {% else %}
+                            <p class="text-xs text-amber-600 mt-0.5">
+                                No teacher assigned — subject-level grades blocked.
+                            </p>
+                            {% endif %}
+                        </div>
+                        {% if permissions.can_manage_classes() %}
+                        <button type="button"
+                                onclick="openSubjectTeacherModal('{{ cs.subject_id }}', '{{ cs.subject.name | escape }}')"
+                                class="flex-shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700">
+                            {{ 'Edit' if assigned else 'Assign' }}
+                        </button>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Sidebar -->
@@ -253,4 +298,123 @@
         </div>
     </div>
 </div>
+
+{# Subject-teacher assign/unassign modal. Lives outside the main
+   content column so backdrop + stacking context don't clip against
+   the sidebar card. Only wired when subject_teacher_enabled is on,
+   but we always render it so Jinja doesn't branch on JS state. #}
+{% if tenant and tenant.subject_teacher_enabled %}
+<dialog id="subject-teacher-modal" class="rounded-xl p-0 w-full max-w-md backdrop:bg-black/60">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-neutral-800">
+                Assign teacher to <span id="stm-subject-name"></span>
+            </h3>
+            <button type="button" onclick="document.getElementById('subject-teacher-modal').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div id="stm-current" class="mb-4 space-y-2"></div>
+
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Add teacher</label>
+        <select id="stm-teacher-picker" class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg">
+            <option value="">Select a teacher...</option>
+            {% for t in assignable_teachers %}
+            <option value="{{ t.id }}">{{ t.first_name }} {{ t.last_name }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="mt-5 flex gap-2 justify-end">
+            <button type="button" onclick="document.getElementById('subject-teacher-modal').close()"
+                    class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50">
+                Done
+            </button>
+            <button type="button" id="stm-add-btn"
+                    class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700">
+                Assign
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+// Shared state for the subject-teacher modal — the subject the modal
+// is currently editing. Preloaded teacher map built from server-rendered
+// JSON so re-opening the modal doesn't need a fetch.
+const STM_CLASS_ID = {{ (school_class.id | string) | tojson }};
+let stmCurrentSubjectId = null;
+
+function openSubjectTeacherModal(subjectId, subjectName) {
+    stmCurrentSubjectId = subjectId;
+    document.getElementById('stm-subject-name').textContent = subjectName;
+    document.getElementById('stm-teacher-picker').value = '';
+    renderCurrentSubjectTeachers();
+    document.getElementById('subject-teacher-modal').showModal();
+}
+
+async function renderCurrentSubjectTeachers() {
+    const slot = document.getElementById('stm-current');
+    slot.innerHTML = '<p class="text-sm text-neutral-400">Loading...</p>';
+    try {
+        const resp = await ClassUp.fetch(
+            `/api/v1/academic/classes/${STM_CLASS_ID}/subjects/${stmCurrentSubjectId}/teachers`,
+        );
+        const teachers = (resp && resp.data) || [];
+        if (!teachers.length) {
+            slot.innerHTML = '<p class="text-sm text-neutral-500">No teachers assigned yet.</p>';
+            return;
+        }
+        slot.innerHTML = teachers.map(t => `
+            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-neutral-200">
+                <span class="text-sm">${t.first_name} ${t.last_name}</span>
+                <button type="button" onclick="unassignSubjectTeacher('${t.id}')"
+                        class="text-xs text-red-600 hover:text-red-700 font-medium">Remove</button>
+            </div>
+        `).join('');
+    } catch (err) {
+        slot.innerHTML = '<p class="text-sm text-red-600">Failed to load.</p>';
+    }
+}
+
+document.getElementById('stm-add-btn')?.addEventListener('click', async () => {
+    const teacherId = document.getElementById('stm-teacher-picker').value;
+    if (!teacherId) {
+        ClassUp.toast('Pick a teacher to assign first.', 'warning');
+        return;
+    }
+    try {
+        await ClassUp.fetch(
+            `/api/v1/academic/classes/${STM_CLASS_ID}/subjects/${stmCurrentSubjectId}/teachers`,
+            { method: 'POST', body: { teacher_id: teacherId } },
+        );
+        ClassUp.toast('Teacher assigned.', 'success');
+        document.getElementById('stm-teacher-picker').value = '';
+        renderCurrentSubjectTeachers();
+    } catch (err) {
+        // ClassUp.fetch already toasted the error.
+    }
+});
+
+async function unassignSubjectTeacher(teacherId) {
+    const ok = await ClassUp.confirm(
+        'Remove this teacher from the subject?',
+        { confirmText: 'Remove', cancelText: 'Cancel' },
+    );
+    if (!ok) return;
+    try {
+        await ClassUp.fetch(
+            `/api/v1/academic/classes/${STM_CLASS_ID}/subjects/${stmCurrentSubjectId}/teachers/${teacherId}`,
+            { method: 'DELETE' },
+        );
+        renderCurrentSubjectTeachers();
+    } catch (err) {
+        // Already toasted.
+    }
+}
+</script>
+{% endif %}
 {% endblock %}
