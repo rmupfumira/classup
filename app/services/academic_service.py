@@ -7,8 +7,9 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.academic import Subject, ClassSubject, GradingSystem
-from app.models.school_class import SchoolClass
+from app.models.academic import Subject, ClassSubject, ClassSubjectTeacher, GradingSystem
+from app.models.school_class import SchoolClass, TeacherClass
+from app.models.user import User
 from app.utils.tenant_context import get_tenant_id
 
 
@@ -885,6 +886,215 @@ class AcademicService:
             "sample_names": subject_names[:5],
             "grading_system_added": grading_system_name,
         }
+
+
+    # ==================== SUBJECT TEACHERS ====================
+    #
+    # Subject-specialist mode: only when
+    # ``tenant.settings.subject_teacher_enabled`` is True. These
+    # methods are safe to call even when the mode is off — they
+    # don't short-circuit, they just manage the join table. The
+    # permission helpers below are where the feature flag actually
+    # changes behaviour.
+
+    async def assign_subject_teacher(
+        self,
+        db: AsyncSession,
+        class_id: uuid.UUID,
+        subject_id: uuid.UUID,
+        teacher_id: uuid.UUID,
+    ) -> ClassSubjectTeacher:
+        """Assign a teacher to a specific subject within a class.
+
+        Idempotent: if the (class, subject, teacher) triple is already
+        linked, returns the existing row rather than raising.
+        """
+        tenant_id = get_tenant_id()
+
+        # Validate the class belongs to this tenant.
+        cls_result = await db.execute(
+            select(SchoolClass).where(
+                SchoolClass.id == class_id,
+                SchoolClass.tenant_id == tenant_id,
+                SchoolClass.deleted_at.is_(None),
+            )
+        )
+        if not cls_result.scalar_one_or_none():
+            from app.exceptions import NotFoundException
+            raise NotFoundException(f"Class {class_id} not found")
+
+        # Validate subject-is-assigned-to-class — can't make someone a
+        # subject teacher for a subject the class doesn't even take.
+        cs_result = await db.execute(
+            select(ClassSubject).where(
+                ClassSubject.class_id == class_id,
+                ClassSubject.subject_id == subject_id,
+            )
+        )
+        if not cs_result.scalar_one_or_none():
+            from app.exceptions import ValidationException
+            raise ValidationException(
+                "Subject is not assigned to this class — assign the "
+                "subject first, then pick a teacher.",
+            )
+
+        # Validate teacher belongs to this tenant and is a TEACHER.
+        tr_result = await db.execute(
+            select(User).where(
+                User.id == teacher_id,
+                User.tenant_id == tenant_id,
+                User.role == "TEACHER",
+                User.deleted_at.is_(None),
+            )
+        )
+        if not tr_result.scalar_one_or_none():
+            from app.exceptions import NotFoundException
+            raise NotFoundException(
+                f"Teacher {teacher_id} not found on this tenant",
+            )
+
+        # Idempotent — don't duplicate an existing assignment.
+        existing = (await db.execute(
+            select(ClassSubjectTeacher).where(
+                ClassSubjectTeacher.class_id == class_id,
+                ClassSubjectTeacher.subject_id == subject_id,
+                ClassSubjectTeacher.teacher_id == teacher_id,
+            )
+        )).scalar_one_or_none()
+        if existing:
+            return existing
+
+        row = ClassSubjectTeacher(
+            class_id=class_id,
+            subject_id=subject_id,
+            teacher_id=teacher_id,
+        )
+        db.add(row)
+        await db.flush()
+        await db.refresh(row)
+        return row
+
+    async def unassign_subject_teacher(
+        self,
+        db: AsyncSession,
+        class_id: uuid.UUID,
+        subject_id: uuid.UUID,
+        teacher_id: uuid.UUID,
+    ) -> bool:
+        """Remove a teacher's assignment to a subject in a class.
+
+        Returns True if a row was deleted, False if nothing matched.
+        Validates tenant scope via the class.
+        """
+        tenant_id = get_tenant_id()
+        # Guard: the class must be on this tenant. If not, pretend
+        # the row doesn't exist (don't leak which tenant owns it).
+        cls = (await db.execute(
+            select(SchoolClass).where(
+                SchoolClass.id == class_id,
+                SchoolClass.tenant_id == tenant_id,
+            )
+        )).scalar_one_or_none()
+        if not cls:
+            return False
+
+        row = (await db.execute(
+            select(ClassSubjectTeacher).where(
+                ClassSubjectTeacher.class_id == class_id,
+                ClassSubjectTeacher.subject_id == subject_id,
+                ClassSubjectTeacher.teacher_id == teacher_id,
+            )
+        )).scalar_one_or_none()
+        if not row:
+            return False
+        await db.delete(row)
+        await db.flush()
+        return True
+
+    async def get_teachers_for_class_subject(
+        self,
+        db: AsyncSession,
+        class_id: uuid.UUID,
+        subject_id: uuid.UUID,
+    ) -> list[User]:
+        """Every teacher currently assigned to this subject in this class."""
+        rows = (await db.execute(
+            select(ClassSubjectTeacher).where(
+                ClassSubjectTeacher.class_id == class_id,
+                ClassSubjectTeacher.subject_id == subject_id,
+            )
+        )).scalars().all()
+        return [r.teacher for r in rows]
+
+    async def get_subjects_taught_by_teacher(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+        class_id: uuid.UUID | None = None,
+    ) -> list[ClassSubjectTeacher]:
+        """Every (class, subject) a teacher is specialised in.
+
+        Scoped to a single class when ``class_id`` is given — handy
+        for "what does this teacher own in this class" lookups on
+        the class detail page.
+        """
+        stmt = select(ClassSubjectTeacher).where(
+            ClassSubjectTeacher.teacher_id == teacher_id,
+        )
+        if class_id is not None:
+            stmt = stmt.where(ClassSubjectTeacher.class_id == class_id)
+        return list((await db.execute(stmt)).scalars().all())
+
+    async def can_teacher_grade_subject(
+        self,
+        db: AsyncSession,
+        *,
+        teacher_id: uuid.UUID,
+        class_id: uuid.UUID,
+        subject_id: uuid.UUID,
+        subject_teacher_mode: bool,
+    ) -> bool:
+        """Centralised permission gate for subject-level writes
+        (grading, subject comments, subject-scoped parent messaging).
+
+        Logic:
+          - Subject-teacher mode OFF: any teacher assigned to the
+            class via ``teacher_classes`` (general class teacher)
+            can grade every subject — original behaviour.
+          - Subject-teacher mode ON: either
+              a) the teacher is the general class teacher for this
+                 class (``teacher_classes`` row present), OR
+              b) the teacher is explicitly assigned to this subject
+                 in this class (``class_subject_teachers`` row).
+
+        School admins (SUPER_ADMIN / SCHOOL_ADMIN) always pass; this
+        helper is scoped to the TEACHER role. Callers that already
+        branch on role should skip calling this.
+        """
+        # Shortcut: general class teacher always qualifies.
+        general = (await db.execute(
+            select(TeacherClass).where(
+                TeacherClass.teacher_id == teacher_id,
+                TeacherClass.class_id == class_id,
+            )
+        )).scalar_one_or_none()
+        if general is not None:
+            return True
+
+        if not subject_teacher_mode:
+            # Pre-feature behaviour: without a teacher_classes row the
+            # teacher can't grade. The subject-specialist table isn't
+            # consulted at all when the feature flag is off.
+            return False
+
+        subject_teacher = (await db.execute(
+            select(ClassSubjectTeacher).where(
+                ClassSubjectTeacher.teacher_id == teacher_id,
+                ClassSubjectTeacher.class_id == class_id,
+                ClassSubjectTeacher.subject_id == subject_id,
+            )
+        )).scalar_one_or_none()
+        return subject_teacher is not None
 
 
 # Singleton instance

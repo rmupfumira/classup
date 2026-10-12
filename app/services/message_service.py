@@ -655,7 +655,10 @@ class MessageService:
             return
 
         if sender_role == "TEACHER":
-            # Student must be in teacher's class
+            # Student must be in teacher's class — either as the
+            # general class teacher (teacher_classes) OR, under
+            # subject-specialist mode, as a subject teacher assigned
+            # to one of this student's class subjects.
             student = await self._get_student(db, student_id)
             if not student.class_id:
                 raise ForbiddenException("Student is not assigned to a class")
@@ -666,8 +669,35 @@ class MessageService:
                     TeacherClass.class_id == student.class_id,
                 )
             )
-            if not tc_result.scalar_one_or_none():
-                raise ForbiddenException("You can only message about students in your classes")
+            is_general_class_teacher = tc_result.scalar_one_or_none() is not None
+
+            if not is_general_class_teacher:
+                # Second chance: subject-specialist mode. If the
+                # tenant has it on AND this teacher is assigned to
+                # ANY subject in this student's class, they can
+                # message the parent (the scope-to-subject rule is
+                # applied at the UI / report-view level — a message
+                # itself doesn't carry a subject tag).
+                from app.models import Tenant
+                from app.models.academic import ClassSubjectTeacher
+
+                tenant = await db.get(Tenant, tenant_id)
+                if tenant and tenant.subject_teacher_enabled:
+                    subject_teacher = (await db.execute(
+                        select(ClassSubjectTeacher).where(
+                            ClassSubjectTeacher.teacher_id == sender_id,
+                            ClassSubjectTeacher.class_id == student.class_id,
+                        )
+                    )).scalar_one_or_none()
+                    if subject_teacher is None:
+                        raise ForbiddenException(
+                            "You can only message about students in classes "
+                            "where you teach or own a subject.",
+                        )
+                else:
+                    raise ForbiddenException(
+                        "You can only message about students in your classes",
+                    )
 
             # Recipient must be a parent of this student
             ps_result = await db.execute(

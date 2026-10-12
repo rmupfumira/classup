@@ -118,6 +118,83 @@ class ClassSubject(Base, TimestampMixin):
         return self.total_marks if self.total_marks is not None else self.subject.default_total_marks
 
 
+class ClassSubjectTeacher(Base, TimestampMixin):
+    """Links a teacher to a specific subject within a class.
+
+    Only used when ``tenant.settings.subject_teacher_enabled`` is True
+    — the secondary-school pattern where each subject has its own
+    specialist (vs the primary-school pattern of one general class
+    teacher who grades every subject).
+
+    A teacher can:
+    - Teach multiple subjects across multiple classes (many rows).
+    - Simultaneously be a general class teacher (``teacher_classes``
+      row with ``is_primary=True`` or false) for one class AND a
+      subject teacher for subjects in other classes — the two tables
+      coexist cleanly.
+
+    Permission semantics (enforced by ``academic_service`` /
+    ``report_service`` / ``message_service``):
+    - Subject-teacher mode OFF → ignored entirely; the general class
+      teacher continues to handle every subject (status quo).
+    - Subject-teacher mode ON:
+        * The teacher assigned here grades + comments on this
+          specific subject for every student in that class.
+        * They can message parents of those students, scoped to that
+          subject.
+        * They see only their own subject's grades on a student's
+          report UNLESS they're also the general class teacher of
+          that class (teacher_classes row), in which case they see
+          everything.
+    """
+
+    __tablename__ = "class_subject_teachers"
+    __table_args__ = (
+        Index("idx_cst_class", "class_id"),
+        Index("idx_cst_subject", "subject_id"),
+        Index("idx_cst_teacher", "teacher_id"),
+        Index(
+            "idx_cst_unique",
+            "class_id",
+            "subject_id",
+            "teacher_id",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    class_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("school_classes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("subjects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    # Relationships — lazy="selectin" so admin views that render a
+    # subject with its assigned teachers don't N+1.
+    school_class = relationship("SchoolClass", lazy="selectin")
+    subject = relationship("Subject", lazy="selectin")
+    teacher = relationship("User", lazy="selectin")
+
+
 class GradingSystem(TenantScopedModel):
     """A grading scale/system used for reports."""
 

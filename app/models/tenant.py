@@ -169,6 +169,21 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
         return self.settings.get("school_type", SchoolType.DAY.value)
 
     @property
+    def subject_teacher_enabled(self) -> bool:
+        """Secondary-school subject-specialist mode.
+
+        - False (default): one general class teacher handles every
+          subject for their class. Grading, parent messaging,
+          report comments all live with the primary class teacher.
+        - True: subjects within a class can carry their own
+          specialist teacher (``class_subject_teachers`` table).
+          Grading + subject-scoped messaging are gated by that
+          assignment. Attendance stays with the general class
+          teacher regardless.
+        """
+        return bool(self.settings.get("subject_teacher_enabled", False))
+
+    @property
     def language(self) -> str:
         """Get the tenant's default language."""
         return self.settings.get("language", "en")
@@ -342,6 +357,12 @@ def get_default_tenant_settings(
         # Info; MIXED schools also need to set Student.residence on
         # every student (either at enrolment or via a bulk patch).
         "school_type": SchoolType.DAY.value,
+        # Subject-specialist teacher mode (secondary-school pattern).
+        # Off by default — primary schools and daycares use the one
+        # general class teacher model unchanged. Admins flip it on in
+        # Settings → Academics; the admin UI for assigning subject
+        # teachers only appears when this is True.
+        "subject_teacher_enabled": False,
         "report_config": {
             "default_report_type": "DAILY_ACTIVITY" if education_type == EducationType.DAYCARE else "PROGRESS_REPORT",
             "enabled_sections": ["meals", "nap", "fluids", "bathroom", "activities", "notes"]

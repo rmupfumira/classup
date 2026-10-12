@@ -376,6 +376,95 @@ async def bulk_assign_subjects(
     }
 
 
+# ==================== SUBJECT TEACHERS ====================
+# Only usable when ``tenant.settings.subject_teacher_enabled`` is True
+# — the endpoints themselves aren't gated so an admin can still read
+# existing assignments after disabling the mode (orphan cleanup).
+# The admin UI should only expose "Assign teacher" when the setting
+# is on.
+
+
+class SubjectTeacherAssign(BaseModel):
+    """Assign one teacher to one subject in one class."""
+    teacher_id: uuid.UUID
+
+
+@router.get(
+    "/classes/{class_id}/subjects/{subject_id}/teachers",
+    response_model=dict,
+)
+@require_role("SCHOOL_ADMIN", "TEACHER")
+async def list_subject_teachers(
+    class_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Teachers currently assigned to this subject in this class."""
+    service = get_academic_service()
+    teachers = await service.get_teachers_for_class_subject(db, class_id, subject_id)
+    return {
+        "status": "success",
+        "data": [
+            {
+                "id": str(t.id),
+                "first_name": t.first_name,
+                "last_name": t.last_name,
+                "email": t.email,
+            }
+            for t in teachers
+        ],
+    }
+
+
+@router.post(
+    "/classes/{class_id}/subjects/{subject_id}/teachers",
+    response_model=dict,
+)
+@require_role("SCHOOL_ADMIN")
+async def assign_subject_teacher_api(
+    class_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    data: SubjectTeacherAssign,
+    db: AsyncSession = Depends(get_db),
+):
+    """Assign a teacher to a subject within a class. Idempotent."""
+    service = get_academic_service()
+    row = await service.assign_subject_teacher(
+        db, class_id=class_id, subject_id=subject_id, teacher_id=data.teacher_id,
+    )
+    return {
+        "status": "success",
+        "message": "Teacher assigned to subject",
+        "data": {
+            "id": str(row.id),
+            "teacher_id": str(row.teacher_id),
+            "class_id": str(row.class_id),
+            "subject_id": str(row.subject_id),
+        },
+    }
+
+
+@router.delete(
+    "/classes/{class_id}/subjects/{subject_id}/teachers/{teacher_id}",
+    response_model=dict,
+)
+@require_role("SCHOOL_ADMIN")
+async def unassign_subject_teacher_api(
+    class_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    teacher_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove a teacher's assignment to a subject in a class."""
+    service = get_academic_service()
+    removed = await service.unassign_subject_teacher(
+        db, class_id=class_id, subject_id=subject_id, teacher_id=teacher_id,
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="No such subject-teacher assignment")
+    return {"status": "success", "message": "Teacher unassigned from subject"}
+
+
 # ==================== GRADING SYSTEMS ====================
 
 

@@ -351,10 +351,35 @@ class ClassService:
         db: AsyncSession,
         teacher_id: uuid.UUID,
     ) -> list[SchoolClass]:
-        """Get all classes assigned to a teacher."""
+        """Get all classes a teacher is associated with.
+
+        Two sources:
+          1. ``teacher_classes`` — the general class teacher assignment
+             (always consulted).
+          2. ``class_subject_teachers`` — subject-specialist
+             assignments. Only consulted when the tenant has
+             ``subject_teacher_enabled=True``, otherwise the subject
+             table is treated as if empty (keeps the old behaviour
+             for every pre-feature tenant).
+
+        A teacher who's both a class teacher of one class AND a
+        subject teacher in another sees both classes in the picker.
+        Deduped by class id.
+        """
         tenant_id = get_tenant_id()
 
-        query = (
+        # Resolve whether to union-in the subject-teacher assignments.
+        # Lazy import so services don't form a cycle with Tenant.
+        from app.models import Tenant
+        from app.models.academic import ClassSubjectTeacher
+
+        tenant = await db.get(Tenant, tenant_id)
+        include_subject_teaching = bool(
+            tenant and tenant.subject_teacher_enabled
+        )
+
+        # Base: classes where this teacher is a general class teacher.
+        general_q = (
             select(SchoolClass)
             .join(TeacherClass, TeacherClass.class_id == SchoolClass.id)
             .where(
@@ -362,13 +387,33 @@ class ClassService:
                 SchoolClass.tenant_id == tenant_id,
                 SchoolClass.deleted_at.is_(None),
             )
-            .options(
-                selectinload(SchoolClass.grade_level_rel),
-            )
+            .options(selectinload(SchoolClass.grade_level_rel))
         )
+        classes_by_id: dict = {}
+        for cls in (await db.execute(general_q)).scalars().all():
+            classes_by_id[cls.id] = cls
 
-        result = await db.execute(query)
-        return list(result.scalars().all())
+        # Overlay: classes where this teacher owns at least one
+        # subject in the ``class_subject_teachers`` table.
+        if include_subject_teaching:
+            subject_q = (
+                select(SchoolClass)
+                .join(
+                    ClassSubjectTeacher,
+                    ClassSubjectTeacher.class_id == SchoolClass.id,
+                )
+                .where(
+                    ClassSubjectTeacher.teacher_id == teacher_id,
+                    SchoolClass.tenant_id == tenant_id,
+                    SchoolClass.deleted_at.is_(None),
+                )
+                .options(selectinload(SchoolClass.grade_level_rel))
+                .distinct()
+            )
+            for cls in (await db.execute(subject_q)).scalars().unique().all():
+                classes_by_id.setdefault(cls.id, cls)
+
+        return list(classes_by_id.values())
 
     async def get_my_classes(
         self,
