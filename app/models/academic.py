@@ -195,6 +195,77 @@ class ClassSubjectTeacher(Base, TimestampMixin):
     teacher = relationship("User", lazy="selectin")
 
 
+class StudentSubjectOverride(Base, TimestampMixin):
+    """Per-student override of a class's subject.
+
+    Normally every student in a class takes the class's full set of
+    ``class_subjects``. In Combined-curriculum schools (ZIMSEC +
+    Cambridge coexisting), individual students may follow a different
+    syllabus for one or more subjects — e.g. the class takes
+    ZIMSEC Mathematics but Alice takes Cambridge Mathematics instead.
+
+    This table records those swaps:
+
+    - ``class_subject_id`` → the row the student is NOT taking.
+    - ``override_subject_id`` → the subject they take instead
+      (must exist in ``subjects`` on the same tenant; need not be
+      pre-assigned to any class via ``class_subjects``).
+
+    Semantics (enforced by
+    ``academic_service.get_effective_subjects_for_student``):
+    - A student with no override rows takes the plain ``class_subjects``
+      list (unchanged behaviour for every pre-feature tenant).
+    - A student with overrides sees `class_subjects` MINUS the
+      overridden rows PLUS the override subjects, each carrying its
+      own ``curriculum_pack_code`` so reports render it with the
+      right grading scale.
+
+    Not currently used for attendance or messaging — those stay
+    class-scoped. Added 2026-10-12 with task #158.
+    """
+
+    __tablename__ = "student_subject_overrides"
+    __table_args__ = (
+        Index("idx_sso_student", "student_id"),
+        Index("idx_sso_class_subject", "class_subject_id"),
+        Index(
+            "idx_sso_unique",
+            "student_id",
+            "class_subject_id",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    class_subject_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("class_subjects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    override_subject_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("subjects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # Relationships — selectin so the admin UI's per-student overrides
+    # list doesn't N+1 when loading a page of students.
+    student = relationship("Student", lazy="selectin")
+    class_subject = relationship("ClassSubject", lazy="selectin")
+    override_subject = relationship(
+        "Subject", foreign_keys=[override_subject_id], lazy="selectin",
+    )
+
+
 class GradingSystem(TenantScopedModel):
     """A grading scale/system used for reports."""
 

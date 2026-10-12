@@ -52,6 +52,18 @@ class SchoolClass(TenantScopedModel):
         ForeignKey("grading_systems.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Combined-curriculum track hint (ZIMSEC / CAMBRIDGE / NULL).
+    # Only meaningful when the tenant uses the COMBINED_ZW curriculum
+    # pack (both ZIMSEC + Cambridge subjects coexist in the subject
+    # catalogue). Lets a single tenant run some classes on ZIMSEC and
+    # others on Cambridge. NULL = inherit from tenant default (or
+    # explicitly mixed — admin picked a mix of subjects on this class).
+    # Does not restrict which subjects can be assigned — just steers
+    # the grading-system inferrer and the per-student override UI.
+    # Added 2026-10-12 with task #158.
+    curriculum_track: Mapped[str | None] = mapped_column(
+        String(32), nullable=True,
+    )
 
     # Relationships
     tenant = relationship("Tenant", back_populates="school_classes", lazy="selectin")

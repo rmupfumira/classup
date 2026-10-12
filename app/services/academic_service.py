@@ -7,8 +7,15 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.academic import Subject, ClassSubject, ClassSubjectTeacher, GradingSystem
+from app.models.academic import (
+    Subject,
+    ClassSubject,
+    ClassSubjectTeacher,
+    GradingSystem,
+    StudentSubjectOverride,
+)
 from app.models.school_class import SchoolClass, TeacherClass
+from app.models.student import Student
 from app.models.user import User
 from app.utils.tenant_context import get_tenant_id
 
@@ -750,6 +757,31 @@ class AcademicService:
 
     # ==================== CURRICULUM PACKS ====================
 
+    @staticmethod
+    def _resolve_subject_pack_code(sdef, pack) -> str:
+        """Which curriculum_pack_code should get stamped onto this subject?
+
+        For single-body packs (ZW_ZIMSEC, ZW_CAMBRIDGE, ZA_CAPS, ...)
+        the answer is just the pack code itself. For the Combined
+        pack both bodies' subjects coexist, so we need the ORIGINAL
+        body code (ZW_ZIMSEC or ZW_CAMBRIDGE) per subject — that's
+        what drives the per-subject grading-scale selection on
+        report cards.
+
+        SubjectDef codes follow stable prefixes:
+          - "ZS-..."  → ZIMSEC subjects
+          - "CIE-..." → Cambridge subjects
+
+        Anything else falls back to the pack code (safe for all
+        existing single-body packs).
+        """
+        if pack is not None and pack.code == "ZW_COMBINED":
+            if sdef.code.startswith("ZS-"):
+                return "ZW_ZIMSEC"
+            if sdef.code.startswith("CIE-"):
+                return "ZW_CAMBRIDGE"
+        return pack.code if pack else ""
+
     async def apply_curriculum_pack(
         self, db: AsyncSession, pack_code: str,
     ) -> dict:
@@ -809,24 +841,48 @@ class AcademicService:
                     is_active=True,
                     # Stamp the subject with its origin pack — powers
                     # the class→grading-system inferrer in
-                    # assign_subject_to_class.
-                    curriculum_pack_code=pack.code,
+                    # assign_subject_to_class. For the Combined pack
+                    # each subject keeps its ORIGINAL body code
+                    # (ZIMSEC subjects → ZW_ZIMSEC, Cambridge → ZW_CAMBRIDGE)
+                    # so report cards grade each with the right scale.
+                    curriculum_pack_code=self._resolve_subject_pack_code(
+                        sdef, pack,
+                    ),
                 ))
                 existing_codes.add(code_upper)
                 added += 1
                 subject_names.append(sdef.name)
 
-        # Seed the pack's grading system. We ADD it if a scale with
-        # the same NAME isn't already on the tenant — so loading
+        # Seed the pack's grading system(s). We ADD a scale if one
+        # with the same NAME isn't already on the tenant — so loading
         # ZIMSEC then Cambridge gives the tenant both scales, each
         # available for per-class inference and admin override. We
-        # mark the pack's scale as ``is_default=True`` only when the
-        # tenant had NO scales before this call, protecting the
+        # mark the FIRST added scale as ``is_default=True`` only when
+        # the tenant had NO scales before this call, protecting the
         # admin's existing default. ``is_default`` on an additional
         # scale would silently flip the tenant's default, which is
         # surprising.
+        #
+        # For the Combined pack (``grading_system=None``) we seed
+        # BOTH ZIMSEC O-Level AND Cambridge A*-U — the report-card
+        # renderer picks the right one per subject via
+        # ``subjects.curriculum_pack_code``.
+        from app.utils.curriculum_packs import (
+            _ZIMSEC_O_LEVEL_GRADING,
+            _CAMBRIDGE_GRADING,
+        )
+
+        grading_systems_to_seed: list = []
+        if pack is not None:
+            if pack.grading_system is not None:
+                grading_systems_to_seed.append(pack.grading_system)
+            elif pack.code == "ZW_COMBINED":
+                grading_systems_to_seed.extend(
+                    [_ZIMSEC_O_LEVEL_GRADING, _CAMBRIDGE_GRADING],
+                )
+
         grading_system_name: str | None = None
-        if pack is not None and pack.grading_system is not None:
+        if grading_systems_to_seed:
             existing_gs_count = (await db.execute(
                 select(func.count()).select_from(
                     select(GradingSystem).where(
@@ -836,36 +892,45 @@ class AcademicService:
                 )
             )).scalar() or 0
 
-            # Does one with THIS name already exist? Preserves
-            # idempotency on re-apply and respects admin-renamed
-            # scales.
-            same_name_exists = (await db.execute(
-                select(func.count()).select_from(
-                    select(GradingSystem).where(
-                        GradingSystem.tenant_id == tenant_id,
-                        GradingSystem.name == pack.grading_system.name,
-                        GradingSystem.deleted_at.is_(None),
-                    ).subquery()
-                )
-            )).scalar() or 0
+            added_names: list[str] = []
+            for i, gs_def in enumerate(grading_systems_to_seed):
+                # Does one with THIS name already exist? Preserves
+                # idempotency on re-apply and respects admin-renamed
+                # scales.
+                same_name_exists = (await db.execute(
+                    select(func.count()).select_from(
+                        select(GradingSystem).where(
+                            GradingSystem.tenant_id == tenant_id,
+                            GradingSystem.name == gs_def.name,
+                            GradingSystem.deleted_at.is_(None),
+                        ).subquery()
+                    )
+                )).scalar() or 0
 
-            if same_name_exists == 0:
-                gs = GradingSystem(
-                    tenant_id=tenant_id,
-                    name=pack.grading_system.name,
-                    description=pack.grading_system.description,
-                    is_default=(existing_gs_count == 0),
-                    is_active=True,
-                    grades=[
-                        {
-                            "min": b.min, "max": b.max, "grade": b.grade,
-                            "description": b.description, "points": b.points,
-                        }
-                        for b in pack.grading_system.bands
-                    ],
-                )
-                db.add(gs)
-                grading_system_name = pack.grading_system.name
+                if same_name_exists == 0:
+                    is_default = (existing_gs_count == 0 and i == 0)
+                    gs = GradingSystem(
+                        tenant_id=tenant_id,
+                        name=gs_def.name,
+                        description=gs_def.description,
+                        is_default=is_default,
+                        is_active=True,
+                        grades=[
+                            {
+                                "min": b.min, "max": b.max, "grade": b.grade,
+                                "description": b.description, "points": b.points,
+                            }
+                            for b in gs_def.bands
+                        ],
+                    )
+                    db.add(gs)
+                    added_names.append(gs_def.name)
+
+            # Report the primary name on single packs for backwards
+            # compat; Combined returns both names joined.
+            grading_system_name = (
+                " + ".join(added_names) if added_names else None
+            )
 
         # Record the choice on the tenant so the UI can show it and the
         # picker can preselect. Store the raw code even for Custom.
@@ -1095,6 +1160,166 @@ class AcademicService:
             )
         )).scalar_one_or_none()
         return subject_teacher is not None
+
+
+    # ==================== STUDENT SUBJECT OVERRIDES ====================
+    #
+    # Per-student swaps of a class's subject — used in Combined-curriculum
+    # schools where the class default is one body (e.g. ZIMSEC Math) but
+    # a specific student follows the other (Cambridge Math).
+
+    async def set_student_subject_override(
+        self,
+        db: AsyncSession,
+        student_id: uuid.UUID,
+        class_subject_id: uuid.UUID,
+        override_subject_id: uuid.UUID,
+    ) -> StudentSubjectOverride:
+        """Create (or update) an override row.
+
+        Idempotent — if a row for (student, class_subject) already
+        exists, its ``override_subject_id`` is updated. Validates that
+        all three IDs belong to the current tenant.
+        """
+        from app.exceptions import NotFoundException, ValidationException
+
+        tenant_id = get_tenant_id()
+
+        # Verify tenant scope — the three FKs cross tables so a bad
+        # payload could otherwise create a cross-tenant override.
+        student = (await db.execute(
+            select(Student).where(
+                Student.id == student_id,
+                Student.tenant_id == tenant_id,
+                Student.deleted_at.is_(None),
+            )
+        )).scalar_one_or_none()
+        if student is None:
+            raise NotFoundException(f"Student {student_id} not found")
+
+        cs = (await db.execute(
+            select(ClassSubject).where(ClassSubject.id == class_subject_id)
+        )).scalar_one_or_none()
+        if cs is None or cs.class_id != student.class_id:
+            raise ValidationException(
+                "Override must target a subject on the student's own class.",
+            )
+
+        new_subj = (await db.execute(
+            select(Subject).where(
+                Subject.id == override_subject_id,
+                Subject.tenant_id == tenant_id,
+                Subject.deleted_at.is_(None),
+            )
+        )).scalar_one_or_none()
+        if new_subj is None:
+            raise NotFoundException(
+                f"Override subject {override_subject_id} not found",
+            )
+        if new_subj.id == cs.subject_id:
+            raise ValidationException(
+                "Override subject is the same as the class subject — "
+                "nothing to override.",
+            )
+
+        # Upsert — SA doesn't do ON CONFLICT via the ORM cleanly, so
+        # fetch-then-update-or-insert.
+        existing = (await db.execute(
+            select(StudentSubjectOverride).where(
+                StudentSubjectOverride.student_id == student_id,
+                StudentSubjectOverride.class_subject_id == class_subject_id,
+            )
+        )).scalar_one_or_none()
+        if existing is not None:
+            existing.override_subject_id = override_subject_id
+            await db.flush()
+            await db.refresh(existing)
+            return existing
+
+        row = StudentSubjectOverride(
+            student_id=student_id,
+            class_subject_id=class_subject_id,
+            override_subject_id=override_subject_id,
+        )
+        db.add(row)
+        await db.flush()
+        await db.refresh(row)
+        return row
+
+    async def clear_student_subject_override(
+        self,
+        db: AsyncSession,
+        student_id: uuid.UUID,
+        class_subject_id: uuid.UUID,
+    ) -> bool:
+        """Remove the override — student falls back to the class default."""
+        tenant_id = get_tenant_id()
+        # Tenant guard via the student row.
+        student = await db.get(Student, student_id)
+        if student is None or student.tenant_id != tenant_id:
+            return False
+        row = (await db.execute(
+            select(StudentSubjectOverride).where(
+                StudentSubjectOverride.student_id == student_id,
+                StudentSubjectOverride.class_subject_id == class_subject_id,
+            )
+        )).scalar_one_or_none()
+        if row is None:
+            return False
+        await db.delete(row)
+        await db.flush()
+        return True
+
+    async def get_effective_subjects_for_student(
+        self,
+        db: AsyncSession,
+        student_id: uuid.UUID,
+    ) -> list[Subject]:
+        """Return the list of Subjects this student actually takes.
+
+        Starts from the class's ``class_subjects`` and swaps in any
+        per-student overrides. Students without any override rows (the
+        common case) get the class default verbatim — pre-feature
+        behaviour unchanged.
+
+        Returns Subject rows (not ClassSubject) because consumers
+        (reports, grading) care about the subject identity + its
+        ``curriculum_pack_code`` for grading-scale selection, not the
+        join row.
+        """
+        student = await db.get(Student, student_id)
+        if student is None or student.class_id is None:
+            return []
+
+        # Load the class's subjects + the overrides in two queries.
+        class_subjects = (await db.execute(
+            select(ClassSubject)
+            .where(ClassSubject.class_id == student.class_id)
+            .order_by(ClassSubject.display_order, ClassSubject.id)
+        )).scalars().all()
+
+        overrides = (await db.execute(
+            select(StudentSubjectOverride).where(
+                StudentSubjectOverride.student_id == student_id,
+            )
+        )).scalars().all()
+        override_map = {o.class_subject_id: o.override_subject_id for o in overrides}
+
+        # Collect subject ids in the right order — override swaps in
+        # the alternate subject, otherwise we keep the class default.
+        subject_ids: list[uuid.UUID] = []
+        for cs in class_subjects:
+            subject_ids.append(override_map.get(cs.id, cs.subject_id))
+
+        if not subject_ids:
+            return []
+
+        # One SELECT for all subjects (preserve order with an index).
+        rows = (await db.execute(
+            select(Subject).where(Subject.id.in_(subject_ids))
+        )).scalars().all()
+        by_id = {s.id: s for s in rows}
+        return [by_id[sid] for sid in subject_ids if sid in by_id]
 
 
 # Singleton instance

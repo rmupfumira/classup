@@ -32,7 +32,13 @@ from app.models.webhook import (
     generate_webhook_secret,
 )
 from app.models.import_job import BulkImportJob, ImportType, ImportStatus
-from app.models.academic import Subject, ClassSubject, ClassSubjectTeacher, GradingSystem
+from app.models.academic import (
+    Subject,
+    ClassSubject,
+    ClassSubjectTeacher,
+    StudentSubjectOverride,
+    GradingSystem,
+)
 from app.models.system_settings import SystemSettings
 from app.models.billing import (
     BillingFeeItem,
@@ -158,6 +164,7 @@ __all__ = [
     "Subject",
     "ClassSubject",
     "ClassSubjectTeacher",
+    "StudentSubjectOverride",
     "GradingSystem",
     # System Settings
     "SystemSettings",

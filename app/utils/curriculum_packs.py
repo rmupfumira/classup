@@ -419,6 +419,30 @@ CURRICULUM_PACKS: dict[str, dict[str, CurriculumPack]] = {
             subjects=_CAMBRIDGE_SUBJECTS,
             grading_system=_CAMBRIDGE_GRADING,
         ),
+        # Combined pack — both ZIMSEC + Cambridge subjects coexist in
+        # the subject catalogue. Classes can be ZIMSEC-track OR
+        # Cambridge-track (school_classes.curriculum_track) and
+        # individual students can override a class subject with its
+        # cross-curriculum equivalent via student_subject_overrides.
+        #
+        # Each subject keeps its own ``curriculum_pack_code`` so
+        # reports render it with the right grading scale (ZIMSEC
+        # subjects → ZIMSEC O-Level; Cambridge subjects → Cambridge
+        # A*-U). The pack's default grading_system is None — the
+        # seeder adds BOTH grading systems in that case (see
+        # academic_service.apply_curriculum_pack).
+        "ZW_COMBINED": CurriculumPack(
+            code="ZW_COMBINED",
+            name="ZIMSEC + Cambridge (Combined)",
+            description=(
+                "Both ZIMSEC and Cambridge subjects — common for Zimbabwe "
+                "schools that run dual tracks. Each class picks ZIMSEC or "
+                "Cambridge; individual students can override per subject."
+            ),
+            country_code="ZW",
+            subjects=_ZIMSEC_SUBJECTS + _CAMBRIDGE_SUBJECTS,
+            grading_system=None,
+        ),
     },
     "ZA": {
         "ZA_CAPS": CurriculumPack(
