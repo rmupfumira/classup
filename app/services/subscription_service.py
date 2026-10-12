@@ -9,7 +9,10 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.models.student import Student
 from app.models.subscription import (
+    BillingFrequency,
+    ChargeModel,
     EftPaymentStatus,
     PlatformEftPayment,
     PlatformInvoice,
@@ -825,6 +828,142 @@ class SubscriptionService:
 
         logger.info(f"EFT payment {payment_id} REJECTED: {reason[:100]}")
         return payment
+
+    # ==================== CHARGE-MODEL BILLING ====================
+    #
+    # Charge-model aware cycle amount computation. Called when
+    # generating a subscription invoice OR when previewing "what this
+    # plan would cost you right now" on the subscription page.
+    #
+    # Keeping the math as a pure function + a tiny DB counter means
+    # it's trivial to unit-test, and the UI can call it from Python
+    # or re-derive it in JS the same way.
+
+    async def count_active_students(
+        self, db: AsyncSession, tenant_id: uuid.UUID,
+    ) -> int:
+        """How many active students live on this tenant RIGHT NOW.
+
+        'Active' = ``is_active=True`` AND ``deleted_at IS NULL``.
+        Soft-deleted and deactivated students are excluded — the
+        tenant isn't using them for the cycle so we don't charge
+        for them.
+        """
+        count = (await db.execute(
+            select(func.count(Student.id)).where(
+                Student.tenant_id == tenant_id,
+                Student.deleted_at.is_(None),
+                Student.is_active.is_(True),
+            )
+        )).scalar() or 0
+        return int(count)
+
+    @staticmethod
+    def compute_cycle_amount(
+        plan: SubscriptionPlan,
+        billing_frequency: str,
+        active_student_count: int,
+    ) -> Decimal:
+        """Return the money ClassUp charges the tenant for one cycle.
+
+        The three charge models:
+          - **FLAT**: ``price_monthly`` (or ``price_annually``) only.
+            per_student_amount ignored.
+          - **PER_STUDENT**: ``per_student_amount × student_count``.
+            Base price ignored entirely. If per_student_amount is
+            NULL (misconfigured plan) → 0.
+          - **HYBRID**: base + (per_student_amount × student_count).
+
+        For ANNUALLY frequency, the base comes from price_annually
+        when set (admins can discount annual), otherwise 12×monthly.
+        The per-student rate is NOT auto-scaled — the admin configures
+        the plan's per_student_amount as "per student per cycle",
+        so a $12 annual per-student rate ≈ $1/month-equivalent.
+        This matches how our Paystack / PayNow integrations already
+        charge "once per cycle" and avoids the admin needing a
+        separate monthly vs annual per-student field.
+
+        Returns a Decimal rounded to 2 places. Negative counts
+        (shouldn't happen) are clamped to 0.
+        """
+        if plan is None:
+            return Decimal("0.00")
+
+        count = max(0, int(active_student_count or 0))
+        model = (plan.charge_model or ChargeModel.FLAT.value).upper()
+        is_annual = (billing_frequency or "").upper() == BillingFrequency.ANNUALLY.value
+
+        # Resolve base price for the cycle.
+        if is_annual and plan.price_annually is not None:
+            base = Decimal(plan.price_annually)
+        elif is_annual:
+            base = Decimal(plan.price_monthly) * Decimal(12)
+        else:
+            base = Decimal(plan.price_monthly or 0)
+
+        per_student = Decimal(plan.per_student_amount or 0)
+
+        if model == ChargeModel.PER_STUDENT.value:
+            total = per_student * Decimal(count)
+        elif model == ChargeModel.HYBRID.value:
+            total = base + (per_student * Decimal(count))
+        else:  # FLAT (or unknown model — fail safe)
+            total = base
+
+        # Round to cents. ``Decimal.quantize`` with 0.01 would also
+        # work; ``round(..., 2)`` returns a float. Keep it in Decimal.
+        from decimal import ROUND_HALF_UP
+        return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    async def preview_cycle_amount(
+        self,
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        plan: SubscriptionPlan,
+        billing_frequency: str,
+    ) -> dict:
+        """"What would this plan cost right now?" — for UI preview.
+
+        Returns a dict the subscription page's JS can render:
+            {
+                "charge_model": "HYBRID",
+                "base_amount": "20.00",
+                "per_student_amount": "1.00",
+                "student_count": 45,
+                "total_amount": "65.00",
+                "currency": "USD",
+                "billing_frequency": "MONTHLY",
+            }
+
+        FLAT plans still return ``student_count`` (zero contribution)
+        so the UI template can share one shape across all plan types.
+        """
+        count = await self.count_active_students(db, tenant_id)
+        total = self.compute_cycle_amount(plan, billing_frequency, count)
+
+        base = Decimal("0.00")
+        if (plan.charge_model or ChargeModel.FLAT.value).upper() != ChargeModel.PER_STUDENT.value:
+            is_annual = (billing_frequency or "").upper() == BillingFrequency.ANNUALLY.value
+            if is_annual and plan.price_annually is not None:
+                base = Decimal(plan.price_annually)
+            elif is_annual:
+                base = Decimal(plan.price_monthly) * Decimal(12)
+            else:
+                base = Decimal(plan.price_monthly or 0)
+
+        return {
+            "charge_model": (plan.charge_model or ChargeModel.FLAT.value).upper(),
+            "base_amount": str(base.quantize(Decimal("0.01"))),
+            "per_student_amount": str(
+                Decimal(plan.per_student_amount or 0).quantize(Decimal("0.01"))
+            ),
+            "student_count": count,
+            "total_amount": str(total),
+            "currency": plan.currency,
+            "billing_frequency": (
+                billing_frequency or BillingFrequency.MONTHLY.value
+            ).upper(),
+        }
 
 
 def get_subscription_service() -> SubscriptionService:

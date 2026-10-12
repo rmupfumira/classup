@@ -56,6 +56,32 @@ class BillingFrequency(str, Enum):
         return 365 if self is BillingFrequency.ANNUALLY else 30
 
 
+class ChargeModel(str, Enum):
+    """How ClassUp charges a tenant for a subscription cycle.
+
+    - **FLAT**: fixed amount per cycle (``price_monthly`` /
+      ``price_annually``). The pre-2026-10-12 behaviour; the only
+      model every plan supported.
+    - **PER_STUDENT**: amount scales with active-student count at
+      cycle start. ``per_student_amount`` is the per-pupil rate for
+      the cycle (e.g. $1/student/month).
+    - **HYBRID**: ``price_monthly`` / ``price_annually`` as a base
+      fee + ``per_student_amount`` × active-student count. The
+      base fee covers fixed infrastructure; the per-student charge
+      captures usage.
+
+    The student count is snapshotted at cycle start — enrolling a new
+    student mid-cycle doesn't retroactively invoice the tenant. For
+    annual plans the per-student rate is read as "per student per
+    cycle" (so $12/student on an annual plan ≈ $1/month, admins can
+    phrase the plan either way).
+    """
+
+    FLAT = "FLAT"
+    PER_STUDENT = "PER_STUDENT"
+    HYBRID = "HYBRID"
+
+
 class SubscriptionPlan(Base, TimestampMixin, SoftDeleteMixin):
     """A subscription plan that tenants can subscribe to."""
 
@@ -80,6 +106,20 @@ class SubscriptionPlan(Base, TimestampMixin, SoftDeleteMixin):
     )
     price_annually: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2), nullable=True
+    )
+    # Charge model — FLAT (default, pre-2026-10-12 behaviour) /
+    # PER_STUDENT / HYBRID. See the ChargeModel enum docstring.
+    charge_model: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=ChargeModel.FLAT.value,
+        server_default=text("'FLAT'"),
+    )
+    # Per-pupil rate for PER_STUDENT / HYBRID plans. NULL / 0 for
+    # pure FLAT plans. Stored as Numeric so cents are preserved
+    # exactly (same precision as price_monthly / price_annually).
+    per_student_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True,
     )
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="USD"
