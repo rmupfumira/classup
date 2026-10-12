@@ -306,16 +306,21 @@ async def teacher_register_submit(
     db: AsyncSession = Depends(get_db),
 ):
     """Handle teacher registration form submission."""
+    # Pydantic rejects phone=None on a required str — the teacher UI
+    # labels phone (optional), so an empty submission is legitimate.
+    # Use TeacherRegisterRequest which allows None.
+    from app.schemas.auth import TeacherRegisterRequest
+
     try:
         auth_service = get_auth_service()
-        register_request = RegisterRequest(
+        register_request = TeacherRegisterRequest(
             invitation_code=invitation_code,
             email=email,
             password=password,
             confirm_password=confirm_password,
             first_name=first_name,
             last_name=last_name,
-            phone=phone,
+            phone=phone or None,
         )
         await auth_service.register_teacher(db, register_request)
 
@@ -325,11 +330,26 @@ async def teacher_register_submit(
         )
 
     except Exception as e:
+        # Surface the real reason — "Registration failed" alone is
+        # unactionable. ValidationException exposes a list of
+        # {field, message}; Pydantic ValidationError has .errors().
+        from app.exceptions import ValidationException as _VE
+        from pydantic import ValidationError as _PVE
+
+        if isinstance(e, _VE):
+            msg = "; ".join(f"{err.get('field', '')}: {err.get('message', '')}".strip(": ") for err in e.errors) or "Validation failed"
+        elif isinstance(e, _PVE):
+            msg = "; ".join(f"{'.'.join(str(p) for p in err['loc'])}: {err['msg']}" for err in e.errors())
+        elif hasattr(e, "message"):
+            msg = str(e.message)
+        else:
+            msg = str(e) or "Registration failed"
+
         return templates.TemplateResponse(
             "auth/register_teacher.html",
             {
                 "request": request,
-                "error": str(e.message) if hasattr(e, "message") else "Registration failed",
+                "error": msg,
                 "code": invitation_code,
                 "email": email,
                 "first_name": first_name,

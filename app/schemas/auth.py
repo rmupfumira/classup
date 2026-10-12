@@ -90,6 +90,41 @@ class RegisterRequest(BaseModel):
     _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_required(v))
 
 
+class TeacherRegisterRequest(BaseModel):
+    """Teacher registration via invitation code.
+
+    Separate from the parent ``RegisterRequest`` because:
+    - Teachers CAN leave phone blank (the UI labels it "(optional)")
+      — parents can't. Before this split, any teacher who omitted
+      phone got a cryptic "Registration failed" because Pydantic
+      rejected ``phone=None`` on the required-str field.
+    - Teachers don't have whatsapp_opt_in / email_opt_in choices at
+      registration time — those live on the Profile page later.
+
+    Shared validation: 8+ char password, confirm_password match,
+    E.164 phone normalisation when provided.
+    """
+
+    invitation_code: str = Field(..., min_length=8, max_length=8)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    phone: str | None = Field(None, max_length=50)
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v: str, info) -> str:
+        if "password" in info.data and v != info.data["password"]:
+            raise ValueError("Passwords do not match")
+        return v
+
+    _phone_e164 = field_validator("phone")(
+        lambda cls, v: _phone_e164_optional(v)
+    )
+
+
 class RegisterResponse(BaseModel):
     """Registration response."""
 

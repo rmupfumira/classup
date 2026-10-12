@@ -374,20 +374,15 @@ class AuthService:
             logger.exception("WhatsApp notify loop failed")
 
     async def register_teacher(
-        self, db: AsyncSession, request: RegisterRequest
+        self, db: AsyncSession, request
     ) -> RegisterResponse:
         """Register a new teacher user via invitation code.
 
-        Args:
-            db: Database session
-            request: Registration request
-
-        Returns:
-            RegisterResponse with user details
-
-        Raises:
-            ValidationException: If invitation is invalid or expired
-            ConflictException: If email already exists
+        Accepts either RegisterRequest (parent/legacy shape with
+        required phone) or TeacherRegisterRequest (phone optional) —
+        both carry the same attributes this method reads, so duck-
+        typing is safe. The split exists because the parent UI
+        requires phone while the teacher UI leaves it optional.
         """
         # Find and validate teacher invitation
         stmt = select(TeacherInvitation).where(
