@@ -1321,6 +1321,76 @@ class AcademicService:
         by_id = {s.id: s for s in rows}
         return [by_id[sid] for sid in subject_ids if sid in by_id]
 
+    async def resolve_subject_grading_scales(
+        self,
+        db: AsyncSession,
+        subjects: list[Subject],
+    ) -> dict[uuid.UUID, list[dict]]:
+        """Map each subject to the grading-scale bands it should be
+        graded on, based on its ``curriculum_pack_code``.
+
+        For a single-curriculum tenant every subject grades on the
+        class/tenant default and this map stays empty — the renderer
+        falls back to the section-level grading. For a Combined-pack
+        tenant (ZIMSEC + Cambridge in one class) each subject carries
+        a different pack code; this method looks up the matching
+        tenant ``GradingSystem`` for each code and returns the grades
+        list per subject id. The renderer injects it into the section
+        before rendering so a ZIMSEC subject is graded on A-U while a
+        Cambridge subject on the SAME report card uses A*-U.
+
+        Lookup chain per subject:
+          1. ``subject.curriculum_pack_code`` → pack def →
+             pack.grading_system.name
+          2. Tenant GradingSystem.name == pack.grading_system.name
+          3. GradingSystem.grades
+        Any step missing → that subject gets no entry (section-level
+        scale wins). Admin-renamed scales break the match quietly,
+        same as other inferrers.
+        """
+        if not subjects:
+            return {}
+
+        tenant_id = get_tenant_id()
+        from app.utils.curriculum_packs import get_pack
+
+        # Collect unique pack codes with a known default grading system.
+        pack_name_by_code: dict[str, str] = {}
+        for s in subjects:
+            code = s.curriculum_pack_code
+            if not code or code in pack_name_by_code:
+                continue
+            pack = get_pack(code)
+            if pack is None or pack.grading_system is None:
+                continue
+            pack_name_by_code[code] = pack.grading_system.name
+
+        if not pack_name_by_code:
+            return {}
+
+        # One query for every candidate grading system by name.
+        rows = (await db.execute(
+            select(GradingSystem).where(
+                GradingSystem.tenant_id == tenant_id,
+                GradingSystem.name.in_(list(set(pack_name_by_code.values()))),
+                GradingSystem.deleted_at.is_(None),
+            )
+        )).scalars().all()
+        grades_by_name: dict[str, list[dict]] = {gs.name: list(gs.grades or []) for gs in rows}
+
+        out: dict[uuid.UUID, list[dict]] = {}
+        for s in subjects:
+            code = s.curriculum_pack_code
+            if not code:
+                continue
+            name = pack_name_by_code.get(code)
+            if not name:
+                continue
+            grades = grades_by_name.get(name)
+            if grades:
+                out[s.id] = grades
+        return out
+
 
 # Singleton instance
 _academic_service: AcademicService | None = None

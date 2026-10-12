@@ -364,3 +364,121 @@ class TestEffectiveSubjects:
         finally:
             _tenant_id.reset(tok)
         assert effective == []
+
+
+class TestResolveSubjectGradingScales:
+    """Per-subject grading-scale resolver (task #160, 2026-10-12).
+
+    The resolver is the service-side half of the Combined report-card
+    grading feature: the renderer honours a per-subject grading_system
+    key when present; this resolver fills it in by looking up each
+    subject's ``curriculum_pack_code`` → pack definition's
+    ``grading_system.name`` → tenant's ``GradingSystem`` row.
+    """
+
+    @pytest.mark.asyncio
+    async def test_zimsec_and_cambridge_subjects_get_different_scales(
+        self, db, combined_tenant,
+    ):
+        tid = combined_tenant["tid"]
+        tok = _tenant_id.set(tid)
+        try:
+            svc = get_academic_service()
+            # Pick one subject from each body.
+            zs_math = (await db.execute(
+                select(Subject).where(
+                    Subject.tenant_id == tid, Subject.code == "ZS-MAT-O",
+                )
+            )).scalar_one()
+            cie_math = (await db.execute(
+                select(Subject).where(
+                    Subject.tenant_id == tid, Subject.code == "CIE-MAT-IG",
+                )
+            )).scalar_one()
+
+            scales = await svc.resolve_subject_grading_scales(
+                db, [zs_math, cie_math],
+            )
+        finally:
+            _tenant_id.reset(tok)
+
+        # Each subject gets its OWN scale.
+        assert zs_math.id in scales
+        assert cie_math.id in scales
+        # Scales are distinct (ZIMSEC O-Level ends at U with 70+=A;
+        # Cambridge ends at U with 90+=A*).
+        zs_bands = {b["grade"] for b in scales[zs_math.id]}
+        cie_bands = {b["grade"] for b in scales[cie_math.id]}
+        assert "A*" in cie_bands
+        assert "A*" not in zs_bands
+
+    @pytest.mark.asyncio
+    async def test_subject_without_pack_code_returns_no_entry(
+        self, db, combined_tenant,
+    ):
+        """Subjects with no curriculum_pack_code (custom-pack schools,
+        pre-feature data) fall through to the section-level scale —
+        resolver returns no entry for them."""
+        tid = combined_tenant["tid"]
+        # A locally-created subject with no pack code.
+        local = Subject(
+            id=uuid.uuid4(), tenant_id=tid,
+            name="School Choir", code=f"CHOIR-{uuid.uuid4().hex[:6]}",
+            default_total_marks=100, curriculum_pack_code=None,
+        )
+        db.add(local)
+        await db.commit()
+
+        tok = _tenant_id.set(tid)
+        try:
+            svc = get_academic_service()
+            scales = await svc.resolve_subject_grading_scales(db, [local])
+        finally:
+            _tenant_id.reset(tok)
+        assert local.id not in scales
+
+    @pytest.mark.asyncio
+    async def test_empty_input_returns_empty(self, db, combined_tenant):
+        """Short-circuit path."""
+        tid = combined_tenant["tid"]
+        tok = _tenant_id.set(tid)
+        try:
+            svc = get_academic_service()
+            scales = await svc.resolve_subject_grading_scales(db, [])
+        finally:
+            _tenant_id.reset(tok)
+        assert scales == {}
+
+    @pytest.mark.asyncio
+    async def test_admin_renamed_scale_breaks_match_quietly(
+        self, db, combined_tenant,
+    ):
+        """If an admin renames the Cambridge grading system, the
+        resolver can't match it. It returns no entry rather than
+        guessing — same posture as the class-grading inferrer."""
+        tid = combined_tenant["tid"]
+
+        # Rename the Cambridge scale.
+        cie_scale = (await db.execute(
+            select(GradingSystem).where(
+                GradingSystem.tenant_id == tid,
+                GradingSystem.name == "Cambridge A*-U",
+            )
+        )).scalar_one()
+        cie_scale.name = "Our Custom Cambridge"
+        await db.commit()
+
+        cie_math = (await db.execute(
+            select(Subject).where(
+                Subject.tenant_id == tid, Subject.code == "CIE-MAT-IG",
+            )
+        )).scalar_one()
+
+        tok = _tenant_id.set(tid)
+        try:
+            svc = get_academic_service()
+            scales = await svc.resolve_subject_grading_scales(db, [cie_math])
+        finally:
+            _tenant_id.reset(tok)
+        # No entry — the renderer will fall back to the section scale.
+        assert cie_math.id not in scales

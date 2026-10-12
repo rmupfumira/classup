@@ -81,8 +81,17 @@
         {% set section_data = report.report_data.sections.get(section.id, {}) if report.report_data and report.report_data.sections else {} %}
         {# Use class_subjects if available, otherwise fall back to template subjects #}
         {% set subjects_list = class_subjects if class_subjects else section.subjects %}
-        {# Use grading_system from database if available, otherwise fall back to template grading #}
+        {# Grading scale resolution:
+             - Class-level (``grades_config``) is the DEFAULT every row
+               uses + the overall-grade calculation.
+             - ``subject_grading_map`` injects a per-row override for
+               subjects whose curriculum_pack_code points at a different
+               scale (Combined ZIMSEC+Cambridge: ZIMSEC subjects grade
+               on A-U, Cambridge on A*-U, side-by-side on one report).
+               Empty on single-curriculum tenants — no behaviour change.
+        #}
         {% set grades_config = grading_system.grades if grading_system else section.grading_system %}
+        {% set subject_grading_map = subject_grading_map or {} %}
         <div class="p-6">
             <h2 class="text-lg font-bold text-neutral-900 mb-4">{{ section.title }}</h2>
 
@@ -118,11 +127,15 @@
                         {% set subject_data = section_data.get(subject_id, {}) %}
                         {% set marks_obtained = subject_data.get('marks_obtained', '') %}
 
-                        {# Calculate grade using configured grading system #}
+                        {# Calculate grade using configured grading system.
+                           Per-subject override wins when the resolver
+                           injected one for this subject (Combined
+                           ZIMSEC+Cambridge). #}
+                        {% set row_grading = subject_grading_map.get(subject_id, grades_config) %}
                         {% set ns = namespace(grade='') %}
                         {% if marks_obtained != '' and marks_obtained is not none %}
                             {% set percentage = (marks_obtained | float / total_for_subject * 100) | round(0) | int %}
-                            {% for g in grades_config %}
+                            {% for g in row_grading %}
                                 {% if percentage >= g.min and percentage <= g.max %}
                                     {% set ns.grade = g.grade %}
                                 {% endif %}

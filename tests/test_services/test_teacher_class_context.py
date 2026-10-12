@@ -149,3 +149,83 @@ class TestTeacherClassContext:
             _current_user_role.reset(role_tok)
             _current_user_id.reset(uid_tok)
             _tenant_id.reset(tid_tok)
+
+    async def test_general_teacher_is_not_subject_only(
+        self, db: AsyncSession, test_tenant: Tenant
+    ):
+        """A general class teacher should not be flagged subject-only."""
+        teacher = await _make_teacher_with_classes(db, test_tenant, class_count=2, primary_count=1)
+
+        uid_tok = _current_user_id.set(teacher.id)
+        tid_tok = _tenant_id.set(test_tenant.id)
+        role_tok = _current_user_role.set(Role.TEACHER.value)
+        try:
+            ctx = await get_teacher_class_context(_FakeRequest(), db)
+        finally:
+            _current_user_role.reset(role_tok)
+            _current_user_id.reset(uid_tok)
+            _tenant_id.reset(tid_tok)
+
+        assert ctx["is_subject_only_for_selected"] is False
+        assert ctx["selected_class"].id in ctx["general_class_ids"]
+
+    async def test_subject_only_teacher_is_flagged(
+        self, db: AsyncSession, test_tenant: Tenant
+    ):
+        """A teacher that only owns a subject in a class (no TeacherClass
+        row) should be flagged subject-only. UI uses this to hide the
+        Take Attendance CTAs that would hit the server-side gate."""
+        from app.models.academic import ClassSubject, ClassSubjectTeacher, Subject
+
+        teacher = User(
+            id=uuid.uuid4(),
+            tenant_id=test_tenant.id,
+            email=f"so-{uuid.uuid4().hex[:6]}@test.local",
+            password_hash=hash_password("x"),
+            first_name="Subject",
+            last_name="Only",
+            role=Role.TEACHER.value,
+            is_active=True,
+            language="en",
+        )
+        db.add(teacher)
+
+        # Enable subject-teacher mode on the tenant — otherwise
+        # get_teacher_classes drops ClassSubjectTeacher rows.
+        settings = dict(test_tenant.settings or {})
+        settings["subject_teacher_enabled"] = True
+        test_tenant.settings = settings
+
+        klass = SchoolClass(
+            id=uuid.uuid4(), tenant_id=test_tenant.id, name="SO Class", is_active=True,
+        )
+        subject = Subject(
+            id=uuid.uuid4(), tenant_id=test_tenant.id,
+            name="Mathematics", code=f"MATH-{uuid.uuid4().hex[:6]}",
+            default_total_marks=100,
+        )
+        db.add_all([klass, subject])
+        await db.flush()
+        db.add_all([
+            ClassSubject(id=uuid.uuid4(), class_id=klass.id, subject_id=subject.id),
+            ClassSubjectTeacher(
+                id=uuid.uuid4(),
+                class_id=klass.id, subject_id=subject.id, teacher_id=teacher.id,
+            ),
+        ])
+        await db.commit()
+
+        uid_tok = _current_user_id.set(teacher.id)
+        tid_tok = _tenant_id.set(test_tenant.id)
+        role_tok = _current_user_role.set(Role.TEACHER.value)
+        try:
+            ctx = await get_teacher_class_context(_FakeRequest(), db)
+        finally:
+            _current_user_role.reset(role_tok)
+            _current_user_id.reset(uid_tok)
+            _tenant_id.reset(tid_tok)
+
+        assert ctx["selected_class"] is not None
+        assert ctx["selected_class"].id == klass.id
+        assert ctx["is_subject_only_for_selected"] is True
+        assert ctx["general_class_ids"] == set()

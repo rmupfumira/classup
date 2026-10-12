@@ -21,6 +21,7 @@
             </div>
             {% if has_classes %}
             <div class="flex flex-wrap gap-2">
+                {% if not is_subject_only_for_selected %}
                 <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
                    class="inline-flex items-center px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm
                           rounded-lg text-sm font-medium text-white transition-colors">
@@ -30,6 +31,7 @@
                     </svg>
                     Take Attendance
                 </a>
+                {% endif %}
                 <a href="/reports/create"
                    class="inline-flex items-center px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm
                           rounded-lg text-sm font-medium text-white transition-colors">
@@ -62,7 +64,10 @@
     {% else %}
 
     <!-- Today's Snapshot for Selected Class -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {# Subject-only teachers don't own attendance for this class, so
+       drop the three attendance stat cards (they'd read 0/0/— for them,
+       which is misleading) and keep the Students card standalone. #}
+    <div class="grid grid-cols-1 {% if not is_subject_only_for_selected %}sm:grid-cols-2 lg:grid-cols-4{% endif %} gap-4">
         <!-- Students in Class -->
         <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center justify-between">
@@ -79,6 +84,7 @@
             </div>
         </div>
 
+        {% if not is_subject_only_for_selected %}
         <!-- Present Today -->
         <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
             <div class="flex items-center justify-between">
@@ -130,6 +136,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <div class="grid lg:grid-cols-3 gap-6">
@@ -137,7 +144,10 @@
         <div class="lg:col-span-2 space-y-6">
 
             <!-- Attendance Not Taken Alert -->
-            {% if not attendance_taken %}
+            {# Suppressed for subject-only teachers: the class teacher
+               owns attendance; nagging a subject specialist about it
+               creates a dead-end CTA (server-side gate rejects them). #}
+            {% if not attendance_taken and not is_subject_only_for_selected %}
             <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
                     <svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
@@ -156,7 +166,7 @@
             {% endif %}
 
             <!-- Today's Attendance Breakdown -->
-            {% if current_class and current_class.attendance_taken %}
+            {% if current_class and current_class.attendance_taken and not is_subject_only_for_selected %}
             <div class="bg-white rounded-xl shadow-sm border border-neutral-200">
                 <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                     <h2 class="text-base font-semibold text-neutral-800">Today's Attendance</h2>
@@ -258,6 +268,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
                 <h2 class="text-base font-semibold text-neutral-800 mb-4">Quick Actions</h2>
                 <div class="space-y-2">
+                    {% if not is_subject_only_for_selected %}
                     <a href="/attendance{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}"
                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">
                         <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
@@ -271,6 +282,7 @@
                             <p class="text-xs text-neutral-500">Record daily attendance</p>
                         </div>
                     </a>
+                    {% endif %}
 
                     <a href="/reports/create"
                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-50 transition-colors group">

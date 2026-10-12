@@ -217,6 +217,7 @@ async def reports_view(
     template_name = "reports/view.html"
     grading_system = None
     class_subjects = []
+    subject_grading_map: dict[str, list[dict]] = {}
 
     if report.template and report.template.report_type == "REPORT_CARD":
         template_name = "reports/view_report_card.html"
@@ -247,6 +248,20 @@ async def reports_view(
         if report.class_id:
             class_subjects = await academic_service.get_class_subjects(db, report.class_id)
 
+        # Combined-curriculum tenants (ZIMSEC + Cambridge in one class)
+        # need each subject to grade on its own body's scale. The
+        # resolver returns a {subject_id → grades-list} map only for
+        # subjects whose curriculum_pack_code points at a scale
+        # different from the class default; empty on every single-
+        # curriculum tenant so this is a no-op there.
+        if class_subjects:
+            subjects_for_resolve = [cs.subject for cs in class_subjects if cs.subject]
+            raw_map = await academic_service.resolve_subject_grading_scales(
+                db, subjects_for_resolve,
+            )
+            # Stringify keys so Jinja's `in` test matches `subject.id | string`.
+            subject_grading_map = {str(k): v for k, v in raw_map.items()}
+
     context = {
         "request": request,
         "user": user,
@@ -254,6 +269,7 @@ async def reports_view(
         "tenant": tenant,
         "grading_system": grading_system,
         "class_subjects": class_subjects,
+        "subject_grading_map": subject_grading_map,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

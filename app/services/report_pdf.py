@@ -100,10 +100,17 @@ async def render_report_pdf(
         tenant = await db.get(Tenant, report.tenant_id)
     tenant_name = tenant.name if tenant else "ClassUp"
 
+    # Enrich template sections with DB-sourced class subjects + the
+    # class-level grading scale + per-subject grading overrides
+    # (Combined-curriculum tenants only). Done once here so both
+    # renderers see the same, authoritative payload instead of each
+    # one running its own version of the lookup.
+    enriched_sections = await _enrich_sections(db, report)
+
     weasy = _try_import_weasyprint()
     if weasy is not None:
         try:
-            return _render_with_weasyprint(weasy, report, tenant_name)
+            return _render_with_weasyprint(weasy, report, tenant_name, enriched_sections)
         except Exception:
             # A template bug or runtime error shouldn't lose the PDF —
             # the fpdf2 renderer is functionally equivalent, just uglier.
@@ -111,7 +118,91 @@ async def render_report_pdf(
                 "WeasyPrint render failed for report=%s, falling back to fpdf2",
                 report.id,
             )
-    return _render_with_fpdf(report, tenant_name)
+    return _render_with_fpdf(report, tenant_name, enriched_sections)
+
+
+async def _enrich_sections(
+    db: AsyncSession, report: DailyReport,
+) -> list[dict]:
+    """Return the template's sections sorted + ACADEMIC_GRADES enriched.
+
+    For each ACADEMIC_GRADES section we rewrite ``subjects`` using the
+    class's ``class_subjects`` (so the PDF matches what the admin
+    maintains in /classes/{id} instead of whatever was embedded in the
+    template at creation time) and inject the resolved class grading
+    system. Each subject may also carry its OWN ``grading_system`` key
+    when its ``curriculum_pack_code`` points at a different scale —
+    that's what makes the ZIMSEC+Cambridge combined report card grade
+    each subject on the right scale.
+
+    No class / no subjects → sections pass through unchanged, so
+    pre-feature tenants are unaffected.
+    """
+    template_sections = (
+        report.template.sections if report.template and report.template.sections else []
+    )
+    sorted_sections = sorted(
+        [dict(s) for s in template_sections],
+        key=lambda s: s.get("display_order", 0),
+    )
+    if not getattr(report, "class_id", None):
+        return sorted_sections
+
+    # Any ACADEMIC_GRADES sections to enrich? Short-circuit otherwise.
+    has_grades = any(
+        (s.get("type") == "ACADEMIC_GRADES") for s in sorted_sections
+    )
+    if not has_grades:
+        return sorted_sections
+
+    try:
+        from app.services.academic_service import get_academic_service
+
+        academic = get_academic_service()
+        class_subjects = await academic.get_class_subjects(db, report.class_id)
+        class_grading = await academic.resolve_class_grading_system(
+            db, report.class_id,
+        )
+        subject_rows = [cs.subject for cs in class_subjects if cs.subject]
+        per_subject_scales = await academic.resolve_subject_grading_scales(
+            db, subject_rows,
+        )
+    except Exception:
+        logger.exception(
+            "Could not enrich ACADEMIC_GRADES sections for report=%s; "
+            "falling back to template-embedded subjects.", report.id,
+        )
+        return sorted_sections
+
+    if not class_subjects:
+        return sorted_sections
+
+    class_grading_grades = list(class_grading.grades or []) if class_grading else []
+
+    enriched_subjects = []
+    for cs in class_subjects:
+        subj = cs.subject
+        if subj is None:
+            continue
+        total = cs.total_marks if cs.total_marks is not None else subj.default_total_marks
+        row: dict = {
+            "id": str(subj.id),
+            "name": subj.name,
+            "total_marks": total,
+        }
+        own_scale = per_subject_scales.get(subj.id)
+        if own_scale:
+            row["grading_system"] = own_scale
+        enriched_subjects.append(row)
+
+    for section in sorted_sections:
+        if section.get("type") != "ACADEMIC_GRADES":
+            continue
+        section["subjects"] = enriched_subjects
+        if class_grading_grades:
+            section["grading_system"] = class_grading_grades
+
+    return sorted_sections
 
 
 # ---------------------------------------------------------------------------
@@ -119,18 +210,17 @@ async def render_report_pdf(
 # ---------------------------------------------------------------------------
 
 
-def _render_with_weasyprint(weasyprint_module, report: DailyReport, tenant_name: str) -> bytes:
+def _render_with_weasyprint(
+    weasyprint_module,
+    report: DailyReport,
+    tenant_name: str,
+    sorted_sections: list[dict],
+) -> bytes:
     student_first = "Student"
     if report.student:
         student_first = (report.student.first_name or "Student").strip() or "Student"
 
     class_name = report.school_class.name if report.school_class else ""
-
-    template_sections = (
-        report.template.sections if report.template and report.template.sections else []
-    )
-    # display_order sort so section rendering matches the web view.
-    sorted_sections = sorted(template_sections, key=lambda s: s.get("display_order", 0))
 
     report_sections: dict[str, Any] = (
         (report.report_data or {}).get("sections", {}) if report.report_data else {}
@@ -215,7 +305,11 @@ def _grade_for_template(marks, total, grading) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _render_with_fpdf(report: DailyReport, tenant_name: str) -> bytes:
+def _render_with_fpdf(
+    report: DailyReport,
+    tenant_name: str,
+    sorted_sections: list[dict] | None = None,
+) -> bytes:
     student_name = "Student"
     if report.student:
         student_name = f"{report.student.first_name} {report.student.last_name}".strip()
@@ -259,14 +353,19 @@ def _render_with_fpdf(report: DailyReport, tenant_name: str) -> bytes:
     _hr(pdf)
     pdf.ln(4)
 
-    template_sections = (
-        report.template.sections if report.template and report.template.sections else []
-    )
+    if sorted_sections is None:
+        template_sections = (
+            report.template.sections if report.template and report.template.sections else []
+        )
+        sorted_sections = sorted(
+            [dict(s) for s in template_sections],
+            key=lambda s: s.get("display_order", 0),
+        )
     report_sections: dict[str, Any] = (
         (report.report_data or {}).get("sections", {}) if report.report_data else {}
     )
 
-    for section in sorted(template_sections, key=lambda s: s.get("display_order", 0)):
+    for section in sorted_sections:
         section_id = section.get("id")
         section_type = (section.get("type") or "").upper()
         section_data = report_sections.get(section_id, {}) if section_id else {}
