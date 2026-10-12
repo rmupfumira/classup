@@ -166,6 +166,41 @@
                     <input type="number" name="price_annually" step="0.01" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="2990.00">
                 </div>
             </div>
+            {# Charge model + per-student rate. See ChargeModel enum
+               in app/models/subscription.py — three options:
+                 FLAT: base price only (default).
+                 PER_STUDENT: base ignored, per_student_amount × count.
+                 HYBRID: base + (per_student_amount × count).
+               per_student_amount is only shown / required for the two
+               non-FLAT models (JS toggles the field visibility). #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">Charge model</label>
+                    <select name="charge_model" id="plan-charge-model"
+                            class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                            onchange="togglePerStudentField()">
+                        <option value="FLAT">Flat — one price per cycle</option>
+                        <option value="PER_STUDENT">Per student — price × active student count</option>
+                        <option value="HYBRID">Hybrid — base + per-student</option>
+                    </select>
+                    <p class="text-xs text-neutral-500 mt-1">
+                        Per-student plans count active students at cycle start.
+                        Inactive and soft-deleted students don't incur charges.
+                    </p>
+                </div>
+                <div id="plan-per-student-wrap">
+                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        Per-student amount (<span class="price-currency-label">{{ platform_currency_code }}</span>)
+                    </label>
+                    <input type="number" name="per_student_amount" step="0.01"
+                           class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                           placeholder="1.00">
+                    <p class="text-xs text-neutral-500 mt-1">
+                        Per student per billing cycle. Annual plans phrase this as
+                        "per student per year" (so $12 annual ≈ $1 monthly).
+                    </p>
+                </div>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">Max Students</label>
@@ -399,6 +434,15 @@ function showPlanModal(planId) {
         form.max_staff.value = plan.max_staff || '';
         form.trial_days.value = plan.trial_days;
         form.is_active.checked = plan.is_active;
+        // Charge model + per-student fields (added 2026-10-12).
+        // Older plans without these in the response default to FLAT.
+        if (form.charge_model) {
+            form.charge_model.value = (plan.charge_model || 'FLAT').toUpperCase();
+        }
+        if (form.per_student_amount) {
+            form.per_student_amount.value = plan.per_student_amount || '';
+        }
+        togglePerStudentField();
         // Currency picker — reflect the plan's own stored currency so
         // the admin can see what it currently is (and change it).
         if (plan.currency && form.currency) {
@@ -427,9 +471,23 @@ function showPlanModal(planId) {
         form.querySelectorAll('input[name^="feat_"]').forEach(cb => {
             cb.checked = !optIn.has(cb.name);
         });
+        if (form.charge_model) form.charge_model.value = 'FLAT';
+        if (form.per_student_amount) form.per_student_amount.value = '';
+        togglePerStudentField();
     }
 
     modal.showModal();
+}
+
+function togglePerStudentField() {
+    // Hide the per-student rate field when the plan is FLAT (nothing
+    // to configure) and show it for PER_STUDENT / HYBRID. Keeps the
+    // form shorter in the common case.
+    const sel = document.getElementById('plan-charge-model');
+    const wrap = document.getElementById('plan-per-student-wrap');
+    if (!sel || !wrap) return;
+    const model = (sel.value || 'FLAT').toUpperCase();
+    wrap.classList.toggle('hidden', model === 'FLAT');
 }
 
 function updatePriceLabels(currencyCode) {
@@ -453,6 +511,9 @@ async function savePlan(e) {
         features[key] = cb.checked;
     });
 
+    const chargeModel = form.charge_model ? (form.charge_model.value || 'FLAT').toUpperCase() : 'FLAT';
+    const perStudentRaw = form.per_student_amount ? form.per_student_amount.value : '';
+
     const data = {
         name: form.name.value,
         description: form.description.value || null,
@@ -462,6 +523,12 @@ async function savePlan(e) {
         // sticks. Omitted only when the form doesn't carry the field
         // (create mode where the server still defaults to platform).
         currency: form.currency ? form.currency.value : undefined,
+        charge_model: chargeModel,
+        // Only send per_student_amount for PER_STUDENT / HYBRID — FLAT
+        // plans explicitly null it so an old value doesn't linger.
+        per_student_amount: (chargeModel === 'FLAT' || !perStudentRaw)
+            ? null
+            : parseFloat(perStudentRaw),
         max_students: form.max_students.value ? parseInt(form.max_students.value) : null,
         max_staff: form.max_staff.value ? parseInt(form.max_staff.value) : null,
         trial_days: parseInt(form.trial_days.value) || 30,

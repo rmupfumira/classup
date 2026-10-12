@@ -115,6 +115,39 @@ function fmtMoney(n) {
     return `${currencySymbol} ${Number(n).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
 
+function renderChargeBreakdown(sub) {
+    // PER_STUDENT / HYBRID plans show the breakdown so the parent-
+    // tenant knows WHY their bill is what it is. FLAT plans skip —
+    // the Monthly Price cell already tells the whole story.
+    const preview = sub && sub.cycle_preview;
+    const model = (sub && sub.charge_model) || 'FLAT';
+    if (!preview || model === 'FLAT') return '';
+    const base = preview.base_amount;
+    const perStudent = preview.per_student_amount;
+    const count = preview.student_count;
+    const total = preview.total_amount;
+    const freq = (preview.billing_frequency || 'MONTHLY').toLowerCase();
+    const label = freq === 'annually' ? '/yr' : '/mo';
+    let breakdown;
+    if (model === 'PER_STUDENT') {
+        breakdown = `${fmtMoney(perStudent)} × ${count} student${count === 1 ? '' : 's'} = <strong>${fmtMoney(total)}${label}</strong>`;
+    } else { // HYBRID
+        breakdown = `${fmtMoney(base)} base + ${fmtMoney(perStudent)} × ${count} student${count === 1 ? '' : 's'} = <strong>${fmtMoney(total)}${label}</strong>`;
+    }
+    return `
+        <div class="mt-4 rounded-lg bg-primary-50 border border-primary-100 px-4 py-3 text-sm">
+            <p class="text-neutral-700">
+                <span class="font-medium text-neutral-800">This cycle:</span>
+                ${breakdown}
+            </p>
+            <p class="text-xs text-neutral-500 mt-1">
+                Based on ${count} active student${count === 1 ? '' : 's'} today.
+                The amount recalculates at each cycle start.
+            </p>
+        </div>
+    `;
+}
+
 async function loadSubscription() {
     const card = document.getElementById('sub-card');
     try {
@@ -187,6 +220,8 @@ async function loadSubscription() {
                             <p class="font-semibold text-neutral-800">${sub.max_staff || 'Unlimited'}</p>
                         </div>
                     </div>
+
+                    ${renderChargeBreakdown(sub)}
 
                     <div id="pay-cta-slot" class="mt-6"></div>
                     ${sub.status === 'ACTIVE' ? `

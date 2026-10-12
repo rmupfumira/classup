@@ -23,6 +23,7 @@ from app.utils.tenant_context import (
     get_current_user_id,
     get_current_user_id_or_none,
     get_current_user_role,
+    get_tenant_id,
 )
 from app.web.helpers import get_teacher_class_context
 
@@ -171,10 +172,17 @@ async def student_create_form(
     class_service = get_class_service()
     classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
+    # Expose the tenant so the create form can conditionally render
+    # the residence picker on MIXED schools. Pure DAY/BOARDING tenants
+    # hide it (residence is derived from tenant.school_type instead).
+    from app.models import Tenant
+    tenant = await db.get(Tenant, get_tenant_id())
+
     context = {
         "request": request,
         "user": user,
         "classes": classes,
+        "tenant": tenant,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

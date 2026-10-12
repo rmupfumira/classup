@@ -77,6 +77,10 @@ async def settings_general_save(
     address: str = Form(""),
     timezone: str = Form("Africa/Johannesburg"),
     language: str = Form("en"),
+    school_type: str = Form("DAY"),
+    # Checkboxes don't post when unticked, so the default `False`
+    # means "admin unticked it" which is what we want.
+    subject_teacher_enabled: bool = Form(False),
     db: AsyncSession = Depends(get_db),
 ):
     """Save general settings."""
@@ -100,6 +104,13 @@ async def settings_general_save(
         settings = tenant.settings or {}
         settings["timezone"] = timezone
         settings["language"] = language
+        # Normalise school_type to the valid enum values; anything
+        # else falls back to DAY (the safe default).
+        if school_type.upper() in ("DAY", "BOARDING", "WEEKLY_BOARDING", "MIXED"):
+            settings["school_type"] = school_type.upper()
+        else:
+            settings["school_type"] = "DAY"
+        settings["subject_teacher_enabled"] = bool(subject_teacher_enabled)
         tenant.settings = settings
 
         await db.commit()

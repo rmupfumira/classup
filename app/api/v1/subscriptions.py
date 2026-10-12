@@ -39,6 +39,11 @@ class PlanCreate(BaseModel):
     # so a USD or KES instance gets USD / KES plans by default instead
     # of the model's hardcoded ZAR fallback.
     currency: str | None = Field(None, min_length=3, max_length=3)
+    # Charge model + per-pupil rate (task #159, 2026-10-12). Defaults
+    # keep every pre-feature caller unchanged — omitting both yields
+    # a FLAT plan with no per-student billing.
+    charge_model: str | None = Field(None, max_length=20)
+    per_student_amount: float | None = None
     max_students: int | None = None
     max_staff: int | None = None
     trial_days: int = 30
@@ -51,6 +56,8 @@ class PlanUpdate(BaseModel):
     price_monthly: float | None = None
     price_annually: float | None = None
     currency: str | None = Field(None, min_length=3, max_length=3)
+    charge_model: str | None = Field(None, max_length=20)
+    per_student_amount: float | None = None
     max_students: int | None = None
     max_staff: int | None = None
     trial_days: int | None = None
@@ -112,6 +119,10 @@ async def list_all_plans(
                 "price_monthly": float(p.price_monthly),
                 "price_annually": float(p.price_annually) if p.price_annually else None,
                 "currency": p.currency,
+                "charge_model": (p.charge_model or "FLAT").upper(),
+                "per_student_amount": (
+                    float(p.per_student_amount) if p.per_student_amount is not None else None
+                ),
                 "max_students": p.max_students,
                 "max_staff": p.max_staff,
                 "trial_days": p.trial_days,
@@ -156,6 +167,20 @@ async def create_plan(
         trial_days=body.trial_days,
         features=body.features,
     )
+    # Apply charge model + per-student rate as a follow-up update so
+    # create_plan's signature stays stable for existing callers.
+    # Normalises FALSE / unknown models to FLAT (safer than silently
+    # starting a tenant on per-pupil billing).
+    valid_models = {"FLAT", "PER_STUDENT", "HYBRID"}
+    cm = (body.charge_model or "FLAT").upper()
+    if cm not in valid_models:
+        cm = "FLAT"
+    plan.charge_model = cm
+    plan.per_student_amount = (
+        Decimal(str(body.per_student_amount))
+        if cm != "FLAT" and body.per_student_amount is not None
+        else None
+    )
     await db.commit()
     return APIResponse(
         status="success",
@@ -175,15 +200,24 @@ async def update_plan(
     from decimal import Decimal
 
     service = get_subscription_service()
-    updates = body.model_dump(exclude_none=True)
-    if "price_monthly" in updates:
+    # Use exclude_unset so an admin clearing per_student_amount to
+    # NULL (switching HYBRID → FLAT, for example) actually lands.
+    # exclude_none would quietly drop that intentional NULL.
+    updates = body.model_dump(exclude_unset=True)
+    if "price_monthly" in updates and updates["price_monthly"] is not None:
         updates["price_monthly"] = Decimal(str(updates["price_monthly"]))
-    if "price_annually" in updates:
+    if "price_annually" in updates and updates["price_annually"] is not None:
         updates["price_annually"] = Decimal(str(updates["price_annually"]))
-    if "currency" in updates:
+    if "currency" in updates and updates["currency"]:
         # Normalise to ISO 4217 shape so we don't end up with "usd" or
         # "usd " sneaking into the DB.
         updates["currency"] = str(updates["currency"]).upper().strip()
+    if "charge_model" in updates:
+        valid_models = {"FLAT", "PER_STUDENT", "HYBRID"}
+        cm = (updates["charge_model"] or "FLAT").upper()
+        updates["charge_model"] = cm if cm in valid_models else "FLAT"
+    if "per_student_amount" in updates and updates["per_student_amount"] is not None:
+        updates["per_student_amount"] = Decimal(str(updates["per_student_amount"]))
 
     plan = await service.update_plan(db, plan_id, **updates)
     if not plan:
@@ -415,6 +449,16 @@ async def get_my_subscription(db: AsyncSession = Depends(get_db)) -> APIResponse
     tenant = await db.get(Tenant, tenant_id)
     jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
 
+    # Charge-model preview so the subscription page can render the
+    # breakdown ("$20 base + $1/student × 45 = $65/mo") for PER_STUDENT
+    # and HYBRID plans. FLAT plans still get the dict so the template
+    # branches on charge_model alone, not on the presence of the key.
+    cycle_preview = None
+    if sub.plan is not None:
+        cycle_preview = await service.preview_cycle_amount(
+            db, tenant_id, sub.plan, sub.billing_frequency or "MONTHLY",
+        )
+
     return APIResponse(
         status="success",
         data={
@@ -428,6 +472,14 @@ async def get_my_subscription(db: AsyncSession = Depends(get_db)) -> APIResponse
                 float(sub.plan.price_annually)
                 if sub.plan and sub.plan.price_annually is not None else None
             ),
+            "charge_model": (
+                (sub.plan.charge_model or "FLAT").upper() if sub.plan else "FLAT"
+            ),
+            "per_student_amount": (
+                float(sub.plan.per_student_amount)
+                if sub.plan and sub.plan.per_student_amount is not None else None
+            ),
+            "cycle_preview": cycle_preview,
             "billing_frequency": sub.billing_frequency or "MONTHLY",
             "status": sub.status,
             "trial_start": sub.trial_start.isoformat() if sub.trial_start else None,
