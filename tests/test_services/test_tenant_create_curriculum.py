@@ -116,7 +116,7 @@ class TestEndToEndCreationSeedsPack:
                 _tenant_id.reset(token)
 
             assert summary["added"] > 20
-            assert summary["grading_system_added"] == "ZIMSEC Standard"
+            assert summary["grading_system_added"] == "ZIMSEC O-Level"
 
             subjects = (await db.execute(
                 select(Subject).where(Subject.tenant_id == tenant.id)
@@ -129,7 +129,7 @@ class TestEndToEndCreationSeedsPack:
                 )
             )).scalars().all()
             assert len(grading) == 1
-            assert grading[0].name == "ZIMSEC Standard"
+            assert grading[0].name == "ZIMSEC O-Level"
 
             await db.refresh(tenant)
             assert tenant.get_setting("curriculum_pack") == "ZW_ZIMSEC"

@@ -33,7 +33,7 @@ from app.utils.tenant_context import _tenant_id
 @pytest_asyncio.fixture
 async def tenant_with_pack(db: AsyncSession, test_tenant: Tenant):
     """Load the ZIMSEC pack into the tenant so subjects are stamped
-    and the ZIMSEC Standard grading system exists."""
+    and the ZIMSEC O-Level grading system exists."""
     tok = _tenant_id.set(test_tenant.id)
     try:
         await get_academic_service().apply_curriculum_pack(db, "ZW_ZIMSEC")
@@ -100,7 +100,7 @@ class TestInferOnAssign:
         assert test_class.grading_system_id is not None
 
         gs = await db.get(GradingSystem, test_class.grading_system_id)
-        assert gs.name == "ZIMSEC Standard"
+        assert gs.name == "ZIMSEC O-Level"
 
     @pytest.mark.asyncio
     async def test_bulk_assign_also_infers(
@@ -126,7 +126,7 @@ class TestInferOnAssign:
         await db.refresh(test_class)
         assert test_class.grading_system_id is not None
         gs = await db.get(GradingSystem, test_class.grading_system_id)
-        assert gs.name == "ZIMSEC Standard"
+        assert gs.name == "ZIMSEC O-Level"
 
     @pytest.mark.asyncio
     async def test_majority_pack_wins_on_mixed_class(
@@ -169,11 +169,11 @@ class TestInferOnAssign:
         tok = _tenant_id.set(tenant_with_two_packs.id)
         svc = get_academic_service()
         try:
-            # Pin ZIMSEC Standard manually
+            # Pin ZIMSEC O-Level manually
             zim_gs = (await db.execute(
                 select(GradingSystem).where(
                     GradingSystem.tenant_id == tenant_with_two_packs.id,
-                    GradingSystem.name == "ZIMSEC Standard",
+                    GradingSystem.name == "ZIMSEC O-Level",
                 )
             )).scalar_one()
             await svc.set_class_grading_system(db, test_class.id, zim_gs.id)
@@ -194,7 +194,7 @@ class TestInferOnAssign:
         await db.refresh(test_class)
         gs = await db.get(GradingSystem, test_class.grading_system_id)
         # Pin held — still ZIMSEC, not Cambridge.
-        assert gs.name == "ZIMSEC Standard"
+        assert gs.name == "ZIMSEC O-Level"
 
 
 class TestResolve:
@@ -213,7 +213,7 @@ class TestResolve:
         finally:
             _tenant_id.reset(tok)
         assert gs is not None
-        assert gs.name == "ZIMSEC Standard"
+        assert gs.name == "ZIMSEC O-Level"
 
     @pytest.mark.asyncio
     async def test_class_pin_wins_over_tenant_default(
