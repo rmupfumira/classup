@@ -9,12 +9,18 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class AttendanceStatus(str, Enum):
-    """Attendance status options."""
+    """Attendance status options.
+
+    EXEAT added 2026-10-12 for boarding schools — sanctioned
+    weekend leave off-campus. Day schools don't need it (day
+    scholars simply aren't marked on weekends).
+    """
 
     PRESENT = "PRESENT"
     ABSENT = "ABSENT"
     LATE = "LATE"
     EXCUSED = "EXCUSED"
+    EXEAT = "EXEAT"
 
 
 class AttendanceRecordBase(BaseModel):

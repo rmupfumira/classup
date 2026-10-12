@@ -22,6 +22,27 @@ class EducationType(str, Enum):
     COMBINED = "COMBINED"
 
 
+class SchoolType(str, Enum):
+    """How a school handles residence — drives weekend-attendance
+    rules and the DAY_SCHOLARS / BOARDERS fee scopes.
+
+    - DAY: standard day school; attendance Mon-Fri only.
+    - BOARDING: full-boarding; attendance 7 days a week, EXEAT
+      status permitted for sanctioned weekend leave.
+    - WEEKLY_BOARDING: boarders depart Friday afternoon and return
+      Sunday evening; attendance Mon-Fri + Sun treated like a
+      full-boarder, Sat skipped.
+    - MIXED: a mix of day scholars and boarders in the same school.
+      Every student MUST carry a Student.residence designation so
+      the per-student rule can apply.
+    """
+
+    DAY = "DAY"
+    BOARDING = "BOARDING"
+    WEEKLY_BOARDING = "WEEKLY_BOARDING"
+    MIXED = "MIXED"
+
+
 class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     """Multi-tenant organization (school, daycare, etc.)."""
 
@@ -135,6 +156,17 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     def timezone(self) -> str:
         """Get the tenant's timezone."""
         return self.settings.get("timezone", "Africa/Harare")
+
+    @property
+    def school_type(self) -> str:
+        """DAY / BOARDING / WEEKLY_BOARDING / MIXED.
+
+        Default is DAY — the pre-2026-10-12 behaviour (no attendance
+        on weekends, every student implicitly a day scholar). Admins
+        change this in Settings → School Info once the boarding
+        features matter.
+        """
+        return self.settings.get("school_type", SchoolType.DAY.value)
 
     @property
     def language(self) -> str:
@@ -305,6 +337,11 @@ def get_default_tenant_settings(
         "features": features_map.get(education_type, daycare_features),
         "terminology": terminology,
         "terms_per_year": terms_per_year,
+        # DAY is the safe default — attendance stays Mon-Fri like it
+        # always has. Boarding schools flip this in Settings → School
+        # Info; MIXED schools also need to set Student.residence on
+        # every student (either at enrolment or via a bulk patch).
+        "school_type": SchoolType.DAY.value,
         "report_config": {
             "default_report_type": "DAILY_ACTIVITY" if education_type == EducationType.DAYCARE else "PROGRESS_REPORT",
             "enabled_sections": ["meals", "nap", "fluids", "bathroom", "activities", "notes"]

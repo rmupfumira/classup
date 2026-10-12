@@ -124,11 +124,17 @@ class AttendanceService:
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
-        # Validate date: no future dates or weekends
-        self._validate_attendance_date(data.date)
-
         # Verify student exists and belongs to tenant
         student = await self._get_student(db, data.student_id)
+
+        # Validate date: no future dates; weekends allowed only when
+        # the student's effective residence is a boarder role (needs
+        # the tenant's school_type to resolve).
+        tenant = await db.get(Tenant, tenant_id)
+        residence = student.effective_residence(
+            tenant.school_type if tenant else None,
+        )
+        self._validate_attendance_date(data.date, residence=residence)
 
         # Verify class exists
         await self._get_class(db, data.class_id)
@@ -196,12 +202,47 @@ class AttendanceService:
 
         return record
 
-    def _validate_attendance_date(self, target_date: date) -> None:
-        """Reject future dates and weekends for attendance."""
+    def _validate_attendance_date(
+        self,
+        target_date: date,
+        *,
+        residence: str = "DAY",
+    ) -> None:
+        """Reject future dates. Reject weekends unless the student
+        is a boarder.
+
+        ``residence`` is the student's effective residence after
+        resolving tenant.school_type (see
+        ``Student.effective_residence``):
+
+        - DAY: Mon-Fri only. Sat and Sun are rejected.
+        - FULL_BOARDER: 7 days a week — boarders live on-site and
+          need weekend attendance (and EXEAT for sanctioned leave).
+        - WEEKLY_BOARDER: Mon-Fri + Sun (boarders return Sun
+          evening); Sat is rejected because they're off-site.
+
+        Previously every tenant rejected weekends unconditionally,
+        which broke boarding schools from day one. 2026-10-12.
+        """
         if target_date > date.today():
             raise ValidationException("Cannot record attendance for a future date")
-        if target_date.weekday() >= 5:  # Saturday=5, Sunday=6
-            raise ValidationException("Cannot record attendance on weekends")
+
+        weekday = target_date.weekday()  # Mon=0 … Sun=6
+        if weekday < 5:  # Mon-Fri — always allowed.
+            return
+
+        res = (residence or "DAY").upper()
+        if res == "FULL_BOARDER":
+            return  # Any day is fine for a full boarder.
+        if res == "WEEKLY_BOARDER" and weekday == 6:  # Sun
+            return
+        # DAY (default), or WEEKLY_BOARDER on a Saturday → reject.
+        day_name = "Saturday" if weekday == 5 else "Sunday"
+        raise ValidationException(
+            f"Cannot record attendance for a day scholar on {day_name}. "
+            "Only full boarders may be marked on weekends; weekly boarders "
+            "may be marked on Sunday."
+        )
 
     async def record_bulk_attendance(
         self,
@@ -212,11 +253,30 @@ class AttendanceService:
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
-        # Validate date: no future dates or weekends
-        self._validate_attendance_date(data.date)
+        # Future-date check runs once up-front — it's not per-student.
+        if data.date > date.today():
+            raise ValidationException("Cannot record attendance for a future date")
 
         # Verify class exists
         await self._get_class(db, data.class_id)
+
+        # Pre-load the tenant + every student in the batch. The
+        # per-student weekend check moves INSIDE the loop so a MIXED
+        # tenant's class (day scholars + boarders in the same room)
+        # doesn't fail wholesale on a Saturday — only the day
+        # scholars reject.
+        tenant = await db.get(Tenant, tenant_id)
+        school_type = tenant.school_type if tenant else None
+        student_ids = [r.student_id for r in data.records]
+        students_by_id: dict = {}
+        if student_ids:
+            rows = (await db.execute(
+                select(Student).where(
+                    Student.id.in_(student_ids),
+                    Student.tenant_id == tenant_id,
+                )
+            )).scalars().all()
+            students_by_id = {s.id: s for s in rows}
 
         success_count = 0
         error_count = 0
@@ -225,6 +285,13 @@ class AttendanceService:
 
         for record_data in data.records:
             try:
+                # Per-student weekend check.
+                student = students_by_id.get(record_data.student_id)
+                residence = (
+                    student.effective_residence(school_type) if student else "DAY"
+                )
+                self._validate_attendance_date(data.date, residence=residence)
+
                 # Check for existing record
                 existing = await self._get_existing_record(db, record_data.student_id, data.date)
 

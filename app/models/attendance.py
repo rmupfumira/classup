@@ -21,12 +21,20 @@ from app.models.base import Base, TimestampMixin
 
 
 class AttendanceStatus(str, Enum):
-    """Attendance status options."""
+    """Attendance status options.
+
+    EXEAT (added 2026-10-12 with the boarder-attendance rules) means
+    the boarding student is on authorised weekend leave. Day scholars
+    don't need this — they're simply not marked on weekends. Boarders
+    DO need a positive signal that an absence from the house was
+    sanctioned (vs an unexplained missing-from-dorm).
+    """
 
     PRESENT = "PRESENT"
     ABSENT = "ABSENT"
     LATE = "LATE"
     EXCUSED = "EXCUSED"
+    EXEAT = "EXEAT"
 
 
 class AttendanceSource(str, Enum):

@@ -158,6 +158,11 @@ class StudentService:
             notes=data.notes,
             national_id=(data.national_id or "").strip() or None,
             medical_aid=(data.medical_aid.model_dump() if data.medical_aid else None),
+            # Residence is nullable in the schema + DB. For a MIXED
+            # tenant the UI should enforce this; for a pure
+            # DAY/BOARDING tenant it's fine to leave NULL (the
+            # effective residence comes from tenant.school_type).
+            residence=(data.residence or None),
             enrollment_date=date.today(),
             is_active=True,
         )

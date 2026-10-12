@@ -365,13 +365,48 @@ class BillingService:
         )
         starting_count = (await db.execute(count_query)).scalar() or 0
 
+        # Pre-load the students + tenant so we can honour residence-
+        # targeted fee items (applies_to = DAY_SCHOLARS or BOARDERS).
+        # A boarding levy charged to day scholars by mistake is the
+        # kind of billing bug schools hate — filter deterministically
+        # at generation rather than relying on the admin to pick the
+        # right student list manually.
+        from app.models import Tenant, Student
+        tenant = await db.get(Tenant, tenant_id)
+        school_type = tenant.school_type if tenant else None
+        students_by_id: dict = {}
+        if data.student_ids:
+            rows = (await db.execute(
+                select(Student).where(
+                    Student.id.in_(data.student_ids),
+                    Student.tenant_id == tenant_id,
+                )
+            )).scalars().all()
+            students_by_id = {s.id: s for s in rows}
+
+        def _fee_matches(fi: BillingFeeItem, residence: str) -> bool:
+            # ALL / CLASS fees always qualify — residence targeting
+            # only applies to the two new scopes.
+            if fi.applies_to == "DAY_SCHOLARS":
+                return residence == "DAY"
+            if fi.applies_to == "BOARDERS":
+                return residence in ("FULL_BOARDER", "WEEKLY_BOARDER")
+            return True
+
         invoices = []
         for i, student_id in enumerate(data.student_ids):
             invoice_number = f"{prefix}{starting_count + i + 1:04d}"
 
+            student = students_by_id.get(student_id)
+            residence = (
+                student.effective_residence(school_type) if student else "DAY"
+            )
+
             subtotal = Decimal("0.00")
             line_items = []
             for fi in fee_items:
+                if not _fee_matches(fi, residence):
+                    continue  # Boarder levy on a day scholar — skip.
                 line_total = fi.amount * 1  # qty=1
                 subtotal += line_total
                 line_items.append(
@@ -383,6 +418,13 @@ class BillingService:
                         total_amount=line_total,
                     )
                 )
+
+            # Skip students who end up with no applicable line items
+            # (e.g. only a boarders-only fee was selected but this
+            # student is a day scholar) — generating an invoice with
+            # $0 and no items would just confuse the parent.
+            if not line_items:
+                continue
 
             invoice = BillingInvoice(
                 tenant_id=tenant_id,

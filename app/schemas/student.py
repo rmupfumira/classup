@@ -68,6 +68,11 @@ class StudentBase(BaseModel):
     national_id: str | None = Field(None, max_length=50)
     # Medical aid blob; see MedicalAidInfo above.
     medical_aid: MedicalAidInfo | None = None
+    # Residence (DAY / FULL_BOARDER / WEEKLY_BOARDER). Only required
+    # for MIXED tenants — pure DAY / BOARDING / WEEKLY_BOARDING
+    # tenants leave this NULL and the effective value comes from
+    # tenant.school_type. Added 2026-10-12.
+    residence: str | None = Field(None, max_length=20)
 
 
 class ParentEnrollmentInfo(BaseModel):
@@ -151,6 +156,7 @@ class StudentUpdate(BaseModel):
     is_active: bool | None = None
     national_id: str | None = Field(None, max_length=50)
     medical_aid: MedicalAidInfo | None = None
+    residence: str | None = Field(None, max_length=20)
 
 
 class StudentResponse(StudentBase):

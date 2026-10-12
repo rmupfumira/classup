@@ -18,8 +18,17 @@ class FeeFrequency(str, Enum):
 
 
 class FeeAppliesTo(str, Enum):
+    """Scope of a fee item.
+
+    DAY_SCHOLARS / BOARDERS added 2026-10-12 — target a fee item at
+    students by their effective residence. Boarding levy, meal plan,
+    laundry → BOARDERS; transport fee → DAY_SCHOLARS.
+    """
+
     ALL = "ALL"
     CLASS = "CLASS"
+    DAY_SCHOLARS = "DAY_SCHOLARS"
+    BOARDERS = "BOARDERS"
 
 
 class InvoiceStatus(str, Enum):

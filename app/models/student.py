@@ -27,6 +27,22 @@ class Gender(str, Enum):
     OTHER = "OTHER"
 
 
+class Residence(str, Enum):
+    """Where a student lives during the school term.
+
+    Drives weekend-attendance rules (day scholars aren't marked on
+    Sat/Sun; boarders are) and boarder-only fee items (boarding
+    levy, meal plan, laundry). Only required when the tenant's
+    school_type is MIXED — a pure day school leaves this NULL
+    (every student is implicitly DAY), a pure boarding school
+    leaves it NULL (every student is FULL_BOARDER), etc.
+    """
+
+    DAY = "DAY"
+    FULL_BOARDER = "FULL_BOARDER"
+    WEEKLY_BOARDER = "WEEKLY_BOARDER"
+
+
 # DEPRECATED: Use GradeLevel model instead
 class AgeGroup(str, Enum):
     """Age groups for daycare/early childhood.
@@ -96,6 +112,14 @@ class Student(TenantScopedModel):
     # validated — the admin can leave it blank or paste what they have
     # (owner directive 2026-10-06: capture but don't block).
     national_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Residence status (DAY / FULL_BOARDER / WEEKLY_BOARDER). Nullable
+    # — only required when the tenant's school_type is MIXED. For a
+    # DAY or BOARDING tenant we leave this NULL and derive the
+    # effective residence from the tenant default (see
+    # `effective_residence` below). Added 2026-10-12 with the
+    # boarder-attendance rules.
+    residence: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Medical aid / insurance. Stored as a JSONB blob so we can grow the
     # shape (name, number, package, currency, …) without column churn.
@@ -203,6 +227,32 @@ class Student(TenantScopedModel):
     def is_deleted(self) -> bool:
         """Check if the student is soft deleted."""
         return self.deleted_at is not None
+
+    def effective_residence(self, school_type: str | None) -> str:
+        """Resolve the student's residence given the tenant's school_type.
+
+        - MIXED → use the student's own ``residence`` (admin must set it
+          per student; defaults to DAY if the field is NULL, matching
+          the pre-2026-10 default).
+        - DAY → every student is a day scholar regardless of column.
+        - BOARDING → every student is a full boarder.
+        - WEEKLY_BOARDING → every student is a weekly boarder.
+        - Unknown / NULL school_type → fall back to the student's own
+          residence or DAY. This matches the behaviour for the many
+          tenants that don't need the boarding features at all.
+        """
+        st = (school_type or "").upper()
+        if st == "DAY":
+            return Residence.DAY.value
+        if st == "BOARDING":
+            return Residence.FULL_BOARDER.value
+        if st == "WEEKLY_BOARDING":
+            return Residence.WEEKLY_BOARDER.value
+        if st == "MIXED":
+            return (self.residence or Residence.DAY.value).upper()
+        # No school_type configured → honour whatever the student row
+        # says (likely NULL → DAY).
+        return (self.residence or Residence.DAY.value).upper()
 
 
 class ParentStudent(Base, TimestampMixin):

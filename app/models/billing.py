@@ -33,10 +33,20 @@ class FeeFrequency(str, Enum):
 
 
 class FeeAppliesTo(str, Enum):
-    """Scope of a fee item."""
+    """Scope of a fee item.
+
+    DAY_SCHOLARS / BOARDERS added 2026-10-12 for schools that run a
+    mix of residences — e.g. a "Boarding levy" charged only to full /
+    weekly boarders, or "Transport fee" charged only to day scholars.
+    The invoice generator filters students by their effective
+    residence (student.residence, falling back to the tenant's
+    school_type default).
+    """
 
     ALL = "ALL"
     CLASS = "CLASS"
+    DAY_SCHOLARS = "DAY_SCHOLARS"
+    BOARDERS = "BOARDERS"
 
 
 class InvoiceStatus(str, Enum):
