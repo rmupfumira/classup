@@ -434,25 +434,52 @@
                        placeholder="teacher@example.com">
             </div>
 
-            <!-- Assignments section -->
-            <div class="border-t border-neutral-200 pt-4">
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-sm font-medium text-neutral-700">
-                        Classes &amp; Subjects
-                        <span class="font-normal text-xs text-neutral-500">(optional — applied on acceptance)</span>
-                    </label>
-                    <button type="button" id="invite-add-row-btn"
-                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        + Add class
-                    </button>
-                </div>
-                <div id="invite-assignments-rows" class="space-y-3"></div>
-                <p class="mt-2 text-xs text-neutral-500">
-                    Leave empty if you'd rather assign classes after they accept.
-                    {% if not subject_teacher_enabled %}
-                    Subject-specialist assignments are available once you enable the mode in Settings.
-                    {% endif %}
+            <!-- Assignments section — subject-first + class-teacher -->
+            <div class="border-t border-neutral-200 pt-4 space-y-4">
+                <p class="text-xs text-neutral-500">
+                    Optional — these are applied when the teacher accepts the invitation.
+                    Leave both sections empty to invite without any assignments.
                 </p>
+
+                {% if subject_teacher_enabled %}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-neutral-700">
+                            Subjects they teach
+                            <span class="font-normal text-xs text-neutral-500">
+                                — one subject across any number of classes
+                            </span>
+                        </label>
+                        <button type="button" data-add-subject-row="invite-subject-rows"
+                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            + Add subject
+                        </button>
+                    </div>
+                    <div id="invite-subject-rows" class="space-y-3"></div>
+                </div>
+                {% endif %}
+
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-neutral-700">
+                            Classes they're the class teacher of
+                            <span class="font-normal text-xs text-neutral-500">
+                                — pastoral/admin owner, may not teach there
+                            </span>
+                        </label>
+                        <button type="button" data-add-class-row="invite-ct-rows"
+                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            + Add class
+                        </button>
+                    </div>
+                    <div id="invite-ct-rows" class="space-y-3"></div>
+                </div>
+
+                {% if not subject_teacher_enabled %}
+                <p class="text-xs text-neutral-500">
+                    Subject-specialist assignments are available once you enable the mode in Settings.
+                </p>
+                {% endif %}
             </div>
 
             <div id="form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
@@ -488,14 +515,32 @@
         </p>
         <form id="edit-invitation-form" class="space-y-4">
             <input type="hidden" id="ei-invitation-id">
-            <div class="flex items-center justify-between">
-                <span class="block text-sm font-medium text-neutral-700">Classes &amp; Subjects</span>
-                <button type="button" id="ei-add-row-btn"
-                        class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                    + Add class
-                </button>
+            {% if subject_teacher_enabled %}
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="block text-sm font-medium text-neutral-700">
+                        Subjects they teach
+                    </span>
+                    <button type="button" data-add-subject-row="ei-subject-rows"
+                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                        + Add subject
+                    </button>
+                </div>
+                <div id="ei-subject-rows" class="space-y-3"></div>
             </div>
-            <div id="ei-assignments-rows" class="space-y-3"></div>
+            {% endif %}
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="block text-sm font-medium text-neutral-700">
+                        Classes they're the class teacher of
+                    </span>
+                    <button type="button" data-add-class-row="ei-ct-rows"
+                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                        + Add class
+                    </button>
+                </div>
+                <div id="ei-ct-rows" class="space-y-3"></div>
+            </div>
             <div id="ei-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('edit-invitation-dialog').close()"
@@ -536,16 +581,41 @@
             </div>
         </div>
 
-        <!-- Add assignment sub-form -->
+        <!-- Add assignments sub-form (subject-first + class-teacher) -->
         <div class="border-t border-neutral-200 pt-4">
-            <h3 class="text-sm font-medium text-neutral-700 mb-2">Add an assignment</h3>
-            <form id="ma-add-form" class="space-y-3">
-                <div id="ma-add-row" class="space-y-3"></div>
+            <h3 class="text-sm font-medium text-neutral-700 mb-3">Add assignments</h3>
+            <form id="ma-add-form" class="space-y-4">
+                {% if subject_teacher_enabled %}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="block text-xs font-medium text-neutral-600">
+                            Subjects they teach
+                        </span>
+                        <button type="button" data-add-subject-row="ma-subject-rows"
+                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            + Add subject
+                        </button>
+                    </div>
+                    <div id="ma-subject-rows" class="space-y-3"></div>
+                </div>
+                {% endif %}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="block text-xs font-medium text-neutral-600">
+                            Classes they're the class teacher of
+                        </span>
+                        <button type="button" data-add-class-row="ma-ct-rows"
+                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            + Add class
+                        </button>
+                    </div>
+                    <div id="ma-ct-rows" class="space-y-3"></div>
+                </div>
                 <div id="ma-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
                 <div class="flex justify-end gap-3">
                     <button type="submit"
                             class="px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
-                        Add
+                        Save new assignments
                     </button>
                 </div>
             </form>
@@ -602,71 +672,68 @@
 
 {% block scripts %}
 <script>
-// Tenant-wide toggle: subject-specialist mode. Flipped off hides the
-// subject picker from every assignment-row builder below.
+// Tenant-wide toggle: subject-specialist mode. Flipped off hides every
+// subject-row builder (both the invite dialog and the manage dialog).
 const SUBJECT_TEACHER_ENABLED = {{ (subject_teacher_enabled or false)|tojson }};
-// Cache of classes + their subject lists so repeated row builds don't
-// hit the API every time.
-let CLASSES_CACHE = null;
-const SUBJECTS_CACHE = {};  // {class_id: [{id, name, code}]}
 
-async function fetchClasses() {
-    if (CLASSES_CACHE) return CLASSES_CACHE;
-    const resp = await fetch('/api/v1/classes?page_size=100', {
+// One-shot fetch of the subject × class matrix: classes, subjects, and
+// which subject is attached to which class. Driving data for the
+// subject-first picker (so when the admin picks "Mathematics" we can
+// list every class where Maths is taught, instead of N+1-fetching
+// /classes/{id}/subjects).
+let MATRIX = null;  // {classes, subjects, classesBySubject{sid: [class_id,...]}}
+
+async function fetchMatrix() {
+    if (MATRIX) return MATRIX;
+    const resp = await fetch('/api/v1/academic/class-subject-matrix', {
         credentials: 'same-origin',
     });
     const result = await resp.json();
-    CLASSES_CACHE = (result.data || []).map(c => ({ id: c.id, name: c.name }));
-    return CLASSES_CACHE;
+    const data = result.data || { classes: [], subjects: [], attachments: [] };
+    const classesBySubject = {};
+    for (const a of data.attachments || []) {
+        (classesBySubject[a.subject_id] ||= []).push(a.class_id);
+    }
+    MATRIX = {
+        classes: data.classes || [],
+        subjects: data.subjects || [],
+        classesBySubject,
+    };
+    return MATRIX;
 }
 
-async function fetchClassSubjects(classId) {
-    if (SUBJECTS_CACHE[classId]) return SUBJECTS_CACHE[classId];
-    const resp = await fetch(`/api/v1/academic/classes/${classId}/subjects`, {
-        credentials: 'same-origin',
-    });
-    const result = await resp.json();
-    SUBJECTS_CACHE[classId] = (result.data || []).map(cs => ({
-        id: cs.subject_id,
-        name: cs.subject_name,
-        code: cs.subject_code,
-    }));
-    return SUBJECTS_CACHE[classId];
-}
-
-// Build one editable assignment row. ``preselected`` lets us pre-fill
-// the row (used by the Edit-invitation dialog). Returns the <div>.
-async function buildAssignmentRow(containerId, preselected) {
+// ────────────────────────────────────────────────────────────────
+// Subject row — the admin picks ONE subject + the classes they teach
+// it in. Produces N intended_assignments items on collect (one per
+// class, each with subject_ids=[subject_id]).
+// ────────────────────────────────────────────────────────────────
+async function buildSubjectRow(containerId, preselected) {
     const container = document.getElementById(containerId);
-    const classes = await fetchClasses();
+    const matrix = await fetchMatrix();
 
     const row = document.createElement('div');
-    row.className = 'assignment-row border border-neutral-200 rounded-md p-3 bg-neutral-50';
-    const classOptions = classes.map(c =>
-        `<option value="${c.id}" ${preselected && preselected.class_id === c.id ? 'selected' : ''}>${c.name}</option>`
+    row.className = 'subject-row border border-neutral-200 rounded-md p-3 bg-neutral-50';
+    const subjectOpts = matrix.subjects.map(s =>
+        `<option value="${s.id}" ${preselected && preselected.subject_id === s.id ? 'selected' : ''}>${s.name}</option>`
     ).join('');
     row.innerHTML = `
         <div class="flex items-start gap-2">
             <div class="flex-1 space-y-2">
                 <div>
-                    <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
-                    <select class="ar-class block w-full h-8 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
-                        <option value="">— pick a class —</option>
-                        ${classOptions}
+                    <label class="block text-xs font-medium text-neutral-600 mb-1">Subject</label>
+                    <select class="sr-subject block w-full h-8 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                        <option value="">— pick a subject —</option>
+                        ${subjectOpts}
                     </select>
                 </div>
-                <label class="inline-flex items-center text-xs text-neutral-700 gap-2">
-                    <input type="checkbox" class="ar-primary rounded text-primary-500 focus:ring-0" ${preselected && preselected.is_primary ? 'checked' : ''}>
-                    Primary teacher of this class
-                </label>
-                <div class="ar-subjects-wrap ${SUBJECT_TEACHER_ENABLED ? '' : 'hidden'}">
-                    <label class="block text-xs font-medium text-neutral-600 mb-1">Subjects (optional)</label>
-                    <div class="ar-subjects text-xs text-neutral-500 bg-white border border-neutral-200 rounded p-2 min-h-[40px]">
-                        Pick a class first.
+                <div>
+                    <label class="block text-xs font-medium text-neutral-600 mb-1">Classes they teach it in</label>
+                    <div class="sr-classes text-xs bg-white border border-neutral-200 rounded p-2 min-h-[40px]">
+                        <span class="text-neutral-500">Pick a subject first.</span>
                     </div>
                 </div>
             </div>
-            <button type="button" class="ar-remove text-neutral-400 hover:text-red-600 mt-1" title="Remove">
+            <button type="button" class="sr-remove text-neutral-400 hover:text-red-600 mt-1" title="Remove">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -674,61 +741,164 @@ async function buildAssignmentRow(containerId, preselected) {
         </div>
     `;
     container.appendChild(row);
+    row.querySelector('.sr-remove').addEventListener('click', () => row.remove());
 
-    row.querySelector('.ar-remove').addEventListener('click', () => row.remove());
-    const classSel = row.querySelector('.ar-class');
-    const subjectsBox = row.querySelector('.ar-subjects');
+    const subjectSel = row.querySelector('.sr-subject');
+    const classesBox = row.querySelector('.sr-classes');
+    const preClassIds = new Set((preselected && preselected.class_ids) || []);
 
-    async function paintSubjects() {
-        const classId = classSel.value;
-        if (!classId || !SUBJECT_TEACHER_ENABLED) {
-            subjectsBox.innerHTML = SUBJECT_TEACHER_ENABLED
-                ? '<span class="text-neutral-500">Pick a class first.</span>'
-                : '<span class="text-neutral-500">Subject-specialist mode is off.</span>';
+    function paintClasses() {
+        const sid = subjectSel.value;
+        if (!sid) {
+            classesBox.innerHTML = '<span class="text-neutral-500">Pick a subject first.</span>';
             return;
         }
-        subjectsBox.innerHTML = '<span class="text-neutral-500">Loading…</span>';
-        const subjects = await fetchClassSubjects(classId);
-        if (!subjects.length) {
-            subjectsBox.innerHTML = '<span class="text-neutral-500">No subjects assigned to this class yet.</span>';
+        const classIds = new Set(MATRIX.classesBySubject[sid] || []);
+        if (classIds.size === 0) {
+            classesBox.innerHTML =
+                '<span class="text-neutral-500">This subject isn\'t attached to any class yet. ' +
+                'Open a class detail page to add it.</span>';
             return;
         }
-        const preIds = new Set((preselected && preselected.subject_ids) || []);
-        subjectsBox.innerHTML = subjects.map(s => `
-            <label class="inline-flex items-center mr-3 mb-1 text-xs text-neutral-700 gap-1">
-                <input type="checkbox" class="ar-subject rounded text-primary-500 focus:ring-0" value="${s.id}" ${preIds.has(s.id) ? 'checked' : ''}>
-                ${s.name}
-            </label>
-        `).join('');
+        classesBox.innerHTML = MATRIX.classes
+            .filter(c => classIds.has(c.id))
+            .map(c => `
+                <label class="inline-flex items-center mr-3 mb-1 text-xs text-neutral-700 gap-1">
+                    <input type="checkbox" class="sr-class rounded text-primary-500 focus:ring-0" value="${c.id}" ${preClassIds.has(c.id) ? 'checked' : ''}>
+                    ${c.name}
+                </label>
+            `).join('');
     }
-    classSel.addEventListener('change', paintSubjects);
-    await paintSubjects();
+    subjectSel.addEventListener('change', paintClasses);
+    paintClasses();
     return row;
 }
 
-// Serialise all assignment rows inside ``containerId`` into the API
-// payload shape. Skips rows with no class_id.
-function collectAssignments(containerId) {
+// ────────────────────────────────────────────────────────────────
+// Class-teacher row — the admin picks ONE class where this teacher
+// is the homeroom/class teacher (owns attendance, pastoral). Produces
+// ONE intended_assignments item on collect (subject_ids=[]).
+// ────────────────────────────────────────────────────────────────
+async function buildClassTeacherRow(containerId, preselected) {
+    const container = document.getElementById(containerId);
+    const matrix = await fetchMatrix();
+
+    const row = document.createElement('div');
+    row.className = 'ct-row border border-neutral-200 rounded-md p-3 bg-neutral-50';
+    const classOpts = matrix.classes.map(c =>
+        `<option value="${c.id}" ${preselected && preselected.class_id === c.id ? 'selected' : ''}>${c.name}</option>`
+    ).join('');
+    row.innerHTML = `
+        <div class="flex items-start gap-2">
+            <div class="flex-1 space-y-2">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
+                    <select class="ct-class block w-full h-8 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                        <option value="">— pick a class —</option>
+                        ${classOpts}
+                    </select>
+                </div>
+                <label class="inline-flex items-center text-xs text-neutral-700 gap-2">
+                    <input type="checkbox" class="ct-primary rounded text-primary-500 focus:ring-0" ${preselected && preselected.is_primary ? 'checked' : ''}>
+                    Primary teacher of this class
+                </label>
+            </div>
+            <button type="button" class="ct-remove text-neutral-400 hover:text-red-600 mt-1" title="Remove">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    container.appendChild(row);
+    row.querySelector('.ct-remove').addEventListener('click', () => row.remove());
+    return row;
+}
+
+// Collect both sections into the API's intended_assignments shape:
+// [{class_id, is_primary, subject_ids}, ...]
+//
+// Subject rows fan out to one item per selected class with
+// subject_ids=[subject_id]. Class-teacher rows produce one item with
+// subject_ids=[]. If the same class appears in both a subject row AND
+// a class-teacher row, we emit two items — the apply logic creates
+// one ClassSubjectTeacher row + one TeacherClass row (different tables).
+function collectAssignments(subjectsContainerId, classTeachersContainerId) {
     const items = [];
-    document.querySelectorAll(`#${containerId} .assignment-row`).forEach(row => {
-        const classId = row.querySelector('.ar-class').value;
-        if (!classId) return;
-        const isPrimary = row.querySelector('.ar-primary').checked;
-        const subjectIds = Array.from(row.querySelectorAll('.ar-subject:checked')).map(cb => cb.value);
-        items.push({ class_id: classId, is_primary: isPrimary, subject_ids: subjectIds });
-    });
+    if (subjectsContainerId) {
+        document.querySelectorAll(`#${subjectsContainerId} .subject-row`).forEach(row => {
+            const subjectId = row.querySelector('.sr-subject').value;
+            if (!subjectId) return;
+            const classIds = Array.from(row.querySelectorAll('.sr-class:checked')).map(cb => cb.value);
+            for (const cid of classIds) {
+                items.push({ class_id: cid, is_primary: false, subject_ids: [subjectId] });
+            }
+        });
+    }
+    if (classTeachersContainerId) {
+        document.querySelectorAll(`#${classTeachersContainerId} .ct-row`).forEach(row => {
+            const classId = row.querySelector('.ct-class').value;
+            if (!classId) return;
+            const isPrimary = row.querySelector('.ct-primary').checked;
+            items.push({ class_id: classId, is_primary: isPrimary, subject_ids: [] });
+        });
+    }
     return items;
 }
+
+// Reverse the collect: given a saved intended_assignments list, group
+// into subject-first rows + class-teacher rows for pre-fill in the
+// Edit Pending dialog. An item with subject_ids becomes part of the
+// subject grouping (keyed by subject_id, aggregating class_ids). An
+// item without subjects becomes a class-teacher row.
+function regroupAssignmentsForEdit(items) {
+    const bySubject = {};  // {subject_id: Set<class_id>}
+    const classTeachers = [];
+    for (const it of items || []) {
+        const sids = it.subject_ids || [];
+        if (sids.length > 0) {
+            for (const sid of sids) {
+                (bySubject[sid] ||= new Set()).add(it.class_id);
+            }
+        }
+        // A row that marks is_primary (regardless of subjects) also
+        // produces a class-teacher row so we don't drop the primary
+        // flag. Items with no subjects AND not primary → still a
+        // class-teacher row (admin wanted them to own that class).
+        if (sids.length === 0 || it.is_primary) {
+            classTeachers.push({ class_id: it.class_id, is_primary: !!it.is_primary });
+        }
+    }
+    const subjects = Object.entries(bySubject).map(([sid, set]) => ({
+        subject_id: sid,
+        class_ids: Array.from(set),
+    }));
+    return { subjects, classTeachers };
+}
+
+// Wire up all "+ Add subject" / "+ Add class" buttons via data-attrs.
+// Buttons are inside dialogs; we delegate at document level because
+// not all dialogs are open at page load time.
+document.addEventListener('click', (e) => {
+    const addSub = e.target.closest('[data-add-subject-row]');
+    if (addSub) {
+        e.preventDefault();
+        buildSubjectRow(addSub.dataset.addSubjectRow);
+        return;
+    }
+    const addClass = e.target.closest('[data-add-class-row]');
+    if (addClass) {
+        e.preventDefault();
+        buildClassTeacherRow(addClass.dataset.addClassRow);
+        return;
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('invite-teacher-form');
     const errorDiv = document.getElementById('form-error');
     const successDiv = document.getElementById('form-success');
     const submitBtn = document.getElementById('submit-btn');
-
-    document.getElementById('invite-add-row-btn').addEventListener('click', () => {
-        buildAssignmentRow('invite-assignments-rows');
-    });
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -741,7 +911,7 @@ document.addEventListener('DOMContentLoaded', function() {
             first_name: form.first_name.value,
             last_name: form.last_name.value || '',
             email: form.email.value,
-            intended_assignments: collectAssignments('invite-assignments-rows'),
+            intended_assignments: collectAssignments('invite-subject-rows', 'invite-ct-rows'),
         };
 
         try {
@@ -758,7 +928,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 successDiv.textContent = result.message;
                 successDiv.classList.remove('hidden');
                 form.reset();
-                document.getElementById('invite-assignments-rows').innerHTML = '';
+                const subRows = document.getElementById('invite-subject-rows');
+                if (subRows) subRows.innerHTML = '';
+                document.getElementById('invite-ct-rows').innerHTML = '';
                 setTimeout(() => window.location.reload(), 1500);
             } else {
                 errorDiv.textContent = result.message || 'Failed to send invitation';
@@ -773,24 +945,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Reset the invite dialog's assignment rows when it's closed
-    // (dialog element fires 'close' when esc/.close() is called).
+    // Reset the invite dialog's rows when it's closed.
     document.getElementById('invite-teacher-dialog').addEventListener('close', () => {
-        document.getElementById('invite-assignments-rows').innerHTML = '';
+        const subRows = document.getElementById('invite-subject-rows');
+        if (subRows) subRows.innerHTML = '';
+        document.getElementById('invite-ct-rows').innerHTML = '';
         document.getElementById('form-error').classList.add('hidden');
         document.getElementById('form-success').classList.add('hidden');
     });
 
     // --- Edit invitation dialog ---
-    document.getElementById('ei-add-row-btn').addEventListener('click', () => {
-        buildAssignmentRow('ei-assignments-rows');
-    });
     document.getElementById('edit-invitation-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const invId = document.getElementById('ei-invitation-id').value;
         const errDiv = document.getElementById('ei-error');
         errDiv.classList.add('hidden');
-        const items = collectAssignments('ei-assignments-rows');
+        const items = collectAssignments('ei-subject-rows', 'ei-ct-rows');
         try {
             const resp = await fetch(`/api/v1/users/teachers/invitations/${invId}/assignments`, {
                 method: 'PUT',
@@ -817,43 +987,68 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('ma-add-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const teacherId = document.getElementById('ma-teacher-id').value;
-        const items = collectAssignments('ma-add-row');
-        if (!items.length) return;
+        const items = collectAssignments('ma-subject-rows', 'ma-ct-rows');
         const errDiv = document.getElementById('ma-error');
         errDiv.classList.add('hidden');
-        // We only ever have one row inside the add-form.
-        const payload = items[0];
-        try {
-            const resp = await fetch(`/api/v1/users/teachers/${teacherId}/assignments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify(payload),
-            });
-            const result = await resp.json();
-            if (result.status === 'success') {
-                ClassUp.toast('Assignment added', 'success');
-                await refreshManageAssignments(teacherId);
-                document.getElementById('ma-add-row').innerHTML = '';
-                buildAssignmentRow('ma-add-row');
-            } else {
-                errDiv.textContent = result.message || 'Failed to add';
-                errDiv.classList.remove('hidden');
-            }
-        } catch (err) {
-            errDiv.textContent = 'An error occurred. Please try again.';
+        if (!items.length) {
+            errDiv.textContent = 'Add at least one subject or class first.';
             errDiv.classList.remove('hidden');
+            return;
         }
+        // POST each assignment. We tolerate per-item failures and
+        // report a summary so admins see which specific one broke
+        // (usually "already assigned" or cross-tenant).
+        const failures = [];
+        for (const payload of items) {
+            try {
+                const resp = await fetch(`/api/v1/users/teachers/${teacherId}/assignments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(payload),
+                });
+                const result = await resp.json();
+                if (result.status !== 'success') {
+                    failures.push(result.message || 'Failed');
+                }
+            } catch (err) {
+                failures.push('Network error');
+            }
+        }
+        if (failures.length === items.length) {
+            errDiv.textContent = failures[0];
+            errDiv.classList.remove('hidden');
+            return;
+        }
+        const added = items.length - failures.length;
+        ClassUp.toast(
+            failures.length === 0
+                ? `${added} assignment${added === 1 ? '' : 's'} added`
+                : `${added} added, ${failures.length} skipped (${failures[0]})`,
+            failures.length === 0 ? 'success' : 'warning',
+        );
+        await refreshManageAssignments(teacherId);
+        const subRows = document.getElementById('ma-subject-rows');
+        if (subRows) subRows.innerHTML = '';
+        document.getElementById('ma-ct-rows').innerHTML = '';
     });
 });
 
 async function editInvitationAssignments(invitationId, intended) {
     document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
     document.getElementById('ei-invitation-id').value = invitationId;
-    const rowsEl = document.getElementById('ei-assignments-rows');
-    rowsEl.innerHTML = '';
-    for (const item of (intended || [])) {
-        await buildAssignmentRow('ei-assignments-rows', item);
+    const subRows = document.getElementById('ei-subject-rows');
+    const ctRows = document.getElementById('ei-ct-rows');
+    if (subRows) subRows.innerHTML = '';
+    ctRows.innerHTML = '';
+    const grouped = regroupAssignmentsForEdit(intended);
+    if (subRows) {
+        for (const g of grouped.subjects) {
+            await buildSubjectRow('ei-subject-rows', g);
+        }
+    }
+    for (const ct of grouped.classTeachers) {
+        await buildClassTeacherRow('ei-ct-rows', ct);
     }
     document.getElementById('edit-invitation-dialog').showModal();
 }
@@ -862,10 +1057,11 @@ async function openManageAssignmentsDialog(teacherId, teacherName) {
     document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
     document.getElementById('ma-teacher-id').value = teacherId;
     document.getElementById('ma-teacher-name').textContent = `· ${teacherName}`;
-    const addRow = document.getElementById('ma-add-row');
-    addRow.innerHTML = '';
+    const subRows = document.getElementById('ma-subject-rows');
+    const ctRows = document.getElementById('ma-ct-rows');
+    if (subRows) subRows.innerHTML = '';
+    ctRows.innerHTML = '';
     await refreshManageAssignments(teacherId);
-    await buildAssignmentRow('ma-add-row');
     document.getElementById('manage-assignments-dialog').showModal();
 }
 

@@ -240,6 +240,65 @@ async def delete_subject(
 # ==================== CLASS SUBJECTS ====================
 
 
+@router.get("/class-subject-matrix", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def class_subject_matrix(
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the full {subject × class} attachment matrix for this tenant.
+
+    Used by the teacher-invite / manage dialogs so the subject-first
+    picker can show "which classes teach this subject?" in one shot
+    instead of N+1-fetching ``/classes/{id}/subjects``. One query
+    across ``class_subjects`` with eager-loaded names.
+    """
+    from sqlalchemy import select
+    from app.models import SchoolClass
+    from app.models.academic import ClassSubject, Subject
+    from app.utils.tenant_context import get_tenant_id
+
+    tenant_id = get_tenant_id()
+
+    classes = (await db.execute(
+        select(SchoolClass).where(
+            SchoolClass.tenant_id == tenant_id,
+            SchoolClass.deleted_at.is_(None),
+            SchoolClass.is_active.is_(True),
+        ).order_by(SchoolClass.name)
+    )).scalars().all()
+
+    subjects = (await db.execute(
+        select(Subject).where(
+            Subject.tenant_id == tenant_id,
+            Subject.deleted_at.is_(None),
+            Subject.is_active.is_(True),
+        ).order_by(Subject.display_order, Subject.name)
+    )).scalars().all()
+
+    class_ids = [c.id for c in classes]
+    attachments: list[dict] = []
+    if class_ids:
+        attach_rows = (await db.execute(
+            select(ClassSubject.class_id, ClassSubject.subject_id)
+            .where(ClassSubject.class_id.in_(class_ids))
+        )).all()
+        attachments = [
+            {"class_id": str(cid), "subject_id": str(sid)} for cid, sid in attach_rows
+        ]
+
+    return {
+        "status": "success",
+        "data": {
+            "classes": [{"id": str(c.id), "name": c.name} for c in classes],
+            "subjects": [
+                {"id": str(s.id), "name": s.name, "code": s.code}
+                for s in subjects
+            ],
+            "attachments": attachments,
+        },
+    }
+
+
 @router.get("/classes/{class_id}/subjects", response_model=dict)
 @require_role("SCHOOL_ADMIN", "TEACHER")
 async def list_class_subjects(
