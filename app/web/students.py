@@ -411,7 +411,7 @@ async def student_detail(
         effective_subjects = await academic.get_effective_subjects_for_student(
             db, student_id,
         )
-        class_subjects_list, _ = await academic.get_class_subjects(
+        class_subjects_list = await academic.get_class_subjects(
             db, student.class_id,
         )
         for cs, eff in zip(class_subjects_list, effective_subjects):

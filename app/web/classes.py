@@ -155,7 +155,7 @@ async def class_detail(
     from app.services.academic_service import get_academic_service
     tenant = await db.get(Tenant, get_tenant_id())
     academic = get_academic_service()
-    class_subjects, _ = await academic.get_class_subjects(db, class_id)
+    class_subjects = await academic.get_class_subjects(db, class_id)
     # Pre-compute teacher assignments per subject so the template
     # doesn't trigger lazy loads inside the loop (N+1 at page render).
     subject_teachers_by_subject: dict = {}
