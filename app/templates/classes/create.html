@@ -16,32 +16,7 @@
 
     <!-- Form -->
     <form id="class-form" class="space-y-6">
-        <!-- Basic Information -->
-        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-            <h2 class="text-lg font-semibold text-neutral-900 mb-4">Class Information</h2>
-
-            <div class="space-y-4">
-                <div>
-                    <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
-                        Class Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" id="name" name="name" required
-                           placeholder="e.g., Butterfly Room, Grade 3A"
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                </div>
-
-                <div>
-                    <label for="description" class="block text-sm font-medium text-neutral-700 mb-1">
-                        Description
-                    </label>
-                    <textarea id="description" name="description" rows="3"
-                              placeholder="A brief description of the class..."
-                              class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"></textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- Classification -->
+        <!-- Classification first so grade pick can auto-fill the name below -->
         <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Classification</h2>
 
@@ -71,6 +46,32 @@
             </div>
         </div>
 
+        <!-- Basic Information -->
+        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <h2 class="text-lg font-semibold text-neutral-900 mb-4">Class Information</h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
+                        Class Name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="name" name="name" required
+                           placeholder="Pick a grade level to auto-fill, or type a custom name"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <p id="name-hint" class="mt-1 text-xs text-neutral-500 hidden"></p>
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm font-medium text-neutral-700 mb-1">
+                        Description
+                    </label>
+                    <textarea id="description" name="description" rows="3"
+                              placeholder="A brief description of the class..."
+                              class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"></textarea>
+                </div>
+            </div>
+        </div>
+
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3">
             <a href="/classes"
@@ -91,13 +92,20 @@
 document.addEventListener('DOMContentLoaded', async function() {
     const form = document.getElementById('class-form');
     const gradeLevelSelect = document.getElementById('grade_level_id');
+    const nameInput = document.getElementById('name');
+    const nameHint = document.getElementById('name-hint');
 
-    // Load grade levels from API
+    // Remember whether the user has typed their own name — if they
+    // have, we stop auto-overwriting on grade-level changes.
+    let nameTouched = false;
+    nameInput.addEventListener('input', () => { nameTouched = true; });
+
+    // Map grade_level_id → label, built after loading grade levels.
+    const gradeLabelById = {};
+
     async function loadGradeLevels() {
         try {
-            const response = await fetch('/api/v1/grade-levels', {
-                credentials: 'same-origin'
-            });
+            const response = await fetch('/api/v1/grade-levels', { credentials: 'same-origin' });
             const result = await response.json();
             if (response.ok && result.data) {
                 result.data.forEach(gl => {
@@ -105,6 +113,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     option.value = gl.id;
                     option.textContent = gl.name;
                     gradeLevelSelect.appendChild(option);
+                    gradeLabelById[gl.id] = gl.name;
                 });
             }
         } catch (error) {
@@ -112,7 +121,79 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
+    // Excel-style next letter: A..Z, AA..AZ, BA..BZ, ...
+    // Deduces the next suffix from the suffixes that are already in use
+    // for this grade level, so admins get A on first class, B on second,
+    // AA after Z, etc. Not re-used — a deleted "Form 4B" means the next
+    // class is still "Form 4D" if C and D exist. Simpler and matches
+    // how admins actually think (no reuse of a departed cohort's label).
+    function excelLetter(index) {
+        // 0 → A, 1 → B, ..., 25 → Z, 26 → AA
+        let s = '';
+        let n = index;
+        while (true) {
+            s = String.fromCharCode(65 + (n % 26)) + s;
+            if (n < 26) return s;
+            n = Math.floor(n / 26) - 1;
+        }
+    }
+
+    function suggestedNameFor(gradeLabel, existingNames) {
+        // Strip trailing whitespace once; the suffix always comes right after.
+        const base = gradeLabel.trim();
+        // Find existing suffixes: anything matching "{base}<suffix>" (case-insensitive).
+        const used = new Set();
+        const re = new RegExp('^' + base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*([A-Z]+)$', 'i');
+        existingNames.forEach(n => {
+            const m = n.trim().match(re);
+            if (m) used.add(m[1].toUpperCase());
+        });
+        // Walk Excel-style letters until we find a free one.
+        for (let i = 0; i < 10000; i++) {
+            const candidate = excelLetter(i);
+            if (!used.has(candidate)) return base + candidate;
+        }
+        return base;  // give up gracefully
+    }
+
+    async function updateAutoName() {
+        const gradeId = gradeLevelSelect.value;
+        if (!gradeId) {
+            nameHint.classList.add('hidden');
+            return;
+        }
+        if (nameTouched && nameInput.value.trim()) {
+            // Respect what the admin typed.
+            nameHint.classList.add('hidden');
+            return;
+        }
+        const label = gradeLabelById[gradeId] || '';
+        // Fetch existing classes with this grade level to compute next free letter.
+        let existingNames = [];
+        try {
+            const r = await fetch('/api/v1/classes?grade_level_id=' + encodeURIComponent(gradeId) + '&page_size=100', {
+                credentials: 'same-origin'
+            });
+            const data = await r.json();
+            if (r.ok && Array.isArray(data.data)) {
+                existingNames = data.data.map(c => c.name || '');
+            }
+        } catch (e) {
+            // Non-fatal — fall back to "{Grade}A".
+            console.warn('Could not load existing classes for grade; defaulting to A.', e);
+        }
+        const name = suggestedNameFor(label, existingNames);
+        nameInput.value = name;
+        nameTouched = false;  // reset so a subsequent grade change updates again
+        nameHint.textContent =
+            existingNames.length === 0
+                ? 'Auto-filled — first class in this grade.'
+                : `Auto-filled — ${existingNames.length} class(es) already exist in this grade. Change the name if you want.`;
+        nameHint.classList.remove('hidden');
+    }
+
     await loadGradeLevels();
+    gradeLevelSelect.addEventListener('change', updateAutoName);
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
