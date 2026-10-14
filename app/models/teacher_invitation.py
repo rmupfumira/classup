@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -65,6 +65,22 @@ class TeacherInvitation(Base, TimestampMixin):
     accepted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+    # Pre-planned class + subject assignments the teacher will be given
+    # the moment they accept the invite. Each item is a dict:
+    #   {"class_id": uuid, "is_primary": bool, "subject_ids": [uuid]}
+    # - Item with no subject_ids → general TeacherClass row.
+    # - Item with subject_ids → one ClassSubjectTeacher per subject.
+    # Validated at write time (class belongs to this tenant, every
+    # subject belongs to the class). Applied by
+    # ``TeacherInvitationService._apply_intended_assignments`` on
+    # acceptance. Default [] keeps the pre-feature flow — admin wires
+    # up assignments manually.
+    intended_assignments: Mapped[list] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+        default=list,
     )
 
     # Relationships

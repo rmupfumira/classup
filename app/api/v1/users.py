@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database import get_db
+from app.exceptions import NotFoundException
 from app.models import Tenant
 from app.schemas.common import APIResponse
+from app.services.class_service import get_class_service
 from app.services.email_service import get_email_service
 from app.services.teacher_invitation_service import get_teacher_invitation_service
 from app.services.user_service import get_user_service
@@ -24,10 +26,48 @@ settings = get_settings()
 router = APIRouter()
 
 
+class IntendedAssignment(BaseModel):
+    """One class the teacher will be assigned to on acceptance.
+
+    - ``subject_ids=[]`` → general class-teacher row (TeacherClass).
+    - ``subject_ids=[...]`` → subject-specialist rows (one
+      ClassSubjectTeacher per subject). Requires the tenant to have
+      ``subject_teacher_enabled=True``.
+    - Both ``is_primary=True`` and ``subject_ids`` set is allowed
+      (primary class teacher who's also a subject specialist on their
+      own class — rare but legal).
+    """
+    class_id: uuid.UUID
+    is_primary: bool = False
+    subject_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
 class InviteTeacherRequest(BaseModel):
     first_name: str
     last_name: str = ""
     email: EmailStr
+    # Optional pre-plan: admins can pick classes + subjects at invite
+    # time so the moment the teacher accepts, their TeacherClass /
+    # ClassSubjectTeacher rows are wired up.
+    intended_assignments: list[IntendedAssignment] = Field(default_factory=list)
+
+
+class UpdateInvitationAssignmentsRequest(BaseModel):
+    """Admins edit the stored plan on a pending invitation."""
+    intended_assignments: list[IntendedAssignment] = Field(default_factory=list)
+
+
+class AddAssignmentRequest(BaseModel):
+    """Add one assignment (general or subject-specialist) to an
+    existing teacher.
+
+    Same semantics as :class:`IntendedAssignment` on the invite flow:
+    no subject_ids → TeacherClass, subject_ids → one
+    ClassSubjectTeacher per subject.
+    """
+    class_id: uuid.UUID
+    is_primary: bool = False
+    subject_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class UpdateTeacherRequest(BaseModel):
@@ -116,7 +156,14 @@ async def invite_teacher(
     data: InviteTeacherRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Invite a teacher by email. Sends an invitation email with a registration code."""
+    """Invite a teacher by email. Sends an invitation email with a registration code.
+
+    Admins can optionally pre-plan the teacher's class + subject
+    assignments via ``intended_assignments`` — the moment the teacher
+    accepts the invite, those TeacherClass / ClassSubjectTeacher rows
+    are created for them. Subject assignments require the tenant to
+    have ``subject_teacher_enabled=True``.
+    """
     invitation_service = get_teacher_invitation_service()
 
     try:
@@ -125,6 +172,7 @@ async def invite_teacher(
             email=data.email,
             first_name=data.first_name,
             last_name=data.last_name,
+            intended_assignments=[a.model_dump() for a in data.intended_assignments],
         )
     except ValueError as e:
         return APIResponse(
@@ -250,6 +298,220 @@ async def resend_teacher_invitation(
                  "/admin/email-settings."
         ),
     )
+
+
+@router.put("/teachers/invitations/{invitation_id}/assignments")
+@require_role("SCHOOL_ADMIN")
+async def update_invitation_assignments(
+    invitation_id: uuid.UUID,
+    data: UpdateInvitationAssignmentsRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace the intended_assignments on a pending teacher invitation.
+
+    Admins use this to adjust the pre-planned class/subject map before
+    the teacher accepts. Rejects if the invitation isn't pending or if
+    any validation fails (class on another tenant, subject not on the
+    class, subject assignment without subject-teacher mode enabled).
+    """
+    service = get_teacher_invitation_service()
+    try:
+        invitation = await service.update_intended_assignments(
+            db, invitation_id,
+            [a.model_dump() for a in data.intended_assignments],
+        )
+    except ValueError as e:
+        return APIResponse(status="error", message=str(e))
+
+    return APIResponse(
+        status="success",
+        message="Intended assignments updated",
+        data={
+            "id": str(invitation.id),
+            "intended_assignments": invitation.intended_assignments,
+        },
+    )
+
+
+# =========================================================================
+# Teacher assignment management
+#
+# Edit a teacher's class + subject assignments from the Teachers list
+# page. Mirrors the shape of IntendedAssignment but writes directly to
+# TeacherClass / ClassSubjectTeacher instead of pre-planning them.
+# =========================================================================
+
+
+def _format_assignments(
+    general_rows: list,
+    subject_rows: list,
+) -> dict:
+    """Serialise a get_teacher_assignments result for JSON.
+
+    Groups subject rows by class so the UI can render:
+      "Form 4A (primary)"  — purple pill
+      "Form 4A - Maths"    — subject pill
+    without a second lookup. Classes with ONLY subject rows (no
+    general row) are still represented in ``general`` as ``null``
+    so the client knows the teacher isn't the general class teacher.
+    """
+    general = [
+        {
+            "class_id": str(tc.class_id),
+            "class_name": tc.school_class.name if tc.school_class else "Unknown",
+            "is_primary": bool(tc.is_primary),
+        }
+        for tc in general_rows
+    ]
+    subject = [
+        {
+            "class_id": str(cst.class_id),
+            "class_name": cst.school_class.name if cst.school_class else "Unknown",
+            "subject_id": str(cst.subject_id),
+            "subject_name": cst.subject.name if cst.subject else "Unknown",
+            "subject_code": cst.subject.code if cst.subject else None,
+        }
+        for cst in subject_rows
+    ]
+    return {"general": general, "subject": subject}
+
+
+@router.get("/teachers/{teacher_id}/assignments")
+@require_role("SCHOOL_ADMIN")
+async def get_teacher_assignments(
+    teacher_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the teacher's current general + subject assignments."""
+    service = get_class_service()
+    try:
+        payload = await service.get_teacher_assignments(db, teacher_id)
+    except NotFoundException as e:
+        return APIResponse(status="error", message=e.message)
+
+    return APIResponse(
+        status="success",
+        data=_format_assignments(payload["general"], payload["subject"]),
+    )
+
+
+@router.post("/teachers/{teacher_id}/assignments")
+@require_role("SCHOOL_ADMIN")
+async def add_teacher_assignment(
+    teacher_id: uuid.UUID,
+    data: AddAssignmentRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Add one assignment to a teacher.
+
+    - ``subject_ids=[]`` → TeacherClass (general class teacher).
+    - ``subject_ids=[...]`` → one ClassSubjectTeacher per subject.
+    - ``is_primary=True`` + no subject_ids → TeacherClass with primary
+      flag; any existing primary on the class is bumped off.
+    - Idempotent: existing rows are left alone (primary flag flips if
+      changed). Returns the fresh snapshot so the UI can re-render.
+    """
+    service = get_class_service()
+
+    try:
+        if not data.subject_ids:
+            await service.add_general_assignment(
+                db, teacher_id=teacher_id,
+                class_id=data.class_id,
+                is_primary=data.is_primary,
+            )
+        else:
+            # When both general + subject rows are requested at once
+            # (hybrid: primary teacher who also owns specific subjects),
+            # add the general row first so the subject rows don't look
+            # like a dangling specialist.
+            if data.is_primary:
+                await service.add_general_assignment(
+                    db, teacher_id=teacher_id,
+                    class_id=data.class_id,
+                    is_primary=True,
+                )
+            for sid in data.subject_ids:
+                await service.add_subject_assignment(
+                    db, teacher_id=teacher_id,
+                    class_id=data.class_id,
+                    subject_id=sid,
+                )
+        await db.commit()
+    except NotFoundException as e:
+        await db.rollback()
+        return APIResponse(status="error", message=e.message)
+    except ValueError as e:
+        await db.rollback()
+        return APIResponse(status="error", message=str(e))
+
+    payload = await service.get_teacher_assignments(db, teacher_id)
+    return APIResponse(
+        status="success",
+        message="Assignment added",
+        data=_format_assignments(payload["general"], payload["subject"]),
+    )
+
+
+@router.delete(
+    "/teachers/{teacher_id}/assignments/general/{class_id}"
+)
+@require_role("SCHOOL_ADMIN")
+async def remove_general_assignment(
+    teacher_id: uuid.UUID,
+    class_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove a teacher's general class assignment (TeacherClass)."""
+    service = get_class_service()
+    try:
+        removed = await service.remove_general_assignment(
+            db, teacher_id=teacher_id, class_id=class_id,
+        )
+        await db.commit()
+    except NotFoundException as e:
+        await db.rollback()
+        return APIResponse(status="error", message=e.message)
+
+    if not removed:
+        return APIResponse(
+            status="error",
+            message="Assignment not found",
+        )
+    return APIResponse(status="success", message="Assignment removed")
+
+
+@router.delete(
+    "/teachers/{teacher_id}/assignments/subject/{class_id}/{subject_id}"
+)
+@require_role("SCHOOL_ADMIN")
+async def remove_subject_assignment(
+    teacher_id: uuid.UUID,
+    class_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove a teacher's subject-specialist assignment
+    (ClassSubjectTeacher)."""
+    service = get_class_service()
+    try:
+        removed = await service.remove_subject_assignment(
+            db,
+            teacher_id=teacher_id,
+            class_id=class_id,
+            subject_id=subject_id,
+        )
+        await db.commit()
+    except NotFoundException as e:
+        await db.rollback()
+        return APIResponse(status="error", message=e.message)
+
+    if not removed:
+        return APIResponse(
+            status="error",
+            message="Subject assignment not found",
+        )
+    return APIResponse(status="success", message="Subject assignment removed")
 
 
 @router.put("/teachers/{teacher_id}")

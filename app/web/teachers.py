@@ -10,6 +10,7 @@ from app.database import get_db
 from app.exceptions import ForbiddenException
 from app.models.user import Role, User
 from app.services.auth_service import get_auth_service
+from app.services.class_service import get_class_service
 from app.services.teacher_invitation_service import get_teacher_invitation_service
 from app.services.user_service import get_user_service
 from app.templates_config import templates
@@ -85,6 +86,47 @@ async def teachers_list(
 
     all_invitations = list(pending_invitations) + list(expired_invitations)
 
+    # Resolve the tenant so the template can toggle the subject-select
+    # UI (it only makes sense when subject-specialist mode is on).
+    from app.models import Tenant
+    tenant = await db.get(Tenant, user.tenant_id) if user.tenant_id else None
+    subject_teacher_enabled = bool(
+        tenant and tenant.subject_teacher_enabled
+    )
+
+    # Overlay per-teacher subject assignments so the Classes column
+    # shows BOTH general class-teacher rows (purple pill) AND
+    # subject-specialist rows (indigo pill). One query across the
+    # tenant keeps the page O(1) rather than N+1 per teacher.
+    class_service_ = get_class_service()
+    subject_assignments_by_teacher: dict = {}
+    if subject_teacher_enabled and teachers:
+        from app.models.academic import ClassSubjectTeacher
+        from app.models.school_class import SchoolClass as _SC
+        from sqlalchemy import select as _select
+        from sqlalchemy.orm import selectinload as _sl
+        teacher_ids = [t.id for t in teachers]
+        rows = (await db.execute(
+            _select(ClassSubjectTeacher)
+            .join(_SC, _SC.id == ClassSubjectTeacher.class_id)
+            .where(
+                ClassSubjectTeacher.teacher_id.in_(teacher_ids),
+                _SC.tenant_id == user.tenant_id,
+                _SC.deleted_at.is_(None),
+            )
+            .options(
+                _sl(ClassSubjectTeacher.school_class),
+                _sl(ClassSubjectTeacher.subject),
+            )
+        )).scalars().unique().all()
+        for cst in rows:
+            subject_assignments_by_teacher.setdefault(cst.teacher_id, []).append({
+                "class_id": str(cst.class_id),
+                "class_name": cst.school_class.name if cst.school_class else "?",
+                "subject_id": str(cst.subject_id),
+                "subject_name": cst.subject.name if cst.subject else "?",
+            })
+
     return templates.TemplateResponse(
         "teachers/list.html",
         {
@@ -92,6 +134,8 @@ async def teachers_list(
             "user": user,
             "teachers": teachers,
             "pending_invitations": all_invitations,
+            "subject_teacher_enabled": subject_teacher_enabled,
+            "subject_assignments_by_teacher": subject_assignments_by_teacher,
             "search": search,
             "page": page,
             "total_pages": total_pages,

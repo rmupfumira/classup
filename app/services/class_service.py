@@ -525,6 +525,224 @@ class ClassService:
         for assignment in result.scalars():
             assignment.is_primary = False
 
+    # ========================================================================
+    # Per-teacher assignment management (used by the Teachers list page)
+    # ------------------------------------------------------------------------
+    # The class-detail page already exposes "add teacher to class" — this
+    # section inverts the perspective: given a teacher, give me (and let
+    # me edit) every (class, subject?) they're attached to. Methods are
+    # tenant-scoped and raise NotFoundException on anything that can't
+    # be resolved on the current tenant.
+    # ========================================================================
+
+    async def _get_tenant_teacher(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+    ) -> User:
+        """Load a TEACHER user that belongs to the current tenant.
+
+        Raises NotFoundException if the user doesn't exist, isn't on
+        this tenant, isn't a teacher, or has been soft-deleted. Used
+        as the guard for every per-teacher assignment mutation.
+        """
+        tenant_id = get_tenant_id()
+        result = await db.execute(
+            select(User).where(
+                User.id == teacher_id,
+                User.tenant_id == tenant_id,
+                User.role == Role.TEACHER.value,
+                User.deleted_at.is_(None),
+            )
+        )
+        teacher = result.scalar_one_or_none()
+        if teacher is None:
+            raise NotFoundException("Teacher")
+        return teacher
+
+    async def get_teacher_assignments(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+    ) -> dict:
+        """Return a teacher's full set of class + subject assignments.
+
+        Shape:
+            {
+              "general": [TeacherClass],     # eager-loads school_class
+              "subject": [ClassSubjectTeacher]  # eager-loads class + subject
+            }
+
+        Tenant-scoped — ``NotFoundException`` for a cross-tenant teacher
+        id. Even when the tenant has subject-teacher mode off, we still
+        return any ``class_subject_teachers`` rows that exist (so the UI
+        can show them + the admin can clean them up); the mode gate is
+        only enforced on *adding* new subject rows.
+        """
+        from app.models.academic import ClassSubjectTeacher
+
+        await self._get_tenant_teacher(db, teacher_id)
+        tenant_id = get_tenant_id()
+
+        general_q = (
+            select(TeacherClass)
+            .join(SchoolClass, SchoolClass.id == TeacherClass.class_id)
+            .where(
+                TeacherClass.teacher_id == teacher_id,
+                SchoolClass.tenant_id == tenant_id,
+                SchoolClass.deleted_at.is_(None),
+            )
+            .options(selectinload(TeacherClass.school_class))
+        )
+        general = list((await db.execute(general_q)).scalars().unique().all())
+
+        subject_q = (
+            select(ClassSubjectTeacher)
+            .join(SchoolClass, SchoolClass.id == ClassSubjectTeacher.class_id)
+            .where(
+                ClassSubjectTeacher.teacher_id == teacher_id,
+                SchoolClass.tenant_id == tenant_id,
+                SchoolClass.deleted_at.is_(None),
+            )
+            .options(
+                selectinload(ClassSubjectTeacher.school_class),
+                selectinload(ClassSubjectTeacher.subject),
+            )
+        )
+        subject = list((await db.execute(subject_q)).scalars().unique().all())
+
+        return {"general": general, "subject": subject}
+
+    async def add_general_assignment(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+        class_id: uuid.UUID,
+        is_primary: bool = False,
+    ) -> TeacherClass:
+        """Add (or update) a teacher's general class assignment.
+
+        Idempotent: if the row already exists, we flip ``is_primary``
+        to the requested value instead of raising. When
+        ``is_primary=True`` any other primary teacher on the same class
+        is unset first (there's at most one primary per class).
+        """
+        await self._get_tenant_teacher(db, teacher_id)
+        # Reuses get_class's tenant guard so a cross-tenant class_id raises.
+        await self.get_class(db, class_id)
+
+        existing = (await db.execute(
+            select(TeacherClass).where(
+                TeacherClass.teacher_id == teacher_id,
+                TeacherClass.class_id == class_id,
+            )
+        )).scalar_one_or_none()
+
+        if is_primary:
+            await self._unset_primary_teacher(db, class_id)
+
+        if existing is not None:
+            existing.is_primary = is_primary
+            await db.flush()
+            await db.refresh(existing)
+            return existing
+
+        assignment = TeacherClass(
+            teacher_id=teacher_id,
+            class_id=class_id,
+            is_primary=is_primary,
+        )
+        db.add(assignment)
+        await db.flush()
+        await db.refresh(assignment)
+        return assignment
+
+    async def remove_general_assignment(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+        class_id: uuid.UUID,
+    ) -> bool:
+        """Delete a teacher's general class assignment.
+
+        Returns True if a row was deleted, False if the pair didn't
+        exist. Tenant-scoped via ``get_class``.
+        """
+        await self._get_tenant_teacher(db, teacher_id)
+        await self.get_class(db, class_id)
+
+        row = (await db.execute(
+            select(TeacherClass).where(
+                TeacherClass.teacher_id == teacher_id,
+                TeacherClass.class_id == class_id,
+            )
+        )).scalar_one_or_none()
+        if row is None:
+            return False
+        await db.delete(row)
+        await db.flush()
+        return True
+
+    async def add_subject_assignment(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+        class_id: uuid.UUID,
+        subject_id: uuid.UUID,
+    ):
+        """Add a teacher as a subject-specialist on a class.
+
+        Blocked when ``tenant.subject_teacher_enabled`` is False —
+        raises ValueError in that case (API layer surfaces as a 400).
+        Delegates the heavy lifting (subject-on-class check, teacher
+        validation, idempotency) to ``AcademicService``.
+        """
+        from app.models import Tenant
+        from app.services.academic_service import get_academic_service
+
+        tenant_id = get_tenant_id()
+        tenant = await db.get(Tenant, tenant_id)
+        if tenant is None:
+            raise NotFoundException("Tenant")
+        if not tenant.subject_teacher_enabled:
+            raise ValueError(
+                "Subject-specialist mode is off for this tenant"
+            )
+
+        await self._get_tenant_teacher(db, teacher_id)
+        academic = get_academic_service()
+        return await academic.assign_subject_teacher(
+            db,
+            class_id=class_id,
+            subject_id=subject_id,
+            teacher_id=teacher_id,
+        )
+
+    async def remove_subject_assignment(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+        class_id: uuid.UUID,
+        subject_id: uuid.UUID,
+    ) -> bool:
+        """Remove a teacher's subject-specialist assignment.
+
+        Returns True if a row was deleted, False if nothing matched.
+        No-op (returns False, doesn't raise) when the tenant has
+        subject-teacher mode off — admins may still want to clean up
+        legacy rows after turning the mode off.
+        """
+        from app.services.academic_service import get_academic_service
+
+        await self._get_tenant_teacher(db, teacher_id)
+        academic = get_academic_service()
+        return await academic.unassign_subject_teacher(
+            db,
+            class_id=class_id,
+            subject_id=subject_id,
+            teacher_id=teacher_id,
+        )
+
 
 def get_class_service() -> ClassService:
     """Get class service instance."""

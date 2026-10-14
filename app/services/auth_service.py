@@ -422,8 +422,30 @@ class AuthService:
         db.add(user)
         await db.flush()
 
-        # Mark invitation as accepted
+        # Mark invitation as accepted + apply pre-planned class/subject
+        # assignments (TeacherClass + ClassSubjectTeacher rows). The
+        # service method handles idempotency and never raises — a bad
+        # intended-assignment entry logs but doesn't block acceptance.
         invitation.mark_accepted()
+        try:
+            from app.services.teacher_invitation_service import (
+                get_teacher_invitation_service,
+            )
+            svc = get_teacher_invitation_service()
+            summary = await svc._apply_intended_assignments(
+                db, invitation, user.id,
+            )
+            if summary["errors"]:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "register_teacher: %d assignment error(s) for %s: %s",
+                    len(summary["errors"]), user.email, summary["errors"],
+                )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "register_teacher: failed to apply intended_assignments",
+            )
 
         await db.commit()
 

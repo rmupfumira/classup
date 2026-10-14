@@ -56,44 +56,70 @@
         </div>
         <div class="divide-y divide-neutral-100">
             {% for inv in pending_invitations %}
-            <div class="flex items-center justify-between p-4">
-                <div class="flex items-center gap-3">
-                    <div class="flex-shrink-0 h-9 w-9 rounded-full bg-amber-50 flex items-center justify-center">
-                        <svg class="h-4 w-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"></path>
-                        </svg>
+            <div class="p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex-shrink-0 h-9 w-9 rounded-full bg-amber-50 flex items-center justify-center">
+                            <svg class="h-4 w-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"></path>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-neutral-800 truncate">
+                                {{ inv.first_name }} {{ inv.last_name }}
+                            </p>
+                            <p class="text-xs text-neutral-500 truncate">{{ inv.email }}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-sm font-medium text-neutral-800">
-                            {{ inv.first_name }} {{ inv.last_name }}
-                        </p>
-                        <p class="text-xs text-neutral-500">{{ inv.email }}</p>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs font-medium bg-neutral-100 text-neutral-700 select-all"
+                              title="Invitation code">
+                            {{ inv.invitation_code }}
+                        </span>
+                        {% if inv.status == 'EXPIRED' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700">
+                            Expired
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
+                            Pending
+                        </span>
+                        {% endif %}
+                        {% if inv.status == 'PENDING' %}
+                        <button type="button" onclick='editInvitationAssignments({{ inv.id|string|tojson }}, {{ (inv.intended_assignments or [])|tojson }})'
+                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            Edit
+                        </button>
+                        {% endif %}
+                        <button type="button" onclick="resendInvitation('{{ inv.id }}')"
+                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            Resend
+                        </button>
+                        <button type="button" onclick="cancelInvitation('{{ inv.id }}')"
+                                class="text-xs text-red-600 hover:text-red-700 font-medium">
+                            Cancel
+                        </button>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded font-mono text-xs font-medium bg-neutral-100 text-neutral-700 select-all"
-                          title="Invitation code">
-                        {{ inv.invitation_code }}
-                    </span>
-                    {% if inv.status == 'EXPIRED' %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700">
-                        Expired
-                    </span>
-                    {% else %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
-                        Pending
-                    </span>
-                    {% endif %}
-                    <button type="button" onclick="resendInvitation('{{ inv.id }}')"
-                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        Resend
-                    </button>
-                    <button type="button" onclick="cancelInvitation('{{ inv.id }}')"
-                            class="text-xs text-red-600 hover:text-red-700 font-medium">
-                        Cancel
-                    </button>
+                {% if inv.intended_assignments %}
+                <div class="mt-2 ml-12 flex flex-wrap gap-1">
+                    {% for item in inv.intended_assignments %}
+                        {% if item.subject_ids %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700"
+                                  title="Subject-specialist">
+                                {{ item.subject_ids|length }} subject{{ 's' if item.subject_ids|length != 1 else '' }} on class
+                            </span>
+                        {% endif %}
+                        {% if item.is_primary or not item.subject_ids %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700"
+                                  title="General class teacher">
+                                {% if item.is_primary %}Primary of class{% else %}Class teacher{% endif %}
+                            </span>
+                        {% endif %}
+                    {% endfor %}
                 </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -151,13 +177,23 @@
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                             {{ teacher.phone or '-' }}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
-                            {% if teacher.teacher_classes %}
-                                {% for tc in teacher.teacher_classes %}
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700 mr-1">
-                                        {{ tc.school_class.name if tc.school_class else 'Unknown' }}
-                                    </span>
-                                {% endfor %}
+                        <td class="px-4 py-3 text-sm text-neutral-600 min-w-[180px]">
+                            {% set subj_rows = subject_assignments_by_teacher.get(teacher.id, []) %}
+                            {% if teacher.teacher_classes or subj_rows %}
+                                <div class="flex flex-wrap gap-1">
+                                    {% for tc in teacher.teacher_classes %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700"
+                                              title="{% if tc.is_primary %}Primary teacher{% else %}Class teacher{% endif %}">
+                                            {{ tc.school_class.name if tc.school_class else 'Unknown' }}{% if tc.is_primary %} <span class="ml-1 text-primary-400">*</span>{% endif %}
+                                        </span>
+                                    {% endfor %}
+                                    {% for sa in subj_rows %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700"
+                                              title="Subject-specialist">
+                                            {{ sa.class_name }} &middot; {{ sa.subject_name }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
                             {% else %}
                                 <span class="text-neutral-400">No classes</span>
                             {% endif %}
@@ -199,6 +235,15 @@
                                                   d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
                                         </svg>
                                         Set Password
+                                    </button>
+                                    <button type="button"
+                                            onclick="openManageAssignmentsDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                                            class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                  d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"></path>
+                                        </svg>
+                                        Manage Classes &amp; Subjects
                                     </button>
                                     <button type="button"
                                             onclick="sendResetEmail('{{ teacher.id }}', '{{ teacher.email }}')"
@@ -355,8 +400,8 @@
 </div>
 
 <!-- Invite Teacher Dialog -->
-<dialog id="invite-teacher-dialog" class="rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
-    <div class="p-6">
+<dialog id="invite-teacher-dialog" class="rounded-xl shadow-xl p-0 w-full max-w-xl backdrop:bg-black/50">
+    <div class="p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-neutral-800">Invite Teacher</h2>
             <button type="button" onclick="document.getElementById('invite-teacher-dialog').close()"
@@ -388,9 +433,28 @@
                               focus:border-primary-500 focus:ring-0"
                        placeholder="teacher@example.com">
             </div>
-            <p class="text-xs text-neutral-500">
-                An invitation email will be sent with a link to create their account.
-            </p>
+
+            <!-- Assignments section -->
+            <div class="border-t border-neutral-200 pt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-neutral-700">
+                        Classes &amp; Subjects
+                        <span class="font-normal text-xs text-neutral-500">(optional — applied on acceptance)</span>
+                    </label>
+                    <button type="button" id="invite-add-row-btn"
+                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                        + Add class
+                    </button>
+                </div>
+                <div id="invite-assignments-rows" class="space-y-3"></div>
+                <p class="mt-2 text-xs text-neutral-500">
+                    Leave empty if you'd rather assign classes after they accept.
+                    {% if not subject_teacher_enabled %}
+                    Subject-specialist assignments are available once you enable the mode in Settings.
+                    {% endif %}
+                </p>
+            </div>
+
             <div id="form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
             <div id="form-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
             <div class="flex justify-end gap-3 pt-2">
@@ -404,6 +468,88 @@
                 </button>
             </div>
         </form>
+    </div>
+</dialog>
+
+<!-- Edit Invitation Assignments Dialog -->
+<dialog id="edit-invitation-dialog" class="rounded-xl shadow-xl p-0 w-full max-w-xl backdrop:bg-black/50">
+    <div class="p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-neutral-800">Edit Pending Assignments</h2>
+            <button type="button" onclick="document.getElementById('edit-invitation-dialog').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <p class="text-sm text-neutral-600 mb-3">
+            These classes &amp; subjects will be assigned the moment the teacher accepts the invite.
+        </p>
+        <form id="edit-invitation-form" class="space-y-4">
+            <input type="hidden" id="ei-invitation-id">
+            <div class="flex items-center justify-between">
+                <span class="block text-sm font-medium text-neutral-700">Classes &amp; Subjects</span>
+                <button type="button" id="ei-add-row-btn"
+                        class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                    + Add class
+                </button>
+            </div>
+            <div id="ei-assignments-rows" class="space-y-3"></div>
+            <div id="ei-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('edit-invitation-dialog').close()"
+                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<!-- Manage Teacher Assignments Dialog -->
+<dialog id="manage-assignments-dialog" class="rounded-xl shadow-xl p-0 w-full max-w-2xl backdrop:bg-black/50">
+    <div class="p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-neutral-800">
+                Manage Classes &amp; Subjects
+                <span id="ma-teacher-name" class="ml-1 font-normal text-neutral-500 text-sm"></span>
+            </h2>
+            <button type="button" onclick="document.getElementById('manage-assignments-dialog').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <input type="hidden" id="ma-teacher-id">
+
+        <!-- Current assignments list -->
+        <div class="mb-5">
+            <h3 class="text-sm font-medium text-neutral-700 mb-2">Current assignments</h3>
+            <div id="ma-current-list" class="space-y-2 bg-neutral-50 rounded-md p-3 min-h-[60px]">
+                <div class="text-xs text-neutral-500">Loading…</div>
+            </div>
+        </div>
+
+        <!-- Add assignment sub-form -->
+        <div class="border-t border-neutral-200 pt-4">
+            <h3 class="text-sm font-medium text-neutral-700 mb-2">Add an assignment</h3>
+            <form id="ma-add-form" class="space-y-3">
+                <div id="ma-add-row" class="space-y-3"></div>
+                <div id="ma-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+                <div class="flex justify-end gap-3">
+                    <button type="submit"
+                            class="px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                        Add
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </dialog>
 <!-- Set Password Dialog -->
@@ -456,11 +602,133 @@
 
 {% block scripts %}
 <script>
+// Tenant-wide toggle: subject-specialist mode. Flipped off hides the
+// subject picker from every assignment-row builder below.
+const SUBJECT_TEACHER_ENABLED = {{ (subject_teacher_enabled or false)|tojson }};
+// Cache of classes + their subject lists so repeated row builds don't
+// hit the API every time.
+let CLASSES_CACHE = null;
+const SUBJECTS_CACHE = {};  // {class_id: [{id, name, code}]}
+
+async function fetchClasses() {
+    if (CLASSES_CACHE) return CLASSES_CACHE;
+    const resp = await fetch('/api/v1/classes?page_size=100', {
+        credentials: 'same-origin',
+    });
+    const result = await resp.json();
+    CLASSES_CACHE = (result.data || []).map(c => ({ id: c.id, name: c.name }));
+    return CLASSES_CACHE;
+}
+
+async function fetchClassSubjects(classId) {
+    if (SUBJECTS_CACHE[classId]) return SUBJECTS_CACHE[classId];
+    const resp = await fetch(`/api/v1/academic/classes/${classId}/subjects`, {
+        credentials: 'same-origin',
+    });
+    const result = await resp.json();
+    SUBJECTS_CACHE[classId] = (result.data || []).map(cs => ({
+        id: cs.subject_id,
+        name: cs.subject_name,
+        code: cs.subject_code,
+    }));
+    return SUBJECTS_CACHE[classId];
+}
+
+// Build one editable assignment row. ``preselected`` lets us pre-fill
+// the row (used by the Edit-invitation dialog). Returns the <div>.
+async function buildAssignmentRow(containerId, preselected) {
+    const container = document.getElementById(containerId);
+    const classes = await fetchClasses();
+
+    const row = document.createElement('div');
+    row.className = 'assignment-row border border-neutral-200 rounded-md p-3 bg-neutral-50';
+    const classOptions = classes.map(c =>
+        `<option value="${c.id}" ${preselected && preselected.class_id === c.id ? 'selected' : ''}>${c.name}</option>`
+    ).join('');
+    row.innerHTML = `
+        <div class="flex items-start gap-2">
+            <div class="flex-1 space-y-2">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
+                    <select class="ar-class block w-full h-8 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                        <option value="">— pick a class —</option>
+                        ${classOptions}
+                    </select>
+                </div>
+                <label class="inline-flex items-center text-xs text-neutral-700 gap-2">
+                    <input type="checkbox" class="ar-primary rounded text-primary-500 focus:ring-0" ${preselected && preselected.is_primary ? 'checked' : ''}>
+                    Primary teacher of this class
+                </label>
+                <div class="ar-subjects-wrap ${SUBJECT_TEACHER_ENABLED ? '' : 'hidden'}">
+                    <label class="block text-xs font-medium text-neutral-600 mb-1">Subjects (optional)</label>
+                    <div class="ar-subjects text-xs text-neutral-500 bg-white border border-neutral-200 rounded p-2 min-h-[40px]">
+                        Pick a class first.
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="ar-remove text-neutral-400 hover:text-red-600 mt-1" title="Remove">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    container.appendChild(row);
+
+    row.querySelector('.ar-remove').addEventListener('click', () => row.remove());
+    const classSel = row.querySelector('.ar-class');
+    const subjectsBox = row.querySelector('.ar-subjects');
+
+    async function paintSubjects() {
+        const classId = classSel.value;
+        if (!classId || !SUBJECT_TEACHER_ENABLED) {
+            subjectsBox.innerHTML = SUBJECT_TEACHER_ENABLED
+                ? '<span class="text-neutral-500">Pick a class first.</span>'
+                : '<span class="text-neutral-500">Subject-specialist mode is off.</span>';
+            return;
+        }
+        subjectsBox.innerHTML = '<span class="text-neutral-500">Loading…</span>';
+        const subjects = await fetchClassSubjects(classId);
+        if (!subjects.length) {
+            subjectsBox.innerHTML = '<span class="text-neutral-500">No subjects assigned to this class yet.</span>';
+            return;
+        }
+        const preIds = new Set((preselected && preselected.subject_ids) || []);
+        subjectsBox.innerHTML = subjects.map(s => `
+            <label class="inline-flex items-center mr-3 mb-1 text-xs text-neutral-700 gap-1">
+                <input type="checkbox" class="ar-subject rounded text-primary-500 focus:ring-0" value="${s.id}" ${preIds.has(s.id) ? 'checked' : ''}>
+                ${s.name}
+            </label>
+        `).join('');
+    }
+    classSel.addEventListener('change', paintSubjects);
+    await paintSubjects();
+    return row;
+}
+
+// Serialise all assignment rows inside ``containerId`` into the API
+// payload shape. Skips rows with no class_id.
+function collectAssignments(containerId) {
+    const items = [];
+    document.querySelectorAll(`#${containerId} .assignment-row`).forEach(row => {
+        const classId = row.querySelector('.ar-class').value;
+        if (!classId) return;
+        const isPrimary = row.querySelector('.ar-primary').checked;
+        const subjectIds = Array.from(row.querySelectorAll('.ar-subject:checked')).map(cb => cb.value);
+        items.push({ class_id: classId, is_primary: isPrimary, subject_ids: subjectIds });
+    });
+    return items;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('invite-teacher-form');
     const errorDiv = document.getElementById('form-error');
     const successDiv = document.getElementById('form-success');
     const submitBtn = document.getElementById('submit-btn');
+
+    document.getElementById('invite-add-row-btn').addEventListener('click', () => {
+        buildAssignmentRow('invite-assignments-rows');
+    });
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -473,6 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
             first_name: form.first_name.value,
             last_name: form.last_name.value || '',
             email: form.email.value,
+            intended_assignments: collectAssignments('invite-assignments-rows'),
         };
 
         try {
@@ -489,6 +758,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 successDiv.textContent = result.message;
                 successDiv.classList.remove('hidden');
                 form.reset();
+                document.getElementById('invite-assignments-rows').innerHTML = '';
                 setTimeout(() => window.location.reload(), 1500);
             } else {
                 errorDiv.textContent = result.message || 'Failed to send invitation';
@@ -502,7 +772,186 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.textContent = 'Send Invitation';
         }
     });
+
+    // Reset the invite dialog's assignment rows when it's closed
+    // (dialog element fires 'close' when esc/.close() is called).
+    document.getElementById('invite-teacher-dialog').addEventListener('close', () => {
+        document.getElementById('invite-assignments-rows').innerHTML = '';
+        document.getElementById('form-error').classList.add('hidden');
+        document.getElementById('form-success').classList.add('hidden');
+    });
+
+    // --- Edit invitation dialog ---
+    document.getElementById('ei-add-row-btn').addEventListener('click', () => {
+        buildAssignmentRow('ei-assignments-rows');
+    });
+    document.getElementById('edit-invitation-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const invId = document.getElementById('ei-invitation-id').value;
+        const errDiv = document.getElementById('ei-error');
+        errDiv.classList.add('hidden');
+        const items = collectAssignments('ei-assignments-rows');
+        try {
+            const resp = await fetch(`/api/v1/users/teachers/invitations/${invId}/assignments`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ intended_assignments: items }),
+            });
+            const result = await resp.json();
+            if (result.status === 'success') {
+                ClassUp.toast('Assignments updated', 'success');
+                document.getElementById('edit-invitation-dialog').close();
+                setTimeout(() => window.location.reload(), 500);
+            } else {
+                errDiv.textContent = result.message || 'Failed to save';
+                errDiv.classList.remove('hidden');
+            }
+        } catch (err) {
+            errDiv.textContent = 'An error occurred. Please try again.';
+            errDiv.classList.remove('hidden');
+        }
+    });
+
+    // --- Manage assignments dialog ---
+    document.getElementById('ma-add-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const teacherId = document.getElementById('ma-teacher-id').value;
+        const items = collectAssignments('ma-add-row');
+        if (!items.length) return;
+        const errDiv = document.getElementById('ma-error');
+        errDiv.classList.add('hidden');
+        // We only ever have one row inside the add-form.
+        const payload = items[0];
+        try {
+            const resp = await fetch(`/api/v1/users/teachers/${teacherId}/assignments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload),
+            });
+            const result = await resp.json();
+            if (result.status === 'success') {
+                ClassUp.toast('Assignment added', 'success');
+                await refreshManageAssignments(teacherId);
+                document.getElementById('ma-add-row').innerHTML = '';
+                buildAssignmentRow('ma-add-row');
+            } else {
+                errDiv.textContent = result.message || 'Failed to add';
+                errDiv.classList.remove('hidden');
+            }
+        } catch (err) {
+            errDiv.textContent = 'An error occurred. Please try again.';
+            errDiv.classList.remove('hidden');
+        }
+    });
 });
+
+async function editInvitationAssignments(invitationId, intended) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+    document.getElementById('ei-invitation-id').value = invitationId;
+    const rowsEl = document.getElementById('ei-assignments-rows');
+    rowsEl.innerHTML = '';
+    for (const item of (intended || [])) {
+        await buildAssignmentRow('ei-assignments-rows', item);
+    }
+    document.getElementById('edit-invitation-dialog').showModal();
+}
+
+async function openManageAssignmentsDialog(teacherId, teacherName) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+    document.getElementById('ma-teacher-id').value = teacherId;
+    document.getElementById('ma-teacher-name').textContent = `· ${teacherName}`;
+    const addRow = document.getElementById('ma-add-row');
+    addRow.innerHTML = '';
+    await refreshManageAssignments(teacherId);
+    await buildAssignmentRow('ma-add-row');
+    document.getElementById('manage-assignments-dialog').showModal();
+}
+
+async function refreshManageAssignments(teacherId) {
+    const list = document.getElementById('ma-current-list');
+    list.innerHTML = '<div class="text-xs text-neutral-500">Loading…</div>';
+    try {
+        const resp = await fetch(`/api/v1/users/teachers/${teacherId}/assignments`, {
+            credentials: 'same-origin',
+        });
+        const result = await resp.json();
+        if (result.status !== 'success') throw new Error(result.message);
+        const { general, subject } = result.data;
+        if (!general.length && !subject.length) {
+            list.innerHTML = '<div class="text-sm text-neutral-500">No assignments yet.</div>';
+            return;
+        }
+        const parts = [];
+        for (const g of general) {
+            parts.push(`
+                <div class="flex items-center justify-between bg-white border border-neutral-200 rounded px-3 py-2">
+                    <div class="text-sm text-neutral-800">
+                        <span class="font-medium">${g.class_name}</span>
+                        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
+                            ${g.is_primary ? 'Primary teacher' : 'Class teacher'}
+                        </span>
+                    </div>
+                    <button type="button" class="text-xs text-red-600 hover:text-red-700 font-medium"
+                            onclick="removeGeneralAssignment('${teacherId}','${g.class_id}')">
+                        Remove
+                    </button>
+                </div>
+            `);
+        }
+        for (const s of subject) {
+            parts.push(`
+                <div class="flex items-center justify-between bg-white border border-neutral-200 rounded px-3 py-2">
+                    <div class="text-sm text-neutral-800">
+                        <span class="font-medium">${s.class_name}</span>
+                        <span class="mx-1 text-neutral-400">·</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">
+                            ${s.subject_name}
+                        </span>
+                    </div>
+                    <button type="button" class="text-xs text-red-600 hover:text-red-700 font-medium"
+                            onclick="removeSubjectAssignment('${teacherId}','${s.class_id}','${s.subject_id}')">
+                        Remove
+                    </button>
+                </div>
+            `);
+        }
+        list.innerHTML = parts.join('');
+    } catch (err) {
+        list.innerHTML = `<div class="text-sm text-red-600">${err.message || 'Failed to load'}</div>`;
+    }
+}
+
+async function removeGeneralAssignment(teacherId, classId) {
+    if (!(await ClassUp.confirm('Remove this class assignment?', { danger: true, confirmText: 'Remove' }))) return;
+    const resp = await fetch(`/api/v1/users/teachers/${teacherId}/assignments/general/${classId}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+    });
+    const result = await resp.json();
+    if (result.status === 'success') {
+        ClassUp.toast('Removed', 'success');
+        await refreshManageAssignments(teacherId);
+    } else {
+        ClassUp.toast(result.message || 'Failed to remove', 'error');
+    }
+}
+
+async function removeSubjectAssignment(teacherId, classId, subjectId) {
+    if (!(await ClassUp.confirm('Remove this subject assignment?', { danger: true, confirmText: 'Remove' }))) return;
+    const resp = await fetch(`/api/v1/users/teachers/${teacherId}/assignments/subject/${classId}/${subjectId}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+    });
+    const result = await resp.json();
+    if (result.status === 'success') {
+        ClassUp.toast('Removed', 'success');
+        await refreshManageAssignments(teacherId);
+    } else {
+        ClassUp.toast(result.message || 'Failed to remove', 'error');
+    }
+}
 
 async function resendInvitation(invitationId) {
     if (!(await ClassUp.confirm('Resend invitation email?', { title: 'Confirm', confirmText: 'Resend' }))) return;
