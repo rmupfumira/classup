@@ -117,5 +117,19 @@ class SetPrimaryClassRequest(BaseModel):
     class_id: uuid.UUID
 
 
+class BulkCreateClassesRequest(BaseModel):
+    """Create multiple classes under one grade level in a single call.
+
+    Server names them ``{grade_name}A``, ``{grade_name}B``, ... picking
+    the next free Excel-style suffix (A..Z, then AA..) so re-running
+    with existing classes keeps numbering contiguous. Capacity is
+    applied to every new class.
+    """
+
+    grade_level_id: uuid.UUID
+    count: int = Field(..., ge=1, le=50)
+    capacity: int | None = Field(None, ge=1)
+
+
 # Update forward refs
 SchoolClassDetailResponse.model_rebuild()

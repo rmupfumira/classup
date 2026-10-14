@@ -136,6 +136,94 @@ class ClassService:
 
         return school_class
 
+    @staticmethod
+    def _next_excel_suffix(index: int) -> str:
+        """Map 0→A, 1→B, …, 25→Z, 26→AA, 27→AB. Matches the JS helper
+        on the create-class form so admins see the same naming scheme
+        whether they create one at a time or in a batch."""
+        s = ""
+        n = index
+        while True:
+            s = chr(ord("A") + (n % 26)) + s
+            if n < 26:
+                return s
+            n = n // 26 - 1
+
+    async def bulk_create_classes(
+        self,
+        db: AsyncSession,
+        grade_level_id: uuid.UUID,
+        count: int,
+        capacity: int | None = None,
+    ) -> list[SchoolClass]:
+        """Create ``count`` classes under one grade level, auto-naming
+        them ``{grade_name}A``, ``{grade_name}B``, … picking the next
+        free Excel-style suffix so existing classes aren't collided with.
+
+        Returns the created classes in creation order. Raises on an
+        invalid grade level or a cross-tenant one.
+        """
+        from app.exceptions import NotFoundException
+        from app.models.grade_level import GradeLevel
+
+        tenant_id = get_tenant_id()
+        grade_level = (await db.execute(
+            select(GradeLevel).where(
+                GradeLevel.id == grade_level_id,
+                GradeLevel.tenant_id == tenant_id,
+                GradeLevel.deleted_at.is_(None),
+            )
+        )).scalar_one_or_none()
+        if grade_level is None:
+            raise NotFoundException("Grade level")
+
+        existing = (await db.execute(
+            select(SchoolClass).where(
+                SchoolClass.tenant_id == tenant_id,
+                SchoolClass.grade_level_id == grade_level_id,
+                SchoolClass.deleted_at.is_(None),
+            )
+        )).scalars().all()
+
+        # Collect used suffixes so we skip over them. Case-insensitive.
+        base = grade_level.name.strip()
+        import re as _re
+        suffix_pattern = _re.compile(
+            r"^" + _re.escape(base) + r"\s*([A-Z]+)$",
+            flags=_re.IGNORECASE,
+        )
+        used: set[str] = set()
+        for cls in existing:
+            m = suffix_pattern.match((cls.name or "").strip())
+            if m:
+                used.add(m.group(1).upper())
+
+        created: list[SchoolClass] = []
+        i = 0
+        made = 0
+        while made < count and i < 10_000:  # 10k is way beyond any realistic
+            suffix = self._next_excel_suffix(i)
+            i += 1
+            if suffix in used:
+                continue
+            name = f"{base}{suffix}"
+            cls = SchoolClass(
+                tenant_id=tenant_id,
+                name=name,
+                grade_level_id=grade_level_id,
+                capacity=capacity,
+                is_active=True,
+            )
+            db.add(cls)
+            created.append(cls)
+            made += 1
+            used.add(suffix)
+
+        await db.flush()
+        for cls in created:
+            await db.refresh(cls)
+        return created
+
     async def update_class(
         self,
         db: AsyncSession,

@@ -14,6 +14,7 @@ from app.models.user import Role
 from app.schemas.common import APIResponse, PaginationMeta
 from app.schemas.school_class import (
     AssignTeacherRequest,
+    BulkCreateClassesRequest,
     SchoolClassCreate,
     SchoolClassDetailResponse,
     SchoolClassListResponse,
@@ -190,6 +191,31 @@ async def create_class(
     return APIResponse(
         data=_build_class_response(school_class),
         message="Class created successfully",
+    )
+
+
+@router.post("/bulk", response_model=APIResponse[list[SchoolClassResponse]])
+@require_role(Role.SCHOOL_ADMIN)
+async def bulk_create_classes(
+    data: BulkCreateClassesRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create ``count`` classes under one grade level in one call,
+    auto-named ``{Grade} A/B/C…`` (next free Excel-style suffix).
+
+    Useful on day one when an admin needs e.g. 3 Form-4 classes.
+    Idempotent-friendly: re-running with the same grade level creates
+    more classes starting from the next free suffix, not duplicates.
+    """
+    service = get_class_service()
+    classes = await service.bulk_create_classes(
+        db, data.grade_level_id, data.count, data.capacity,
+    )
+    await db.commit()
+
+    return APIResponse(
+        data=[_build_class_response(c) for c in classes],
+        message=f"Created {len(classes)} class{'es' if len(classes) != 1 else ''}",
     )
 
 

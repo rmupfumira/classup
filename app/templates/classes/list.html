@@ -13,15 +13,82 @@
             </p>
         </div>
         {% if permissions.can_manage_classes() %}
-        <a href="/classes/new"
-           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Add Class
-        </a>
+        <div class="flex items-center gap-2">
+            <button type="button" id="open-bulk-create"
+                    class="inline-flex items-center px-3 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors text-sm">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                </svg>
+                Create multiple
+            </button>
+            <a href="/classes/new"
+               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Class
+            </a>
+        </div>
         {% endif %}
     </div>
+
+    {# Bulk-create modal — gated same as the Add Class button above #}
+    {% if permissions.can_manage_classes() %}
+    <dialog id="bulk-create-modal" class="rounded-xl shadow-xl backdrop:bg-black/40 p-0 max-w-md w-full">
+        <form id="bulk-create-form" class="bg-white rounded-xl">
+            <div class="px-6 py-4 border-b border-neutral-200">
+                <h2 class="text-lg font-semibold text-neutral-900">Create multiple classes</h2>
+                <p class="mt-1 text-xs text-neutral-500">
+                    Pick a grade level and how many classes you need. They'll be named
+                    <code class="text-neutral-700">{Grade}A</code>,
+                    <code class="text-neutral-700">{Grade}B</code>,
+                    <code class="text-neutral-700">{Grade}C</code>…
+                    skipping any suffixes already in use.
+                </p>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+                <div>
+                    <label for="bulk-grade-level" class="block text-sm font-medium text-neutral-700 mb-1">
+                        Grade Level <span class="text-red-500">*</span>
+                    </label>
+                    <select id="bulk-grade-level" name="grade_level_id" required
+                            class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select grade level…</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="bulk-count" class="block text-sm font-medium text-neutral-700 mb-1">
+                            How many classes <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" id="bulk-count" name="count" min="1" max="50" value="3" required
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    <div>
+                        <label for="bulk-capacity" class="block text-sm font-medium text-neutral-700 mb-1">
+                            Capacity (optional)
+                        </label>
+                        <input type="number" id="bulk-capacity" name="capacity" min="1"
+                               placeholder="e.g., 30"
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                </div>
+                <p id="bulk-preview" class="text-xs text-neutral-500"></p>
+            </div>
+            <div class="px-6 py-4 bg-neutral-50 rounded-b-xl flex justify-end gap-2">
+                <button type="button" id="bulk-cancel"
+                        class="px-4 py-2 text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-100 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" id="bulk-submit"
+                        class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    Create
+                </button>
+            </div>
+        </form>
+    </dialog>
+    {% endif %}
 
     <!-- Search -->
     <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
@@ -191,4 +258,151 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+{% if permissions.can_manage_classes() %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const openBtn = document.getElementById('open-bulk-create');
+    const modal = document.getElementById('bulk-create-modal');
+    const form = document.getElementById('bulk-create-form');
+    const cancelBtn = document.getElementById('bulk-cancel');
+    const gradeSelect = document.getElementById('bulk-grade-level');
+    const countInput = document.getElementById('bulk-count');
+    const preview = document.getElementById('bulk-preview');
+    const submitBtn = document.getElementById('bulk-submit');
+
+    // Lazy-load grade levels on first open so the list sees up-to-date
+    // seeding (e.g. if an admin just added one via Settings).
+    let gradesLoaded = false;
+    async function loadGrades() {
+        if (gradesLoaded) return;
+        try {
+            const r = await fetch('/api/v1/grade-levels', { credentials: 'same-origin' });
+            const d = await r.json();
+            if (r.ok && Array.isArray(d.data)) {
+                d.data.forEach(gl => {
+                    const o = document.createElement('option');
+                    o.value = gl.id;
+                    o.textContent = gl.name;
+                    o.dataset.name = gl.name;
+                    gradeSelect.appendChild(o);
+                });
+                gradesLoaded = true;
+            }
+        } catch (e) {
+            console.error('Failed to load grade levels:', e);
+        }
+    }
+
+    // Live preview: "Form 4A, Form 4B, Form 4C" based on current grade + count,
+    // after reading existing suffixes for that grade.
+    function excelLetter(index) {
+        let s = '';
+        let n = index;
+        while (true) {
+            s = String.fromCharCode(65 + (n % 26)) + s;
+            if (n < 26) return s;
+            n = Math.floor(n / 26) - 1;
+        }
+    }
+
+    let previewDebounce = null;
+    function updatePreview() {
+        clearTimeout(previewDebounce);
+        previewDebounce = setTimeout(async () => {
+            const gradeId = gradeSelect.value;
+            const n = parseInt(countInput.value, 10);
+            if (!gradeId || !n || n < 1) {
+                preview.textContent = '';
+                return;
+            }
+            const label = (gradeSelect.selectedOptions[0]?.dataset.name || '').trim();
+            if (!label) return;
+
+            let used = new Set();
+            try {
+                const r = await fetch(
+                    '/api/v1/classes?grade_level_id=' + encodeURIComponent(gradeId) + '&page_size=100',
+                    { credentials: 'same-origin' }
+                );
+                const d = await r.json();
+                if (r.ok && Array.isArray(d.data)) {
+                    const re = new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*([A-Z]+)$', 'i');
+                    d.data.forEach(c => {
+                        const m = (c.name || '').trim().match(re);
+                        if (m) used.add(m[1].toUpperCase());
+                    });
+                }
+            } catch (e) {
+                // Non-fatal — preview just assumes no existing.
+            }
+            const names = [];
+            for (let i = 0, made = 0; made < n && i < 10000; i++) {
+                const suffix = excelLetter(i);
+                if (used.has(suffix)) continue;
+                names.push(label + suffix);
+                made++;
+            }
+            const skipped = used.size > 0 ? ` (${used.size} suffix${used.size === 1 ? '' : 'es'} already in use, skipped)` : '';
+            preview.textContent = 'Will create: ' + names.join(', ') + '.' + skipped;
+        }, 150);
+    }
+
+    openBtn.addEventListener('click', async () => {
+        await loadGrades();
+        preview.textContent = '';
+        modal.showModal();
+    });
+    cancelBtn.addEventListener('click', (e) => { e.preventDefault(); modal.close(); });
+    modal.addEventListener('click', (e) => {
+        // Click outside the form (on the backdrop) closes
+        if (e.target === modal) modal.close();
+    });
+    gradeSelect.addEventListener('change', updatePreview);
+    countInput.addEventListener('input', updatePreview);
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const gradeId = gradeSelect.value;
+        const n = parseInt(countInput.value, 10);
+        const capRaw = document.getElementById('bulk-capacity').value;
+        const cap = capRaw ? parseInt(capRaw, 10) : null;
+        if (!gradeId || !n || n < 1) {
+            ClassUp.toast('Pick a grade level and a count', 'warning');
+            return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating…';
+        try {
+            const r = await fetch('/api/v1/classes/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    grade_level_id: gradeId,
+                    count: n,
+                    capacity: Number.isFinite(cap) && cap > 0 ? cap : null,
+                }),
+            });
+            const d = await r.json();
+            if (r.ok) {
+                ClassUp.toast(d.message || `Created ${d.data?.length || 0} classes`, 'success');
+                modal.close();
+                window.location.reload();
+            } else {
+                ClassUp.toast(d.message || 'Failed to create classes', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            ClassUp.toast('An error occurred. Please try again.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create';
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}
