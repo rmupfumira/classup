@@ -75,6 +75,10 @@
                     </div>
                 </div>
                 <p id="bulk-preview" class="text-xs text-neutral-500"></p>
+                <div id="bulk-no-subjects-warning" class="hidden rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    <span id="bulk-warn-grade" class="font-semibold">This grade</span> has no subjects set up yet. New classes will start empty.
+                    <a href="/settings/academic/subjects" class="ml-1 underline hover:text-amber-700">Link subjects to grades</a>
+                </div>
             </div>
             <div class="px-6 py-4 bg-neutral-50 rounded-b-xl flex justify-end gap-2">
                 <button type="button" id="bulk-cancel"
@@ -362,6 +366,31 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     gradeSelect.addEventListener('change', updatePreview);
     countInput.addEventListener('input', updatePreview);
+
+    // Non-blocking warning when the picked grade has no subjects linked.
+    const noSubjWarn = document.getElementById('bulk-no-subjects-warning');
+    const warnGrade = document.getElementById('bulk-warn-grade');
+    async function checkGradeSubjects() {
+        const gradeId = gradeSelect.value;
+        if (!gradeId) { noSubjWarn.classList.add('hidden'); return; }
+        try {
+            const r = await fetch(`/api/v1/academic/grade-levels/${gradeId}/subjects`, {
+                credentials: 'same-origin',
+            });
+            if (!r.ok) { noSubjWarn.classList.add('hidden'); return; }
+            const d = await r.json();
+            const linked = Array.isArray(d.data) ? d.data.length : 0;
+            if (linked === 0) {
+                warnGrade.textContent = gradeSelect.selectedOptions[0]?.dataset.name || 'This grade';
+                noSubjWarn.classList.remove('hidden');
+            } else {
+                noSubjWarn.classList.add('hidden');
+            }
+        } catch (e) {
+            noSubjWarn.classList.add('hidden');
+        }
+    }
+    gradeSelect.addEventListener('change', checkGradeSubjects);
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
