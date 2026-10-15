@@ -237,6 +237,141 @@ async def delete_subject(
     }
 
 
+# ==================== GRADE LEVEL ↔ SUBJECT LINKS ====================
+# Admins anchor subjects at the grade level ("Mathematics is a Form 4
+# subject") instead of per class. New classes under that grade
+# auto-inherit the subjects; removing a subject from the grade cascades
+# into every class in it (the UI confirms first).
+
+
+class GradeLevelSubjectsPut(BaseModel):
+    """Payload for ``PUT /grade-levels/{id}/subjects`` — replace the
+    full set of subjects linked to this grade."""
+    subject_ids: List[uuid.UUID] = Field(default_factory=list)
+
+
+class SubjectGradeLevelsPut(BaseModel):
+    """Payload for ``PUT /subjects/{id}/grade-levels`` — replace the
+    full set of grades that teach this subject."""
+    grade_level_ids: List[uuid.UUID] = Field(default_factory=list)
+
+
+@router.get("/grade-levels/{grade_level_id}/subjects", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def list_grade_level_subjects(
+    grade_level_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """List subjects linked to this grade level."""
+    service = get_academic_service()
+    try:
+        subjects = await service.get_subjects_for_grade(db, grade_level_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {
+        "status": "success",
+        "data": [
+            {
+                "id": str(s.id),
+                "name": s.name,
+                "code": s.code,
+                "is_compulsory": True,  # grade-link default; per-class override preserved separately
+                "display_order": s.display_order,
+            }
+            for s in subjects
+        ],
+    }
+
+
+@router.put("/grade-levels/{grade_level_id}/subjects", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def put_grade_level_subjects(
+    grade_level_id: uuid.UUID,
+    body: GradeLevelSubjectsPut,
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace the subjects taught at this grade level.
+
+    Cascades: new subjects auto-attach to every existing class in the
+    grade; dropped subjects detach from every class in the grade.
+    Returns ``{added, removed, propagated_to_classes}``.
+    """
+    service = get_academic_service()
+    try:
+        summary = await service.set_grade_subjects(
+            db, grade_level_id, body.subject_ids,
+        )
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        # Preserve 404s from the tenant guard; everything else 400.
+        from app.exceptions import NotFoundException
+        if isinstance(e, NotFoundException):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "status": "success",
+        "message": "Grade-level subjects updated",
+        "data": summary,
+    }
+
+
+@router.get("/subjects/{subject_id}/grade-levels", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def list_subject_grade_levels(
+    subject_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """List grade levels this subject is linked to."""
+    service = get_academic_service()
+    try:
+        grades = await service.get_grades_for_subject(db, subject_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {
+        "status": "success",
+        "data": [
+            {
+                "id": str(g.id),
+                "name": g.name,
+                "code": g.code,
+                "display_order": g.display_order,
+            }
+            for g in grades
+        ],
+    }
+
+
+@router.put("/subjects/{subject_id}/grade-levels", response_model=dict)
+@require_role("SCHOOL_ADMIN")
+async def put_subject_grade_levels(
+    subject_id: uuid.UUID,
+    body: SubjectGradeLevelsPut,
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace the grade levels that teach this subject. Symmetric to
+    the grade-level version, same cascade semantics in reverse."""
+    service = get_academic_service()
+    try:
+        summary = await service.set_subject_grades(
+            db, subject_id, body.grade_level_ids,
+        )
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        from app.exceptions import NotFoundException
+        if isinstance(e, NotFoundException):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "status": "success",
+        "message": "Subject grade-levels updated",
+        "data": summary,
+    }
+
+
 # ==================== CLASS SUBJECTS ====================
 
 

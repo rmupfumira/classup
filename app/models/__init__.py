@@ -36,6 +36,7 @@ from app.models.academic import (
     Subject,
     ClassSubject,
     ClassSubjectTeacher,
+    GradeLevelSubject,
     StudentSubjectOverride,
     GradingSystem,
 )
@@ -164,6 +165,7 @@ __all__ = [
     "Subject",
     "ClassSubject",
     "ClassSubjectTeacher",
+    "GradeLevelSubject",
     "StudentSubjectOverride",
     "GradingSystem",
     # System Settings

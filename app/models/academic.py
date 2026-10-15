@@ -64,6 +64,68 @@ class Subject(TenantScopedModel):
     )
 
 
+class GradeLevelSubject(Base):
+    """Join table linking a grade level to the subjects taught at that grade.
+
+    "Mathematics is a Form 4 subject" is said ONCE here, and
+    ``ClassService.create_class`` auto-populates ``class_subjects`` for
+    every new class under that grade from this list. Changing the list
+    cascades to existing classes via
+    ``AcademicService.set_grade_subjects`` / ``set_subject_grades``.
+
+    Many-to-many: English goes under every grade, Advanced Maths only
+    under Form 5 / Form 6, so neither direction is unique on its own.
+    The ``(grade_level_id, subject_id)`` pair is unique.
+    """
+
+    __tablename__ = "grade_level_subjects"
+    __table_args__ = (
+        Index(
+            "idx_grade_level_subjects_grade",
+            "grade_level_id",
+        ),
+        Index(
+            "idx_grade_level_subjects_subject",
+            "subject_id",
+        ),
+        Index(
+            "idx_grade_level_subjects_unique",
+            "grade_level_id",
+            "subject_id",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    grade_level_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grade_levels.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("subjects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    display_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    # Relationships — selectin so the admin UI's "subjects on this
+    # grade" / "grades on this subject" lists don't N+1.
+    grade_level = relationship("GradeLevel", lazy="selectin")
+    subject = relationship("Subject", lazy="selectin")
+
+
 class ClassSubject(Base, TimestampMixin):
     """Join table linking classes to subjects they teach."""
 

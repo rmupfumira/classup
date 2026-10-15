@@ -116,7 +116,14 @@ class ClassService:
         db: AsyncSession,
         data: SchoolClassCreate,
     ) -> SchoolClass:
-        """Create a new school class."""
+        """Create a new school class.
+
+        If the class is attached to a grade level that has subjects
+        linked (``grade_level_subjects``), those subjects are
+        auto-attached as ``class_subjects`` on this new class. Zero
+        clicks for the normal case — admin configures the grade's
+        subjects once and every class inherits them.
+        """
         tenant_id = get_tenant_id()
 
         school_class = SchoolClass(
@@ -132,9 +139,62 @@ class ClassService:
 
         db.add(school_class)
         await db.flush()
-        await db.refresh(school_class)
 
+        # Auto-propagate grade-level subjects. Only runs when a grade
+        # level is attached — classes without a grade level stay empty
+        # until the admin wires subjects up manually (status quo for
+        # pre-grade-level data).
+        if data.grade_level_id:
+            await self._auto_attach_grade_subjects(
+                db, school_class.id, data.grade_level_id,
+            )
+
+        await db.refresh(school_class)
         return school_class
+
+    @staticmethod
+    async def _auto_attach_grade_subjects(
+        db: AsyncSession,
+        class_id: uuid.UUID,
+        grade_level_id: uuid.UUID,
+    ) -> int:
+        """Attach every subject linked to this grade level as a
+        ``class_subjects`` row on the given class.
+
+        Idempotent — skips any (class, subject) pair that already
+        exists. Returns the count of rows actually created so callers
+        can report propagation. Grade levels with no subjects linked
+        yet produce zero rows and no error.
+        """
+        from app.models.academic import ClassSubject, GradeLevelSubject
+
+        rows = (await db.execute(
+            select(GradeLevelSubject)
+            .where(GradeLevelSubject.grade_level_id == grade_level_id)
+            .order_by(GradeLevelSubject.display_order)
+        )).scalars().all()
+        if not rows:
+            return 0
+
+        existing = {sid for (sid,) in (await db.execute(
+            select(ClassSubject.subject_id)
+            .where(ClassSubject.class_id == class_id)
+        )).all()}
+
+        created = 0
+        for i, link in enumerate(rows):
+            if link.subject_id in existing:
+                continue
+            db.add(ClassSubject(
+                class_id=class_id,
+                subject_id=link.subject_id,
+                is_compulsory=True,
+                display_order=i,
+            ))
+            created += 1
+        if created:
+            await db.flush()
+        return created
 
     @staticmethod
     def _next_excel_suffix(index: int) -> str:
@@ -220,6 +280,16 @@ class ClassService:
             used.add(suffix)
 
         await db.flush()
+
+        # Auto-propagate grade-level subjects to each new class — same
+        # path as single create_class, so a batch of Form 4A/B/C under
+        # a grade that teaches Maths + English lands with those two
+        # subjects on each class.
+        for cls in created:
+            await self._auto_attach_grade_subjects(
+                db, cls.id, grade_level_id,
+            )
+
         for cls in created:
             await db.refresh(cls)
         return created

@@ -11,9 +11,11 @@ from app.models.academic import (
     Subject,
     ClassSubject,
     ClassSubjectTeacher,
+    GradeLevelSubject,
     GradingSystem,
     StudentSubjectOverride,
 )
+from app.models.grade_level import GradeLevel
 from app.models.school_class import SchoolClass, TeacherClass
 from app.models.student import Student
 from app.models.user import User
@@ -276,6 +278,364 @@ class AcademicService:
 
         return created
 
+    # ==================== GRADE LEVEL SUBJECTS ====================
+    #
+    # Anchors subjects at the grade level — "Mathematics is a Form 4
+    # subject" is said once, and every current + future Form 4 class
+    # inherits it. Replaces the old flow of attaching Maths to Form 4A,
+    # Form 4B, Form 4C, Form 4D one at a time.
+
+    async def _ensure_grade_level_on_tenant(
+        self,
+        db: AsyncSession,
+        grade_level_id: uuid.UUID,
+    ) -> GradeLevel:
+        """Load a grade level and raise if it isn't on the current tenant."""
+        from app.exceptions import NotFoundException
+
+        tenant_id = get_tenant_id()
+        grade = (await db.execute(
+            select(GradeLevel).where(
+                GradeLevel.id == grade_level_id,
+                GradeLevel.tenant_id == tenant_id,
+                GradeLevel.deleted_at.is_(None),
+            )
+        )).scalar_one_or_none()
+        if grade is None:
+            raise NotFoundException(f"Grade level {grade_level_id} not found")
+        return grade
+
+    async def _ensure_subject_on_tenant(
+        self,
+        db: AsyncSession,
+        subject_id: uuid.UUID,
+    ) -> Subject:
+        """Load a subject and raise if it isn't on the current tenant."""
+        from app.exceptions import NotFoundException
+
+        subj = await self.get_subject(db, subject_id)
+        if subj is None:
+            raise NotFoundException(f"Subject {subject_id} not found")
+        return subj
+
+    async def get_subjects_for_grade(
+        self,
+        db: AsyncSession,
+        grade_level_id: uuid.UUID,
+    ) -> List[Subject]:
+        """Return the subjects linked to this grade level, in order.
+
+        Tenant-scoped via the grade level lookup. Returns [] for a
+        grade that has no subjects linked yet (the common case before
+        the admin configures the mapping).
+        """
+        await self._ensure_grade_level_on_tenant(db, grade_level_id)
+
+        rows = (await db.execute(
+            select(Subject)
+            .join(GradeLevelSubject, GradeLevelSubject.subject_id == Subject.id)
+            .where(
+                GradeLevelSubject.grade_level_id == grade_level_id,
+                Subject.deleted_at.is_(None),
+            )
+            .order_by(GradeLevelSubject.display_order, Subject.display_order, Subject.name)
+        )).scalars().all()
+        return list(rows)
+
+    async def get_grades_for_subject(
+        self,
+        db: AsyncSession,
+        subject_id: uuid.UUID,
+    ) -> List[GradeLevel]:
+        """Return the grade levels this subject is linked to.
+
+        Tenant-scoped via the subject lookup. Returns [] if the subject
+        has no grade-level links yet.
+        """
+        await self._ensure_subject_on_tenant(db, subject_id)
+
+        rows = (await db.execute(
+            select(GradeLevel)
+            .join(GradeLevelSubject, GradeLevelSubject.grade_level_id == GradeLevel.id)
+            .where(
+                GradeLevelSubject.subject_id == subject_id,
+                GradeLevel.deleted_at.is_(None),
+            )
+            .order_by(GradeLevel.display_order, GradeLevel.name)
+        )).scalars().all()
+        return list(rows)
+
+    async def set_grade_subjects(
+        self,
+        db: AsyncSession,
+        grade_level_id: uuid.UUID,
+        subject_ids: List[uuid.UUID],
+    ) -> dict:
+        """Idempotent replace: the given subject_ids become the EXACT
+        set of subjects taught at this grade level.
+
+        Semantics:
+          - subjects NOW in the list but NOT previously → added, and
+            auto-attached to every existing class under this grade
+            (``class_subjects`` row created, idempotently skipping
+            classes that already have the subject).
+          - subjects PREVIOUSLY in the list but no longer → removed,
+            and CASCADED: every ``class_subjects`` row under this grade
+            for that subject is deleted. (User-approved cascade — the
+            UI confirms with the admin before firing.)
+          - subjects in both before and after → untouched. No churn on
+            existing ``class_subjects`` rows (admin may have overridden
+            per-class ``total_marks`` / ``is_compulsory``).
+
+        Returns ``{added, removed, propagated_to_classes}`` where
+        ``propagated_to_classes`` counts newly-created ``class_subjects``
+        rows across all classes in this grade.
+
+        Cross-tenant guard: every subject_id must exist on the current
+        tenant — a subject on tenant A can't be linked to a grade on
+        tenant B. Raises NotFoundException on a cross-tenant / unknown
+        id.
+        """
+        await self._ensure_grade_level_on_tenant(db, grade_level_id)
+
+        # Deduplicate the input while preserving order so display_order
+        # stays stable if an admin reorders.
+        seen: set[uuid.UUID] = set()
+        requested: list[uuid.UUID] = []
+        for sid in subject_ids:
+            if sid not in seen:
+                seen.add(sid)
+                requested.append(sid)
+
+        # Tenant-scope every subject id up front — one bad id poisons
+        # the whole batch (we don't want a partial write).
+        for sid in requested:
+            await self._ensure_subject_on_tenant(db, sid)
+
+        # Current state.
+        current_rows = (await db.execute(
+            select(GradeLevelSubject)
+            .where(GradeLevelSubject.grade_level_id == grade_level_id)
+        )).scalars().all()
+        current_by_subject = {r.subject_id: r for r in current_rows}
+        current_set = set(current_by_subject.keys())
+        requested_set = set(requested)
+
+        to_add = [sid for sid in requested if sid not in current_set]
+        to_remove = [sid for sid in current_set if sid not in requested_set]
+
+        # Classes under this grade — resolved once, used by both the
+        # add-cascade and the remove-cascade. Soft-deleted classes
+        # excluded; inactive classes still included so toggling a
+        # class off doesn't orphan its subjects (admin may reactivate).
+        tenant_id = get_tenant_id()
+        classes_in_grade = (await db.execute(
+            select(SchoolClass.id).where(
+                SchoolClass.tenant_id == tenant_id,
+                SchoolClass.grade_level_id == grade_level_id,
+                SchoolClass.deleted_at.is_(None),
+            )
+        )).scalars().all()
+        class_ids = list(classes_in_grade)
+
+        propagated = 0
+
+        # Removals first (cascade class_subjects) — doing this before
+        # the add avoids a transient state where an added-and-removed
+        # subject (impossible given the diff above, but defensive)
+        # could get re-cascaded on commit.
+        if to_remove and class_ids:
+            del_result = await db.execute(
+                ClassSubject.__table__.delete().where(
+                    ClassSubject.class_id.in_(class_ids),
+                    ClassSubject.subject_id.in_(to_remove),
+                )
+            )
+            # rowcount is reported for informational purposes only; the
+            # dict we return focuses on "subjects dropped from grade",
+            # not "class_subjects rows deleted". UIs that want the second
+            # number can read it from del_result.rowcount via a wrapper.
+            _ = del_result.rowcount  # noqa: F841
+
+        for sid in to_remove:
+            await db.delete(current_by_subject[sid])
+
+        # Additions: insert into grade_level_subjects + cascade into
+        # class_subjects for every existing class in the grade.
+        if to_add:
+            # Preserve the admin's chosen order via display_order.
+            # Start numbering AFTER the current rows so we don't
+            # collide with existing display_order values.
+            existing_count = len(current_rows) - len(to_remove)
+            for i, sid in enumerate(to_add):
+                db.add(GradeLevelSubject(
+                    grade_level_id=grade_level_id,
+                    subject_id=sid,
+                    display_order=existing_count + i,
+                ))
+
+            if class_ids:
+                # For each (class, subject) pair, skip pairs that
+                # already have a ClassSubject row (idempotency —
+                # admins may have added the subject manually before
+                # linking it at the grade level).
+                existing_pairs = set((await db.execute(
+                    select(ClassSubject.class_id, ClassSubject.subject_id)
+                    .where(
+                        ClassSubject.class_id.in_(class_ids),
+                        ClassSubject.subject_id.in_(to_add),
+                    )
+                )).all())
+                for cid in class_ids:
+                    for sid in to_add:
+                        if (cid, sid) in existing_pairs:
+                            continue
+                        db.add(ClassSubject(
+                            class_id=cid,
+                            subject_id=sid,
+                            is_compulsory=True,
+                            display_order=0,
+                        ))
+                        propagated += 1
+
+        await db.flush()
+        return {
+            "added": len(to_add),
+            "removed": len(to_remove),
+            "propagated_to_classes": propagated,
+        }
+
+    async def set_subject_grades(
+        self,
+        db: AsyncSession,
+        subject_id: uuid.UUID,
+        grade_level_ids: List[uuid.UUID],
+    ) -> dict:
+        """Symmetric sibling of ``set_grade_subjects`` — the given
+        grade_level_ids become the EXACT set of grades that teach this
+        subject.
+
+        Same cascade semantics in reverse:
+          - a grade newly added → auto-attach the subject to every
+            existing class in that grade (idempotent).
+          - a grade newly removed → delete class_subjects rows for
+            this subject across every class in that grade.
+
+        Returns ``{added, removed, propagated_to_classes}``.
+        Cross-tenant guard on every grade id.
+        """
+        await self._ensure_subject_on_tenant(db, subject_id)
+
+        seen: set[uuid.UUID] = set()
+        requested: list[uuid.UUID] = []
+        for gid in grade_level_ids:
+            if gid not in seen:
+                seen.add(gid)
+                requested.append(gid)
+
+        for gid in requested:
+            await self._ensure_grade_level_on_tenant(db, gid)
+
+        current_rows = (await db.execute(
+            select(GradeLevelSubject)
+            .where(GradeLevelSubject.subject_id == subject_id)
+        )).scalars().all()
+        current_by_grade = {r.grade_level_id: r for r in current_rows}
+        current_set = set(current_by_grade.keys())
+        requested_set = set(requested)
+
+        to_add = [gid for gid in requested if gid not in current_set]
+        to_remove = [gid for gid in current_set if gid not in requested_set]
+
+        tenant_id = get_tenant_id()
+        propagated = 0
+
+        # Cascade removal: drop class_subjects rows for this subject
+        # across every class under each departing grade.
+        if to_remove:
+            classes_to_detach = (await db.execute(
+                select(SchoolClass.id).where(
+                    SchoolClass.tenant_id == tenant_id,
+                    SchoolClass.grade_level_id.in_(to_remove),
+                    SchoolClass.deleted_at.is_(None),
+                )
+            )).scalars().all()
+            class_ids_to_detach = list(classes_to_detach)
+            if class_ids_to_detach:
+                await db.execute(
+                    ClassSubject.__table__.delete().where(
+                        ClassSubject.class_id.in_(class_ids_to_detach),
+                        ClassSubject.subject_id == subject_id,
+                    )
+                )
+
+        for gid in to_remove:
+            await db.delete(current_by_grade[gid])
+
+        # Cascade addition: insert into grade_level_subjects + attach
+        # to existing classes.
+        if to_add:
+            existing_count = len(current_rows) - len(to_remove)
+            for i, gid in enumerate(to_add):
+                db.add(GradeLevelSubject(
+                    grade_level_id=gid,
+                    subject_id=subject_id,
+                    display_order=existing_count + i,
+                ))
+
+            classes_to_attach = (await db.execute(
+                select(SchoolClass.id).where(
+                    SchoolClass.tenant_id == tenant_id,
+                    SchoolClass.grade_level_id.in_(to_add),
+                    SchoolClass.deleted_at.is_(None),
+                )
+            )).scalars().all()
+            class_ids_to_attach = list(classes_to_attach)
+            if class_ids_to_attach:
+                existing_pairs = set((await db.execute(
+                    select(ClassSubject.class_id, ClassSubject.subject_id)
+                    .where(
+                        ClassSubject.class_id.in_(class_ids_to_attach),
+                        ClassSubject.subject_id == subject_id,
+                    )
+                )).all())
+                for cid in class_ids_to_attach:
+                    if (cid, subject_id) in existing_pairs:
+                        continue
+                    db.add(ClassSubject(
+                        class_id=cid,
+                        subject_id=subject_id,
+                        is_compulsory=True,
+                        display_order=0,
+                    ))
+                    propagated += 1
+
+        await db.flush()
+        return {
+            "added": len(to_add),
+            "removed": len(to_remove),
+            "propagated_to_classes": propagated,
+        }
+
+    async def get_grade_level_subjects_count(
+        self,
+        db: AsyncSession,
+    ) -> int:
+        """Count of grade_level_subjects rows across every grade on this
+        tenant. Used by the setup-status card to tell if the admin has
+        linked anything yet."""
+        tenant_id = get_tenant_id()
+        q = (
+            select(func.count())
+            .select_from(GradeLevelSubject)
+            .join(GradeLevel, GradeLevel.id == GradeLevelSubject.grade_level_id)
+            .where(
+                GradeLevel.tenant_id == tenant_id,
+                GradeLevel.deleted_at.is_(None),
+            )
+        )
+        return (await db.execute(q)).scalar() or 0
+
     # ==================== GRADING SYSTEMS ====================
 
     async def get_grading_systems(
@@ -448,6 +808,10 @@ class AcademicService:
         )
         grading_count = (await db.execute(grading_count_query)).scalar() or 0
 
+        # Count grade_level_subjects rows — the new "has the admin
+        # linked subjects to grades yet?" check.
+        subject_grade_link_count = await self.get_grade_level_subjects_count(db)
+
         # Count teachers
         from app.models.user import User, Role
         teacher_count_query = select(func.count()).select_from(
@@ -490,6 +854,16 @@ class AcademicService:
                 "link": "/settings/academic/subjects",
                 "action_label": "Add Subject",
                 "action_link": "/settings/academic/subjects/create",
+            },
+            {
+                "key": "subject_grade_links",
+                "label": "Link subjects to grades",
+                "description": "Say which grades teach which subjects — new classes auto-get them",
+                "completed": subject_grade_link_count > 0,
+                "count": subject_grade_link_count,
+                "link": "/settings/academic/subjects",
+                "action_label": "Link subjects",
+                "action_link": "/settings/academic/subjects",
             },
             {
                 "key": "grading",
