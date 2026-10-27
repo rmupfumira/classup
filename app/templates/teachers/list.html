@@ -86,20 +86,47 @@
                             Pending
                         </span>
                         {% endif %}
-                        {% if inv.status == 'PENDING' %}
-                        <button type="button" onclick='editInvitationAssignments({{ inv.id|string|tojson }}, {{ (inv.intended_assignments or [])|tojson }})'
-                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                            Edit
-                        </button>
-                        {% endif %}
-                        <button type="button" onclick="resendInvitation('{{ inv.id }}')"
-                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                            Resend
-                        </button>
-                        <button type="button" onclick="cancelInvitation('{{ inv.id }}')"
-                                class="text-xs text-red-600 hover:text-red-700 font-medium">
-                            Cancel
-                        </button>
+                        <div class="relative inline-block text-left" data-dropdown>
+                            <button type="button" onclick="toggleDropdown(this)"
+                                    class="inline-flex items-center p-1.5 text-neutral-400 hover:text-neutral-600 rounded hover:bg-neutral-100">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                                </svg>
+                            </button>
+                            <div class="dropdown-menu hidden fixed w-56 bg-white rounded-md shadow-lg border border-neutral-200 z-50">
+                                {% if inv.status == 'PENDING' %}
+                                <button type="button"
+                                        onclick='editInvitationAssignments({{ inv.id|string|tojson }}, {{ (inv.intended_assignments or [])|tojson }})'
+                                        class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-neutral-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <rect x="2" y="2" width="7" height="7" rx="1.25"/>
+                                        <rect x="11" y="2" width="7" height="7" rx="1.25"/>
+                                        <rect x="2" y="11" width="7" height="7" rx="1.25"/>
+                                        <rect x="11" y="11" width="7" height="7" rx="1.25"/>
+                                    </svg>
+                                    Manage Classes &amp; Subjects
+                                </button>
+                                {% endif %}
+                                <button type="button" onclick="resendInvitation('{{ inv.id }}')"
+                                        class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"></path>
+                                    </svg>
+                                    Resend invitation
+                                </button>
+                                <div class="border-t border-neutral-100 my-1"></div>
+                                <button type="button" onclick="cancelInvitation('{{ inv.id }}')"
+                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
+                                    </svg>
+                                    Cancel invitation
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 {% if inv.intended_assignments %}
@@ -239,9 +266,11 @@
                                     <button type="button"
                                             onclick="openManageAssignmentsDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
                                             class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                  d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"></path>
+                                        <svg class="w-4 h-4 text-neutral-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <rect x="2" y="2" width="7" height="7" rx="1.25"/>
+                                            <rect x="11" y="2" width="7" height="7" rx="1.25"/>
+                                            <rect x="2" y="11" width="7" height="7" rx="1.25"/>
+                                            <rect x="11" y="11" width="7" height="7" rx="1.25"/>
                                         </svg>
                                         Manage Classes &amp; Subjects
                                     </button>
