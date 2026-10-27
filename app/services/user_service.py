@@ -267,11 +267,39 @@ class UserService:
         db: AsyncSession,
         teacher_id: uuid.UUID,
     ) -> User:
-        """Deactivate a teacher account."""
+        """Deactivate a teacher account.
+
+        Also strips the teacher's active assignments so they stop
+        showing up as the class teacher / subject specialist on live
+        class detail pages. Historical records (attendance rows,
+        finalized reports, messages they sent) stay intact because
+        those tables reference teacher_id directly, not through
+        teacher_classes / class_subject_teachers.
+
+        Re-activating is a plain is_active flip — the admin re-assigns
+        them to their classes afresh (safer than magically restoring
+        the pre-deactivation state when roster has moved on).
+        """
+        from sqlalchemy import delete as _delete
+        from app.models.school_class import TeacherClass
+        from app.models.academic import ClassSubjectTeacher
+
         teacher = await self.get_user(db, teacher_id)
         if teacher.role != Role.TEACHER.value:
             raise NotFoundException("Teacher")
         teacher.is_active = False
+
+        # Drop live assignments — pickers already filter is_active,
+        # but the rows themselves also need to go so class detail,
+        # dashboards, and auto-notifications stop treating them as
+        # the current owner.
+        await db.execute(_delete(TeacherClass).where(
+            TeacherClass.teacher_id == teacher_id,
+        ))
+        await db.execute(_delete(ClassSubjectTeacher).where(
+            ClassSubjectTeacher.teacher_id == teacher_id,
+        ))
+
         await db.commit()
         await db.refresh(teacher)
         return teacher

@@ -485,7 +485,12 @@ document.getElementById('stm-add-btn')?.addEventListener('click', async () => {
         );
         ClassUp.toast('Teacher assigned.', 'success');
         document.getElementById('stm-teacher-picker').value = '';
-        renderCurrentSubjectTeachers();
+        // Close the dialog + reload the page so the Staff summary +
+        // Subject teachers card refresh with the new assignment.
+        // (Previously the modal stayed open behind the toast and
+        // admins had to click Done manually.)
+        document.getElementById('subject-teacher-modal').close();
+        setTimeout(() => window.location.reload(), 400);
     } catch (err) {
         // ClassUp.fetch already toasted the error.
     }

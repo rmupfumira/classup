@@ -298,14 +298,19 @@ async def manage_teachers(
     school_class = await class_service.get_class(db, class_id)
     teachers_data = await class_service.get_class_teachers(db, class_id)
 
-    # Get available teachers (paginated)
+    # Get available teachers (paginated). Hide inactive ones from the
+    # assignment picker — deactivated teachers should NOT be
+    # assignable to new classes until an admin re-activates them.
     all_teachers, total_teachers = await user_service.get_teachers_paginated(
         db, page=1, page_size=50,
     )
 
-    # Filter out already assigned teachers
+    # Filter out already-assigned + inactive teachers.
     assigned_teacher_ids = {u.id for u, _ in teachers_data}
-    available_teachers = [t for t in all_teachers if t.id not in assigned_teacher_ids]
+    available_teachers = [
+        t for t in all_teachers
+        if t.id not in assigned_teacher_ids and t.is_active
+    ]
 
     context = {
         "request": request,
