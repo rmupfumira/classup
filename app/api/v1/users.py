@@ -595,6 +595,27 @@ async def activate_teacher(
     )
 
 
+@router.delete("/teachers/{teacher_id}")
+@require_role("SCHOOL_ADMIN")
+async def delete_teacher(
+    teacher_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Hard-delete a teacher (soft-delete via deleted_at)."""
+    user_service = get_user_service()
+    try:
+        teacher = await user_service.delete_teacher(db, teacher_id)
+    except Exception as e:
+        return APIResponse(
+            status="error",
+            message=str(e.message) if hasattr(e, "message") else str(e),
+        )
+    return APIResponse(
+        status="success",
+        message=f"{teacher.first_name} {teacher.last_name} has been deleted",
+    )
+
+
 @router.post("/teachers/{teacher_id}/set-password")
 @require_role("SCHOOL_ADMIN")
 async def admin_set_teacher_password(

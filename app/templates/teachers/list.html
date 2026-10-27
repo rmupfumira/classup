@@ -305,6 +305,15 @@
                                         Activate
                                     </button>
                                     {% endif %}
+                                    <button type="button"
+                                            onclick="deleteTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
+                                        </svg>
+                                        Delete permanently
+                                    </button>
                                 </div>
                             </div>
                         </td>
@@ -1372,6 +1381,33 @@ async function activateTeacher(teacherId, teacherName) {
             setTimeout(() => window.location.reload(), 1000);
         } else {
             ClassUp.toast(result.message || 'Failed to activate teacher.', 'error');
+        }
+    } catch (error) {
+        ClassUp.toast('An error occurred. Please try again.', 'error');
+    }
+}
+
+// Hard-delete teacher (soft-delete via deleted_at on the server — the
+// teacher disappears from the UI but historical attendance / reports /
+// messages the teacher authored keep their FK valid).
+async function deleteTeacher(teacherId, teacherName) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+    const confirmed = await ClassUp.confirm(
+        `Permanently delete ${teacherName}? This removes them from every class, cancels any pending invitation, and hides them from the Teachers list. Historical records (attendance, reports, messages) stay intact. This can't be undone.`,
+        { danger: true, confirmText: 'Delete permanently' },
+    );
+    if (!confirmed) return;
+    try {
+        const response = await fetch(`/api/v1/users/teachers/${teacherId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            ClassUp.toast(result.message, 'success');
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            ClassUp.toast(result.message || 'Failed to delete teacher.', 'error');
         }
     } catch (error) {
         ClassUp.toast('An error occurred. Please try again.', 'error');

@@ -318,6 +318,52 @@ class UserService:
         await db.refresh(teacher)
         return teacher
 
+    async def delete_teacher(
+        self,
+        db: AsyncSession,
+        teacher_id: uuid.UUID,
+    ) -> User:
+        """Hard-delete a teacher.
+
+        Soft-delete via ``deleted_at`` so historical records that
+        reference ``teacher_id`` (attendance.recorded_by, reports.created_by,
+        messages.sender_id, etc.) keep their foreign keys valid — the
+        admin just stops seeing the teacher anywhere in the UI.
+
+        Also strips every TeacherClass + ClassSubjectTeacher row (the
+        deactivate path already does this; we duplicate because an
+        admin may delete without first deactivating), the teacher's
+        pending invitation if any, and clears their session.
+        """
+        from datetime import datetime
+        from sqlalchemy import delete as _delete
+        from app.models.school_class import TeacherClass
+        from app.models.academic import ClassSubjectTeacher
+        from app.models.teacher_invitation import TeacherInvitation
+
+        teacher = await self.get_user(db, teacher_id)
+        if teacher.role != Role.TEACHER.value:
+            raise NotFoundException("Teacher")
+
+        await db.execute(_delete(TeacherClass).where(
+            TeacherClass.teacher_id == teacher_id,
+        ))
+        await db.execute(_delete(ClassSubjectTeacher).where(
+            ClassSubjectTeacher.teacher_id == teacher_id,
+        ))
+        # Any pending invitation using the same email becomes orphaned —
+        # cancel it so the admin can re-invite with a clean slate.
+        await db.execute(_delete(TeacherInvitation).where(
+            TeacherInvitation.email == teacher.email,
+            TeacherInvitation.status == "PENDING",
+        ))
+
+        teacher.is_active = False
+        teacher.deleted_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(teacher)
+        return teacher
+
     async def admin_set_password(
         self,
         db: AsyncSession,
