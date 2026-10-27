@@ -176,6 +176,36 @@ async def class_detail(
         ).order_by(_User.first_name, _User.last_name)
     )).scalars().all()
 
+    # Pending-invitation assignments that reference THIS class. The
+    # admin set them up at invite time but the teacher hasn't accepted
+    # yet — showing them inline (with a Pending badge) so admins see
+    # the full picture of who WILL own this class, not just who
+    # already does. Dropped as soon as the invitation is accepted (the
+    # apply hook creates the real TeacherClass / ClassSubjectTeacher
+    # rows and this query stops matching).
+    from app.models.teacher_invitation import TeacherInvitation
+    pending_invs = (await db.execute(
+        select(TeacherInvitation).where(
+            TeacherInvitation.tenant_id == get_tenant_id(),
+            TeacherInvitation.status == "PENDING",
+        )
+    )).scalars().all()
+    pending_general_teachers: list = []  # list[(invitation, is_primary)]
+    pending_subject_teachers_by_subject: dict = {}  # {subject_id_str: [invitation]}
+    class_id_str = str(class_id)
+    for inv in pending_invs:
+        for item in (inv.intended_assignments or []):
+            if str(item.get("class_id", "")) != class_id_str:
+                continue
+            subject_ids = item.get("subject_ids") or []
+            is_primary = bool(item.get("is_primary"))
+            # Subject-less items (homeroom role) → general-teacher list.
+            # Items with subjects AND is_primary → both (hybrid).
+            if not subject_ids or is_primary:
+                pending_general_teachers.append((inv, is_primary))
+            for sid in subject_ids:
+                pending_subject_teachers_by_subject.setdefault(str(sid), []).append(inv)
+
     context = {
         "request": request,
         "user": user,
@@ -186,6 +216,8 @@ async def class_detail(
         "class_subjects": class_subjects,
         "subject_teachers_by_subject": subject_teachers_by_subject,
         "assignable_teachers": assignable_teachers,
+        "pending_general_teachers": pending_general_teachers,
+        "pending_subject_teachers_by_subject": pending_subject_teachers_by_subject,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

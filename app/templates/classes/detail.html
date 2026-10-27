@@ -152,11 +152,22 @@
                             {% elif other_tcs %}
                                 {% for teacher, tc in other_tcs %}{{ teacher.first_name }} {{ teacher.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
                                 <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">No primary set</span>
-                            {% else %}
+                            {% elif not pending_general_teachers %}
                                 <span class="text-amber-700">
                                     No class teacher assigned yet.
                                 </span>
                             {% endif %}
+                            {# Pending invitations assigned to this class → show inline
+                               with an amber Pending badge so admins see what WILL be
+                               there when the teacher accepts. #}
+                            {% for inv, is_primary in pending_general_teachers %}
+                                {% if primary_tcs or other_tcs or not loop.first %}, {% endif %}
+                                <span class="text-neutral-600">{{ inv.first_name }} {{ inv.last_name }}</span>
+                                {% if is_primary %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-600">Primary</span>
+                                {% endif %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">Pending invite</span>
+                            {% endfor %}
                         </dd>
                     </div>
 
@@ -167,15 +178,21 @@
                             <ul class="space-y-1.5">
                                 {% for cs in class_subjects %}
                                 {% set assigned = subject_teachers_by_subject.get(cs.subject_id | string, []) %}
+                                {% set pending = pending_subject_teachers_by_subject.get(cs.subject_id | string, []) %}
                                 <li class="flex items-center justify-between gap-2 text-sm">
                                     <span class="text-neutral-800 font-medium">{{ cs.subject.name }}</span>
                                     <span class="text-neutral-600 text-right min-w-0 truncate">
                                         {% if tenant and tenant.subject_teacher_enabled %}
                                             {% if assigned %}
                                                 {% for t in assigned %}{{ t.first_name }} {{ t.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                                            {% else %}
+                                            {% elif not pending %}
                                                 <span class="text-amber-600 text-xs">No specialist assigned</span>
                                             {% endif %}
+                                            {% for inv in pending %}
+                                                {% if assigned or not loop.first %}, {% endif %}
+                                                <span class="text-neutral-600">{{ inv.first_name }} {{ inv.last_name }}</span>
+                                                <span class="ml-1 inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">Pending</span>
+                                            {% endfor %}
                                         {% elif primary_tcs %}
                                             <span class="text-neutral-500 text-xs">Taught by class teacher</span>
                                         {% else %}
@@ -276,6 +293,7 @@
                 <ul class="divide-y divide-neutral-100">
                     {% for cs in class_subjects %}
                     {% set assigned = subject_teachers_by_subject.get(cs.subject_id | string, []) %}
+                    {% set pending = pending_subject_teachers_by_subject.get(cs.subject_id | string, []) %}
                     <li class="py-3 flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-neutral-800">{{ cs.subject.name }}</p>
@@ -283,9 +301,15 @@
                             <p class="text-xs text-neutral-500 mt-0.5">
                                 {% for t in assigned %}{{ t.first_name }} {{ t.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
                             </p>
-                            {% else %}
+                            {% elif not pending %}
                             <p class="text-xs text-amber-600 mt-0.5">
                                 No teacher assigned — subject-level grades blocked.
+                            </p>
+                            {% endif %}
+                            {% if pending %}
+                            <p class="text-xs text-neutral-500 mt-0.5">
+                                {% for inv in pending %}{{ inv.first_name }} {{ inv.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                <span class="ml-1 inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">Pending invite</span>
                             </p>
                             {% endif %}
                         </div>
@@ -317,7 +341,7 @@
                     {% endif %}
                 </div>
 
-                {% if teachers %}
+                {% if teachers or pending_general_teachers %}
                 <ul class="space-y-3">
                     {% for teacher, tc in teachers %}
                     <li class="flex items-center gap-3">
@@ -336,6 +360,30 @@
                                 {% endif %}
                             </p>
                             <p class="text-xs text-neutral-500 truncate">{{ teacher.email }}</p>
+                        </div>
+                    </li>
+                    {% endfor %}
+                    {# Pending-invitation homeroom teachers — dashed border + Pending badge #}
+                    {% for inv, is_primary in pending_general_teachers %}
+                    <li class="flex items-center gap-3 opacity-80">
+                        <div class="flex-shrink-0 h-9 w-9 rounded-full bg-amber-50 border border-dashed border-amber-300 flex items-center justify-center">
+                            <span class="text-amber-700 font-medium text-xs">
+                                {{ inv.first_name[0] if inv.first_name else '?' }}{{ inv.last_name[0] if inv.last_name else '' }}
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-neutral-800">
+                                {{ inv.first_name }} {{ inv.last_name }}
+                                {% if is_primary %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-600">
+                                    Primary
+                                </span>
+                                {% endif %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
+                                    Pending invite
+                                </span>
+                            </p>
+                            <p class="text-xs text-neutral-500 truncate">{{ inv.email }}</p>
                         </div>
                     </li>
                     {% endfor %}
