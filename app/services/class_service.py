@@ -688,39 +688,43 @@ class ClassService:
         db: AsyncSession,
         teacher_id: uuid.UUID,
         class_id: uuid.UUID,
-        is_primary: bool = False,
+        is_primary: bool = True,  # vestigial; kept for API compatibility
     ) -> TeacherClass:
-        """Add (or update) a teacher's general class assignment.
+        """Set the class teacher for a class.
 
-        Idempotent: if the row already exists, we flip ``is_primary``
-        to the requested value instead of raising. When
-        ``is_primary=True`` any other primary teacher on the same class
-        is unset first (there's at most one primary per class).
+        Model simplification (user directive): one class teacher per
+        class. Everyone else contributing to the class is a subject
+        teacher via ``class_subject_teachers``. The ``is_primary``
+        column is kept on the row for backwards compat with the
+        parent-notifier + dashboard code, but it's always ``True``
+        now — "the class teacher" and "the primary class teacher"
+        collapse into the same concept.
+
+        If a different teacher already owns the class, they're bumped:
+        we delete their TeacherClass row and insert the new one. Idempotent
+        when the same teacher is re-assigned.
         """
         await self._get_tenant_teacher(db, teacher_id)
-        # Reuses get_class's tenant guard so a cross-tenant class_id raises.
         await self.get_class(db, class_id)
 
-        existing = (await db.execute(
-            select(TeacherClass).where(
-                TeacherClass.teacher_id == teacher_id,
-                TeacherClass.class_id == class_id,
-            )
-        )).scalar_one_or_none()
+        existing_rows = (await db.execute(
+            select(TeacherClass).where(TeacherClass.class_id == class_id)
+        )).scalars().all()
 
-        if is_primary:
-            await self._unset_primary_teacher(db, class_id)
-
-        if existing is not None:
-            existing.is_primary = is_primary
-            await db.flush()
-            await db.refresh(existing)
-            return existing
+        for row in existing_rows:
+            if row.teacher_id == teacher_id:
+                # Same teacher re-assigned → idempotent no-op.
+                row.is_primary = True
+                await db.flush()
+                await db.refresh(row)
+                return row
+            # Someone else owned the class → bump them.
+            await db.delete(row)
 
         assignment = TeacherClass(
             teacher_id=teacher_id,
             class_id=class_id,
-            is_primary=is_primary,
+            is_primary=True,
         )
         db.add(assignment)
         await db.flush()

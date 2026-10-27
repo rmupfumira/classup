@@ -113,8 +113,8 @@
                         {% endif %}
                         {% if item.is_primary or not item.subject_ids %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700"
-                                  title="General class teacher">
-                                {% if item.is_primary %}Primary of class{% else %}Class teacher{% endif %}
+                                  title="Class teacher of this class">
+                                Class teacher
                             </span>
                         {% endif %}
                     {% endfor %}
@@ -183,8 +183,8 @@
                                 <div class="flex flex-wrap gap-1">
                                     {% for tc in teacher.teacher_classes %}
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700"
-                                              title="{% if tc.is_primary %}Primary teacher{% else %}Class teacher{% endif %}">
-                                            {{ tc.school_class.name if tc.school_class else 'Unknown' }}{% if tc.is_primary %} <span class="ml-1 text-primary-400">*</span>{% endif %}
+                                              title="Class teacher">
+                                            {{ tc.school_class.name if tc.school_class else 'Unknown' }}
                                         </span>
                                     {% endfor %}
                                     {% for sa in subj_rows %}
@@ -798,10 +798,10 @@ async function buildClassTeacherRow(containerId, preselected) {
                         ${classOpts}
                     </select>
                 </div>
-                <label class="inline-flex items-center text-xs text-neutral-700 gap-2">
-                    <input type="checkbox" class="ct-primary rounded text-primary-500 focus:ring-0" ${preselected && preselected.is_primary ? 'checked' : ''}>
-                    Primary teacher of this class
-                </label>
+                <input type="hidden" class="ct-primary" value="true">
+                <p class="text-xs text-neutral-500">
+                    One class teacher per class &mdash; assigning here replaces whoever currently owns it.
+                </p>
             </div>
             <button type="button" class="ct-remove text-neutral-400 hover:text-red-600 mt-1" title="Remove">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -839,7 +839,8 @@ function collectAssignments(subjectsContainerId, classTeachersContainerId) {
         document.querySelectorAll(`#${classTeachersContainerId} .ct-row`).forEach(row => {
             const classId = row.querySelector('.ct-class').value;
             if (!classId) return;
-            const isPrimary = row.querySelector('.ct-primary').checked;
+            // Always primary now — one class teacher per class.
+            const isPrimary = true;
             items.push({ class_id: classId, is_primary: isPrimary, subject_ids: [] });
         });
     }
@@ -1086,7 +1087,7 @@ async function refreshManageAssignments(teacherId) {
                     <div class="text-sm text-neutral-800">
                         <span class="font-medium">${g.class_name}</span>
                         <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
-                            ${g.is_primary ? 'Primary teacher' : 'Class teacher'}
+                            Class teacher
                         </span>
                     </div>
                     <button type="button" class="text-xs text-red-600 hover:text-red-700 font-medium"

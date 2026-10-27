@@ -310,24 +310,21 @@ class TestInviteWithAssignments:
 
 class TestAssignmentManagement:
     @pytest.mark.asyncio
-    async def test_add_primary_unsets_other_primary(self, db, world):
-        """Making teacher B the primary on cls_a strips the primary
-        flag off any other primary on the same class."""
+    async def test_add_general_bumps_existing_class_teacher(self, db, world):
+        """One class teacher per class. Assigning teacher B to a class
+        that already has teacher A deletes A's row and leaves exactly
+        one TeacherClass row (B, is_primary=True)."""
         svc = get_class_service()
         a = await _make_teacher(db, world["tid"])
         b = await _make_teacher(db, world["tid"])
 
-        # Set A primary first.
         await svc.add_general_assignment(
             db, teacher_id=a.id, class_id=world["cls_a"].id,
-            is_primary=True,
         )
         await db.commit()
 
-        # Then promote B.
         await svc.add_general_assignment(
             db, teacher_id=b.id, class_id=world["cls_a"].id,
-            is_primary=True,
         )
         await db.commit()
 
@@ -336,10 +333,9 @@ class TestAssignmentManagement:
                 TeacherClass.class_id == world["cls_a"].id,
             )
         )).scalars().all()
-        primary_ids = {r.teacher_id for r in rows if r.is_primary}
-        non_primary_ids = {r.teacher_id for r in rows if not r.is_primary}
-        assert primary_ids == {b.id}
-        assert non_primary_ids == {a.id}
+        assert len(rows) == 1
+        assert rows[0].teacher_id == b.id
+        assert rows[0].is_primary is True
 
     @pytest.mark.asyncio
     async def test_remove_subject_missing_is_false(self, db, world):
