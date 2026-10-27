@@ -269,6 +269,7 @@ async def teacher_register_page(
     request: Request,
     code: str | None = None,
     error: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Render the teacher registration page."""
     from app.utils.security import decode_access_token
@@ -282,12 +283,35 @@ async def teacher_register_page(
         response.delete_cookie("access_token")
         return response
 
+    # Pre-fill from the invitation: the admin already supplied email,
+    # first and last name when they created the invite, so there's no
+    # reason to ask the teacher to re-enter them. Email in particular
+    # must match the invitation on the server side — making it
+    # read-only here saves a confusing round-trip.
+    prefill_email: str | None = None
+    prefill_first_name: str | None = None
+    prefill_last_name: str | None = None
+    invitation_valid = False
+    if code:
+        from app.services.teacher_invitation_service import get_teacher_invitation_service
+        inv_service = get_teacher_invitation_service()
+        inv = await inv_service.get_invitation_by_code(db, code)
+        if inv and inv.is_pending:
+            prefill_email = inv.email
+            prefill_first_name = inv.first_name
+            prefill_last_name = inv.last_name
+            invitation_valid = True
+
     return templates.TemplateResponse(
         "auth/register_teacher.html",
         {
             "request": request,
             "code": code,
             "error": error,
+            "email": prefill_email,
+            "first_name": prefill_first_name,
+            "last_name": prefill_last_name,
+            "invitation_valid": invitation_valid,
             "current_language": get_current_language(),
         },
     )

@@ -31,6 +31,33 @@
             {% endif %}
 
             <form method="POST" action="/register/teacher" class="space-y-5">
+                {% set prefilled = invitation_valid %}
+                {# When the invitation code is in the URL and resolves to
+                   a pending invitation, we trust the admin-entered
+                   email / name and present them read-only. The teacher
+                   only needs to pick a password (phone optional). If
+                   the code is invalid or missing we fall back to the
+                   editable form so the teacher can still complete it. #}
+                {% if prefilled %}
+                <div class="rounded-lg bg-primary-50 border border-primary-100 p-4">
+                    <p class="text-sm text-primary-900">
+                        Welcome, <strong>{{ first_name }} {{ last_name }}</strong>!
+                        We've got your details from the invitation.
+                        Just set a password below to finish.
+                    </p>
+                </div>
+                <input type="hidden" name="invitation_code" value="{{ code }}">
+                <input type="hidden" name="email" value="{{ email }}">
+                <input type="hidden" name="first_name" value="{{ first_name }}">
+                <input type="hidden" name="last_name" value="{{ last_name }}">
+                <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600 space-y-1">
+                    <div><span class="font-medium text-neutral-800">Email:</span> {{ email }}</div>
+                    <div><span class="font-medium text-neutral-800">Name:</span> {{ first_name }} {{ last_name }}</div>
+                    <div class="text-xs text-neutral-500 pt-1">
+                        Need to change these? Ask the school admin to update your invitation.
+                    </div>
+                </div>
+                {% else %}
                 <!-- Invitation Code -->
                 <div>
                     <label for="invitation_code" class="block text-sm font-medium text-neutral-700">
@@ -94,6 +121,7 @@
                                       placeholder-neutral-400 text-neutral-800">
                     </div>
                 </div>
+                {% endif %}
 
                 <!-- Phone -->
                 <div>
