@@ -149,37 +149,30 @@
                         </dd>
                     </div>
 
-                    {% if class_subjects %}
+                    {% if class_subjects and tenant and tenant.subject_teacher_enabled %}
+                    {# Terse count row — the full subject-by-subject view
+                       lives in the "Subject teachers" card below, so we
+                       don't repeat it here. #}
+                    {% set subjects_total = class_subjects | length %}
+                    {% set ns = namespace(covered=0) %}
+                    {% for cs in class_subjects %}
+                        {% if subject_teachers_by_subject.get(cs.subject_id | string, []) or pending_subject_teachers_by_subject.get(cs.subject_id | string, []) %}
+                            {% set ns.covered = ns.covered + 1 %}
+                        {% endif %}
+                    {% endfor %}
                     <div class="flex items-start gap-3 pt-2 border-t border-neutral-100">
-                        <dt class="w-32 flex-shrink-0 text-neutral-500 pt-2">Subjects</dt>
-                        <dd class="flex-1 min-w-0">
-                            <ul class="space-y-1.5">
-                                {% for cs in class_subjects %}
-                                {% set assigned = subject_teachers_by_subject.get(cs.subject_id | string, []) %}
-                                {% set pending = pending_subject_teachers_by_subject.get(cs.subject_id | string, []) %}
-                                <li class="flex items-center justify-between gap-2 text-sm">
-                                    <span class="text-neutral-800 font-medium">{{ cs.subject.name }}</span>
-                                    <span class="text-neutral-600 text-right min-w-0 truncate">
-                                        {% if tenant and tenant.subject_teacher_enabled %}
-                                            {% if assigned %}
-                                                {% for t in assigned %}{{ t.first_name }} {{ t.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                                            {% elif not pending %}
-                                                <span class="text-amber-600 text-xs">No specialist assigned</span>
-                                            {% endif %}
-                                            {% for inv in pending %}
-                                                {% if assigned or not loop.first %}, {% endif %}
-                                                <span class="text-neutral-600">{{ inv.first_name }} {{ inv.last_name }}</span>
-                                                <span class="ml-1 inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">Pending</span>
-                                            {% endfor %}
-                                        {% elif ct %}
-                                            <span class="text-neutral-500 text-xs">Taught by class teacher</span>
-                                        {% else %}
-                                            <span class="text-amber-600 text-xs">No teacher</span>
-                                        {% endif %}
-                                    </span>
-                                </li>
-                                {% endfor %}
-                            </ul>
+                        <dt class="w-32 flex-shrink-0 text-neutral-500">Subjects</dt>
+                        <dd class="flex-1 text-neutral-800">
+                            {% if ns.covered == subjects_total %}
+                                All {{ subjects_total }} subject{{ 's' if subjects_total != 1 }} have a teacher.
+                            {% else %}
+                                {{ ns.covered }} of {{ subjects_total }} subjects have a teacher
+                                {% if subjects_total - ns.covered > 0 %}
+                                    &mdash;
+                                    <span class="text-amber-700">{{ subjects_total - ns.covered }} still need{{ 's' if subjects_total - ns.covered == 1 }} one</span>
+                                {% endif %}.
+                                <span class="block text-xs text-neutral-500 mt-0.5">See "Subject teachers" below to assign.</span>
+                            {% endif %}
                         </dd>
                     </div>
                     {% endif %}
@@ -281,7 +274,7 @@
                             </p>
                             {% elif not pending %}
                             <p class="text-xs text-amber-600 mt-0.5">
-                                No teacher assigned — subject-level grades blocked.
+                                No teacher yet &mdash; nobody can enter grades for this subject.
                             </p>
                             {% endif %}
                             {% if pending %}
