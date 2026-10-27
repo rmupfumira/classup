@@ -218,7 +218,7 @@
                                               d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
                                     </svg>
                                 </button>
-                                <div class="dropdown-menu hidden absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-neutral-200 z-10">
+                                <div class="dropdown-menu hidden fixed w-48 bg-white rounded-md shadow-lg border border-neutral-200 z-50">
                                     <a href="/teachers/{{ teacher.id }}/edit"
                                        class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
                                         <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1188,18 +1188,51 @@ async function cancelInvitation(invitationId) {
     }
 }
 
-// Dropdown toggle
+// Dropdown toggle.
+//
+// The row sits inside an overflow-x-auto table wrapper, so an
+// absolute-positioned menu gets clipped on the right edge. Switch to
+// position:fixed and anchor to the button's viewport rect — the menu
+// escapes every scroll container and stays glued to the button when
+// the page scrolls (we reposition on scroll + resize until it closes).
 function toggleDropdown(btn) {
-    // Close all other dropdowns first
+    const menu = btn.nextElementSibling;
+    // Close everyone else first
     document.querySelectorAll('.dropdown-menu').forEach(m => {
-        if (m !== btn.nextElementSibling) m.classList.add('hidden');
+        if (m !== menu) m.classList.add('hidden');
     });
-    btn.nextElementSibling.classList.toggle('hidden');
+
+    const willOpen = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden');
+    if (!willOpen) return;
+
+    const place = () => {
+        const r = btn.getBoundingClientRect();
+        // Right-align the menu with the button, 4px below. Width 12rem (w-48).
+        const menuW = 192;
+        let left = r.right - menuW;
+        if (left < 8) left = 8;  // keep off-screen when near left edge
+        menu.style.left = left + 'px';
+        menu.style.top = (r.bottom + 4) + 'px';
+    };
+    place();
+
+    // Reposition on scroll/resize until the menu closes.
+    const reposition = () => {
+        if (menu.classList.contains('hidden')) {
+            window.removeEventListener('scroll', reposition, true);
+            window.removeEventListener('resize', reposition);
+            return;
+        }
+        place();
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
 }
 
 // Close dropdowns when clicking outside
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('[data-dropdown]')) {
+    if (!e.target.closest('[data-dropdown]') && !e.target.closest('.dropdown-menu')) {
         document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
     }
 });

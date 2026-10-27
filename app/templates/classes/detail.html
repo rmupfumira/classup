@@ -108,6 +108,89 @@
                 </div>
             </div>
 
+            {# Staff on this class — consolidates the general class teacher
+               (homeroom, attendance) and per-subject specialists in one
+               glance so admins don't have to look in two places. Both
+               detailed cards (Teachers in the sidebar, Subject teachers
+               below) stay as the management UIs. #}
+            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-semibold text-neutral-800">Staff on this class</h3>
+                    {% if permissions.can_manage_classes() %}
+                    <a href="/classes/{{ school_class.id }}/manage-teachers"
+                       class="text-xs text-primary-500 hover:text-primary-600">
+                        Manage
+                    </a>
+                    {% endif %}
+                </div>
+
+                <dl class="space-y-3 text-sm">
+                    <div class="flex items-start gap-3">
+                        <dt class="w-32 flex-shrink-0 text-neutral-500">Class teacher</dt>
+                        <dd class="flex-1 text-neutral-800">
+                            {% set primary_tcs = [] %}
+                            {% set other_tcs = [] %}
+                            {% for teacher, tc in teachers %}
+                                {% if tc.is_primary %}
+                                    {% set _ = primary_tcs.append((teacher, tc)) %}
+                                {% else %}
+                                    {% set _ = other_tcs.append((teacher, tc)) %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if primary_tcs %}
+                                {% for teacher, tc in primary_tcs %}
+                                    <span class="font-medium">{{ teacher.first_name }} {{ teacher.last_name }}</span>
+                                    <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-600">Primary</span>
+                                    {% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                                {% if other_tcs %}
+                                    <span class="text-neutral-500">
+                                        &middot; also:
+                                        {% for teacher, tc in other_tcs %}{{ teacher.first_name }} {{ teacher.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                    </span>
+                                {% endif %}
+                            {% elif other_tcs %}
+                                {% for teacher, tc in other_tcs %}{{ teacher.first_name }} {{ teacher.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">No primary set</span>
+                            {% else %}
+                                <span class="text-amber-700">
+                                    No class teacher assigned yet.
+                                </span>
+                            {% endif %}
+                        </dd>
+                    </div>
+
+                    {% if class_subjects %}
+                    <div class="flex items-start gap-3 pt-2 border-t border-neutral-100">
+                        <dt class="w-32 flex-shrink-0 text-neutral-500 pt-2">Subjects</dt>
+                        <dd class="flex-1 min-w-0">
+                            <ul class="space-y-1.5">
+                                {% for cs in class_subjects %}
+                                {% set assigned = subject_teachers_by_subject.get(cs.subject_id | string, []) %}
+                                <li class="flex items-center justify-between gap-2 text-sm">
+                                    <span class="text-neutral-800 font-medium">{{ cs.subject.name }}</span>
+                                    <span class="text-neutral-600 text-right min-w-0 truncate">
+                                        {% if tenant and tenant.subject_teacher_enabled %}
+                                            {% if assigned %}
+                                                {% for t in assigned %}{{ t.first_name }} {{ t.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                            {% else %}
+                                                <span class="text-amber-600 text-xs">No specialist assigned</span>
+                                            {% endif %}
+                                        {% elif primary_tcs %}
+                                            <span class="text-neutral-500 text-xs">Taught by class teacher</span>
+                                        {% else %}
+                                            <span class="text-amber-600 text-xs">No teacher</span>
+                                        {% endif %}
+                                    </span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+
             <!-- Students List -->
             <div class="bg-white rounded-lg shadow-card border border-neutral-200">
                 <div class="p-4 border-b border-neutral-100">
