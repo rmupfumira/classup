@@ -1454,3 +1454,177 @@ async def test_ai_settings(db: AsyncSession = Depends(get_db)) -> APIResponse:
         status="success" if ok else "error",
         message=message,
     )
+
+
+# ============================================================================
+# School Calendars — per-jurisdiction academic years, terms, holidays
+# ============================================================================
+
+
+class CalendarTermPayload(BaseModel):
+    number: int = Field(..., ge=1, le=6)
+    name: str = Field(..., min_length=1, max_length=50)
+    start: str = Field(..., description="ISO date YYYY-MM-DD")
+    end: str = Field(..., description="ISO date YYYY-MM-DD")
+
+
+class CalendarHolidayPayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    # One of (date,) or (start,end). The service accepts both.
+    date: str | None = None
+    start: str | None = None
+    end: str | None = None
+    type: str = Field("PUBLIC", pattern=r"^(PUBLIC|SCHOOL_HOLIDAY|HALF_TERM)$")
+
+
+class SaveCalendarRequest(BaseModel):
+    terms: list[CalendarTermPayload] = Field(..., min_length=1, max_length=6)
+    holidays: list[CalendarHolidayPayload] = Field(default_factory=list)
+    source: str = Field("", max_length=500)
+
+
+class CopyCalendarRequest(BaseModel):
+    from_year: int = Field(..., ge=2000, le=2100)
+    to_year: int = Field(..., ge=2000, le=2100)
+
+
+def _calendar_to_dict(cal) -> dict:
+    """Serialize a Calendar for the API response."""
+    return {
+        "country_code": cal.country_code,
+        "year": cal.year,
+        "terms": [
+            {"number": t.number, "name": t.name,
+             "start": t.start.isoformat(), "end": t.end.isoformat()}
+            for t in cal.terms
+        ],
+        "holidays": [
+            {"name": h.name,
+             "start": h.start.isoformat(), "end": h.end.isoformat(),
+             "type": h.type}
+            for h in cal.holidays
+        ],
+        "source": cal.source,
+        "updated_by": cal.updated_by,
+        "updated_at": cal.updated_at,
+    }
+
+
+@router.get("/calendars")
+@require_super_admin()
+async def list_school_calendars(db: AsyncSession = Depends(get_db)) -> APIResponse:
+    """Every stored calendar row, for the super admin listing."""
+    from app.services import calendar_service
+
+    cals = await calendar_service.list_calendars(db)
+    return APIResponse(
+        status="success",
+        data=[_calendar_to_dict(c) for c in cals],
+    )
+
+
+@router.get("/calendars/{country_code}/{year}")
+@require_super_admin()
+async def get_school_calendar(
+    country_code: str, year: int, db: AsyncSession = Depends(get_db)
+) -> APIResponse:
+    """Fetch one calendar row."""
+    from app.services import calendar_service
+
+    cal = await calendar_service.get_calendar(db, country_code, year)
+    if cal is None:
+        return APIResponse(
+            status="error",
+            message=f"No calendar found for {country_code.upper()} {year}",
+        )
+    return APIResponse(status="success", data=_calendar_to_dict(cal))
+
+
+@router.put("/calendars/{country_code}/{year}")
+@require_super_admin()
+async def save_school_calendar(
+    country_code: str,
+    year: int,
+    body: SaveCalendarRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Create or replace the calendar for (country, year)."""
+    from app.services import calendar_service
+
+    user_id = get_current_user_id()
+    try:
+        cal = await calendar_service.save_calendar(
+            db,
+            country_code=country_code,
+            year=year,
+            terms=[t.model_dump() for t in body.terms],
+            holidays=[h.model_dump(exclude_none=True) for h in body.holidays],
+            source=body.source,
+            updated_by=str(user_id) if user_id else "",
+        )
+    except ValueError as e:
+        return APIResponse(status="error", message=str(e))
+
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message=f"Calendar saved for {country_code.upper()} {year}",
+        data=_calendar_to_dict(cal),
+    )
+
+
+@router.post("/calendars/{country_code}/copy")
+@require_super_admin()
+async def copy_school_calendar(
+    country_code: str,
+    body: CopyCalendarRequest,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Shift a calendar forward one or more years as a draft. The super
+    admin tweaks the handful of dates that moved, then saves."""
+    from app.services import calendar_service
+
+    user_id = get_current_user_id()
+    try:
+        cal = await calendar_service.copy_calendar(
+            db,
+            country_code=country_code,
+            from_year=body.from_year,
+            to_year=body.to_year,
+            updated_by=str(user_id) if user_id else "",
+        )
+    except ValueError as e:
+        return APIResponse(status="error", message=str(e))
+
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message=(
+            f"Copied {country_code.upper()} {body.from_year} → {body.to_year}. "
+            f"Review the dates before relying on this draft."
+        ),
+        data=_calendar_to_dict(cal),
+    )
+
+
+@router.delete("/calendars/{country_code}/{year}")
+@require_super_admin()
+async def delete_school_calendar(
+    country_code: str, year: int, db: AsyncSession = Depends(get_db)
+) -> APIResponse:
+    """Remove a calendar. Billing rules referencing it fall back to no
+    term resolution (reports and term fees won't name a term until a new
+    calendar is in place)."""
+    from app.services import calendar_service
+
+    removed = await calendar_service.delete_calendar(db, country_code, year)
+    if not removed:
+        return APIResponse(
+            status="error",
+            message=f"No calendar found for {country_code.upper()} {year}",
+        )
+    await db.commit()
+    return APIResponse(
+        status="success",
+        message=f"Calendar removed for {country_code.upper()} {year}",
+    )

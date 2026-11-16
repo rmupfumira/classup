@@ -476,6 +476,41 @@ async def push_settings_page(request: Request, db: AsyncSession = Depends(get_db
     )
 
 
+@router.get("/school-calendars", response_class=HTMLResponse)
+async def school_calendars_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Super admin page: per-jurisdiction academic years, terms, holidays.
+
+    Seeds Zimbabwe 2026 on first visit so the super admin doesn't stare
+    at an empty list. The seed is editable like any other row.
+    """
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    _require_super_admin()
+
+    from app.services import calendar_service
+
+    created = await calendar_service.seed_zimbabwe_2026_if_missing(db)
+    if created:
+        await db.commit()
+
+    calendars = await calendar_service.list_calendars(db)
+
+    return templates.TemplateResponse(
+        "super_admin/school_calendars.html",
+        {
+            "request": request,
+            "user": user,
+            "calendars": calendars,
+            "current_language": get_current_language(),
+            "permissions": PermissionChecker(user.role),
+        },
+    )
+
+
 @router.get("/payment-gateways", response_class=HTMLResponse)
 async def payment_gateways_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Super admin page: configure the payment gateway for this instance."""

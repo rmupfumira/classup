@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}School Calendars - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <!-- Page header -->
+    <div class="flex items-center gap-4">
+        <a href="/admin"
+           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <div class="flex-1">
+            <h1 class="text-xl font-semibold text-neutral-800">School Calendars</h1>
+            <p class="mt-1 text-sm text-neutral-500">
+                Academic years, terms, and public holidays per country.
+                Billing uses these to label "Term 2 2026" invoices and reports
+                use them for the term header.
+            </p>
+        </div>
+        <button type="button"
+                onclick="document.getElementById('new-calendar-dialog').showModal()"
+                class="inline-flex items-center px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md shadow-sm">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New calendar
+        </button>
+    </div>
+
+    <!-- Calendar list -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200">
+        {% if calendars %}
+        <ul class="divide-y divide-neutral-100">
+            {% for cal in calendars %}
+            <li class="p-5 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-base font-semibold text-neutral-800">
+                            {{ cal.country_code }} {{ cal.year }}
+                        </h3>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-neutral-100 text-neutral-600">
+                            {{ cal.terms|length }} term{{ 's' if cal.terms|length != 1 else '' }}
+                        </span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-neutral-100 text-neutral-600">
+                            {{ cal.holidays|length }} holiday{{ 's' if cal.holidays|length != 1 else '' }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-neutral-500 mt-1 flex items-center gap-1 flex-wrap">
+                        {% for t in cal.terms %}
+                            <span class="font-medium text-neutral-700">{{ t.name }}</span>
+                            <span>{{ t.start.strftime('%d %b') }} – {{ t.end.strftime('%d %b') }}</span>
+                            {% if not loop.last %}<span class="text-neutral-300 mx-1">·</span>{% endif %}
+                        {% endfor %}
+                    </p>
+                    {% if cal.source %}
+                    <p class="text-xs text-neutral-400 mt-1">{{ cal.source }}</p>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button type="button"
+                            data-cc="{{ cal.country_code }}"
+                            data-year="{{ cal.year }}"
+                            onclick="openEditDialog(this.dataset.cc, parseInt(this.dataset.year))"
+                            class="px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100 rounded-md border border-neutral-200">
+                        Edit
+                    </button>
+                    <button type="button"
+                            data-cc="{{ cal.country_code }}"
+                            data-year="{{ cal.year }}"
+                            onclick="copyToNextYear(this.dataset.cc, parseInt(this.dataset.year))"
+                            class="px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100 rounded-md border border-neutral-200">
+                        Copy → {{ cal.year + 1 }}
+                    </button>
+                    <button type="button"
+                            data-cc="{{ cal.country_code }}"
+                            data-year="{{ cal.year }}"
+                            onclick="deleteCalendar(this.dataset.cc, parseInt(this.dataset.year))"
+                            class="px-2 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-md"
+                            title="Delete">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3"/>
+                        </svg>
+                    </button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="p-10 text-center text-neutral-500">
+            <p class="text-sm">No calendars yet. Create one to get started.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- New calendar dialog -->
+<dialog id="new-calendar-dialog" class="rounded-xl p-0 backdrop:bg-black/40 w-full max-w-md">
+    <form id="new-calendar-form" class="p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-neutral-800">New calendar</h2>
+        <p class="text-xs text-neutral-500">
+            Pick a country + year, we'll create the row with three empty terms you can fill in.
+        </p>
+        <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">Country code</label>
+            <input name="country_code" required maxlength="2"
+                   class="w-full px-3 py-2 border border-neutral-300 rounded-md uppercase"
+                   placeholder="ZW" pattern="[A-Za-z]{2}">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">Year</label>
+            <input name="year" type="number" required min="2000" max="2100"
+                   class="w-full px-3 py-2 border border-neutral-300 rounded-md"
+                   placeholder="2026">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="document.getElementById('new-calendar-dialog').close()"
+                    class="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 rounded-md">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="px-4 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-md">
+                Create
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Edit calendar dialog -->
+<dialog id="edit-calendar-dialog" class="rounded-xl p-0 backdrop:bg-black/40 w-full max-w-3xl">
+    <form id="edit-calendar-form" class="p-6 space-y-5">
+        <div class="flex items-start justify-between">
+            <h2 id="edit-title" class="text-lg font-semibold text-neutral-800">Edit calendar</h2>
+            <button type="button" onclick="document.getElementById('edit-calendar-dialog').close()"
+                    class="text-neutral-400 hover:text-neutral-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div>
+            <h3 class="text-sm font-medium text-neutral-800 mb-2">Terms</h3>
+            <div id="edit-terms" class="space-y-2"></div>
+            <button type="button" onclick="addTermRow()"
+                    class="mt-2 text-xs text-primary-600 hover:text-primary-700">+ add term</button>
+        </div>
+
+        <div>
+            <h3 class="text-sm font-medium text-neutral-800 mb-2">Public holidays</h3>
+            <div id="edit-holidays" class="space-y-2"></div>
+            <button type="button" onclick="addHolidayRow()"
+                    class="mt-2 text-xs text-primary-600 hover:text-primary-700">+ add holiday</button>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">Source / notes</label>
+            <input name="source" maxlength="500"
+                   class="w-full px-3 py-2 border border-neutral-300 rounded-md"
+                   placeholder="e.g. MoPSE Circular 02 of 2026">
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-neutral-100">
+            <button type="button" onclick="document.getElementById('edit-calendar-dialog').close()"
+                    class="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 rounded-md">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="px-4 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-md">
+                Save calendar
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+let editingCC = '';
+let editingYear = 0;
+
+function termRow(t = {}) {
+    const n = Math.max(1, (document.querySelectorAll('#edit-terms .term-row').length + 1));
+    const div = document.createElement('div');
+    div.className = 'term-row grid grid-cols-12 gap-2 items-center';
+    div.innerHTML = `
+        <input name="number" type="number" min="1" max="6" value="${t.number ?? n}" required
+               class="col-span-2 px-2 py-1.5 border border-neutral-300 rounded-md text-sm" placeholder="#">
+        <input name="name" required value="${t.name ?? ''}" maxlength="50"
+               class="col-span-3 px-2 py-1.5 border border-neutral-300 rounded-md text-sm" placeholder="Term 1">
+        <input name="start" type="date" required value="${t.start ?? ''}"
+               class="col-span-3 px-2 py-1.5 border border-neutral-300 rounded-md text-sm">
+        <input name="end" type="date" required value="${t.end ?? ''}"
+               class="col-span-3 px-2 py-1.5 border border-neutral-300 rounded-md text-sm">
+        <button type="button" onclick="this.closest('.term-row').remove()"
+                class="col-span-1 text-neutral-400 hover:text-red-600 text-sm" title="Remove">×</button>
+    `;
+    return div;
+}
+
+function holidayRow(h = {}) {
+    const d = h.start ?? h.date ?? '';
+    const e = h.end ?? h.date ?? '';
+    const div = document.createElement('div');
+    div.className = 'hol-row grid grid-cols-12 gap-2 items-center';
+    div.innerHTML = `
+        <input name="name" required value="${h.name ?? ''}" maxlength="100"
+               class="col-span-5 px-2 py-1.5 border border-neutral-300 rounded-md text-sm" placeholder="Holiday name">
+        <input name="start" type="date" required value="${d}"
+               class="col-span-3 px-2 py-1.5 border border-neutral-300 rounded-md text-sm">
+        <input name="end" type="date" required value="${e}"
+               class="col-span-3 px-2 py-1.5 border border-neutral-300 rounded-md text-sm">
+        <button type="button" onclick="this.closest('.hol-row').remove()"
+                class="col-span-1 text-neutral-400 hover:text-red-600 text-sm" title="Remove">×</button>
+    `;
+    return div;
+}
+
+function addTermRow(t) { document.getElementById('edit-terms').appendChild(termRow(t)); }
+function addHolidayRow(h) { document.getElementById('edit-holidays').appendChild(holidayRow(h)); }
+
+async function openEditDialog(cc, year) {
+    editingCC = cc;
+    editingYear = year;
+    const resp = await ClassUp.fetch(`/api/v1/admin/calendars/${cc}/${year}`);
+    const data = resp?.data;
+    if (!data) return;
+    document.getElementById('edit-title').textContent = `Edit ${cc} ${year}`;
+    document.querySelector('#edit-calendar-form [name="source"]').value = data.source || '';
+    const termsBox = document.getElementById('edit-terms'); termsBox.innerHTML = '';
+    const holsBox = document.getElementById('edit-holidays'); holsBox.innerHTML = '';
+    (data.terms || []).forEach(addTermRow);
+    (data.holidays || []).forEach(addHolidayRow);
+    document.getElementById('edit-calendar-dialog').showModal();
+}
+
+document.getElementById('edit-calendar-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const terms = [...document.querySelectorAll('#edit-terms .term-row')].map(r => ({
+        number: parseInt(r.querySelector('[name=number]').value),
+        name: r.querySelector('[name=name]').value,
+        start: r.querySelector('[name=start]').value,
+        end: r.querySelector('[name=end]').value,
+    }));
+    const holidays = [...document.querySelectorAll('#edit-holidays .hol-row')].map(r => ({
+        name: r.querySelector('[name=name]').value,
+        start: r.querySelector('[name=start]').value,
+        end: r.querySelector('[name=end]').value,
+        type: 'PUBLIC',
+    }));
+    const source = document.querySelector('#edit-calendar-form [name=source]').value;
+    const resp = await ClassUp.fetch(`/api/v1/admin/calendars/${editingCC}/${editingYear}`, {
+        method: 'PUT',
+        body: JSON.stringify({ terms, holidays, source }),
+    });
+    if (resp?.status === 'success') {
+        ClassUp.toast(resp.message || 'Saved', 'success');
+        document.getElementById('edit-calendar-dialog').close();
+        setTimeout(() => location.reload(), 600);
+    } else {
+        ClassUp.toast(resp?.message || 'Could not save', 'error');
+    }
+});
+
+document.getElementById('new-calendar-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const cc = String(fd.get('country_code') || '').toUpperCase();
+    const year = parseInt(fd.get('year'));
+    if (!cc || !year) return;
+    // Create by saving with one placeholder term; admin fills in via edit.
+    const resp = await ClassUp.fetch(`/api/v1/admin/calendars/${cc}/${year}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+            terms: [
+                {number: 1, name: 'Term 1', start: `${year}-01-15`, end: `${year}-04-10`},
+                {number: 2, name: 'Term 2', start: `${year}-05-05`, end: `${year}-08-07`},
+                {number: 3, name: 'Term 3', start: `${year}-09-08`, end: `${year}-12-04`},
+            ],
+            holidays: [],
+            source: 'New — please confirm against the official circular',
+        }),
+    });
+    if (resp?.status === 'success') {
+        ClassUp.toast('Created', 'success');
+        setTimeout(() => location.reload(), 400);
+    } else {
+        ClassUp.toast(resp?.message || 'Could not create', 'error');
+    }
+});
+
+async function copyToNextYear(cc, year) {
+    const ok = await ClassUp.confirm(`Copy ${cc} ${year} forward to ${year + 1}? The new year is a draft — dates typically shift by a week or two.`);
+    if (!ok) return;
+    const resp = await ClassUp.fetch(`/api/v1/admin/calendars/${cc}/copy`, {
+        method: 'POST',
+        body: JSON.stringify({ from_year: year, to_year: year + 1 }),
+    });
+    if (resp?.status === 'success') {
+        ClassUp.toast(resp.message, 'success');
+        setTimeout(() => location.reload(), 600);
+    } else {
+        ClassUp.toast(resp?.message || 'Could not copy', 'error');
+    }
+}
+
+async function deleteCalendar(cc, year) {
+    const ok = await ClassUp.confirm(`Delete ${cc} ${year}? Reports and term fees will stop labelling the term until a new calendar is in place.`);
+    if (!ok) return;
+    const resp = await ClassUp.fetch(`/api/v1/admin/calendars/${cc}/${year}`, { method: 'DELETE' });
+    if (resp?.status === 'success') {
+        ClassUp.toast(resp.message, 'success');
+        setTimeout(() => location.reload(), 400);
+    } else {
+        ClassUp.toast(resp?.message || 'Could not delete', 'error');
+    }
+}
+</script>
+{% endblock %}
