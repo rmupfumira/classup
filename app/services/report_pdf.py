@@ -107,10 +107,19 @@ async def render_report_pdf(
     # one running its own version of the lookup.
     enriched_sections = await _enrich_sections(db, report)
 
+    # Resolve the calendar term + academic year for report-card-style
+    # reports. Daily activity reports keep their plain date header.
+    # Silent fall-through: no calendar configured → no term label,
+    # which is how the report rendered before this change.
+    term_label, academic_year = await _resolve_term_header(db, tenant, report)
+
     weasy = _try_import_weasyprint()
     if weasy is not None:
         try:
-            return _render_with_weasyprint(weasy, report, tenant_name, enriched_sections)
+            return _render_with_weasyprint(
+                weasy, report, tenant_name, enriched_sections,
+                term_label, academic_year,
+            )
         except Exception:
             # A template bug or runtime error shouldn't lose the PDF —
             # the fpdf2 renderer is functionally equivalent, just uglier.
@@ -119,6 +128,37 @@ async def render_report_pdf(
                 report.id,
             )
     return _render_with_fpdf(report, tenant_name, enriched_sections)
+
+
+async def _resolve_term_header(
+    db: AsyncSession, tenant, report: DailyReport,
+) -> tuple[str, str]:
+    """For REPORT_CARD / PROGRESS_REPORT reports, resolve the term name
+    and year from the tenant's jurisdiction calendar. Returns empty
+    strings for everything else so the caller can conditionally render
+    the extra header line."""
+    if not report.report_date or not report.template:
+        return "", ""
+    rtype = getattr(report.template, "report_type", "") or ""
+    if rtype not in ("REPORT_CARD", "PROGRESS_REPORT"):
+        return "", ""
+    try:
+        from app.services import calendar_service
+        country_code = str(
+            ((tenant.settings if tenant else None) or {}).get("country") or "ZA"
+        ).upper()
+        term = await calendar_service.get_term_for_date(
+            db, country_code, report.report_date,
+        )
+        if term is None:
+            return "", ""
+        return term.name, str(report.report_date.year)
+    except Exception:
+        logger.exception(
+            "Could not resolve term for report=%s; rendering without term header",
+            report.id,
+        )
+        return "", ""
 
 
 async def _enrich_sections(
@@ -215,6 +255,8 @@ def _render_with_weasyprint(
     report: DailyReport,
     tenant_name: str,
     sorted_sections: list[dict],
+    term_label: str = "",
+    academic_year: str = "",
 ) -> bytes:
     student_first = "Student"
     if report.student:
@@ -248,6 +290,8 @@ def _render_with_weasyprint(
         "teacher_notes_body": teacher_notes_body,
         "finalized_at": report.finalized_at.strftime("%d %b %Y, %H:%M") if report.finalized_at else "",
         "created_by_name": created_by_name,
+        "term_label": term_label,
+        "academic_year": academic_year,
     }
 
     template = _get_jinja_env().get_template(_PDF_TEMPLATE_NAME)

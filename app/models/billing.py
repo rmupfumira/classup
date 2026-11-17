@@ -99,6 +99,10 @@ class BillingFeeItem(TenantScopedModel):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Pin a TERMLY fee to a specific term number (1..4). NULL = applies
+    # every term the admin generates invoices for. The invoice generator
+    # skips the item when the billing period lands in a different term.
+    applies_to_term: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships
     school_class = relationship("SchoolClass", lazy="selectin")

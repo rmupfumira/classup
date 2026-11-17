@@ -63,12 +63,31 @@ async def admin_dashboard(
     tenant_service = get_tenant_service()
     stats = await tenant_service.get_platform_stats(db)
 
+    # Calendar nudge: in the last ~3 months of the year, flag countries
+    # with live tenants that don't have next year's academic calendar
+    # set up yet. The helper only reports inside its own horizon window
+    # so most of the year this list is empty and the banner stays off.
+    missing_calendars: list[str] = []
+    try:
+        from app.services import calendar_service
+        active_codes = await tenant_service.get_active_country_codes(db)
+        missing_calendars = await calendar_service.countries_missing_upcoming_year(
+            db, active_country_codes=active_codes,
+        )
+    except Exception:
+        # Dashboard must never 500 because of a nudge — swallow + log.
+        import logging
+        logging.getLogger(__name__).exception(
+            "Could not compute missing-calendar nudge; rendering dashboard without it"
+        )
+
     return templates.TemplateResponse(
         "super_admin/index.html",
         {
             "request": request,
             "user": user,
             "stats": stats,
+            "missing_calendars": missing_calendars,
             "current_language": get_current_language(),
             "permissions": PermissionChecker(user.role),
         },

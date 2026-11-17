@@ -50,11 +50,11 @@
                 {% set info_section = report.report_data.sections.get('student_info', {}) if report.report_data and report.report_data.sections else {} %}
                 <div>
                     <p class="text-xs text-neutral-500 uppercase tracking-wider">Term</p>
-                    <p class="font-semibold text-neutral-900">{{ info_section.get('term', '-') }}</p>
+                    <p class="font-semibold text-neutral-900">{{ info_section.get('term') or auto_term_label or '-' }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-neutral-500 uppercase tracking-wider">Academic Year</p>
-                    <p class="font-semibold text-neutral-900">{{ info_section.get('year', '-') }}</p>
+                    <p class="font-semibold text-neutral-900">{{ info_section.get('year') or auto_academic_year or '-' }}</p>
                 </div>
             </div>
             {% if info_section.get('days_present') or info_section.get('days_absent') %}

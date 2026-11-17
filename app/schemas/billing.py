@@ -60,6 +60,7 @@ class FeeItemCreate(BaseModel):
     class_id: uuid.UUID | None = None
     is_active: bool = True
     display_order: int = 0
+    applies_to_term: int | None = Field(None, ge=1, le=4)
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -73,6 +74,7 @@ class FeeItemUpdate(BaseModel):
     class_id: uuid.UUID | None = None
     is_active: bool | None = None
     display_order: int | None = None
+    applies_to_term: int | None = Field(None, ge=1, le=4)
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -89,6 +91,7 @@ class FeeItemResponse(BaseModel):
     class_name: str | None = None
     is_active: bool
     display_order: int
+    applies_to_term: int | None = None
     created_at: datetime
     updated_at: datetime
 

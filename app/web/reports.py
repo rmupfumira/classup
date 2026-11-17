@@ -219,6 +219,31 @@ async def reports_view(
     class_subjects = []
     subject_grading_map: dict[str, list[dict]] = {}
 
+    # Resolve term + year for REPORT_CARD / PROGRESS_REPORT so the web
+    # view can fall back to the jurisdiction calendar when the admin
+    # didn't type a term/year into the student_info section. Daily
+    # activity reports skip this.
+    auto_term_label = ""
+    auto_academic_year = ""
+    report_type = (
+        report.template.report_type if report.template else None
+    )
+    if report_type in ("REPORT_CARD", "PROGRESS_REPORT") and report.report_date:
+        try:
+            from app.services import calendar_service
+            country_code = str(
+                ((tenant.settings if tenant else None) or {}).get("country") or "ZA"
+            ).upper()
+            term = await calendar_service.get_term_for_date(
+                db, country_code, report.report_date,
+            )
+            if term is not None:
+                auto_term_label = term.name
+                auto_academic_year = str(report.report_date.year)
+        except Exception:
+            # Calendar lookup is additive — never block rendering.
+            pass
+
     if report.template and report.template.report_type == "REPORT_CARD":
         template_name = "reports/view_report_card.html"
 
@@ -270,6 +295,8 @@ async def reports_view(
         "grading_system": grading_system,
         "class_subjects": class_subjects,
         "subject_grading_map": subject_grading_map,
+        "auto_term_label": auto_term_label,
+        "auto_academic_year": auto_academic_year,
         "current_language": get_current_language(),
         "permissions": permissions,
     }

@@ -48,6 +48,7 @@ def _build_fee_item_response(item) -> FeeItemResponse:
         class_name=item.school_class.name if item.school_class else None,
         is_active=item.is_active,
         display_order=item.display_order,
+        applies_to_term=item.applies_to_term,
         created_at=item.created_at,
         updated_at=item.updated_at,
     )

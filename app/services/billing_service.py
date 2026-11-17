@@ -106,6 +106,7 @@ class BillingService:
             class_id=data.class_id,
             is_active=data.is_active,
             display_order=data.display_order,
+            applies_to_term=data.applies_to_term,
         )
         db.add(item)
         await db.flush()
@@ -374,6 +375,32 @@ class BillingService:
         from app.models import Tenant, Student
         tenant = await db.get(Tenant, tenant_id)
         school_type = tenant.school_type if tenant else None
+
+        # Resolve the invoice period's term from the jurisdiction
+        # calendar. Used for (a) filtering term-pinned fee items and
+        # (b) labelling TERMLY invoice lines with "Term N YYYY".
+        # Silent-fail: no calendar for the country/year → no filter
+        # and no label, which is how billing worked before this change.
+        from app.services import calendar_service
+        country_code = str(
+            ((tenant.settings if tenant else None) or {}).get("country") or "ZA"
+        ).upper()
+        term_resolve_date = (
+            data.billing_period_start or data.billing_period_end or data.due_date
+        )
+        resolved_term = None
+        try:
+            if term_resolve_date:
+                resolved_term = await calendar_service.get_term_for_date(
+                    db, country_code, term_resolve_date,
+                )
+        except Exception:
+            logger.exception(
+                "Could not resolve term for %s on %s — term filter disabled",
+                country_code, term_resolve_date,
+            )
+            resolved_term = None
+
         students_by_id: dict = {}
         if data.student_ids:
             rows = (await db.execute(
@@ -393,6 +420,27 @@ class BillingService:
                 return residence in ("FULL_BOARDER", "WEEKLY_BOARDER")
             return True
 
+        def _fee_matches_term(fi: BillingFeeItem) -> bool:
+            # applies_to_term pins a fee to a specific term number.
+            # NULL means it applies every term, so always qualify.
+            # If the admin pinned it but we couldn't resolve a term
+            # for the period, don't silently include it — a "Term 2
+            # Tuition" that fires in a month we can't place is more
+            # surprising than one that quietly skips.
+            if fi.applies_to_term is None:
+                return True
+            if resolved_term is None:
+                return False
+            return resolved_term.number == fi.applies_to_term
+
+        def _line_description(fi: BillingFeeItem) -> str:
+            # TERMLY items get an auto-appended term label so the
+            # parent sees "Monthly Tuition — Term 2 2026" on the
+            # invoice. MONTHLY/ANNUALLY/ONCE_OFF stay plain.
+            if fi.frequency == "TERMLY" and resolved_term is not None:
+                return f"{fi.name} — {resolved_term.name} {resolved_term.start.year}"
+            return fi.name
+
         invoices = []
         for i, student_id in enumerate(data.student_ids):
             invoice_number = f"{prefix}{starting_count + i + 1:04d}"
@@ -407,12 +455,14 @@ class BillingService:
             for fi in fee_items:
                 if not _fee_matches(fi, residence):
                     continue  # Boarder levy on a day scholar — skip.
+                if not _fee_matches_term(fi):
+                    continue  # Term-pinned fee outside this period — skip.
                 line_total = fi.amount * 1  # qty=1
                 subtotal += line_total
                 line_items.append(
                     BillingInvoiceItem(
                         fee_item_id=fi.id,
-                        description=fi.name,
+                        description=_line_description(fi),
                         quantity=1,
                         unit_amount=fi.amount,
                         total_amount=line_total,

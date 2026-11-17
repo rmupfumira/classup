@@ -505,6 +505,30 @@ class TenantService:
 
         await db.commit()
 
+    async def get_active_country_codes(self, db: AsyncSession) -> set[str]:
+        """Return every country code with at least one live (active,
+        not-deleted) tenant. Reads ``settings['country']`` from each
+        row and upper-cases. Tenants with no country fall back to the
+        platform default ``ZA`` so we always include at least one code
+        when there's live traffic — otherwise the dashboard nudge
+        banner would stay quiet when it shouldn't.
+        """
+        result = await db.execute(
+            select(Tenant.settings).where(
+                Tenant.deleted_at.is_(None),
+                Tenant.is_active == True,  # noqa: E712
+            )
+        )
+        codes: set[str] = set()
+        for (settings,) in result.all():
+            cc = ""
+            if isinstance(settings, dict):
+                cc = str(settings.get("country") or "").strip().upper()
+            if not cc:
+                cc = "ZA"
+            codes.add(cc)
+        return codes
+
     async def get_platform_stats(self, db: AsyncSession) -> dict:
         """Get platform-wide statistics (Super Admin dashboard)."""
         from app.models import Student, SchoolClass

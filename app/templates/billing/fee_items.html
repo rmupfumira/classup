@@ -58,6 +58,11 @@
                             {% elif item.frequency == 'WEEKLY' %}Weekly
                             {% else %}{{ item.frequency }}
                             {% endif %}
+                            {% if item.applies_to_term %}
+                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
+                                Term {{ item.applies_to_term }}
+                            </span>
+                            {% endif %}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                             {% if item.applies_to == 'ALL' or not item.class_id %}
@@ -219,7 +224,8 @@
                     <label for="fi-frequency" class="block text-sm font-medium text-neutral-700 mb-1">Frequency</label>
                     <select id="fi-frequency" name="frequency" required
                             class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                   focus:border-primary-500 focus:ring-0">
+                                   focus:border-primary-500 focus:ring-0"
+                            onchange="toggleTermSelect()">
                         <option value="MONTHLY">Monthly</option>
                         <option value="TERMLY">Termly</option>
                         <option value="QUARTERLY">Quarterly</option>
@@ -228,6 +234,22 @@
                         <option value="ONCE_OFF">Once-Off</option>
                     </select>
                 </div>
+            </div>
+
+            <div id="fi-term-group" class="hidden">
+                <label for="fi-applies-to-term" class="block text-sm font-medium text-neutral-700 mb-1">Applies to term</label>
+                <select id="fi-applies-to-term" name="applies_to_term"
+                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                               focus:border-primary-500 focus:ring-0">
+                    <option value="">Any term (charge every term)</option>
+                    <option value="1">Term 1 only</option>
+                    <option value="2">Term 2 only</option>
+                    <option value="3">Term 3 only</option>
+                    <option value="4">Term 4 only</option>
+                </select>
+                <p class="mt-1 text-xs text-neutral-500">
+                    The invoice line will auto-label the term + year from the school calendar.
+                </p>
             </div>
 
             <div>
@@ -307,12 +329,26 @@ function toggleClassSelect() {
     }
 }
 
+function toggleTermSelect() {
+    const frequency = document.getElementById('fi-frequency').value;
+    const termGroup = document.getElementById('fi-term-group');
+    const termSelect = document.getElementById('fi-applies-to-term');
+    if (frequency === 'TERMLY') {
+        termGroup.classList.remove('hidden');
+    } else {
+        termGroup.classList.add('hidden');
+        termSelect.value = '';
+    }
+}
+
 function resetForm() {
     form.reset();
     document.getElementById('fi-id').value = '';
     document.getElementById('fi-active').checked = true;
     document.getElementById('fi-class-group').classList.add('hidden');
     document.getElementById('fi-class-id').required = false;
+    document.getElementById('fi-term-group').classList.add('hidden');
+    document.getElementById('fi-applies-to-term').value = '';
     errorDiv.classList.add('hidden');
 }
 
@@ -347,6 +383,8 @@ async function openEditModal(id) {
         document.getElementById('fi-amount').value = item.amount;
         document.getElementById('fi-frequency').value = item.frequency;
         document.getElementById('fi-active').checked = item.is_active;
+        document.getElementById('fi-applies-to-term').value = item.applies_to_term || '';
+        toggleTermSelect();
 
         if (item.class_id) {
             document.getElementById('fi-applies-to').value = 'CLASS';
@@ -398,6 +436,10 @@ async function saveFeeItem(e) {
         return;
     }
 
+    const appliesToTermRaw = document.getElementById('fi-applies-to-term').value;
+    const appliesToTerm = (frequency === 'TERMLY' && appliesToTermRaw)
+        ? parseInt(appliesToTermRaw, 10) : null;
+
     const data = {
         name,
         description: description || null,
@@ -406,6 +448,7 @@ async function saveFeeItem(e) {
         applies_to: appliesTo,
         class_id: appliesTo === 'CLASS' ? classId : null,
         is_active: isActive,
+        applies_to_term: appliesToTerm,
     };
 
     const isEdit = !!id;

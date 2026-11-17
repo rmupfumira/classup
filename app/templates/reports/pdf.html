@@ -151,7 +151,11 @@
 
 <div class="report-header">
     <h1 class="report-title">{{ student_first_name }}'s Report</h1>
+    {% if term_label %}
+    <p class="report-date"><strong>{{ term_label }}{% if academic_year %}, {{ academic_year }}{% endif %}</strong> · {{ report_date_pretty }}</p>
+    {% else %}
     <p class="report-date">{{ report_date_pretty }}</p>
+    {% endif %}
     <div class="school-name">{{ tenant_name }}{% if class_name %} · {{ class_name }}{% endif %}</div>
     <span class="status-badge {% if status == 'FINALIZED' %}finalized{% else %}draft{% endif %}">
         {% if status == 'FINALIZED' %}Finalised{% else %}Draft — not yet sent to parents{% endif %}
