@@ -119,7 +119,8 @@ async function deleteAnnouncement(id) {
         ClassUp.toast('Announcement deleted', 'success');
         window.location.href = '/announcements';
     } catch (error) {
-        ClassUp.toast('Failed to delete announcement', 'error');
+        // ClassUp.fetch already toasted the real reason.
+        console.error('Delete announcement failed:', error);
     }
 }
 </script>

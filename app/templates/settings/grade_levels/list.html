@@ -180,7 +180,7 @@ async function deleteGradeLevel(gradeLevelId, gradeLevelName) {
             window.location.href = '/settings/grade-levels?deleted=1';
         } else {
             const data = await response.json();
-            ClassUp.toast(data.detail || data.message || 'Failed to delete grade level', 'error');
+            ClassUp.toast(data.message || data.errors?.[0]?.message || 'Failed to delete grade level', 'error');
         }
     } catch (error) {
         console.error('Error:', error);

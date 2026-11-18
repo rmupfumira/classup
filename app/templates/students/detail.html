@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearSelection();
                 setTimeout(() => window.location.reload(), 1500);
             } else {
-                errorDiv.textContent = result.detail || result.message || 'Failed to add parent.';
+                errorDiv.textContent = result.message || result.errors?.[0]?.message || 'Failed to add parent.';
                 errorDiv.classList.remove('hidden');
             }
         } catch (error) {
@@ -613,7 +613,7 @@ async function resendInvitation(invitationId) {
         if (result.status === 'success') {
             ClassUp.toast('Invitation resent successfully', 'success');
         } else {
-            ClassUp.toast(result.detail || result.message || 'Failed to resend invitation', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Failed to resend invitation', 'error');
         }
     } catch (error) {
         ClassUp.toast('An error occurred. Please try again.', 'error');
@@ -633,7 +633,7 @@ async function cancelInvitation(invitationId) {
             const el = document.getElementById('inv-' + invitationId);
             if (el) el.remove();
         } else {
-            ClassUp.toast(result.detail || result.message || 'Failed to cancel invitation', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Failed to cancel invitation', 'error');
         }
     } catch (error) {
         ClassUp.toast('An error occurred. Please try again.', 'error');

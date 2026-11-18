@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 form.reset();
                 setTimeout(() => window.location.reload(), 1500);
             } else {
-                errorDiv.textContent = result.detail || result.message || 'Failed to send invitation';
+                errorDiv.textContent = result.message || result.errors?.[0]?.message || 'Failed to send invitation';
                 errorDiv.classList.remove('hidden');
             }
         } catch (error) {
@@ -398,7 +398,7 @@ async function resendInvitation(invitationId) {
         if (result.status === 'success') {
             ClassUp.toast('Invitation resent successfully', 'success');
         } else {
-            ClassUp.toast(result.detail || result.message || 'Failed to resend invitation', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Failed to resend invitation', 'error');
         }
     } catch (error) {
         ClassUp.toast('An error occurred. Please try again.', 'error');
@@ -417,7 +417,7 @@ async function cancelInvitation(invitationId) {
         if (result.status === 'success') {
             window.location.reload();
         } else {
-            ClassUp.toast(result.detail || result.message || 'Failed to cancel invitation', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Failed to cancel invitation', 'error');
         }
     } catch (error) {
         ClassUp.toast('An error occurred. Please try again.', 'error');

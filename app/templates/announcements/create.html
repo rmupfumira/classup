@@ -163,7 +163,10 @@ document.getElementById('announcement-form').addEventListener('submit', async fu
         ClassUp.toast('Announcement published!', 'success');
         window.location.href = '/announcements';
     } catch (error) {
-        ClassUp.toast('Failed to create announcement', 'error');
+        // ClassUp.fetch already fires a toast with the server's real
+        // reason — a second "Failed to create announcement" clobbers
+        // or stacks on top. 2026-11-18 audit fix.
+        console.error('Announcement create failed:', error);
     }
 });
 </script>

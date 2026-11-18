@@ -153,7 +153,7 @@ document.getElementById('grade-level-form').addEventListener('submit', async (e)
         if (response.ok) {
             window.location.href = '/settings/grade-levels?saved=1';
         } else {
-            ClassUp.toast(result.detail || result.message || 'An error occurred', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Could not save — please try again', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -263,7 +263,7 @@ document.getElementById('name').addEventListener('blur', (e) => {
                 body: JSON.stringify({ subject_ids: [...picked] }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || data.message || 'Save failed');
+            if (!res.ok) throw new Error(data.message || data.errors?.[0]?.message || 'Save failed');
             const d = data.data || {};
             currentIds = new Set([...picked]);
             const parts = [];

@@ -271,7 +271,7 @@ async function deleteSubject(subjectId, subjectName) {
             window.location.reload();
         } else {
             const data = await response.json();
-            ClassUp.toast(data.detail || 'Failed to delete subject', 'error');
+            ClassUp.toast(data.message || data.errors?.[0]?.message || 'Failed to delete subject', 'error');
         }
     } catch (error) {
         console.error('Error:', error);

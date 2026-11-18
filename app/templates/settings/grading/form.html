@@ -236,7 +236,7 @@ document.getElementById('grading-form').addEventListener('submit', async (e) => 
         if (response.ok) {
             window.location.href = '/settings/academic/grading';
         } else {
-            ClassUp.toast(result.detail || result.message || 'An error occurred', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Could not save — please try again', 'error');
         }
     } catch (error) {
         console.error('Error:', error);

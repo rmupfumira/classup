@@ -176,7 +176,11 @@ form.addEventListener('submit', async (e) => {
             btnSpinner.classList.add('hidden');
         }
     } catch (err) {
-        ClassUp.toast('Upload failed: ' + err.message, 'error');
+        // Previously surfaced raw JS exception strings like
+        // "TypeError: Failed to fetch" to the user. Keep the detail
+        // in the console for debugging and show a friendly message.
+        console.error('Import upload failed:', err);
+        ClassUp.toast('Could not upload the file — check your connection or try a smaller file.', 'error');
         submitBtn.disabled = false;
         btnText.textContent = 'Continue to Column Mapping';
         btnSpinner.classList.add('hidden');

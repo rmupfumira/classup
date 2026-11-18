@@ -136,7 +136,7 @@ async function setAsDefault(gradingSystemId) {
             window.location.reload();
         } else {
             const data = await response.json();
-            ClassUp.toast(data.detail || 'Failed to set as default', 'error');
+            ClassUp.toast(data.message || data.errors?.[0]?.message || 'Failed to set as default', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -159,7 +159,7 @@ async function deleteGradingSystem(gradingSystemId, name) {
             window.location.reload();
         } else {
             const data = await response.json();
-            ClassUp.toast(data.detail || 'Failed to delete grading system', 'error');
+            ClassUp.toast(data.message || data.errors?.[0]?.message || 'Failed to delete grading system', 'error');
         }
     } catch (error) {
         console.error('Error:', error);

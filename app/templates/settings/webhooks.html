@@ -165,7 +165,8 @@ async function testWebhook(endpointId) {
             ClassUp.toast('Test failed: ' + (data.data?.error || 'Unknown error'), 'error');
         }
     } catch (e) {
-        ClassUp.toast('Error: ' + e.message, 'error');
+        console.error('Webhook test failed:', e);
+        ClassUp.toast('Could not reach the webhook test endpoint.', 'error');
     }
 }
 
@@ -182,7 +183,8 @@ async function deleteWebhook(endpointId) {
             ClassUp.toast('Failed to delete webhook', 'error');
         }
     } catch (e) {
-        ClassUp.toast('Error: ' + e.message, 'error');
+        console.error('Delete webhook failed:', e);
+        ClassUp.toast('Could not delete the webhook. Please try again.', 'error');
     }
 }
 </script>

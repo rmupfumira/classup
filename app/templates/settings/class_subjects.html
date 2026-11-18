@@ -181,7 +181,7 @@ async function addSubject(subjectId, subjectName) {
             window.location.reload();
         } else {
             const data = await response.json();
-            ClassUp.toast(data.detail || 'Failed to add subject', 'error');
+            ClassUp.toast(data.message || data.errors?.[0]?.message || 'Failed to add subject', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -204,7 +204,7 @@ async function removeSubject(subjectId, subjectName) {
             window.location.reload();
         } else {
             const data = await response.json();
-            ClassUp.toast(data.detail || 'Failed to remove subject', 'error');
+            ClassUp.toast(data.message || data.errors?.[0]?.message || 'Failed to remove subject', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -245,7 +245,7 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
             window.location.reload();
         } else {
             const data = await response.json();
-            ClassUp.toast(data.detail || 'Failed to update', 'error');
+            ClassUp.toast(data.message || data.errors?.[0]?.message || 'Failed to update', 'error');
         }
     } catch (error) {
         console.error('Error:', error);

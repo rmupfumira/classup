@@ -375,7 +375,7 @@ async function openEditModal(id) {
         const result = await response.json();
 
         if (!response.ok) {
-            ClassUp.toast(result.detail || result.message || 'Failed to load fee item', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Failed to load fee item', 'error');
             return;
         }
 
@@ -476,7 +476,7 @@ async function saveFeeItem(e) {
             modal.close();
             setTimeout(() => window.location.reload(), 800);
         } else {
-            errorDiv.textContent = result.detail || result.message || 'Failed to save fee item';
+            errorDiv.textContent = result.message || result.errors?.[0]?.message || 'Failed to save fee item';
             errorDiv.classList.remove('hidden');
         }
     } catch (error) {
@@ -505,7 +505,7 @@ async function deleteFeeItem(id, name) {
             window.location.reload();
         } else {
             const result = await response.json();
-            ClassUp.toast(result.detail || result.message || 'Failed to delete fee item', 'error');
+            ClassUp.toast(result.message || result.errors?.[0]?.message || 'Failed to delete fee item', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
