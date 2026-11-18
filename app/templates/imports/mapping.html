@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Column Mapping - ClassUp{% endblock %}
+{% block title %}Column Mapping - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
@@ -12,7 +12,7 @@
             Back to Imports
         </a>
         <h1 class="mt-4 text-2xl font-bold text-neutral-900">Map Columns</h1>
-        <p class="mt-1 text-sm text-neutral-500">Map your CSV columns to ClassUp fields.</p>
+        <p class="mt-1 text-sm text-neutral-500">Map your CSV columns to {{ app_name }} fields.</p>
     </div>
 
     <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
@@ -30,7 +30,7 @@
     <form id="mappingForm" class="space-y-6">
         <div class="bg-white shadow-sm rounded-lg p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Column Mapping</h3>
-            <p class="text-sm text-neutral-500 mb-6">Match each CSV column to the corresponding ClassUp field, or skip columns you don't want to import.</p>
+            <p class="text-sm text-neutral-500 mb-6">Match each CSV column to the corresponding {{ app_name }} field, or skip columns you don't want to import.</p>
 
             <div class="space-y-4">
                 {% for header in headers %}
