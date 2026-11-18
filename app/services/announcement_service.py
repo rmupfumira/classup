@@ -370,12 +370,22 @@ class AnnouncementService:
 
         return [row[0] for row in result.all()]
 
+    # Severities that trigger external channels (email + WhatsApp).
+    # CLAUDE.md announcements spec: URGENT/EMERGENCY always external,
+    # INFO/IMPORTANT stay in-app unless the tenant opts in. Previously
+    # every severity fired external — a routine "picture day" INFO was
+    # arriving in parents' inboxes as "[INFO] Picture day" which read
+    # like spam. 2026-11-18 audit fix.
+    EXTERNAL_SEVERITIES = {"URGENT", "EMERGENCY"}
+
     async def _send_notifications(
         self,
         db: AsyncSession,
         announcement: Announcement,
     ) -> None:
-        """Send in-app notifications (and emails for URGENT/EMERGENCY)."""
+        """Send in-app notifications (and emails + WhatsApp for URGENT /
+        EMERGENCY, or whenever the tenant opts in to external channels
+        for lower severities)."""
         from app.services.notification_service import get_notification_service
 
         recipient_ids = await self._get_recipient_user_ids(db, announcement)
@@ -384,7 +394,7 @@ class AnnouncementService:
 
         notification_service = get_notification_service()
 
-        # In-app notifications
+        # In-app notifications — fire for every severity.
         severity_label = announcement.severity
         title = f"[{severity_label}] {announcement.title}"
         body = announcement.body[:200] + ("..." if len(announcement.body) > 200 else "")
@@ -399,16 +409,35 @@ class AnnouncementService:
             reference_id=announcement.id,
         )
 
-        # Email notifications to all parent recipients
+        # Decide external-channel dispatch: URGENT/EMERGENCY always on,
+        # INFO/IMPORTANT only if the tenant explicitly opts in via
+        # settings.announcements.send_external_on_low_severity (future
+        # knob; defaults False so routine announcements stay in-app).
+        severity_upper = str(severity_label).upper()
+        from app.models.tenant import Tenant
+        tenant = await db.get(Tenant, announcement.tenant_id)
+        tenant_name = tenant.name if tenant else "ClassUp"
+        opt_in_low = bool(
+            (tenant.settings or {}).get("announcements", {}).get(
+                "send_external_on_low_severity", False
+            )
+        ) if tenant else False
+        send_external = (
+            severity_upper in self.EXTERNAL_SEVERITIES or opt_in_low
+        )
+
+        if not send_external:
+            logger.info(
+                "announcement %s severity=%s — skipping email + WhatsApp (spec)",
+                announcement.id, severity_label,
+            )
+            return
+
+        # Email + WhatsApp to all parent recipients
         try:
             from app.services.email_service import get_email_service
 
             email_service = get_email_service()
-
-            # Get tenant name for from_name
-            from app.models.tenant import Tenant
-            tenant = await db.get(Tenant, announcement.tenant_id)
-            tenant_name = tenant.name if tenant else "ClassUp"
 
             # Load full parent User rows (we need them for the WhatsApp
             # mirror too — email alone doesn't tell us who opted in for
@@ -433,23 +462,24 @@ class AnnouncementService:
             from app.services import parent_notifier
             subject_text = f"[{severity_label}] {announcement.title}"
             for parent in parents:
-                try:
-                    await email_service.send(
-                        to=parent.email,
-                        subject=subject_text,
-                        template_name="announcement_alert.html",
-                        context={
-                            "severity": announcement.severity,
-                            "title": announcement.title,
-                            "body": announcement.body,
-                            "creator_name": creator_name,
-                            "class_name": class_name,
-                            "tenant_name": tenant_name,
-                        },
-                        from_name=tenant_name,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send announcement email to {parent.email}: {e}")
+                if parent_notifier.can_notify_email(parent):
+                    try:
+                        await email_service.send(
+                            to=parent.email,
+                            subject=subject_text,
+                            template_name="announcement_alert.html",
+                            context={
+                                "severity": announcement.severity,
+                                "title": announcement.title,
+                                "body": announcement.body,
+                                "creator_name": creator_name,
+                                "class_name": class_name,
+                                "tenant_name": tenant_name,
+                            },
+                            from_name=tenant_name,
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to send announcement email to {parent.email}: {e}")
                 # WhatsApp mirror — uses the same subject line as the email.
                 await parent_notifier.notify_announcement(
                     db, parent,

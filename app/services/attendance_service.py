@@ -714,9 +714,18 @@ class AttendanceService:
         attendance_date: date,
         notes: str | None = None,
     ) -> None:
-        """Send email and in-app notifications to parents for attendance updates."""
+        """Send email and in-app notifications to parents for attendance updates.
+
+        Spec (CLAUDE.md attendance module): external channels (email +
+        WhatsApp) fire only on ABSENT / LATE / EXCUSED. A daily "your
+        child was PRESENT" email is spam — the parent sees check-in in
+        the in-app feed instead. Previous behaviour emailed on every
+        status, including PRESENT; 2026-11-18 tester reported this as
+        notification fatigue.
+        """
         from app.services.email_service import get_email_service
         from app.services.notification_service import get_notification_service
+        from app.services import parent_notifier
 
         if not student.parent_students:
             logger.info(f"No parents linked to student {student.id} — skipping attendance alert")
@@ -728,6 +737,10 @@ class AttendanceService:
         student_name = student.full_name
         date_str = attendance_date.strftime("%B %d, %Y")
 
+        # External channels only fire on exceptional statuses. PRESENT
+        # stays in-app so the parent still sees check-in in the feed.
+        send_external = str(status).upper() in {"ABSENT", "LATE", "EXCUSED"}
+
         email_service = get_email_service()
         notification_service = get_notification_service()
 
@@ -737,29 +750,32 @@ class AttendanceService:
             if not parent or not parent.is_active:
                 continue
             parent_ids.append(parent.id)
-            try:
-                await email_service.send_attendance_alert(
-                    to=parent.email,
-                    parent_name=parent.first_name,
-                    student_name=student_name,
-                    status=status,
-                    date=date_str,
-                    tenant_name=tenant_name,
-                    notes=notes,
-                )
-            except Exception as e:
-                logger.error(
-                    f"Failed to email attendance alert to {parent.email} "
-                    f"for student {student.id}: {e}"
-                )
+
+            if send_external and parent_notifier.can_notify_email(parent):
+                try:
+                    await email_service.send_attendance_alert(
+                        to=parent.email,
+                        parent_name=parent.first_name,
+                        student_name=student_name,
+                        status=status,
+                        date=date_str,
+                        tenant_name=tenant_name,
+                        notes=notes,
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to email attendance alert to {parent.email} "
+                        f"for student {student.id}: {e}"
+                    )
+
             # WhatsApp mirror — silent no-op if parent hasn't opted in
             # or tenant hasn't enabled WhatsApp. Never blocks the email.
-            from app.services import parent_notifier
-            await parent_notifier.notify_attendance_alert(
-                db, parent,
-                student_name=student_name, status=status,
-                tenant_name=tenant_name,
-            )
+            if send_external:
+                await parent_notifier.notify_attendance_alert(
+                    db, parent,
+                    student_name=student_name, status=status,
+                    tenant_name=tenant_name,
+                )
 
         if parent_ids:
             try:

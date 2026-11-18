@@ -386,6 +386,10 @@ class StudentService:
 
             # WhatsApp signup nudge if we have a phone and the admin ticked
             # the box. Best-effort — email is still the authoritative channel.
+            # Pass tenant_id so the notifier can gate on the plan's
+            # whatsapp_enabled feature (2026-11-18 audit — previously
+            # fired even on plans without WhatsApp, confusing the parent
+            # when the inbound bot never responded).
             whatsapp_sent = False
             if info.phone and info.send_whatsapp_invite:
                 try:
@@ -394,6 +398,7 @@ class StudentService:
                         to_phone=info.phone,
                         tenant_name=tenant_name,
                         code=invitation.invitation_code,
+                        tenant_id=tenant_id,
                     )
                 except Exception:
                     logger.exception(

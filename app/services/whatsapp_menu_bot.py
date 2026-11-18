@@ -217,16 +217,19 @@ async def _main_menu(db: AsyncSession, user: User) -> MenuResponse:
 
 
 def _help() -> MenuResponse:
+    from app.config import get_settings
+    base_url = get_settings().app_base_url.rstrip("/")
     return TextReply(
         body=(
-            "*ClassUp on WhatsApp — what I can do*\n\n"
+            "*School portal on WhatsApp — what I can do*\n\n"
             "• Check your child's *balance* and unpaid invoices\n"
             "• Show recent *attendance*\n"
             "• Link you to the latest *report*\n"
             "• Show your child's *teacher* contact\n"
             "• List recent *school announcements*\n\n"
             "Send *menu* (or any message) to see the options.\n"
-            "For anything else, log in at https://classup.co.za"
+            f"For anything else, log in at {base_url}\n\n"
+            "Reply *STOP* to stop these messages, *START* to resume."
         )
     )
 
@@ -452,13 +455,15 @@ def _format_teacher(info: tools.TeacherInfo) -> MenuResponse:
                 "Reply *menu* to go back."
             )
         )
+    from app.config import get_settings
+    base_url = get_settings().app_base_url.rstrip("/")
     return TextReply(
         body=(
             f"👩‍🏫 *{info.child_name}'s teacher*\n"
             f"*{info.teacher_name}*\n"
             f"Class: {info.class_name or '(unassigned)'}\n\n"
-            "To message the teacher directly, log in at "
-            "https://classup.co.za and open Messages.\n\n"
+            f"To message the teacher directly, log in at "
+            f"{base_url} and open Messages.\n\n"
             "Reply *menu* to go back."
         )
     )

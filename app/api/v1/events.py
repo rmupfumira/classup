@@ -495,6 +495,32 @@ async def rsvp_event(
         db, event_id=event_id, user_id=user_id, response=body.response,
     )
     await db.commit()
+
+    # Fire the WhatsApp RSVP confirmation (if the parent is opted in).
+    # The Meta template + notifier helper have existed since the events
+    # module shipped but the RSVP endpoint never actually called it —
+    # 2026-11-18 audit fix. Best-effort; never blocks the response.
+    try:
+        from app.services import parent_notifier
+        from app.models import User, Tenant
+        user_row = await db.get(User, user_id)
+        tenant_row = await db.get(Tenant, tenant_id) if tenant_id else None
+        if user_row is not None:
+            event_when = event.starts_at.strftime("%A, %d %B %Y %H:%M") if event.starts_at else ""
+            await parent_notifier.notify_event_rsvp_confirmed(
+                db, user_row,
+                tenant_name=(tenant_row.name if tenant_row else "your school"),
+                event_title=event.title,
+                event_when=event_when,
+                response=rsvp.response,
+                event_id=str(event.id),
+            )
+    except Exception:
+        logger.exception(
+            "RSVP confirmation notification failed for event=%s user=%s",
+            event_id, user_id,
+        )
+
     return APIResponse(
         status="success",
         data={"response": rsvp.response, "responded_at": rsvp.responded_at.isoformat()},

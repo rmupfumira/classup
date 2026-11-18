@@ -288,24 +288,65 @@ async def notify_announcement(
 async def notify_parent_invite(
     db: AsyncSession, user: User | None,
     *, to_phone: str, tenant_name: str, code: str, language: str = "en",
+    tenant_id: uuid.UUID | str | None = None,
 ) -> bool:
     """Mirror the parent-invitation email. This is a special case: the
     parent doesn't have a User row yet (invite → account). Caller passes
     the phone directly and we skip the User-based gate — the invite
     itself IS the opt-in.
 
-    Still gated by: tenant + plan flags + service configured.
+    Still gated by: tenant WhatsApp feature + plan WhatsApp feature +
+    service configured. 2026-11-18 audit found that the previous
+    implementation checked only "service configured", which meant a
+    tenant on a plan without WhatsApp could still fire an invite —
+    confusing for the recipient when the real-time bot wouldn't answer.
     """
-    # Reconstruct just enough of the gate that DOESN'T depend on a User row.
     try:
-        from app.services.subscription_service import get_subscription_service
-        # We need a tenant to check plan features — the caller doesn't
-        # pass tenant_id, so we can't check plan here. Instead we just
-        # require the service to be configured and the tenant setting
-        # to be on (which we check via the tenant_name resolve upstream).
         svc = await get_whatsapp_service_from_db(db)
         if not svc.is_configured:
+            logger.info("parent-invite: WhatsApp service not configured — skipping")
             return False
+
+        # Verify tenant + plan both include WhatsApp when a tenant_id
+        # is supplied. Backwards-compatible: if the caller didn't pass
+        # tenant_id (older code), fall through — service-configured is
+        # enough to avoid a hard regression.
+        if tenant_id is not None:
+            tenant = await db.get(Tenant, tenant_id)
+            if tenant is None:
+                logger.info("parent-invite: tenant %s not found — skipping", tenant_id)
+                return False
+            tenant_features = (tenant.settings or {}).get("features", {})
+            if not tenant_features.get("whatsapp_enabled"):
+                logger.info(
+                    "parent-invite: tenant %s whatsapp_enabled=False — skipping",
+                    tenant_id,
+                )
+                return False
+            # Plan check — fetch the tenant's active subscription and
+            # inspect its plan's features. Any lookup failure is
+            # non-fatal: the tenant already said yes via its feature
+            # flag, so we proceed rather than silently lose a parent
+            # signup WhatsApp.
+            try:
+                from app.models import SubscriptionPlan
+                from app.services.subscription_service import get_subscription_service
+                sub_service = get_subscription_service()
+                sub = await sub_service.get_tenant_subscription(db, tenant_id)
+                plan = await db.get(SubscriptionPlan, sub.plan_id) if sub else None
+                plan_features = (plan.features if plan else {}) or {}
+                if not plan_features.get("whatsapp_enabled"):
+                    logger.info(
+                        "parent-invite: tenant %s plan has no whatsapp — skipping",
+                        tenant_id,
+                    )
+                    return False
+            except Exception:
+                logger.exception(
+                    "parent-invite: plan lookup failed for tenant %s — proceeding",
+                    tenant_id,
+                )
+
         result = await svc.send_parent_invite(
             to_phone=to_phone, school_name=tenant_name, code=code,
             language=language,
