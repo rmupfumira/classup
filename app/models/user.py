@@ -12,7 +12,7 @@ from sqlalchemy import (
     String,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, SoftDeleteMixin
@@ -85,6 +85,15 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     # surfaces on the parent profile page.
     email_opted_in: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("true"),
+    )
+    # Granular per-event × per-channel opt-outs. Empty dict = everything
+    # on (the default). Shape: {event_slug: {"email": bool, "whatsapp":
+    # bool}}. A missing event or channel counts as "on" — new users
+    # get every notification until they opt out explicitly. The master
+    # email_opted_in / whatsapp_opted_in toggles above override any
+    # per-event setting.
+    notification_prefs: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"),
     )
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

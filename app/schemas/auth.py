@@ -202,6 +202,7 @@ class UserProfile(BaseModel):
     whatsapp_phone: str | None
     whatsapp_opted_in: bool
     email_opted_in: bool = True
+    notification_prefs: dict = Field(default_factory=dict)
     last_login_at: datetime | None
     created_at: datetime
 
@@ -221,6 +222,10 @@ class UpdateProfileRequest(BaseModel):
     whatsapp_phone: str | None = Field(None, max_length=50)
     whatsapp_opted_in: bool | None = None
     email_opted_in: bool | None = None
+    # Shape: {event_slug: {"email": bool, "whatsapp": bool}}. Whole
+    # dict replaces the stored one; omit a key to keep it. See
+    # parent_notifier._event_channel_on for the read path.
+    notification_prefs: dict | None = None
 
     _phone_e164 = field_validator("phone")(lambda cls, v: _phone_e164_optional(v))
     _wa_phone_e164 = field_validator("whatsapp_phone")(lambda cls, v: _phone_e164_optional(v))

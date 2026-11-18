@@ -1461,10 +1461,10 @@ class BillingService:
         from app.services import parent_notifier
         for parent in parents:
             # Email: uses the existing payment_received.html template.
-            # Gated by email_opted_in so a parent who turned off emails
-            # doesn't still get a receipt (2026-11-18 audit — the gate
-            # existed but was wired into zero senders).
-            if parent_notifier.can_notify_email(parent):
+            # Gated by email_opted_in + per-event prefs so a parent who
+            # turned off invoice emails doesn't still get a receipt
+            # (2026-11-18 audit + granular prefs).
+            if parent_notifier.can_notify_email(parent, event="invoices"):
                 try:
                     await email_service.send_payment_confirmation(
                         to=parent.email,

@@ -193,6 +193,41 @@ async def test_announcement_urgent_fires_external_channels():
         notify_wa.assert_called_once()
 
 
+def test_can_notify_email_respects_event_pref():
+    """A parent who turned off invoice emails must not get an invoice
+    email even if their master email_opted_in is True (2026-11-18)."""
+    from types import SimpleNamespace
+    from app.services import parent_notifier
+
+    parent = SimpleNamespace(
+        id="p1", is_active=True, deleted_at=None,
+        email="p@example.com", email_opted_in=True,
+        notification_prefs={"invoices": {"email": False}},
+    )
+    # Master master toggle on + per-event on → fire.
+    assert parent_notifier.can_notify_email(parent, event="announcements") is True
+    # Master on + per-event off → skip.
+    assert parent_notifier.can_notify_email(parent, event="invoices") is False
+    # Event not in prefs dict → default on.
+    assert parent_notifier.can_notify_email(parent, event="events") is True
+
+
+def test_event_channel_on_defaults_true():
+    """Missing event or missing channel → treated as opted-in (new
+    users are fully subscribed until they turn something off)."""
+    from types import SimpleNamespace
+    from app.services import parent_notifier
+
+    p_empty = SimpleNamespace(notification_prefs={})
+    assert parent_notifier._event_channel_on(p_empty, "attendance", "email") is True
+
+    p_partial = SimpleNamespace(
+        notification_prefs={"attendance": {"email": True}},
+    )
+    # WhatsApp channel missing → default on.
+    assert parent_notifier._event_channel_on(p_partial, "attendance", "whatsapp") is True
+
+
 @pytest.mark.asyncio
 async def test_parent_invite_skipped_when_tenant_whatsapp_off():
     """Previously fired on any configured tenant; now gates on

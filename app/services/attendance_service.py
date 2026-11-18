@@ -751,7 +751,7 @@ class AttendanceService:
                 continue
             parent_ids.append(parent.id)
 
-            if send_external and parent_notifier.can_notify_email(parent):
+            if send_external and parent_notifier.can_notify_email(parent, event="attendance"):
                 try:
                     await email_service.send_attendance_alert(
                         to=parent.email,

@@ -462,7 +462,7 @@ class AnnouncementService:
             from app.services import parent_notifier
             subject_text = f"[{severity_label}] {announcement.title}"
             for parent in parents:
-                if parent_notifier.can_notify_email(parent):
+                if parent_notifier.can_notify_email(parent, event="announcements"):
                     try:
                         await email_service.send(
                             to=parent.email,

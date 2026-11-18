@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 async def _can_notify_whatsapp(
-    db: AsyncSession, user: User | None
+    db: AsyncSession, user: User | None, event: str | None = None,
 ) -> bool:
     """Return True iff this user should get a WhatsApp copy of a notification.
 
@@ -115,16 +115,25 @@ async def _can_notify_whatsapp(
         )
         return False
 
+    if event and not _event_channel_on(user, event, "whatsapp"):
+        logger.info(
+            "whatsapp gate: user %s opted out of event=%s on whatsapp — skipping",
+            user.id, event,
+        )
+        return False
+
     return True
 
 
-def can_notify_email(user: User | None) -> bool:
+def can_notify_email(user: User | None, event: str | None = None) -> bool:
     """Return True iff this user should get an email copy of a notification.
 
-    Added 2026-10-09 alongside the per-channel email opt-out. Any
-    parent-triggered email send that wants to respect the parent's
-    channel preference should pass through this gate first — same
-    silent-skip + log posture as :func:`_can_notify_whatsapp`.
+    Added 2026-10-09 alongside the per-channel email opt-out, extended
+    2026-11-18 with per-event granularity. The caller passes an
+    ``event`` slug (e.g. ``"attendance"``, ``"invoices"``,
+    ``"announcements"``) and this function checks the user's
+    ``notification_prefs[event]["email"]`` — a missing key counts as
+    "on" so new users start fully subscribed.
 
     Admins and super admins keep ``email_opted_in=True`` (the column
     default) so operational emails are unaffected.
@@ -141,6 +150,30 @@ def can_notify_email(user: User | None) -> bool:
     if not getattr(user, "email_opted_in", True):
         logger.info("email gate: user %s has email_opted_in=False — skipping", user.id)
         return False
+    if event and not _event_channel_on(user, event, "email"):
+        logger.info(
+            "email gate: user %s opted out of event=%s on email — skipping",
+            user.id, event,
+        )
+        return False
+    return True
+
+
+def _event_channel_on(user: User, event: str, channel: str) -> bool:
+    """Lookup user's per-event × per-channel preference.
+
+    ``notification_prefs`` has shape ``{event: {channel: bool}}``.
+    A missing event dict, a missing channel key, or a non-bool value
+    all count as "on" — new parents are fully subscribed until they
+    explicitly turn a specific event × channel off on their profile.
+    """
+    prefs = getattr(user, "notification_prefs", None) or {}
+    event_prefs = prefs.get(event)
+    if not isinstance(event_prefs, dict):
+        return True
+    val = event_prefs.get(channel)
+    if isinstance(val, bool):
+        return val
     return True
 
 
@@ -251,7 +284,7 @@ async def notify_attendance_alert(
 ) -> bool:
     """Mirror the email that fires when a student's attendance is marked
     (ABSENT / LATE / PRESENT alerts to their parents)."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="attendance"):
         return False
     return await _send_template(
         db, user, "send_attendance_alert",
@@ -264,7 +297,7 @@ async def notify_report_ready(
     *, report_type: str, student_name: str, url: str,
 ) -> bool:
     """Mirror the "report has been finalised" email."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="reports"):
         return False
     return await _send_template(
         db, user, "send_report_ready",
@@ -277,7 +310,7 @@ async def notify_announcement(
     *, tenant_name: str, subject: str,
 ) -> bool:
     """Mirror the class/school announcement email."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="announcements"):
         return False
     return await _send_template(
         db, user, "send_announcement",
@@ -403,7 +436,7 @@ async def notify_invoice_sent(
     Email still carries the invoice PDF as an attachment; WhatsApp is
     the tap-through nudge.
     """
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="invoices"):
         return False
     formatted = _fmt_amount(total_amount, currency)
     ok = await _send_template(
@@ -436,7 +469,7 @@ async def notify_invoice_overdue(
 ) -> bool:
     """Uses the bespoke ``invoice_overdue`` template approved on Meta.
     Falls back to the announcement template on failure."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="invoices"):
         return False
     balance_str = _fmt_amount(outstanding_balance, currency)
     ok = await _send_template(
@@ -467,7 +500,7 @@ async def notify_payment_received(
     check for right after they pay. Uses the bespoke ``payment_received``
     template (from Meta's ``payment_successful`` gallery) with a URL
     button linking to the receipt view."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="invoices"):
         return False
     payment_str = _fmt_amount(payment_amount, currency)
     ok = await _send_template(
@@ -500,7 +533,7 @@ async def notify_pickup_alert(
     db: AsyncSession, user: User,
     *, tenant_name: str, student_name: str, time_str: str,
 ) -> bool:
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="attendance"):
         return False
     subject = f"{student_name} was checked out at {time_str}."
     return await _send_template(
@@ -512,7 +545,7 @@ async def notify_document_shared(
     db: AsyncSession, user: User,
     *, tenant_name: str, sharer_name: str, title: str, scope: str,
 ) -> bool:
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="documents"):
         return False
     subject = f"New document: {title} — shared by {sharer_name} ({scope})"
     return await _send_template(
@@ -524,7 +557,7 @@ async def notify_photo_shared(
     db: AsyncSession, user: User,
     *, tenant_name: str, sharer_name: str, class_name: str, photo_count: int,
 ) -> bool:
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="photos"):
         return False
     subject = (
         f"{photo_count} new photo{'s' if photo_count != 1 else ''} "
@@ -539,7 +572,7 @@ async def notify_message_received(
     db: AsyncSession, user: User,
     *, tenant_name: str, sender_name: str, student_name: str | None,
 ) -> bool:
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="messages"):
         return False
     subject = (
         f"New message from {sender_name}"
@@ -559,7 +592,7 @@ async def notify_event_reminder(
     """WhatsApp reminder — fires 24h and again 1h before an event.
     Bespoke ``event_reminder`` template first; falls back to the
     generic announcement if Meta hasn't approved it yet."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="events"):
         return False
     if event_id:
         ok = await _send_template(
@@ -588,7 +621,7 @@ async def notify_event_invited(
 
     The email carries the calendar attachment; WhatsApp just gives
     the parent an at-a-glance heads-up so they don't miss it."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="events"):
         return False
     if event_id:
         ok = await _send_template(
@@ -613,7 +646,7 @@ async def notify_event_rsvp_confirmed(
     """Sent when a parent RSVPs (via email link, UI, or WhatsApp bot).
     Bespoke ``event_rsvp_confirmed`` template first; falls back to the
     announcement template."""
-    if not await _can_notify_whatsapp(db, user):
+    if not await _can_notify_whatsapp(db, user, event="events"):
         return False
     ok = await _send_template(
         db, user, "send_event_rsvp_confirmed",
