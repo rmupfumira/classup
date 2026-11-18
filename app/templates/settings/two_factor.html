@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Two-factor authentication - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto px-4 pt-6 pb-24 space-y-6">
+    <div>
+        <a href="/profile" class="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-700">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to profile
+        </a>
+        <h1 class="mt-3 text-xl font-semibold text-neutral-800">Two-factor authentication</h1>
+        <p class="mt-1 text-sm text-neutral-500">
+            Add a 6-digit code from your phone's authenticator app on top of your password.
+        </p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5 space-y-4">
+        {% if user.totp_enabled %}
+        {# ENABLED: show status + Disable form #}
+        <div class="flex items-start gap-3 bg-green-50 border border-green-200 rounded-md p-3">
+            <svg class="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+                <p class="text-sm font-semibold text-green-800">Two-factor is on</p>
+                <p class="text-xs text-green-700 mt-0.5">
+                    You'll be asked for a 6-digit code every time you sign in. Keep your backup codes safe.
+                </p>
+            </div>
+        </div>
+
+        <form id="disable-form" class="space-y-4">
+            <h2 class="text-sm font-semibold text-neutral-800">Turn off two-factor</h2>
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Current password</label>
+                <input type="password" id="dis-password" required autocomplete="current-password"
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white focus:border-primary-500 focus:ring-0">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Authenticator code (or backup code)</label>
+                <input type="text" id="dis-code" required inputmode="numeric" autocomplete="one-time-code"
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white focus:border-primary-500 focus:ring-0"
+                       placeholder="123456">
+            </div>
+            <div id="dis-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">
+                    Turn off two-factor
+                </button>
+            </div>
+        </form>
+        {% else %}
+        {# DISABLED: show setup + verify flow #}
+        <div>
+            <h2 class="text-sm font-semibold text-neutral-800 mb-2">Set up two-factor</h2>
+            <ol class="text-sm text-neutral-600 space-y-1 list-decimal ml-4">
+                <li>Install an authenticator app — Google Authenticator, Authy, 1Password.</li>
+                <li>Tap <strong>Start setup</strong>, scan the QR, then type the code it shows.</li>
+                <li>Save the backup codes we give you — each one works once if you lose your phone.</li>
+            </ol>
+        </div>
+
+        <div class="flex justify-start">
+            <button type="button" id="start-btn"
+                    class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                Start setup
+            </button>
+        </div>
+
+        <div id="setup-panel" class="hidden space-y-4 pt-4 border-t border-neutral-100">
+            <div class="flex flex-col sm:flex-row gap-4 items-start">
+                <img id="qr-img" alt="Scan this QR with your authenticator app"
+                     class="w-40 h-40 border border-neutral-200 rounded-md bg-white p-1">
+                <div class="flex-1 text-xs text-neutral-600 space-y-2">
+                    <p>Can't scan? Type this secret into your app instead:</p>
+                    <code id="secret-code" class="block px-2 py-1 bg-neutral-100 rounded text-[11px] break-all"></code>
+                </div>
+            </div>
+
+            <form id="verify-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-600 mb-1">Code from your authenticator</label>
+                    <input type="text" id="ver-code" required inputmode="numeric" autocomplete="one-time-code"
+                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white focus:border-primary-500 focus:ring-0"
+                           placeholder="123456" maxlength="6">
+                </div>
+                <div id="ver-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+                <div class="flex justify-end">
+                    <button type="submit"
+                            class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                        Verify & enable
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="backup-panel" class="hidden space-y-3 pt-4 border-t border-neutral-100">
+            <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md p-3">
+                <svg class="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+                <div>
+                    <p class="text-sm font-semibold text-amber-800">Save these backup codes</p>
+                    <p class="text-xs text-amber-700 mt-0.5">
+                        You can't see them again. Each works once if you lose access to the authenticator.
+                    </p>
+                </div>
+            </div>
+            <ul id="backup-list" class="grid grid-cols-2 gap-2 text-sm font-mono text-neutral-800"></ul>
+            <div class="flex justify-end gap-2">
+                <button type="button" id="copy-codes-btn"
+                        class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                    Copy codes
+                </button>
+                <a href="/profile"
+                   class="px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                    Done
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const startBtn = document.getElementById('start-btn');
+const setupPanel = document.getElementById('setup-panel');
+const backupPanel = document.getElementById('backup-panel');
+const qrImg = document.getElementById('qr-img');
+const secretCode = document.getElementById('secret-code');
+const verifyForm = document.getElementById('verify-form');
+const verError = document.getElementById('ver-error');
+const disableForm = document.getElementById('disable-form');
+const disError = document.getElementById('dis-error');
+const backupList = document.getElementById('backup-list');
+const copyBtn = document.getElementById('copy-codes-btn');
+
+if (startBtn) {
+    startBtn.addEventListener('click', async () => {
+        startBtn.disabled = true;
+        startBtn.textContent = 'Starting…';
+        try {
+            const r = await ClassUp.fetch('/api/v1/auth/2fa/setup', {method: 'POST'});
+            qrImg.src = r.data.qr_png;
+            secretCode.textContent = r.data.secret;
+            setupPanel.classList.remove('hidden');
+            startBtn.classList.add('hidden');
+        } catch (err) {
+            console.error('2fa setup failed:', err);
+        } finally {
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start setup';
+        }
+    });
+}
+
+if (verifyForm) {
+    verifyForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        verError.classList.add('hidden');
+        const code = document.getElementById('ver-code').value.trim();
+        try {
+            const r = await ClassUp.fetch('/api/v1/auth/2fa/verify', {
+                method: 'POST',
+                body: {code},
+            });
+            backupList.innerHTML = '';
+            (r.data.backup_codes || []).forEach(c => {
+                const li = document.createElement('li');
+                li.className = 'px-2 py-1 bg-neutral-50 border border-neutral-200 rounded';
+                li.textContent = c;
+                backupList.appendChild(li);
+            });
+            setupPanel.classList.add('hidden');
+            backupPanel.classList.remove('hidden');
+        } catch (err) {
+            verError.textContent = err.message || 'Invalid code. Try again.';
+            verError.classList.remove('hidden');
+        }
+    });
+}
+
+if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+        const codes = Array.from(backupList.querySelectorAll('li')).map(li => li.textContent).join('\n');
+        try {
+            await navigator.clipboard.writeText(codes);
+            ClassUp.toast('Codes copied to clipboard.', 'success');
+        } catch (_) {
+            ClassUp.toast('Copy failed — select the codes manually.', 'error');
+        }
+    });
+}
+
+if (disableForm) {
+    disableForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        disError.classList.add('hidden');
+        const password = document.getElementById('dis-password').value;
+        const code = document.getElementById('dis-code').value.trim();
+        try {
+            await ClassUp.fetch('/api/v1/auth/2fa/disable', {
+                method: 'POST',
+                body: {current_password: password, code},
+            });
+            ClassUp.toast('Two-factor turned off.', 'success');
+            setTimeout(() => window.location.reload(), 600);
+        } catch (err) {
+            disError.textContent = err.message || 'Could not disable. Check your password and code.';
+            disError.classList.remove('hidden');
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -30,6 +30,49 @@ class LoginResponse(BaseModel):
     expires_in: int  # Seconds until token expires
 
 
+class LoginMfaRequest(BaseModel):
+    """Second step of a 2FA-protected login.
+
+    ``mfa_token`` is the short-lived challenge JWT returned by
+    /auth/login when the user has 2FA enabled. ``code`` is either a
+    6-digit TOTP token OR an 8-char backup code — backup codes are
+    one-use and removed on success.
+    """
+
+    mfa_token: str
+    code: str = Field(..., min_length=6, max_length=32)
+
+
+class Setup2FAResponse(BaseModel):
+    """Enrolment payload. Client renders the QR + offers a 'copy
+    secret' affordance for users whose camera doesn't scan."""
+
+    secret: str
+    provisioning_uri: str
+    qr_png: str  # base64 data-URL ready for <img src=>
+
+
+class Verify2FARequest(BaseModel):
+    """Confirm enrolment by submitting a token from the authenticator."""
+
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class Verify2FAResponse(BaseModel):
+    """One-shot: the plaintext backup codes. Shown once, never
+    retrievable — if the user loses them they must re-enrol."""
+
+    backup_codes: list[str]
+
+
+class Disable2FARequest(BaseModel):
+    """Both current_password and a live TOTP code are required to
+    turn 2FA off — a stolen password alone can't disable."""
+
+    current_password: str = Field(..., min_length=8)
+    code: str = Field(..., min_length=6, max_length=32)
+
+
 def _phone_e164_optional(v: str | None) -> str | None:
     """Normalise an optional phone to E.164 or raise."""
     from app.utils.phone import PhoneValidationError, normalise_phone
@@ -203,6 +246,7 @@ class UserProfile(BaseModel):
     whatsapp_opted_in: bool
     email_opted_in: bool = True
     notification_prefs: dict = Field(default_factory=dict)
+    totp_enabled: bool = False
     last_login_at: datetime | None
     created_at: datetime
 

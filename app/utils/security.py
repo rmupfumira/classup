@@ -158,6 +158,37 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
     return None
 
 
+def create_mfa_challenge_token(
+    user_id: uuid.UUID, tenant_id: uuid.UUID | None = None,
+) -> str:
+    """Short-lived JWT the client submits with the MFA code to finish
+    login. 5-minute lifespan — enough for an authenticator open +
+    type, short enough that a leaked challenge is useless by the time
+    anyone could try to replay it."""
+    now = datetime.utcnow()
+    payload = {
+        "sub": str(user_id),
+        "tenant_id": str(tenant_id) if tenant_id else None,
+        "exp": now + timedelta(minutes=5),
+        "iat": now,
+        "jti": str(uuid.uuid4()),
+        "type": "mfa_challenge",
+    }
+    return jwt.encode(
+        payload,
+        settings.effective_jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
+
+
+def decode_mfa_challenge_token(token: str) -> dict[str, Any] | None:
+    """Decode the challenge token and verify it's the right type."""
+    payload = decode_token(token)
+    if payload and payload.get("type") == "mfa_challenge":
+        return payload
+    return None
+
+
 def decode_refresh_token(token: str) -> dict[str, Any] | None:
     """Decode a refresh token and verify it's a refresh token type.
 

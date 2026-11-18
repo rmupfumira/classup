@@ -504,3 +504,36 @@ async def profile_page(request: Request, db: AsyncSession = Depends(get_db)):
             "current_language": get_current_language(),
         },
     )
+
+
+@router.get("/settings/two-factor", response_class=HTMLResponse)
+async def two_factor_settings_page(
+    request: Request, db: AsyncSession = Depends(get_db),
+):
+    """Render the 2FA setup / disable page. Available to every role —
+    admins and teachers typically turn it on, but a parent can too."""
+    from app.utils.security import decode_access_token
+    from app.utils.tenant_context import get_current_user_id_or_none
+
+    token = request.cookies.get("access_token")
+    payload = decode_access_token(token) if token else None
+    if not payload:
+        return RedirectResponse(
+            url="/login?next=/settings/two-factor", status_code=302,
+        )
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login", status_code=302)
+    auth_service = get_auth_service()
+    try:
+        user = await auth_service.get_current_user(db, user_id)
+    except Exception:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(
+        "settings/two_factor.html",
+        {
+            "request": request,
+            "user": user,
+            "current_language": get_current_language(),
+        },
+    )

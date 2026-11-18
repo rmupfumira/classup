@@ -164,6 +164,26 @@
         </form>
     </div>
 
+    <!-- Two-factor authentication entry -->
+    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h2 class="text-base font-semibold text-neutral-800">Two-factor authentication</h2>
+                <p class="mt-1 text-sm text-neutral-500">
+                    {% if user.totp_enabled %}
+                    On — you'll be asked for a 6-digit code at sign-in.
+                    {% else %}
+                    Off — add an authenticator app for a second sign-in step.
+                    {% endif %}
+                </p>
+            </div>
+            <a href="/settings/two-factor"
+               class="px-3 py-1.5 text-sm {% if user.totp_enabled %}text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50{% else %}text-white bg-primary-500 hover:bg-primary-600{% endif %} rounded-md">
+                {% if user.totp_enabled %}Manage{% else %}Set up{% endif %}
+            </a>
+        </div>
+    </div>
+
     <!-- Change password -->
     <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
         <h2 class="text-base font-semibold text-neutral-800 mb-4">Change Password</h2>

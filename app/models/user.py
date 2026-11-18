@@ -95,6 +95,18 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     notification_prefs: Mapped[dict] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"),
     )
+    # Two-factor auth (TOTP). Opt-in per user. Default off so existing
+    # users keep working. When enabled, login returns an mfa_required
+    # response and the client must submit a 6-digit token (or a backup
+    # code) via /auth/login/mfa to complete sign-in.
+    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false"),
+    )
+    # One-use bcrypt-hashed backup codes. Removed as they're consumed.
+    totp_backup_codes: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"),
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

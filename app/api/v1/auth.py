@@ -8,17 +8,22 @@ from app.database import get_db
 from app.exceptions import UnauthorizedException
 from app.schemas.auth import (
     ChangePasswordRequest,
+    Disable2FARequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
+    LoginMfaRequest,
     LoginRequest,
     LoginResponse,
     RefreshTokenRequest,
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
+    Setup2FAResponse,
     TrialSignupRequest,
     UpdateProfileRequest,
     UserProfile,
+    Verify2FARequest,
+    Verify2FAResponse,
     VerifyInvitationRequest,
     VerifyInvitationResponse,
 )
@@ -27,7 +32,9 @@ from app.services.auth_service import get_auth_service
 from app.services.email_service import get_email_service
 from app.services.user_service import get_user_service
 from app.utils.security import (
+    create_mfa_challenge_token,
     create_password_reset_token,
+    decode_mfa_challenge_token,
     decode_password_reset_token,
     hash_password,
     verify_password,
@@ -75,6 +82,21 @@ async def login(
             },
         )
 
+    # 2FA challenge — if the user has it enabled, don't issue the
+    # access cookie yet. Return a short-lived challenge token the
+    # client submits to /auth/login/mfa with the 6-digit code.
+    if getattr(user, "totp_enabled", False):
+        challenge = create_mfa_challenge_token(user.id, user.tenant_id)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "mfa_required",
+                "message": "Enter the 6-digit code from your authenticator.",
+                "mfa_token": challenge,
+            },
+        )
+
     # Set HttpOnly cookie for web clients
     cookie_max_age = settings.jwt_access_token_expire_minutes * 60
     if body.remember_me:
@@ -91,6 +113,88 @@ async def login(
 
     return APIResponse(
         data=login_response,
+        message=f"Welcome back, {user.first_name}!",
+    )
+
+
+@router.post("/login/mfa", response_model=APIResponse[LoginResponse])
+@limiter.limit("10/minute")
+async def login_mfa(
+    request: Request,
+    response: Response,
+    body: LoginMfaRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Complete login after /auth/login returned mfa_required.
+
+    Accepts either a 6-digit TOTP token or a backup code. Backup codes
+    are one-use — consumed on success. Three strikes (handled by the
+    rate limiter) and the client has to redo the password step.
+    """
+    from app.models.user import User
+    from app.services import totp_service
+    from app.utils.security import create_access_token, create_refresh_token
+
+    payload = decode_mfa_challenge_token(body.mfa_token)
+    if not payload:
+        raise UnauthorizedException("MFA challenge expired. Please log in again.")
+    user_id = payload.get("sub")
+    if not user_id:
+        raise UnauthorizedException("Invalid MFA challenge.")
+
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active or not user.totp_enabled:
+        raise UnauthorizedException("Invalid MFA challenge.")
+
+    code = body.code.strip()
+    ok = False
+
+    # TOTP path first — the common case.
+    if len(code) == 6 and code.isdigit():
+        ok = totp_service.verify_token(user.totp_secret or "", code)
+
+    # Backup code fallback. Case-insensitive, consumed on success.
+    if not ok:
+        idx = totp_service.verify_backup_code(user, code)
+        if idx is not None:
+            remaining = list(user.totp_backup_codes or [])
+            remaining.pop(idx)
+            user.totp_backup_codes = remaining
+            ok = True
+
+    if not ok:
+        raise UnauthorizedException("Invalid or expired code.")
+
+    # Issue the real access tokens now.
+    access_token = create_access_token(
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        role=user.role,
+        name=f"{user.first_name} {user.last_name}".strip(),
+    )
+    refresh_token = create_refresh_token(user.id)
+
+    # Update last-login so the audit log is correct.
+    from datetime import datetime, timezone as _tz
+    user.last_login_at = datetime.now(_tz.utc)
+    await db.commit()
+
+    cookie_max_age = settings.jwt_access_token_expire_minutes * 60
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.is_production,
+        samesite="lax",
+        max_age=cookie_max_age,
+    )
+
+    return APIResponse(
+        data=LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=settings.jwt_access_token_expire_minutes * 60,
+        ),
         message=f"Welcome back, {user.first_name}!",
     )
 
@@ -268,6 +372,118 @@ async def update_profile(
         data=UserProfile.model_validate(user),
         message="Profile updated successfully",
     )
+
+
+@router.post("/2fa/setup", response_model=APIResponse[Setup2FAResponse])
+async def two_factor_setup(
+    db: AsyncSession = Depends(get_db),
+):
+    """Start 2FA enrolment — generate a new secret + provisioning URI
+    + QR PNG. The secret is saved immediately but `totp_enabled` stays
+    False until the user successfully verifies a token via /2fa/verify.
+    Calling setup again overwrites the pending secret so a user who
+    cancelled mid-enrolment can simply restart.
+    """
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        raise UnauthorizedException("Not authenticated")
+
+    from app.services import totp_service
+    auth_service = get_auth_service()
+    user = await auth_service.get_current_user(db, user_id)
+
+    # If already enabled, require disable first — simpler than
+    # supporting rotation, and much safer.
+    if user.totp_enabled:
+        raise UnauthorizedException(
+            "Two-factor is already enabled. Disable it first if you want to re-enrol."
+        )
+
+    secret = totp_service.generate_secret()
+    issuer = settings.app_name
+    uri = totp_service.provisioning_uri(user, secret, issuer)
+    qr = totp_service.qr_png_base64(uri)
+
+    user.totp_secret = secret
+    await db.commit()
+
+    return APIResponse(
+        data=Setup2FAResponse(secret=secret, provisioning_uri=uri, qr_png=qr),
+        message="Scan the QR with your authenticator app, then verify a token.",
+    )
+
+
+@router.post("/2fa/verify", response_model=APIResponse[Verify2FAResponse])
+async def two_factor_verify(
+    body: Verify2FARequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Activate 2FA: user submits a token from the authenticator, we
+    verify it, flip `totp_enabled=True`, generate one-shot backup
+    codes, and return them in plaintext (shown once)."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        raise UnauthorizedException("Not authenticated")
+
+    from app.services import totp_service
+    auth_service = get_auth_service()
+    user = await auth_service.get_current_user(db, user_id)
+
+    if not user.totp_secret:
+        raise UnauthorizedException("Start 2FA setup first.")
+    if not totp_service.verify_token(user.totp_secret, body.code):
+        raise UnauthorizedException("Invalid code. Try again.")
+
+    # Generate backup codes BEFORE flipping enabled so a failed save
+    # doesn't leave a half-configured 2FA.
+    plain, hashed = totp_service.generate_backup_codes()
+    user.totp_backup_codes = hashed
+    user.totp_enabled = True
+    await db.commit()
+
+    return APIResponse(
+        data=Verify2FAResponse(backup_codes=plain),
+        message="Two-factor enabled. Save these backup codes somewhere safe.",
+    )
+
+
+@router.post("/2fa/disable", response_model=APIResponse[None])
+async def two_factor_disable(
+    body: Disable2FARequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Turn 2FA off. Requires both the current password AND a live
+    token (or backup code) so a stolen password alone can't disable."""
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        raise UnauthorizedException("Not authenticated")
+
+    from app.services import totp_service
+    auth_service = get_auth_service()
+    user = await auth_service.get_current_user(db, user_id)
+
+    if not user.totp_enabled:
+        return APIResponse(message="Two-factor is already off.")
+
+    if not verify_password(body.current_password, user.password_hash):
+        raise UnauthorizedException("Current password is incorrect.")
+
+    ok = False
+    code = body.code.strip()
+    if len(code) == 6 and code.isdigit():
+        ok = totp_service.verify_token(user.totp_secret or "", code)
+    if not ok:
+        idx = totp_service.verify_backup_code(user, code)
+        ok = idx is not None
+
+    if not ok:
+        raise UnauthorizedException("Invalid 2FA code.")
+
+    user.totp_secret = None
+    user.totp_enabled = False
+    user.totp_backup_codes = []
+    await db.commit()
+    return APIResponse(message="Two-factor disabled.")
 
 
 @router.put("/me/password", response_model=APIResponse[None])
