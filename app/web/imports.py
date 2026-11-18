@@ -18,11 +18,31 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 
 
 @router.get("", response_class=HTMLResponse)
+async def imports_landing(request: Request):
+    """Default landing for /imports → the XLSX enrollment flow.
+
+    The CSV flow (/imports/upload) and the import-jobs list
+    (/imports/jobs) are still reachable but hidden from the sidebar
+    by default. Demo audit (2026-11-18) found prospects landing on
+    the CSV flow by accident when the XLSX path is the demo-ready one.
+    """
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login?next=/imports/enrollment", status_code=302)
+
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    return RedirectResponse(url="/imports/enrollment", status_code=302)
+
+
+@router.get("/jobs", response_class=HTMLResponse)
 async def imports_list(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """List import jobs and upload new imports."""
+    """List import jobs (CSV-flow history)."""
     user_id = get_current_user_id_or_none()
     if not user_id:
         return RedirectResponse(url="/login", status_code=302)

@@ -448,11 +448,20 @@ class PhotoService:
                     )
                 except Exception as e:
                     logger.error(f"Failed to send photo share email to {parent.email}: {e}")
-                await parent_notifier.notify_photo_shared(
-                    db, parent,
-                    tenant_name=tenant_name, sharer_name=sharer_name,
-                    class_name=class_name, photo_count=photo_count,
+                # Debounce the WhatsApp: a teacher uploading 6 photo
+                # batches in a morning used to fire 6 WhatsApps per
+                # parent. Now one WA per 30 minutes per parent.
+                # 2026-11-18 tuning.
+                from app.services import notification_rate_limit
+                skip_wa = await notification_rate_limit.should_skip(
+                    "photo_shared", parent.id, ttl_seconds=30 * 60,
                 )
+                if not skip_wa:
+                    await parent_notifier.notify_photo_shared(
+                        db, parent,
+                        tenant_name=tenant_name, sharer_name=sharer_name,
+                        class_name=class_name, photo_count=photo_count,
+                    )
         except Exception as e:
             logger.error(f"Failed to send photo share emails: {e}")
 

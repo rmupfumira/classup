@@ -1144,15 +1144,26 @@ class BillingService:
                         parent.id, invoice.id,
                     )
                 from app.services import parent_notifier
-                await parent_notifier.notify_invoice_overdue(
-                    db, parent,
-                    tenant_name=tenant.name, student_name=student_name,
-                    invoice_number=invoice.invoice_number,
-                    outstanding_balance=invoice.balance,
-                    due_date_str=due_date_str,
-                    invoice_id=str(invoice.id),
-                    currency=currency,
+                from app.services import notification_rate_limit
+                # Cap WhatsApp overdue reminders at one per 7 days per
+                # parent-per-invoice — if the admin's email cadence is
+                # daily, the parent still only gets one WhatsApp a week
+                # on the same invoice. 2026-11-18 tuning.
+                skip_wa = await notification_rate_limit.should_skip(
+                    "invoice_overdue", parent.id,
+                    ttl_seconds=7 * 24 * 3600,
+                    reference_id=str(invoice.id),
                 )
+                if not skip_wa:
+                    await parent_notifier.notify_invoice_overdue(
+                        db, parent,
+                        tenant_name=tenant.name, student_name=student_name,
+                        invoice_number=invoice.invoice_number,
+                        outstanding_balance=invoice.balance,
+                        due_date_str=due_date_str,
+                        invoice_id=str(invoice.id),
+                        currency=currency,
+                    )
 
             # Send in-app notifications
             try:

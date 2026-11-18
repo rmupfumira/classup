@@ -495,11 +495,17 @@ class DocumentService:
                     )
                 except Exception as e:
                     logger.error(f"Failed to send document share email to {parent.email}: {e}")
-                await parent_notifier.notify_document_shared(
-                    db, parent,
-                    tenant_name=tenant_name, sharer_name=sharer_name,
-                    title=doc_share.title, scope=scope_label,
+                # Debounce — same reasoning as photos (2026-11-18 tuning).
+                from app.services import notification_rate_limit
+                skip_wa = await notification_rate_limit.should_skip(
+                    "document_shared", parent.id, ttl_seconds=30 * 60,
                 )
+                if not skip_wa:
+                    await parent_notifier.notify_document_shared(
+                        db, parent,
+                        tenant_name=tenant_name, sharer_name=sharer_name,
+                        title=doc_share.title, scope=scope_label,
+                    )
         except Exception as e:
             logger.error(f"Failed to send document share emails: {e}")
 

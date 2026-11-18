@@ -340,7 +340,8 @@ function validateAttendanceDate(input) {
     const d = new Date(input.value + 'T00:00:00');
     const day = d.getDay();
     const warning = document.getElementById('attendance-weekend-warning');
-    if (day === 0 || day === 6) {
+    const weekendsAllowed = {{ 'true' if weekends_allowed else 'false' }};
+    if ((day === 0 || day === 6) && !weekendsAllowed) {
         warning.classList.remove('hidden');
         input.value = '{{ today.isoformat() }}';
         setTimeout(() => warning.classList.add('hidden'), 4000);

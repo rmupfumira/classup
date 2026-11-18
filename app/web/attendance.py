@@ -104,6 +104,20 @@ async def attendance_daily(
             db, class_id, target_date
         )
 
+    # Weekend attendance is driven by school_type — boarding / weekly-
+    # boarding / mixed schools can mark Saturdays (and Sundays for full
+    # boarders). Pure DAY schools block weekends. Previously the client
+    # JS blocked weekends unconditionally regardless of this setting,
+    # which was a hard bug for any boarding school. 2026-11-18 tuning.
+    from app.models import Tenant
+    from app.utils.tenant_context import get_tenant_id
+    tenant = await db.get(Tenant, get_tenant_id())
+    school_type = (
+        (tenant.settings if tenant else {}).get("school_type", "DAY")
+        if tenant else "DAY"
+    )
+    weekends_allowed = school_type in ("BOARDING", "WEEKLY_BOARDING", "MIXED")
+
     context = {
         "request": request,
         "user": user,
@@ -112,6 +126,7 @@ async def attendance_daily(
         "target_date": target_date,
         "today": date.today(),
         "attendance_data": attendance_data,
+        "weekends_allowed": weekends_allowed,
         "current_language": get_current_language(),
         "permissions": permissions,
     }
