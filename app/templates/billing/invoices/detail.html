@@ -473,8 +473,16 @@ async function recordPayment() {
             method: 'POST',
             body: data,
         });
-        ClassUp.toast('Payment recorded successfully', 'success');
-        window.location.reload();
+        // Close the payment modal + redirect to the billing home.
+        // Previously reloaded the detail page which left the admin
+        // inside the invoice context — the 2026-11-18 tester wanted
+        // a clean return to billing after a successful record.
+        const modal = document.getElementById('record-payment-modal');
+        if (modal && typeof modal.close === 'function') {
+            try { modal.close(); } catch (_) {}
+        }
+        ClassUp.toast('Payment recorded. Receipt emailed to parents.', 'success');
+        setTimeout(() => { window.location.href = '/billing'; }, 900);
     } catch (error) {
         errorDiv.textContent = error.message || 'Failed to record payment. Please try again.';
         errorDiv.classList.remove('hidden');

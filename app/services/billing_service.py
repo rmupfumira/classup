@@ -1447,28 +1447,32 @@ class BillingService:
         )
         parents = list((await db.execute(parents_q)).scalars().all())
 
+        from app.services import parent_notifier
         for parent in parents:
             # Email: uses the existing payment_received.html template.
-            try:
-                await email_service.send_payment_confirmation(
-                    to=parent.email,
-                    parent_name=parent.first_name,
-                    student_name=student_name,
-                    invoice_number=invoice.invoice_number,
-                    payment_amount=payment_amount_str,
-                    remaining_balance=remaining_str,
-                    payment_method=(payment.payment_method or "").replace("_", " ").title(),
-                    view_url=view_url,
-                    tenant_name=tenant_name,
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to email payment confirmation to %s for payment %s",
-                    parent.email, payment.id,
-                )
+            # Gated by email_opted_in so a parent who turned off emails
+            # doesn't still get a receipt (2026-11-18 audit — the gate
+            # existed but was wired into zero senders).
+            if parent_notifier.can_notify_email(parent):
+                try:
+                    await email_service.send_payment_confirmation(
+                        to=parent.email,
+                        parent_name=parent.first_name,
+                        student_name=student_name,
+                        invoice_number=invoice.invoice_number,
+                        payment_amount=payment_amount_str,
+                        remaining_balance=remaining_str,
+                        payment_method=(payment.payment_method or "").replace("_", " ").title(),
+                        view_url=view_url,
+                        tenant_name=tenant_name,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to email payment confirmation to %s for payment %s",
+                        parent.email, payment.id,
+                    )
             # WhatsApp mirror.
             try:
-                from app.services import parent_notifier
                 # payment_date shown to the parent is the payment.payment_date
                 # they recorded (not today) — matches what the email + PDF
                 # receipt show. Fallback to today if somehow missing.
@@ -1491,6 +1495,30 @@ class BillingService:
                 logger.exception(
                     "Failed to WhatsApp payment confirmation to %s", parent.id,
                 )
+
+        # Admin receipt notification — one of the key enrolment / billing
+        # events admins want to see in their inbox. Previously fired parent
+        # notifications but left the admin blind (2026-11-18 tester bug).
+        try:
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=invoice.tenant_id,
+                notification_type="PAYMENT_RECEIVED",
+                title=(
+                    f"Payment recorded: {payment_amount_str} for {student_name}"
+                ),
+                body=(
+                    f"A {payment.payment_method or 'payment'} of "
+                    f"{payment_amount_str} was recorded against invoice "
+                    f"{invoice.invoice_number} for {student_name}. "
+                    f"Remaining balance: {remaining_str}."
+                ),
+                action_url=view_url,
+            )
+        except Exception:
+            logger.exception(
+                "Failed admin receipt notification for payment %s", payment.id,
+            )
 
     async def _notify_parents_overdue(
         self, db: AsyncSession, invoice: BillingInvoice
