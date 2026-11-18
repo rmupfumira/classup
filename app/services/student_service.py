@@ -487,6 +487,48 @@ class StudentService:
                 "child-linked WhatsApp failed for parent %s", parent.id,
             )
 
+    async def update_student_parent_editable(
+        self,
+        db: AsyncSession,
+        student_id: uuid.UUID,
+        parent_user_id: uuid.UUID,
+        data: "StudentParentEditable",
+    ) -> Student:
+        """Narrow update path for PARENT users on their own child.
+
+        Only medical_info, allergies and emergency_contacts are
+        writable. The acting user MUST be linked to this student via a
+        live ParentStudent row on the same tenant — otherwise it's a
+        403, not a 404 (leaking "this student exists elsewhere" would
+        be worse).
+        """
+        student = await self.get_student(db, student_id)
+
+        # Verify the parent has permission to touch this child.
+        link_stmt = select(ParentStudent).where(
+            ParentStudent.parent_id == parent_user_id,
+            ParentStudent.student_id == student_id,
+        )
+        link = (await db.execute(link_stmt)).scalar_one_or_none()
+        if link is None:
+            raise ForbiddenException(
+                "You can only update medical info for children linked to your account."
+            )
+
+        update_data = data.model_dump(exclude_unset=True)
+        if "emergency_contacts" in update_data and update_data["emergency_contacts"]:
+            update_data["emergency_contacts"] = [
+                c.model_dump() if hasattr(c, "model_dump") else c
+                for c in update_data["emergency_contacts"]
+            ]
+
+        for field, value in update_data.items():
+            setattr(student, field, value)
+
+        await db.flush()
+        await db.refresh(student)
+        return student
+
     async def update_student(
         self,
         db: AsyncSession,

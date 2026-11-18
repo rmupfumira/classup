@@ -159,6 +159,21 @@ class StudentUpdate(BaseModel):
     residence: str | None = Field(None, max_length=20)
 
 
+class StudentParentEditable(BaseModel):
+    """Fields a PARENT can update on their own child.
+
+    Narrower than StudentUpdate on purpose — the admin can rename the
+    student or move classes, parents cannot. The update path through
+    `StudentService.update_student_parent_editable` verifies the
+    acting user is actually linked to this student before applying
+    changes.
+    """
+
+    medical_info: str | None = None
+    allergies: str | None = None
+    emergency_contacts: list[EmergencyContact] | None = None
+
+
 class StudentResponse(StudentBase):
     """Schema for student response."""
 

@@ -117,9 +117,20 @@
             </div>
 
             <!-- Medical Information -->
-            {% if student.medical_info or student.allergies %}
+            {# Always render for parents even when empty so they have a
+               visible call-to-action to fill it in. 2026-11-18 feature. #}
+            {% set is_parent = user and user.role == 'PARENT' %}
+            {% if student.medical_info or student.allergies or student.emergency_contacts or is_parent %}
             <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-4">Medical Information</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-neutral-900">Medical Information</h3>
+                    {% if is_parent or permissions.can_manage_students() %}
+                    <a href="/students/{{ student.id }}/edit-medical"
+                       class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                        Update
+                    </a>
+                    {% endif %}
+                </div>
 
                 {% if student.allergies %}
                 <div class="mb-4">
@@ -131,10 +142,31 @@
                 {% endif %}
 
                 {% if student.medical_info %}
-                <div>
+                <div class="mb-4">
                     <h4 class="text-sm font-medium text-neutral-700 mb-2">Medical Notes</h4>
                     <p class="text-neutral-700">{{ student.medical_info }}</p>
                 </div>
+                {% endif %}
+
+                {% if student.emergency_contacts %}
+                <div>
+                    <h4 class="text-sm font-medium text-neutral-700 mb-2">Emergency contacts</h4>
+                    <ul class="text-sm text-neutral-700 space-y-1">
+                        {% for c in student.emergency_contacts %}
+                        <li>
+                            <span class="font-medium">{{ c.name }}</span>
+                            {% if c.phone %}· <a href="tel:{{ c.phone }}" class="text-primary-600 hover:text-primary-700">{{ c.phone }}</a>{% endif %}
+                            {% if c.relationship %}<span class="text-neutral-500">({{ c.relationship }})</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if is_parent and not student.medical_info and not student.allergies and not student.emergency_contacts %}
+                <p class="text-sm text-neutral-500">
+                    Nothing on file yet. Tap <strong>Update</strong> to add allergies, medications or emergency contacts.
+                </p>
                 {% endif %}
             </div>
             {% endif %}

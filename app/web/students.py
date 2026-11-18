@@ -450,6 +450,61 @@ async def student_detail(
     return templates.TemplateResponse("students/detail.html", context)
 
 
+@router.get("/{student_id}/edit-medical", response_class=HTMLResponse)
+async def student_edit_medical_form(
+    request: Request,
+    student_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Narrow edit form for a PARENT to update their own child's
+    medical info, allergies, and emergency contacts.
+
+    Guarded three ways: route only renders for linked parents (the
+    service layer re-checks on save), admins can also open it for
+    testing, and the form never shows class / name / DOB / anything
+    structural. 2026-11-18 feature.
+    """
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    permissions = PermissionChecker(user.role)
+
+    student_service = get_student_service()
+    student = await student_service.get_student(db, student_id)
+
+    # Parents can only open the form for a linked child. Admins can
+    # open any child's form (useful when phone-helping a parent).
+    if user.role == Role.PARENT.value:
+        from app.models.student import ParentStudent
+        from sqlalchemy import select as _select
+        link = (await db.execute(
+            _select(ParentStudent).where(
+                ParentStudent.parent_id == user.id,
+                ParentStudent.student_id == student_id,
+            )
+        )).scalar_one_or_none()
+        if link is None:
+            raise ForbiddenException(
+                "You can only update medical info for your own children."
+            )
+    elif user.role not in (Role.SCHOOL_ADMIN.value, Role.SUPER_ADMIN.value):
+        raise ForbiddenException("You don't have permission to edit this.")
+
+    context = {
+        "request": request,
+        "user": user,
+        "student": student,
+        "current_language": get_current_language(),
+        "permissions": permissions,
+    }
+    return templates.TemplateResponse("students/edit_medical.html", context)
+
+
 @router.get("/{student_id}/edit", response_class=HTMLResponse)
 async def student_edit_form(
     request: Request,

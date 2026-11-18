@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Update medical info — {{ student.first_name }} {{ student.last_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 pt-6 pb-24 space-y-6">
+
+    <div>
+        <a href="/students/{{ student.id }}" class="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-700">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to {{ student.first_name }}
+        </a>
+        <h1 class="mt-3 text-xl font-semibold text-neutral-800">
+            Medical info for {{ student.first_name }} {{ student.last_name }}
+        </h1>
+        <p class="mt-1 text-sm text-neutral-500">
+            Keep this current so school staff and first responders have what they need quickly.
+        </p>
+    </div>
+
+    <form id="medical-form" class="space-y-5 bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
+
+        <div>
+            <label for="medical_info" class="block text-sm font-medium text-neutral-700 mb-1">
+                Medical conditions, medications, dietary needs
+            </label>
+            <textarea id="medical_info" rows="4"
+                      class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded-md bg-white
+                             focus:border-primary-500 focus:ring-0"
+                      placeholder="E.g. Asthma — ventolin inhaler in school bag, uses it before sport">{{ student.medical_info or '' }}</textarea>
+            <p class="mt-1 text-xs text-neutral-500">Plain English; staff will read this on the attendance roll.</p>
+        </div>
+
+        <div>
+            <label for="allergies" class="block text-sm font-medium text-neutral-700 mb-1">Allergies</label>
+            <textarea id="allergies" rows="3"
+                      class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded-md bg-white
+                             focus:border-primary-500 focus:ring-0"
+                      placeholder="E.g. Peanuts (anaphylactic — carries Epipen), bees (mild rash)">{{ student.allergies or '' }}</textarea>
+        </div>
+
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-neutral-700">Emergency contacts</label>
+                <button type="button" id="add-contact-btn"
+                        class="text-xs text-primary-600 hover:text-primary-700 font-medium">+ Add contact</button>
+            </div>
+            <div id="contacts-list" class="space-y-3">
+                {% set contacts = student.emergency_contacts or [] %}
+                {% for c in contacts %}
+                <div class="contact-row grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 bg-neutral-50 rounded-md">
+                    <input type="text" data-field="name" value="{{ c.name or '' }}"
+                           placeholder="Name"
+                           class="h-9 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                    <input type="text" data-field="phone" value="{{ c.phone or '' }}"
+                           placeholder="Phone"
+                           class="h-9 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                    <div class="flex gap-1">
+                        <input type="text" data-field="relationship" value="{{ c.relationship or '' }}"
+                               placeholder="Relationship"
+                               class="flex-1 h-9 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                        <button type="button" class="remove-contact-btn h-9 w-9 text-neutral-400 hover:text-red-500"
+                                aria-label="Remove contact">×</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="mt-1 text-xs text-neutral-500">Best people to reach if you can't be reached — grandparents, neighbours, work.</p>
+        </div>
+
+        <div id="form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+
+        <div class="flex justify-end gap-3 pt-2 border-t border-neutral-100">
+            <a href="/students/{{ student.id }}"
+               class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                Cancel
+            </a>
+            <button type="submit" id="submit-btn"
+                    class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600 disabled:opacity-50">
+                Save
+            </button>
+        </div>
+    </form>
+</div>
+
+<template id="contact-row-template">
+    <div class="contact-row grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 bg-neutral-50 rounded-md">
+        <input type="text" data-field="name" placeholder="Name"
+               class="h-9 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+        <input type="text" data-field="phone" placeholder="Phone"
+               class="h-9 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+        <div class="flex gap-1">
+            <input type="text" data-field="relationship" placeholder="Relationship"
+                   class="flex-1 h-9 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+            <button type="button" class="remove-contact-btn h-9 w-9 text-neutral-400 hover:text-red-500"
+                    aria-label="Remove contact">×</button>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const list = document.getElementById('contacts-list');
+const tpl = document.getElementById('contact-row-template');
+
+function wireRemove(scope) {
+    scope.querySelectorAll('.remove-contact-btn').forEach(btn => {
+        btn.onclick = () => btn.closest('.contact-row').remove();
+    });
+}
+
+document.getElementById('add-contact-btn').addEventListener('click', () => {
+    const node = tpl.content.cloneNode(true);
+    list.appendChild(node);
+    wireRemove(list);
+});
+
+wireRemove(list);
+
+document.getElementById('medical-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const errorDiv = document.getElementById('form-error');
+    errorDiv.classList.add('hidden');
+
+    const medical_info = document.getElementById('medical_info').value.trim();
+    const allergies = document.getElementById('allergies').value.trim();
+    const contacts = [];
+    list.querySelectorAll('.contact-row').forEach(row => {
+        const name = row.querySelector('[data-field="name"]').value.trim();
+        const phone = row.querySelector('[data-field="phone"]').value.trim();
+        const rel = row.querySelector('[data-field="relationship"]').value.trim();
+        if (name || phone || rel) {
+            contacts.push({ name, phone, relationship: rel || 'Emergency Contact' });
+        }
+    });
+
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    try {
+        await ClassUp.fetch('/api/v1/students/{{ student.id }}/parent-editable', {
+            method: 'PATCH',
+            body: {
+                medical_info: medical_info || null,
+                allergies: allergies || null,
+                emergency_contacts: contacts,
+            },
+        });
+        ClassUp.toast('Medical info saved.', 'success');
+        setTimeout(() => { window.location.href = '/students/{{ student.id }}'; }, 600);
+    } catch (error) {
+        errorDiv.textContent = error.message || 'Could not save. Please try again.';
+        errorDiv.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+    }
+});
+</script>
+{% endblock %}

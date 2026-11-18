@@ -15,6 +15,7 @@ from app.schemas.student import (
     StudentCreate,
     StudentDetailResponse,
     StudentListResponse,
+    StudentParentEditable,
     StudentResponse,
     StudentUpdate,
 )
@@ -260,6 +261,34 @@ async def update_student(
     return APIResponse(
         data=_build_student_response(student),
         message="Student updated successfully",
+    )
+
+
+@router.patch(
+    "/{student_id}/parent-editable",
+    response_model=APIResponse[StudentResponse],
+)
+@require_role(Role.PARENT, Role.SCHOOL_ADMIN)
+async def update_student_parent_editable(
+    student_id: uuid.UUID,
+    data: StudentParentEditable,
+    db: AsyncSession = Depends(get_db),
+):
+    """Narrow update path for parents on their own child.
+
+    Admin role also accepted so a staff member can test / seed via the
+    same endpoint; a teacher cannot (they use the full update_student).
+    The service verifies the acting user is linked via parent_students
+    — a parent cannot touch someone else's child.
+    """
+    service = get_student_service()
+    student = await service.update_student_parent_editable(
+        db, student_id, get_current_user_id(), data,
+    )
+    await db.commit()
+    return APIResponse(
+        data=_build_student_response(student),
+        message="Medical info updated.",
     )
 
 
