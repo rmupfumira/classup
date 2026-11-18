@@ -1135,6 +1135,8 @@ class BillingService:
                         due_date=due_date_str,
                         view_url=view_url,
                         tenant_name=tenant.name,
+                        banking_details=tenant_settings.get("billing_banking_details"),
+                        payment_instructions=tenant_settings.get("billing_payment_instructions"),
                     )
                 except Exception:
                     logger.exception(

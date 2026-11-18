@@ -74,12 +74,15 @@
             <label for="severity" class="block text-sm font-medium text-neutral-700 mb-1">Severity</label>
             <select id="severity" name="severity"
                     class="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                <option value="INFO">Info - General information</option>
-                <option value="WARNING">Warning - Requires attention</option>
-                <option value="URGENT">Urgent - Immediate attention needed</option>
-                <option value="EMERGENCY">Emergency - Critical alert</option>
+                <option value="INFO">Info — General information (in-app only)</option>
+                <option value="WARNING">Warning — Requires attention (in-app only)</option>
+                <option value="URGENT">Urgent — Also sent by email + WhatsApp</option>
+                <option value="EMERGENCY">Emergency — Also sent by email + WhatsApp</option>
             </select>
-            <p class="mt-1 text-xs text-neutral-400">All announcements will be sent via email to parents.</p>
+            <p class="mt-1 text-xs text-neutral-400">
+                Urgent and Emergency announcements are also sent by email and WhatsApp to opted-in parents.
+                Info and Warning stay in the app so routine notices don't flood inboxes.
+            </p>
         </div>
 
         <!-- Expires At -->

@@ -260,13 +260,16 @@
                         onchange="toggleClassSelect()">
                     <option value="ALL">All Students</option>
                     <option value="CLASS">Specific Class</option>
+                    {% if show_residence_scopes %}
                     <option value="DAY_SCHOLARS">Day Scholars only</option>
                     <option value="BOARDERS">Boarders only</option>
+                    {% endif %}
                 </select>
+                {% if show_residence_scopes %}
                 <p class="mt-1 text-xs text-neutral-500">
-                    Day Scholars / Boarders target students by their effective
-                    residence. Set the school type in Settings → School Operations.
+                    Day Scholars / Boarders target students by their effective residence.
                 </p>
+                {% endif %}
             </div>
 
             <div id="fi-class-group" class="hidden">

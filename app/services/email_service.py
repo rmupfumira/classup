@@ -800,8 +800,16 @@ class EmailService:
         due_date: str,
         view_url: str,
         tenant_name: str,
+        banking_details: str | None = None,
+        payment_instructions: str | None = None,
     ) -> str | None:
-        """Send an overdue invoice reminder to a parent."""
+        """Send an overdue invoice reminder to a parent.
+
+        Includes banking_details + payment_instructions so the parent
+        can pay without first opening the portal (2026-11-18 audit —
+        the overdue reminder used to send parents to the portal to find
+        the bank account, which defeated the nudge).
+        """
         return await self.send(
             to=to,
             subject=f"Overdue: Invoice {invoice_number} for {student_name}",
@@ -815,6 +823,8 @@ class EmailService:
                 "view_url": view_url,
                 "tenant_name": tenant_name,
                 "app_name": settings.app_name,
+                "banking_details": banking_details,
+                "payment_instructions": payment_instructions,
             },
             from_name=tenant_name,
         )

@@ -159,6 +159,12 @@ async def fee_items_page(
 
     tenant = await _get_tenant(db)
     currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
+    # Hide DAY_SCHOLARS / BOARDERS fee-item options on tenants that
+    # aren't MIXED — they'd never match any student otherwise and the
+    # confusing "Set the school type in Settings → School Operations"
+    # help text just makes an admin wonder what they did wrong.
+    school_type = tenant.get_setting("school_type") if tenant else None
+    show_residence_scopes = school_type == "MIXED"
 
     context = {
         "request": request,
@@ -166,6 +172,7 @@ async def fee_items_page(
         "fee_items": fee_items,
         "classes": classes,
         "currency": currency,
+        "show_residence_scopes": show_residence_scopes,
         "current_language": get_current_language(),
         "permissions": PermissionChecker(user.role),
     }

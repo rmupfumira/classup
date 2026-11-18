@@ -42,6 +42,32 @@
     Please arrange payment at your earliest convenience. If you have already made this payment, please disregard this reminder.
 </p>
 
+{# Banking details + instructions — same blocks as invoice_sent.html.
+   Previously an overdue reminder sent the parent to the portal to find
+   the payment info, which defeats the point of a nudge. 2026-11-18
+   audit fix. #}
+{% if banking_details %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 16px;">
+    <tr>
+        <td style="padding: 14px; background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #374151;">Banking Details</p>
+            <p style="margin: 0; font-size: 13px; color: #4B5563; line-height: 1.6; white-space: pre-line;">{{ banking_details }}</p>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+{% if payment_instructions %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 20px;">
+    <tr>
+        <td style="padding: 14px; background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #374151;">Payment Instructions</p>
+            <p style="margin: 0; font-size: 13px; color: #4B5563; line-height: 1.6; white-space: pre-line;">{{ payment_instructions }}</p>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto 0 auto;">
     <tr>
         <td style="border-radius: 8px; background-color: #C9962A;">
