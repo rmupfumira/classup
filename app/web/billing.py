@@ -279,12 +279,19 @@ async def arrears_export_csv(
 @router.get("/invoices", response_class=HTMLResponse)
 async def invoices_list(
     request: Request,
-    class_id: uuid.UUID | None = None,
+    class_id: str | None = None,
     status: str | None = None,
     page: int = Query(1, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
-    """Invoice list page."""
+    """Invoice list page.
+
+    `class_id` is accepted as a string + parsed manually: the filter
+    form submits "class_id=" (empty) when the admin has "All classes"
+    selected, and FastAPI's UUID coercer used to 422 on that → scary
+    error page. Parsing here keeps the page working with any value
+    the filter form sends (empty, UUID, or junk → treated as no filter).
+    """
     redirect = _require_auth(request)
     if redirect:
         return redirect
@@ -296,11 +303,24 @@ async def invoices_list(
     if get_current_user_role() not in (Role.SCHOOL_ADMIN.value, Role.SUPER_ADMIN.value):
         raise ForbiddenException("Access denied")
 
+    # Parse class_id defensively — empty or malformed → no filter.
+    parsed_class_id: uuid.UUID | None = None
+    if class_id:
+        try:
+            parsed_class_id = uuid.UUID(class_id)
+        except (ValueError, TypeError):
+            parsed_class_id = None
+
+    # Likewise, status must be one of the known invoice statuses. An
+    # unknown value drops to None (= all) rather than 422ing the page.
+    ALLOWED_STATUSES = {"DRAFT", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"}
+    normalised_status = status if status in ALLOWED_STATUSES else None
+
     billing_service = get_billing_service()
     class_service = get_class_service()
 
     invoices, total = await billing_service.get_invoices(
-        db, class_id=class_id, status=status, page=page, page_size=20
+        db, class_id=parsed_class_id, status=normalised_status, page=page, page_size=20
     )
     classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
     total_pages = (total + 19) // 20
@@ -313,8 +333,8 @@ async def invoices_list(
         "user": user,
         "invoices": invoices,
         "classes": classes,
-        "current_class_id": class_id,
-        "current_status": status,
+        "current_class_id": parsed_class_id,
+        "current_status": normalised_status,
         "page": page,
         "total_pages": total_pages,
         "total": total,

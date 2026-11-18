@@ -478,13 +478,19 @@ function renderPurgePreview(data) {
     });
     keptWrap.classList.toggle('hidden', (data.parents_kept || []).length === 0);
 
-    // Wire the typed-name confirmation
+    // Wire the typed-name confirmation. Normalise both sides —
+    // case-insensitive, trim, collapse internal whitespace — because
+    // a trailing space on student.first_name in the DB used to leave
+    // the button greyed out even after the admin typed the name
+    // exactly as it was shown (2026-11-18 tester bug).
     const input = document.getElementById('purge-confirm-input');
     const btn = document.getElementById('purge-confirm-btn');
     input.value = '';
     btn.disabled = true;
+    const norm = (s) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const target = norm(studentName);
     input.oninput = () => {
-        btn.disabled = input.value.trim() !== studentName;
+        btn.disabled = norm(input.value) !== target;
     };
     btn.onclick = () => runPurge();
 

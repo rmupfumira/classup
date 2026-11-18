@@ -5,13 +5,17 @@ from datetime import date, datetime
 from io import BytesIO
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 logger = logging.getLogger(__name__)
 
 # Column definitions: (field_name, human_label, width, required)
+# Added 2026-11-18: parent_first_name + parent_last_name so bulk-import
+# rows can trigger parent invitations the same way the single-student
+# Add form does. Phone columns are formatted as TEXT in generate_template
+# so Excel doesn't scientific-notation "+263771234567" into "2.63E+11".
 ENROLLMENT_COLUMNS = [
     ("first_name", "First Name *", 20, True),
     ("last_name", "Last Name *", 20, True),
@@ -20,11 +24,18 @@ ENROLLMENT_COLUMNS = [
     ("class_name", "Class Name", 22, False),
     ("medical_info", "Medical Info", 25, False),
     ("allergies", "Allergies", 25, False),
+    ("parent_first_name", "Parent First Name", 20, False),
+    ("parent_last_name", "Parent Last Name", 20, False),
     ("parent_email", "Parent Email", 28, False),
-    ("parent_phone", "Parent Phone", 18, False),
+    ("parent_phone", "Parent Phone", 20, False),
     ("emergency_contact_name", "Emergency Contact Name", 22, False),
     ("emergency_contact_phone", "Emergency Contact Phone", 22, False),
 ]
+
+# Which columns must be formatted as text (prevents Excel's
+# "2.63E+11" bug when a parent types +263771234567). Field names;
+# resolved to column indices at generation time.
+TEXT_FORMAT_FIELDS = {"parent_phone", "emergency_contact_phone", "date_of_birth"}
 
 # Navy brand color
 HEADER_BG_COLOR = "1B3A6B"
@@ -39,6 +50,7 @@ class EnrollmentTemplateService:
     def generate_template(
         class_names: list[str],
         prefill_class_name: str | None = None,
+        data_rows: int = 500,
     ) -> bytes:
         """
         Generate an Excel enrollment template.
@@ -46,9 +58,17 @@ class EnrollmentTemplateService:
         Args:
             class_names: List of class names for dropdown validation.
             prefill_class_name: If provided, pre-fill the class_name column.
+            data_rows: How many editable data rows to pre-format (3 .. 3+n).
 
         Returns:
             Excel file bytes ready for streaming response.
+
+        2026-11-18 updates:
+          - Phone / date columns pre-formatted as text (``@``) so Excel
+            doesn't turn "+263771234567" into scientific notation.
+          - Rows 1-2 locked (sheet protection, no password). Data cells
+            3 .. 3+data_rows unlocked so the admin can still type in
+            them. Prevents accidental type-over of the header keys.
         """
         wb = Workbook()
         ws = wb.active
@@ -69,27 +89,52 @@ class EnrollmentTemplateService:
             bottom=Side(style="thin"),
         )
         instruction_font = Font(italic=True, color=INSTRUCTIONS_FONT_COLOR, size=10)
+        locked = Protection(locked=True)
+        unlocked = Protection(locked=False)
 
-        # Row 1: Field name headers (these are the machine-readable keys)
+        # Resolve which column indices should be text-formatted.
+        text_cols = {
+            idx for idx, (field_name, _, _, _) in enumerate(ENROLLMENT_COLUMNS, 1)
+            if field_name in TEXT_FORMAT_FIELDS
+        }
+
+        last_row = 3 + max(data_rows, 1)  # inclusive upper bound for data cells
+
+        # Row 1: Field name headers (machine-readable keys). Locked.
         for col_idx, (field_name, _, width, _) in enumerate(ENROLLMENT_COLUMNS, 1):
             cell = ws.cell(row=1, column=col_idx, value=field_name)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = header_alignment
             cell.border = thin_border
+            cell.protection = locked
             ws.column_dimensions[get_column_letter(col_idx)].width = width
 
-        # Row 2: Human-readable labels / instructions
+        # Row 2: Human-readable labels / instructions. Locked.
         for col_idx, (_, label, _, _) in enumerate(ENROLLMENT_COLUMNS, 1):
             cell = ws.cell(row=2, column=col_idx, value=label)
             cell.font = instruction_font
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = thin_border
+            cell.protection = locked
 
-        # Freeze top 2 rows
+        # Freeze top 2 rows + sheet protection. Sheet-protection locks
+        # every cell by default; the data cells below are then flipped
+        # to unlocked so admins can still type in them.
         ws.freeze_panes = "A3"
 
-        # Data validation: Gender dropdown (column D, rows 3-500)
+        # Pre-format data rows (3 .. last_row). Every data cell is
+        # unlocked; phone/date cells additionally get text number
+        # format so Excel treats long digit strings as text.
+        for row in range(3, last_row + 1):
+            for col_idx, _ in enumerate(ENROLLMENT_COLUMNS, 1):
+                cell = ws.cell(row=row, column=col_idx)
+                cell.protection = unlocked
+                if col_idx in text_cols:
+                    cell.number_format = "@"
+
+        # Data validation: Gender dropdown (column D)
+        gender_col_letter = "D"
         gender_dv = DataValidation(
             type="list",
             formula1='"MALE,FEMALE,OTHER"',
@@ -100,9 +145,10 @@ class EnrollmentTemplateService:
         gender_dv.prompt = "Select gender"
         gender_dv.promptTitle = "Gender"
         ws.add_data_validation(gender_dv)
-        gender_dv.add(f"D3:D500")
+        gender_dv.add(f"{gender_col_letter}3:{gender_col_letter}{last_row}")
 
-        # Data validation: Class name dropdown (column E, rows 3-500)
+        # Data validation: Class name dropdown (column E)
+        class_col_letter = "E"
         if class_names:
             # Excel data validation list has a ~255 char limit for formula1
             # Use a comma-separated list within quotes
@@ -129,12 +175,30 @@ class EnrollmentTemplateService:
             class_dv.prompt = "Select class"
             class_dv.promptTitle = "Class Name"
             ws.add_data_validation(class_dv)
-            class_dv.add(f"E3:E500")
+            class_dv.add(f"{class_col_letter}3:{class_col_letter}{last_row}")
 
         # Pre-fill class name if specified
         if prefill_class_name:
-            for row in range(3, 103):  # Pre-fill 100 rows
-                ws.cell(row=row, column=5, value=prefill_class_name)
+            for row in range(3, min(103, last_row + 1)):  # Pre-fill 100 rows
+                cell = ws.cell(row=row, column=5, value=prefill_class_name)
+                cell.protection = unlocked
+
+        # Lock the sheet. No password — the point is to stop accidents,
+        # not a determined admin (who can "Review → Unprotect Sheet"
+        # in Excel). Keep select/sort/filter on so power users can
+        # still work with their data.
+        ws.protection.sheet = True
+        ws.protection.formatCells = False
+        ws.protection.formatColumns = False
+        ws.protection.formatRows = False
+        ws.protection.insertColumns = False
+        ws.protection.insertRows = False
+        ws.protection.deleteColumns = False
+        ws.protection.deleteRows = False
+        ws.protection.selectLockedCells = False
+        ws.protection.selectUnlockedCells = False
+        ws.protection.sort = False
+        ws.protection.autoFilter = False
 
         # Save to bytes
         output = BytesIO()
@@ -187,6 +251,17 @@ class EnrollmentTemplateService:
                     value = value.strftime("%Y-%m-%d")
                 elif value is None:
                     value = ""
+                elif isinstance(value, float) and field_name in TEXT_FORMAT_FIELDS:
+                    # Excel default-numbers a phone like "+263771234567"
+                    # into a float with scientific notation. New templates
+                    # format phone columns as TEXT so this doesn't happen,
+                    # but older templates in the wild still trip over it.
+                    # str(value) would produce "2.63771234567e+11"; cast
+                    # through int first so we get a clean digit string.
+                    try:
+                        value = str(int(value))
+                    except (ValueError, OverflowError):
+                        value = str(value).strip()
                 else:
                     value = str(value).strip()
 

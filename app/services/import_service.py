@@ -28,6 +28,8 @@ IMPORT_FIELDS = {
         "class_name": {"label": "Class Name", "required": False},
         "medical_info": {"label": "Medical Info", "required": False},
         "allergies": {"label": "Allergies", "required": False},
+        "parent_first_name": {"label": "Parent First Name", "required": False},
+        "parent_last_name": {"label": "Parent Last Name", "required": False},
         "parent_email": {"label": "Parent Email", "required": False},
         "parent_phone": {"label": "Parent Phone", "required": False},
         "emergency_contact_name": {"label": "Emergency Contact Name", "required": False},
@@ -238,6 +240,54 @@ class ImportService:
         job.completed_at = datetime.now(timezone.utc)
         await db.commit()
 
+        # Notify school admins — best-effort.
+        await self._notify_admins_import_complete(db, job)
+
+    async def _notify_admins_import_complete(
+        self, db: AsyncSession, job: BulkImportJob,
+    ) -> None:
+        """Email all SCHOOL_ADMINs that a bulk import job just finished.
+
+        Fires for both the generic CSV flow and the enrollment xlsx flow.
+        Silent-fail — the import is already saved. Respects the per-
+        tenant toggle used by student_service._notify_admins_student_enrolled.
+        """
+        try:
+            from app.config import get_settings
+            from app.models import Tenant
+            from app.services.email_service import get_email_service
+
+            tenant = await db.get(Tenant, job.tenant_id)
+            if tenant is None:
+                return
+            if (tenant.settings or {}).get("notify_admins_on_enrolment") is False:
+                return
+
+            settings = get_settings()
+            email_service = get_email_service()
+            total = job.processed_rows or 0
+            ok = job.success_count or 0
+            bad = job.error_count or 0
+            summary = f"{ok} of {total} rows imported"
+            if bad:
+                summary += f" — {bad} needed review"
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=job.tenant_id,
+                notification_type="IMPORT_COMPLETED",
+                title=f"Bulk {job.import_type.lower()} import complete",
+                body=(
+                    f"The {job.file_name or 'bulk import'} file has finished "
+                    f"processing: {summary}. Open the import page to review "
+                    f"any skipped rows."
+                ),
+                action_url=f"{settings.app_base_url}/imports/{job.id}",
+            )
+        except Exception:
+            logger.exception(
+                "Admin notification failed for import_complete job=%s", job.id,
+            )
+
     async def _import_student_row(
         self,
         db: AsyncSession,
@@ -316,6 +366,69 @@ class ImportService:
 
         db.add(student)
         await db.flush()
+        await db.refresh(student)
+
+        # Parent invite — mirror the single-student Add form's inline
+        # parent block (2026-11-18 tester bug: bulk rows with parent
+        # columns filled in used to drop them on the floor). Best-effort:
+        # per-parent failures never bubble up to fail the student row.
+        parent_email = get_val("parent_email")
+        if parent_email:
+            await self._invite_parent_from_row(
+                db, student, get_val, parent_email,
+            )
+
+    async def _invite_parent_from_row(
+        self,
+        db: AsyncSession,
+        student: Student,
+        get_val,
+        parent_email: str,
+    ) -> None:
+        """Link or invite the parent supplied on a bulk-import row.
+
+        Reuses the single-student enrollment path on StudentService so
+        the invitation + email + WhatsApp plumbing behaves identically
+        to the Add-Student form. Silent-fail: a broken parent row logs
+        and returns — the student stays enrolled.
+        """
+        try:
+            from app.schemas.student import ParentEnrollmentInfo
+            from app.services.student_service import get_student_service
+
+            # Minimal fallbacks: Excel rows commonly omit parent_first_name /
+            # parent_last_name. Pydantic's EmailStr accepts "a@b.c" with no
+            # display name, but the schema requires non-empty names.
+            # Falling back to the student's last name + a generic
+            # "Parent" first-name keeps the flow working even when only
+            # parent_email + parent_phone are supplied.
+            first = get_val("parent_first_name") or "Parent"
+            last = get_val("parent_last_name") or student.last_name or ""
+            phone = get_val("parent_phone")
+
+            info = ParentEnrollmentInfo(
+                first_name=first,
+                last_name=last,
+                email=parent_email,
+                phone=phone,
+                relationship_type="PARENT",
+                is_primary=True,
+                send_whatsapp_invite=bool(phone),
+            )
+
+            student_service = get_student_service()
+            result = await student_service.enroll_parent_at_create(
+                db, student, info,
+            )
+            logger.info(
+                "Bulk import — parent invite for student=%s email=%s → %s",
+                student.id, parent_email, result.get("status"),
+            )
+        except Exception:
+            logger.exception(
+                "Bulk import — parent invite failed for student=%s email=%s",
+                student.id, parent_email,
+            )
 
     async def _import_teacher_row(
         self,
@@ -534,6 +647,9 @@ class ImportService:
         job.completed_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(job)
+
+        # Notify school admins — best-effort.
+        await self._notify_admins_import_complete(db, job)
 
         return job
 

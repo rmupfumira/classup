@@ -176,7 +176,73 @@ class StudentService:
             result = await self._enroll_parent_at_create(db, student, parent_info)
             parent_results.append(result)
 
+        # Notify school admins of the new enrolment — best-effort,
+        # swallowed so a down email provider never blocks the student
+        # save. Toggle via tenant.settings.notify_admins_on_enrolment
+        # (default on).
+        await self._notify_admins_student_enrolled(db, student)
+
         return student, parent_results
+
+    async def _notify_admins_student_enrolled(
+        self, db: AsyncSession, student: Student,
+    ) -> None:
+        """Email all SCHOOL_ADMINs that a new student has been enrolled.
+
+        One of the "key events" admins want to know about. Silent-fail
+        — the student is already saved; a failed email is a log line,
+        not a user-facing error. Respects a per-tenant toggle so demo
+        tenants can mute these.
+        """
+        try:
+            from app.config import get_settings
+            from app.models import Tenant
+            from app.services.email_service import get_email_service
+
+            tenant = await db.get(Tenant, student.tenant_id)
+            if tenant is None:
+                return
+            if (tenant.settings or {}).get("notify_admins_on_enrolment") is False:
+                return  # Admin asked to mute
+
+            settings = get_settings()
+            email_service = get_email_service()
+            student_name = f"{student.first_name} {student.last_name}".strip()
+            await email_service.notify_admins(
+                db=db,
+                tenant_id=student.tenant_id,
+                notification_type="STUDENT_ENROLLED",
+                title=f"New student enrolled: {student_name}",
+                body=(
+                    f"{student_name} has just been added to the student "
+                    f"roster. Open the student page to add parents, "
+                    f"a class, or medical info."
+                ),
+                action_url=f"{settings.app_base_url}/students/{student.id}",
+            )
+        except Exception:
+            logger.exception(
+                "Admin notification failed for student_enrolled student=%s",
+                student.id,
+            )
+
+    async def enroll_parent_at_create(
+        self,
+        db: AsyncSession,
+        student: Student,
+        info: ParentEnrollmentInfo,
+    ) -> dict:
+        """Public entry point for the parent-enrollment flow.
+
+        The bulk CSV/XLSX importer uses this to mirror the "Add Student"
+        form's inline parent-invite behaviour so bulk uploads link
+        existing parents / send invitations exactly like the single-add
+        form does. Implementation is the private helper below — kept
+        private historically for the `create_student` caller inside this
+        service; exposing it as a public alias so a second caller can
+        use it without reaching through a leading underscore.
+        """
+        return await self._enroll_parent_at_create(db, student, info)
 
     async def _enroll_parent_at_create(
         self,
