@@ -125,16 +125,23 @@ function setRange(kind) {
 }
 
 async function populateClassFilter() {
+    // Classes API caps page_size at 100 — paginate.
+    const sel = document.getElementById('class-filter');
     try {
-        const r = await ClassUp.fetch('/api/v1/classes?page_size=200&active_only=true');
-        const classes = (r && r.data) || [];
-        const sel = document.getElementById('class-filter');
-        classes.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = c.name;
-            sel.appendChild(opt);
-        });
+        let page = 1;
+        while (true) {
+            const r = await ClassUp.fetch(`/api/v1/classes?page=${page}&page_size=100&active_only=true`);
+            const items = (r && r.data) || [];
+            items.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                sel.appendChild(opt);
+            });
+            if (!r?.pagination?.has_next || items.length === 0) break;
+            page += 1;
+            if (page > 20) break;
+        }
     } catch (_) {}
 }
 
