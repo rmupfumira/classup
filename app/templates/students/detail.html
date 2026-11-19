@@ -38,7 +38,33 @@
         {% endif %}
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {# Tab bar — jump across every facet of the student without
+       leaving the page. Each tab's content lazy-loads via the
+       matching /api endpoint on first activation, so visiting
+       the Overview tab stays cheap. #}
+    <div class="border-b border-neutral-200 mb-4">
+        <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto" aria-label="Student sections">
+            {% set _tabs = [
+                ('overview', 'Overview'),
+                ('academics', 'Academics'),
+                ('attendance', 'Attendance'),
+                ('financials', 'Financials'),
+                ('reports', 'Reports'),
+            ] %}
+            {% for slug, label in _tabs %}
+            <button type="button" data-tab="{{ slug }}"
+                    class="tab-btn whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium transition-colors
+                           {% if loop.first %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %}">
+                {{ label }}
+            </button>
+            {% endfor %}
+        </nav>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- OVERVIEW TAB — the existing summary content.              -->
+    <!-- ========================================================= -->
+    <div data-tab-panel="overview" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main Info -->
         <div class="lg:col-span-2 space-y-6">
             <!-- Profile Card -->
@@ -370,7 +396,441 @@
             {% endif %}
         </div>
     </div>
+    {# ─── end OVERVIEW tab ─── #}
+
+    <!-- ========================================================= -->
+    <!-- ACADEMICS TAB                                              -->
+    <!-- ========================================================= -->
+    <div data-tab-panel="academics" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Recent report cards</h3>
+                <p class="text-xs text-neutral-500 mb-4">
+                    Finalised and draft reports for this student, newest first.
+                </p>
+                <div id="academics-reports" class="text-sm text-neutral-500">Loading…</div>
+            </div>
+            {% if permissions.is_staff and subject_rows %}
+            {# Mirror the subject-track card from Overview here too —
+               teachers landing on Academics expect the subject list. #}
+            {% set is_combined2 = tenant and (tenant.settings or {}).get('curriculum_pack') == 'ZW_COMBINED' %}
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Subject track</h3>
+                <p class="text-xs text-neutral-500 mb-3">What this student actually takes.</p>
+                <ul class="divide-y divide-neutral-100">
+                    {% for row in subject_rows %}
+                    {% set subject = row.effective_subject %}
+                    <li class="py-2 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-neutral-800">
+                                {{ subject.name }}
+                                {% if row.is_overridden %}
+                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">OVERRIDE</span>
+                                {% endif %}
+                            </p>
+                            {% if subject.curriculum_pack_code %}
+                            <p class="text-xs text-neutral-500">{{ subject.curriculum_pack_code.replace('ZW_', '').replace('ZA_', '').title() }}</p>
+                            {% endif %}
+                        </div>
+                        {% if is_combined2 and permissions.can_manage_students() %}
+                        <button type="button"
+                                data-cs-id="{{ row.class_subject_id }}"
+                                data-default-id="{{ row.default_subject_id }}"
+                                data-subject-name="{{ subject.name | escape }}"
+                                data-overridden="{{ 'true' if row.is_overridden else 'false' }}"
+                                onclick="openSubjectOverrideModal(this)"
+                                class="text-xs font-medium text-primary-600 hover:text-primary-700">Change</button>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        <div class="space-y-6">
+            {# Side panel — term/year aggregates pulled from MIS when
+               the feature is on. Silently hides when the tenant isn't
+               on the MIS plan. #}
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Progress</h3>
+                <p class="text-xs text-neutral-500 mb-3">Current vs previous term.</p>
+                <div id="academics-progress" class="text-sm text-neutral-500">—</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- ATTENDANCE TAB                                             -->
+    <!-- ========================================================= -->
+    <div data-tab-panel="attendance" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <h3 class="text-lg font-semibold text-neutral-900 mb-1">Recent sessions</h3>
+            <p class="text-xs text-neutral-500 mb-4">Last 60 school days.</p>
+            <div id="attendance-table" class="text-sm text-neutral-500">Loading…</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <h3 class="text-lg font-semibold text-neutral-900 mb-3">Summary</h3>
+            <div id="attendance-summary" class="text-sm text-neutral-500">—</div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- FINANCIALS TAB                                             -->
+    <!-- ========================================================= -->
+    <div data-tab-panel="financials" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Invoices</h3>
+                <p class="text-xs text-neutral-500 mb-4">Every invoice + payment on this student.</p>
+                <div id="financials-invoices" class="text-sm text-neutral-500">Loading…</div>
+            </div>
+        </div>
+        <div class="space-y-6">
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+                <h3 class="text-lg font-semibold text-neutral-900 mb-3">Balance</h3>
+                <div id="financials-balance" class="text-sm text-neutral-500">—</div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+                <h3 class="text-lg font-semibold text-neutral-900 mb-3">Recent payments</h3>
+                <div id="financials-payments" class="text-sm text-neutral-500">—</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- REPORTS TAB — big list of finalised cards                 -->
+    <!-- ========================================================= -->
+    <div data-tab-panel="reports" class="hidden bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+        <h3 class="text-lg font-semibold text-neutral-900 mb-1">All report cards</h3>
+        <p class="text-xs text-neutral-500 mb-4">
+            Grouped by academic year. Click any row to open the full report.
+        </p>
+        <div id="reports-full" class="text-sm text-neutral-500">Loading…</div>
+    </div>
 </div>
+
+{% set STUDENT_ID = student.id | string %}
+<script>
+(function() {
+    // ───── Tab switching ─────
+    const STUDENT_ID = {{ STUDENT_ID | tojson }};
+    const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+    const btns = Array.from(document.querySelectorAll('.tab-btn'));
+    const loaded = new Set();
+
+    const loaders = {
+        academics: loadAcademics,
+        attendance: loadAttendance,
+        financials: loadFinancials,
+        reports: loadReports,
+    };
+
+    btns.forEach(btn => {
+        btn.addEventListener('click', () => activate(btn.dataset.tab));
+    });
+
+    function activate(name) {
+        btns.forEach(b => {
+            const on = b.dataset.tab === name;
+            b.classList.toggle('border-primary-500', on);
+            b.classList.toggle('text-primary-600', on);
+            b.classList.toggle('border-transparent', !on);
+            b.classList.toggle('text-neutral-500', !on);
+        });
+        panels.forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== name));
+        // Deep-link via hash so the browser's back button + shareable
+        // URLs keep users on the right tab after an edit round-trip.
+        try { history.replaceState(null, '', '#' + name); } catch (_) {}
+        // Lazy-load once per session.
+        if (!loaded.has(name) && loaders[name]) {
+            loaded.add(name);
+            loaders[name]();
+        }
+    }
+
+    // Open to the hash tab if the URL already has one
+    const initial = (location.hash || '#overview').slice(1);
+    if (['academics', 'attendance', 'financials', 'reports'].includes(initial)) {
+        activate(initial);
+    }
+
+    // ───── Shared format helpers ─────
+    function fmtDate(iso) {
+        if (!iso) return '—';
+        try { return new Date(iso).toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'}); }
+        catch (e) { return iso; }
+    }
+    function fmtMoney(n, cur) {
+        if (n == null) return '—';
+        const sym = { USD: '$', ZAR: 'R', ZWL: 'Z$' }[cur] || (cur || '');
+        return `${sym} ${Number(n).toFixed(2)}`;
+    }
+
+    // ───── Academics: reports list + progress ─────
+    async function loadAcademics() {
+        const box = document.getElementById('academics-reports');
+        try {
+            const r = await ClassUp.fetch(`/api/v1/reports/student/${STUDENT_ID}`);
+            const rows = (r.data || []).slice(0, 20);
+            if (!rows.length) {
+                box.innerHTML = '<p class="text-neutral-500">No reports yet.</p>';
+            } else {
+                box.innerHTML = `
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Report</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-neutral-100">
+                            ${rows.map(r => `
+                                <tr class="hover:bg-neutral-50">
+                                    <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${fmtDate(r.report_date)}</td>
+                                    <td class="px-3 py-2 text-neutral-800">${r.template_name || 'Report'}</td>
+                                    <td class="px-3 py-2">
+                                        <span class="text-xs px-2 py-0.5 rounded ${r.status === 'FINALIZED' ? 'bg-success-100 text-success-700' : 'bg-neutral-100 text-neutral-600'}">${r.status || '—'}</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-right"><a href="/reports/${r.id}" class="text-xs text-primary-600 hover:underline">Open</a></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        } catch (err) {
+            box.innerHTML = `<p class="text-danger-600">Couldn't load reports: ${err.message || 'request failed'}</p>`;
+        }
+
+        // Progress tile — pulls from MIS. Silently hides on 402/404.
+        const progBox = document.getElementById('academics-progress');
+        const today = new Date().toISOString().slice(0, 10);
+        const fromDate = new Date(new Date().getFullYear() - 1, 0, 1).toISOString().slice(0, 10);
+        try {
+            const p = await ClassUp.fetch(`/api/v1/mis/students/${STUDENT_ID}/progress?from_date=${fromDate}&to_date=${today}`);
+            const d = p.data;
+            if (!d || !d.current) {
+                progBox.innerHTML = '<p class="text-neutral-500">No term data yet.</p>';
+                return;
+            }
+            const delta = d.aggregate_delta_pct;
+            const deltaCls = delta == null ? 'text-neutral-500' : (delta >= 0 ? 'text-success-700' : 'text-danger-700');
+            const deltaLabel = delta == null ? '—' : (delta >= 0 ? '+' : '') + delta.toFixed(1) + '%';
+            progBox.innerHTML = `
+                <div class="space-y-3">
+                    <div><p class="text-xs text-neutral-500 uppercase">Current aggregate</p>
+                         <p class="text-2xl font-semibold text-primary-700">${d.current.aggregate_pct.toFixed(1)}%</p>
+                         <p class="text-xs text-neutral-400">${d.current.grade} · ${d.current.label}</p></div>
+                    <div><p class="text-xs text-neutral-500 uppercase">Movement</p>
+                         <p class="text-lg font-semibold ${deltaCls}">${deltaLabel}</p></div>
+                    <div><p class="text-xs text-neutral-500 uppercase">Class rank</p>
+                         <p class="text-lg font-semibold text-neutral-800">${d.current.rank_in_class ? '#' + d.current.rank_in_class : '—'}
+                            <span class="text-xs text-neutral-400 font-normal">of ${d.current.class_size || '—'}</span></p></div>
+                    <div class="pt-3 border-t border-neutral-100">
+                        <a href="/mis/longitudinal#${STUDENT_ID}" class="text-xs text-primary-600 hover:underline">Full longitudinal view →</a>
+                    </div>
+                </div>`;
+        } catch (err) {
+            progBox.innerHTML = '<p class="text-xs text-neutral-400">MIS not enabled for this school.</p>';
+        }
+    }
+
+    // ───── Attendance tab ─────
+    async function loadAttendance() {
+        const table = document.getElementById('attendance-table');
+        const summary = document.getElementById('attendance-summary');
+        try {
+            // Dedicated per-student endpoint returns both stats + records
+            const r = await ClassUp.fetch(`/api/v1/attendance/student/${STUDENT_ID}`);
+            const d = r.data || {};
+            const stats = d.stats || {};
+            const total = stats.total_days || stats.total || 0;
+            const present = stats.present_days ?? stats.present ?? 0;
+            const late = stats.late_days ?? stats.late ?? 0;
+            const absent = stats.absent_days ?? stats.absent ?? 0;
+            const excused = stats.excused_days ?? stats.excused ?? 0;
+            const pct = total ? ((present + late + excused) / total * 100).toFixed(1) : '—';
+            summary.innerHTML = `
+                <dl class="space-y-2">
+                    <div class="flex justify-between"><dt class="text-neutral-500">Attendance rate</dt>
+                        <dd class="font-semibold text-primary-700">${pct}${pct === '—' ? '' : '%'}</dd></div>
+                    <div class="flex justify-between"><dt class="text-neutral-500">Sessions</dt><dd>${total}</dd></div>
+                    <div class="flex justify-between"><dt class="text-success-700">Present</dt><dd>${present}</dd></div>
+                    <div class="flex justify-between"><dt class="text-warning-700">Late</dt><dd>${late}</dd></div>
+                    <div class="flex justify-between"><dt class="text-info-600">Excused</dt><dd>${excused}</dd></div>
+                    <div class="flex justify-between"><dt class="text-danger-700">Absent</dt><dd>${absent}</dd></div>
+                </dl>`;
+            const records = (d.records || []).slice(0, 60);
+            if (!records.length) {
+                table.innerHTML = '<p class="text-neutral-500">No attendance records.</p>';
+            } else {
+                const badge = (s) => {
+                    const cls = {
+                        PRESENT: 'bg-success-100 text-success-700',
+                        LATE: 'bg-warning-100 text-warning-700',
+                        EXCUSED: 'bg-info-100 text-info-600',
+                        ABSENT: 'bg-danger-100 text-danger-700',
+                    }[s] || 'bg-neutral-100 text-neutral-600';
+                    return `<span class="text-xs font-medium px-2 py-0.5 rounded ${cls}">${s}</span>`;
+                };
+                table.innerHTML = `
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-neutral-100">
+                            ${records.map(r => `
+                                <tr>
+                                    <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${fmtDate(r.date)}</td>
+                                    <td class="px-3 py-2">${badge(r.status)}</td>
+                                    <td class="px-3 py-2 text-neutral-500">${r.notes || ''}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+            }
+        } catch (err) {
+            table.innerHTML = `<p class="text-danger-600">Couldn't load attendance: ${err.message || 'request failed'}</p>`;
+            summary.innerHTML = '';
+        }
+    }
+
+    // ───── Financials tab ─────
+    async function loadFinancials() {
+        const invBox = document.getElementById('financials-invoices');
+        const balBox = document.getElementById('financials-balance');
+        const payBox = document.getElementById('financials-payments');
+
+        // Balance
+        try {
+            const b = await ClassUp.fetch(`/api/v1/billing/students/${STUDENT_ID}/balance`);
+            const d = b.data || {};
+            balBox.innerHTML = `
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between"><dt class="text-neutral-500">Total invoiced</dt><dd>${fmtMoney(d.total_invoiced, d.currency)}</dd></div>
+                    <div class="flex justify-between"><dt class="text-neutral-500">Total paid</dt><dd>${fmtMoney(d.total_paid, d.currency)}</dd></div>
+                    <div class="flex justify-between text-base pt-2 border-t border-neutral-100"><dt class="font-semibold">Outstanding</dt>
+                        <dd class="font-semibold ${Number(d.outstanding_balance) > 0 ? 'text-danger-700' : 'text-success-700'}">${fmtMoney(d.outstanding_balance, d.currency)}</dd></div>
+                </dl>`;
+        } catch (err) {
+            balBox.innerHTML = '<p class="text-xs text-neutral-400">Billing not enabled.</p>';
+        }
+
+        // Invoices
+        try {
+            const inv = await ClassUp.fetch(`/api/v1/billing/invoices?student_id=${STUDENT_ID}&page_size=100`);
+            const rows = inv.data || [];
+            if (!rows.length) {
+                invBox.innerHTML = '<p class="text-neutral-500">No invoices yet.</p>';
+            } else {
+                invBox.innerHTML = `
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Number</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Due</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Total</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                                <th class="px-3 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-neutral-100">
+                            ${rows.map(i => {
+                                const stCls = {
+                                    PAID: 'bg-success-100 text-success-700',
+                                    PARTIALLY_PAID: 'bg-info-100 text-info-600',
+                                    OVERDUE: 'bg-danger-100 text-danger-700',
+                                    SENT: 'bg-neutral-100 text-neutral-600',
+                                    DRAFT: 'bg-neutral-100 text-neutral-500',
+                                    CANCELLED: 'bg-neutral-100 text-neutral-500 line-through',
+                                }[i.status] || 'bg-neutral-100 text-neutral-500';
+                                return `
+                                    <tr class="hover:bg-neutral-50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-neutral-800 font-medium">${i.invoice_number || '(draft)'}</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${fmtDate(i.due_date)}</td>
+                                        <td class="px-3 py-2 text-right">${fmtMoney(i.total_amount, i.currency)}</td>
+                                        <td class="px-3 py-2 text-right ${Number(i.balance) > 0 ? 'text-danger-700' : 'text-neutral-600'}">${fmtMoney(i.balance, i.currency)}</td>
+                                        <td class="px-3 py-2"><span class="text-xs font-medium px-2 py-0.5 rounded ${stCls}">${i.status || ''}</span></td>
+                                        <td class="px-3 py-2 text-right"><a href="/billing/invoices/${i.id}" class="text-xs text-primary-600 hover:underline">Open</a></td>
+                                    </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>`;
+            }
+        } catch (err) {
+            invBox.innerHTML = '<p class="text-xs text-neutral-400">Billing not enabled.</p>';
+        }
+
+        // Payments (via statement)
+        try {
+            const st = await ClassUp.fetch(`/api/v1/billing/students/${STUDENT_ID}/statement`);
+            const d = st.data || {};
+            const pays = (d.payments || []).slice(0, 10);
+            if (!pays.length) {
+                payBox.innerHTML = '<p class="text-neutral-500 text-xs">No payments.</p>';
+            } else {
+                payBox.innerHTML = `
+                    <ul class="divide-y divide-neutral-100">
+                        ${pays.map(p => `
+                            <li class="py-2 text-sm flex items-center justify-between">
+                                <div>
+                                    <p class="text-neutral-700">${fmtMoney(p.amount, d.currency)}</p>
+                                    <p class="text-xs text-neutral-500">${fmtDate(p.payment_date)} · ${p.payment_method || '—'}</p>
+                                </div>
+                                ${p.invoice_number ? `<a href="/billing/invoices/${p.invoice_id}" class="text-xs text-primary-600 hover:underline">${p.invoice_number}</a>` : ''}
+                            </li>`).join('')}
+                    </ul>`;
+            }
+        } catch (err) {
+            payBox.innerHTML = '';
+        }
+    }
+
+    // ───── Reports tab ─────
+    async function loadReports() {
+        const box = document.getElementById('reports-full');
+        try {
+            const r = await ClassUp.fetch(`/api/v1/reports/student/${STUDENT_ID}`);
+            const rows = r.data || [];
+            if (!rows.length) {
+                box.innerHTML = '<p class="text-neutral-500">No reports yet.</p>';
+                return;
+            }
+            // Group by year
+            const byYear = {};
+            rows.forEach(r => {
+                const y = (r.report_date || '').slice(0, 4) || 'Undated';
+                (byYear[y] = byYear[y] || []).push(r);
+            });
+            const years = Object.keys(byYear).sort().reverse();
+            box.innerHTML = years.map(y => `
+                <div class="mb-5">
+                    <h4 class="text-xs font-semibold text-neutral-500 uppercase mb-2">${y}</h4>
+                    <ul class="divide-y divide-neutral-100">
+                        ${byYear[y].map(r => `
+                            <li class="py-2 flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-sm text-neutral-800">${r.template_name || 'Report'}</p>
+                                    <p class="text-xs text-neutral-500">${fmtDate(r.report_date)} · ${r.status}</p>
+                                </div>
+                                <a href="/reports/${r.id}" class="text-xs text-primary-600 hover:underline">Open</a>
+                            </li>`).join('')}
+                    </ul>
+                </div>
+            `).join('');
+        } catch (err) {
+            box.innerHTML = `<p class="text-danger-600">Couldn't load reports: ${err.message || 'request failed'}</p>`;
+        }
+    }
+})();
+</script>
 
 {% if permissions.can_invite_parents() %}
 <!-- Invite Parent Dialog -->
