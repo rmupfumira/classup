@@ -161,6 +161,43 @@
                             </td>
                             <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600">{{ subject_data.get('remarks', '') }}</td>
                         </tr>
+                        {# Per-paper breakdown (shipped by the exam finalise step).
+                           Shown directly under the subject row so parents and teachers
+                           can see which paper lifted or dragged the subject total.
+                           Silently hides for subjects that were marked manually and
+                           never had an exam behind them. #}
+                        {% set paper_rows = subject_data.get('papers') if subject_data else none %}
+                        {% if paper_rows %}
+                        <tr class="{% if loop.index is odd %}bg-white{% else %}bg-neutral-50{% endif %}">
+                            <td class="border border-neutral-300 border-t-0 px-4 pt-0 pb-2 text-xs text-neutral-400"></td>
+                            <td class="border border-neutral-300 border-t-0 px-4 pt-0 pb-2" colspan="5">
+                                <table class="w-full text-xs text-neutral-600">
+                                    <thead class="text-neutral-500">
+                                        <tr>
+                                            <th class="text-left py-1 font-normal">Paper</th>
+                                            <th class="text-center py-1 font-normal">Out of</th>
+                                            <th class="text-center py-1 font-normal">Marks</th>
+                                            <th class="text-center py-1 font-normal">%</th>
+                                            <th class="text-center py-1 font-normal">Grade</th>
+                                            <th class="text-right py-1 font-normal">Weight</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for p in paper_rows %}
+                                        <tr class="border-t border-neutral-100">
+                                            <td class="py-1">{{ p.get('paper_name', 'Paper') }}</td>
+                                            <td class="py-1 text-center">{{ p.get('total_marks', '—') }}</td>
+                                            <td class="py-1 text-center">{{ p.get('marks_obtained', '—' if not p.get('is_absent') else 'Abs') }}</td>
+                                            <td class="py-1 text-center">{{ (p.get('percentage') | round(0) | int if p.get('percentage') is not none else '—') }}{% if p.get('percentage') is not none %}%{% endif %}</td>
+                                            <td class="py-1 text-center">{{ p.get('grade_letter') or '—' }}</td>
+                                            <td class="py-1 text-right">{{ p.get('weight_percent', '—') }}%</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                        {% endif %}
                         {% endfor %}
 
                         <!-- Total Row -->

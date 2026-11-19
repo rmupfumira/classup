@@ -281,3 +281,157 @@ class TestFinalize:
             await svc.save_results(db, es_eng.id, rows=[
                 {"student_id": str(exam_seed["alice"].id), "marks_obtained": 90},
             ])
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Multi-paper (migration 20261119_000003)
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestMultiPaper:
+    async def test_add_second_paper_to_a_subject(
+        self, db: AsyncSession, test_class: SchoolClass, exam_seed,
+    ):
+        """The unique constraint is gone: adding another paper under
+        the same subject works."""
+        svc = get_exam_service()
+        exam = await svc.create_exam(
+            db, name="T1", class_id=test_class.id,
+            academic_year="2026", term=1,
+        )
+        await db.commit()
+        paper2 = await svc.add_paper(
+            db, exam_id=exam.id, subject_id=exam_seed["eng"].id,
+            paper_name="Paper 2 - Comprehension",
+            total_marks=50, weight_percent=50,
+        )
+        await db.commit()
+        # Exam now has two rows under English
+        eng_papers = [
+            es for es in (await svc.get_exam(db, exam.id)).exam_subjects
+            if es.subject_id == exam_seed["eng"].id
+        ]
+        assert len(eng_papers) == 2
+
+    async def test_weighted_aggregate_on_finalise(
+        self,
+        db: AsyncSession,
+        test_tenant: Tenant,
+        test_class: SchoolClass,
+        exam_seed,
+    ):
+        """Two English papers at 50/50 weight should produce a weighted
+        average on the report card — 80 on Paper 1 (/100), 60 on Paper 2
+        (/50) → 80% and 60% → weighted average 70%."""
+        svc = get_exam_service()
+        exam = await svc.create_exam(
+            db, name="T1", class_id=test_class.id,
+            academic_year="2026", term=1,
+            report_template_id=exam_seed["template"].id,
+        )
+        await db.commit()
+        # Initial auto-seeded English paper is /100, weight 100 — tweak
+        # down to 50% + name it, then add a second paper.
+        es_eng1 = next(
+            es for es in exam.exam_subjects
+            if es.subject_id == exam_seed["eng"].id
+        )
+        await svc.update_exam_subject(
+            db, es_eng1.id, weight_percent=50, paper_name="Paper 1",
+        )
+        es_eng2 = await svc.add_paper(
+            db, exam_id=exam.id, subject_id=exam_seed["eng"].id,
+            paper_name="Paper 2", total_marks=50, weight_percent=50,
+        )
+        await db.commit()
+
+        await svc.save_results(db, es_eng1.id, rows=[
+            {"student_id": str(exam_seed["alice"].id), "marks_obtained": 80},
+        ])
+        await svc.save_results(db, es_eng2.id, rows=[
+            {"student_id": str(exam_seed["alice"].id), "marks_obtained": 30},
+        ])
+        await db.commit()
+
+        summary = await svc.finalize_exam(db, exam.id)
+        await db.commit()
+        assert summary["reports_created"] >= 1
+
+        # Find Alice's report + read the English subject entry
+        report = (await db.execute(
+            select(DailyReport).where(
+                DailyReport.tenant_id == test_tenant.id,
+                DailyReport.student_id == exam_seed["alice"].id,
+                DailyReport.template_id == exam_seed["template"].id,
+            )
+        )).scalar_one()
+        section = report.report_data["sections"][exam_seed["section_id"]]
+        eng_entry = section[str(exam_seed["eng"].id)]
+        # Paper 1: 80/100 = 80%; Paper 2: 30/50 = 60%. Equal weight →
+        # mean 70%. Template section Maths was /50; English is /100 so
+        # the stored marks_obtained == the percentage.
+        assert eng_entry["marks_obtained"] == pytest.approx(70.0)
+        # Per-paper breakdown attached so the viewer can show detail
+        papers = eng_entry["papers"]
+        assert len(papers) == 2
+        p1 = next(p for p in papers if p["paper_name"] == "Paper 1")
+        assert p1["marks_obtained"] == 80.0
+        assert p1["percentage"] == pytest.approx(80.0)
+        p2 = next(p for p in papers if p["paper_name"] == "Paper 2")
+        assert p2["marks_obtained"] == 30.0
+        assert p2["percentage"] == pytest.approx(60.0)
+
+    async def test_apply_curriculum_papers_from_zimsec(
+        self, db: AsyncSession, test_tenant: Tenant, test_class: SchoolClass, exam_seed,
+    ):
+        """The ZIMSEC paper template for English maps to 2 papers.
+        apply_curriculum_papers should rebuild accordingly."""
+        from sqlalchemy.orm.attributes import flag_modified
+
+        # Pin a ZIMSEC curriculum on the tenant + map the subject code
+        # so the lookup resolves.
+        settings = dict(test_tenant.settings or {})
+        settings["curriculum_pack"] = "ZW_ZIMSEC"
+        test_tenant.settings = settings
+        flag_modified(test_tenant, "settings")
+        exam_seed["eng"].code = "ZS-ENG-O"
+        exam_seed["math"].code = "ZS-MAT-O"
+        await db.flush()
+
+        svc = get_exam_service()
+        exam = await svc.create_exam(
+            db, name="T1", class_id=test_class.id,
+            academic_year="2026", term=1,
+        )
+        await db.commit()
+        # Start: 1 paper per subject
+        assert len(exam.exam_subjects) == 2
+
+        summary = await svc.apply_curriculum_papers(db, exam.id)
+        await db.commit()
+
+        # English template has 2 papers; Maths template has 2 → 4 total
+        assert summary["papers_added"] == 4
+        exam = await svc.get_exam(db, exam.id)
+        eng_papers = [es for es in exam.exam_subjects if es.subject_id == exam_seed["eng"].id]
+        assert len(eng_papers) == 2
+        # Weight invariant held
+        assert sum(p.weight_percent for p in eng_papers) == 100
+
+    async def test_apply_curriculum_refuses_when_results_exist(
+        self, db: AsyncSession, test_class: SchoolClass, exam_seed,
+    ):
+        from app.exceptions import ValidationException
+        svc = get_exam_service()
+        exam = await svc.create_exam(
+            db, name="T1", class_id=test_class.id,
+            academic_year="2026", term=1,
+        )
+        await db.commit()
+        es_eng = next(es for es in exam.exam_subjects if es.subject_id == exam_seed["eng"].id)
+        await svc.save_results(db, es_eng.id, rows=[
+            {"student_id": str(exam_seed["alice"].id), "marks_obtained": 80},
+        ])
+        await db.commit()
+        with pytest.raises(ValidationException):
+            await svc.apply_curriculum_papers(db, exam.id)

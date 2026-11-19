@@ -38,6 +38,15 @@ class ExamSubjectUpdate(BaseModel):
     scheduled_at: datetime | None = None
     room: str | None = Field(None, max_length=100)
     invigilator_id: uuid.UUID | None = None
+    weight_percent: int | None = Field(None, ge=0, le=100)
+
+
+class AddPaperRequest(BaseModel):
+    subject_id: uuid.UUID
+    paper_name: str | None = Field(None, max_length=100)
+    total_marks: int = Field(100, gt=0)
+    weight_percent: int = Field(50, ge=0, le=100)
+    duration_minutes: int | None = Field(None, ge=0)
 
 
 class ResultRow(BaseModel):
@@ -73,6 +82,7 @@ def _exam_subject_dict(es) -> dict:
             if es.invigilator else None
         ),
         "display_order": es.display_order,
+        "weight_percent": es.weight_percent,
     }
 
 
@@ -273,3 +283,65 @@ async def reopen_exam(
     exam = await get_exam_service().reopen_exam(db, exam_id)
     await db.commit()
     return APIResponse(status="success", data=_exam_dict(exam))
+
+
+# ──────── Multi-paper per subject ────────
+
+
+@router.post("/exams/{exam_id}/apply-curriculum-papers", response_model=APIResponse[dict])
+@require_role(Role.SCHOOL_ADMIN)
+async def apply_curriculum_papers(
+    exam_id: uuid.UUID,
+    _feat: None = Depends(require_feature("exam_management")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Rebuild the exam's paper rows from the tenant's curriculum pack
+    templates (ZIMSEC O-Level + Cambridge IGCSE today). Subjects with no
+    template keep their existing single paper. Refuses to rebuild once
+    any paper has results on it."""
+    svc = get_exam_service()
+    summary = await svc.apply_curriculum_papers(db, exam_id)
+    await db.commit()
+    exam = await svc.get_exam(db, exam_id)
+    return APIResponse(
+        status="success",
+        data={**summary, "exam": _exam_dict(exam)},
+        message=(
+            f"Rebuilt {summary['papers_added']} papers from the "
+            f"{summary['pack'] or 'generic'} curriculum."
+        ),
+    )
+
+
+@router.post("/exams/{exam_id}/papers", response_model=APIResponse[dict])
+@require_role(Role.SCHOOL_ADMIN)
+async def add_paper(
+    exam_id: uuid.UUID,
+    body: AddPaperRequest,
+    _feat: None = Depends(require_feature("exam_management")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Add one paper to an existing subject already on the exam."""
+    es = await get_exam_service().add_paper(
+        db, exam_id=exam_id,
+        subject_id=body.subject_id,
+        paper_name=body.paper_name,
+        total_marks=body.total_marks,
+        weight_percent=body.weight_percent,
+        duration_minutes=body.duration_minutes,
+    )
+    await db.commit()
+    return APIResponse(status="success", data=_exam_subject_dict(es))
+
+
+@router.delete("/exams/subjects/{exam_subject_id}", response_model=APIResponse[dict])
+@require_role(Role.SCHOOL_ADMIN)
+async def delete_paper(
+    exam_subject_id: uuid.UUID,
+    _feat: None = Depends(require_feature("exam_management")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Remove a paper row. Refuses to touch a finalised exam."""
+    await get_exam_service().delete_paper(db, exam_subject_id)
+    await db.commit()
+    return APIResponse(status="success", data={"deleted": True})

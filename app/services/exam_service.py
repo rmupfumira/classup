@@ -177,6 +177,214 @@ class ExamService:
         await db.refresh(exam)
         return exam
 
+    async def apply_curriculum_papers(
+        self,
+        db: AsyncSession,
+        exam_id: uuid.UUID,
+    ) -> dict:
+        """Rebuild the exam's paper list from the curriculum pack
+        templates. Subjects without a template keep their existing
+        single paper.
+
+        Safety:
+          - Refuses to rebuild once any paper has results on it, so
+            marks already captured can't be silently discarded.
+          - Preserves scheduled_at / room / invigilator on the FIRST
+            paper for each subject if the subject already had rows,
+            so the admin's scheduling isn't wiped.
+        """
+        from app.models import Tenant
+        from app.utils.exam_paper_templates import papers_for
+
+        tenant_id = get_tenant_id()
+        exam = await self.get_exam(db, exam_id)
+        if exam.status == ExamStatus.FINALIZED:
+            raise ValidationException([{
+                "field": "status", "message": "Already finalised.",
+            }])
+
+        # Any results on this exam at all?
+        any_results = (await db.execute(
+            select(ExamResult.id).where(
+                ExamResult.tenant_id == tenant_id,
+                ExamResult.exam_subject_id.in_([es.id for es in exam.exam_subjects]),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if any_results:
+            raise ValidationException([{
+                "field": "results",
+                "message": (
+                    "Some papers already have marks. Clear results first "
+                    "before rebuilding the paper structure."
+                ),
+            }])
+
+        tenant = await db.get(Tenant, tenant_id)
+        pack = (tenant.settings or {}).get("curriculum_pack") if tenant else None
+
+        # Snapshot each subject's first-row schedule info so we can
+        # carry it onto the new Paper 1 after rebuild.
+        snapshot: dict[uuid.UUID, dict] = {}
+        for es in exam.exam_subjects:
+            if es.subject_id in snapshot:
+                continue
+            snapshot[es.subject_id] = {
+                "class_subject_id": es.class_subject_id,
+                "scheduled_at": es.scheduled_at,
+                "room": es.room,
+                "invigilator_id": es.invigilator_id,
+            }
+
+        # Delete current paper rows (cascade clears nothing since
+        # we just asserted no results exist).
+        subjects_seen = list(snapshot.keys())
+        for es in list(exam.exam_subjects):
+            await db.delete(es)
+        await db.flush()
+
+        # Re-seed. For each subject that was already on the exam,
+        # look up its code → template. No template → fall back to
+        # one paper with the class subject's total_marks.
+        from app.models.academic import Subject as _Subject
+        subjects = (await db.execute(
+            select(_Subject).where(_Subject.id.in_(subjects_seen))
+        )).scalars().all()
+        subject_by_id = {s.id: s for s in subjects}
+
+        papers_added = 0
+        for order_idx, sid in enumerate(subjects_seen):
+            subject = subject_by_id.get(sid)
+            if subject is None:
+                continue
+            specs = papers_for(pack, subject.code) if pack else []
+            if not specs:
+                # Fallback — one paper, inherits class_subject totals
+                default_total = subject.default_total_marks or 100
+                snap = snapshot[sid]
+                db.add(ExamSubject(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_id,
+                    exam_id=exam.id,
+                    subject_id=sid,
+                    class_subject_id=snap["class_subject_id"],
+                    total_marks=default_total,
+                    weight_percent=100,
+                    display_order=order_idx * 10,
+                    scheduled_at=snap["scheduled_at"],
+                    room=snap["room"],
+                    invigilator_id=snap["invigilator_id"],
+                ))
+                papers_added += 1
+                continue
+            snap = snapshot[sid]
+            for paper_idx, spec in enumerate(specs):
+                db.add(ExamSubject(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_id,
+                    exam_id=exam.id,
+                    subject_id=sid,
+                    class_subject_id=snap["class_subject_id"],
+                    paper_name=spec.name,
+                    total_marks=spec.total_marks,
+                    weight_percent=spec.weight_percent,
+                    duration_minutes=spec.duration_minutes or None,
+                    display_order=order_idx * 10 + paper_idx,
+                    # Only Paper 1 inherits the schedule — admin
+                    # schedules the rest individually.
+                    scheduled_at=snap["scheduled_at"] if paper_idx == 0 else None,
+                    room=snap["room"] if paper_idx == 0 else None,
+                    invigilator_id=snap["invigilator_id"] if paper_idx == 0 else None,
+                ))
+                papers_added += 1
+
+        await db.flush()
+        await db.refresh(exam)
+        return {
+            "exam_id": str(exam.id),
+            "pack": pack,
+            "subjects_processed": len(subjects_seen),
+            "papers_added": papers_added,
+        }
+
+    async def add_paper(
+        self,
+        db: AsyncSession,
+        exam_id: uuid.UUID,
+        subject_id: uuid.UUID,
+        paper_name: str | None = None,
+        total_marks: int = 100,
+        weight_percent: int = 50,
+        duration_minutes: int | None = None,
+    ) -> ExamSubject:
+        """Add a fresh paper row for an existing subject in the exam.
+        The admin manages weights across the subject's papers; the
+        service only checks the new weight is 0..100 and that the
+        exam isn't finalised.
+        """
+        tenant_id = get_tenant_id()
+        exam = await self.get_exam(db, exam_id)
+        if exam.status == ExamStatus.FINALIZED:
+            raise ValidationException([{
+                "field": "status", "message": "Exam is finalised.",
+            }])
+        if weight_percent < 0 or weight_percent > 100:
+            raise ValidationException([{
+                "field": "weight_percent", "message": "Must be 0..100.",
+            }])
+        if total_marks <= 0:
+            raise ValidationException([{
+                "field": "total_marks", "message": "Must be > 0.",
+            }])
+
+        # Pick a display_order after the subject's current last paper
+        existing_for_subject = [
+            es for es in exam.exam_subjects if es.subject_id == subject_id
+        ]
+        if not existing_for_subject:
+            raise NotFoundException("Subject not on this exam")
+        max_order = max(es.display_order for es in existing_for_subject)
+
+        es = ExamSubject(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            subject_id=subject_id,
+            class_subject_id=existing_for_subject[0].class_subject_id,
+            paper_name=paper_name.strip() if paper_name else None,
+            total_marks=total_marks,
+            weight_percent=weight_percent,
+            duration_minutes=duration_minutes,
+            display_order=max_order + 1,
+        )
+        # Setting the relationship (not just the FK) keeps the loaded
+        # exam.exam_subjects collection in sync so callers that pre-load
+        # the exam see the new paper without a refresh.
+        es.exam = exam
+        db.add(es)
+        await db.flush()
+        await db.refresh(es)
+        return es
+
+    async def delete_paper(
+        self,
+        db: AsyncSession,
+        exam_subject_id: uuid.UUID,
+    ) -> None:
+        tenant_id = get_tenant_id()
+        row = (await db.execute(
+            select(ExamSubject).where(
+                ExamSubject.id == exam_subject_id,
+                ExamSubject.tenant_id == tenant_id,
+            )
+        )).scalar_one_or_none()
+        if not row:
+            raise NotFoundException("Paper")
+        if row.exam.status == ExamStatus.FINALIZED:
+            raise ValidationException([{
+                "field": "status", "message": "Exam is finalised.",
+            }])
+        await db.delete(row)
+        await db.flush()
+
     async def delete_exam(self, db: AsyncSession, exam_id: uuid.UUID) -> None:
         exam = await self.get_exam(db, exam_id)
         if exam.status == ExamStatus.FINALIZED:
@@ -203,6 +411,7 @@ class ExamService:
         room: str | None = None,
         invigilator_id: uuid.UUID | None = None,
         paper_name: str | None = None,
+        weight_percent: int | None = None,
     ) -> ExamSubject:
         tenant_id = get_tenant_id()
         row = (await db.execute(
@@ -230,6 +439,12 @@ class ExamService:
             row.invigilator_id = invigilator_id
         if paper_name is not None:
             row.paper_name = paper_name.strip() or None
+        if weight_percent is not None:
+            if weight_percent < 0 or weight_percent > 100:
+                raise ValidationException([{
+                    "field": "weight_percent", "message": "Must be 0..100.",
+                }])
+            row.weight_percent = weight_percent
 
         # Bump exam status to SCHEDULED when the first paper gets a date
         if scheduled_at is not None and row.exam.status == ExamStatus.DRAFT:
@@ -433,23 +648,53 @@ class ExamService:
             )
         )).scalars().all()
 
-        # Index results by (subject_id, student_id)
+        # Pull every result and group by subject so multi-paper
+        # subjects (ZIMSEC English + Comprehension; Science P1/P2/P3)
+        # aggregate to one weighted mark per subject per student.
+        from collections import defaultdict
         exam_subjects = exam.exam_subjects
-        es_by_subject = {es.subject_id: es for es in exam_subjects}
+        papers_by_subject: dict[uuid.UUID, list[ExamSubject]] = defaultdict(list)
+        for es in exam_subjects:
+            papers_by_subject[es.subject_id].append(es)
+
         all_results = (await db.execute(
             select(ExamResult).where(
                 ExamResult.tenant_id == tenant_id,
                 ExamResult.exam_subject_id.in_([es.id for es in exam_subjects]),
             )
         )).scalars().all()
-        results_by_pair: dict[tuple[uuid.UUID, uuid.UUID], ExamResult] = {}
-        for r in all_results:
-            es = next(
-                (x for x in exam_subjects if x.id == r.exam_subject_id),
-                None,
-            )
-            if es:
-                results_by_pair[(es.subject_id, r.student_id)] = r
+        # (student_id, exam_subject_id) → result
+        results_by_pair: dict[tuple[uuid.UUID, uuid.UUID], ExamResult] = {
+            (r.student_id, r.exam_subject_id): r for r in all_results
+        }
+
+        def _subject_total_for_student(
+            subject_id: uuid.UUID, student_id: uuid.UUID,
+        ) -> tuple[float | None, int]:
+            """Weighted-average marks on a /100 scale across every paper
+            the subject has in this exam. Papers with no result (or an
+            absent flag + no mark) are skipped from the denominator,
+            so a student who sat 2 of 3 papers still gets a sensible
+            score rather than a zero.
+            Returns (final_on_100, total_weight_used).
+            """
+            papers = papers_by_subject.get(subject_id, [])
+            if not papers:
+                return None, 0
+            weighted_sum = 0.0
+            weight_used = 0
+            for p in papers:
+                r = results_by_pair.get((student_id, p.id))
+                if r is None or r.marks_obtained is None:
+                    continue
+                if p.total_marks <= 0:
+                    continue
+                paper_pct = float(r.marks_obtained) / p.total_marks * 100.0
+                weighted_sum += paper_pct * p.weight_percent
+                weight_used += p.weight_percent
+            if weight_used <= 0:
+                return None, 0
+            return weighted_sum / weight_used, weight_used
 
         from datetime import date as _date
         report_date = _date(int(exam.academic_year),
@@ -476,15 +721,53 @@ class ExamService:
                 reports_skipped += 1
                 continue
 
-            # Build per-subject payload
+            # Build per-subject payload. For each subject we compute the
+            # weighted-average % across every paper, then scale it to the
+            # subject's total_marks in the REPORT TEMPLATE's ACADEMIC_GRADES
+            # section so the viewer's "marks_obtained / total_marks * 100"
+            # math produces the right percentage downstream.
+            subject_total_in_template = {
+                str(s.get("id") or s.get("subject_id")):
+                    float(s.get("total_marks") or 100)
+                for s in (ag_section.get("subjects") or [])
+            }
             per_subject: dict[str, dict] = {}
-            for es in exam_subjects:
-                res = results_by_pair.get((es.subject_id, student.id))
-                if res is None or res.marks_obtained is None:
+            for subject_id, papers in papers_by_subject.items():
+                final_on_100, _weight_used = _subject_total_for_student(
+                    subject_id, student.id,
+                )
+                if final_on_100 is None:
                     continue
-                per_subject[str(es.subject_id)] = {
-                    "marks_obtained": float(res.marks_obtained),
-                    "remarks": res.remarks or "",
+                template_total = subject_total_in_template.get(str(subject_id), 100.0)
+                marks_in_section = final_on_100 / 100.0 * template_total
+
+                # Per-paper breakdown — so the parent and the teacher
+                # can drill into which paper lifted the grade and which
+                # dragged it down, right there on the report card.
+                # Lightweight dict so the existing report viewer (which
+                # reads only marks_obtained) stays unaffected.
+                paper_rows: list[dict] = []
+                for p in sorted(papers, key=lambda x: x.display_order):
+                    r = results_by_pair.get((student.id, p.id))
+                    row = {
+                        "paper_name": p.paper_name or "Paper",
+                        "total_marks": p.total_marks,
+                        "weight_percent": p.weight_percent,
+                        "duration_minutes": p.duration_minutes,
+                    }
+                    if r is not None and r.marks_obtained is not None:
+                        pct = float(r.marks_obtained) / p.total_marks * 100.0
+                        row["marks_obtained"] = float(r.marks_obtained)
+                        row["percentage"] = round(pct, 2)
+                        row["grade_letter"] = r.grade_letter
+                    elif r is not None and r.is_absent:
+                        row["is_absent"] = True
+                    paper_rows.append(row)
+
+                per_subject[str(subject_id)] = {
+                    "marks_obtained": round(marks_in_section, 2),
+                    "remarks": "",
+                    "papers": paper_rows,
                 }
             data_payload = {"sections": {section_id: per_subject}}
 

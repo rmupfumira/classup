@@ -124,10 +124,9 @@ class ExamSubject(Base, TimestampMixin):
     __table_args__ = (
         Index("idx_exam_subjects_exam", "exam_id"),
         Index("idx_exam_subjects_scheduled", "tenant_id", "scheduled_at"),
-        UniqueConstraint(
-            "exam_id", "subject_id",
-            name="uq_exam_subjects_exam_subject",
-        ),
+        # Deliberately no UNIQUE on (exam_id, subject_id) — ZIMSEC English
+        # has 2 papers, Combined Science has 3, etc. The migration
+        # 20261119_000003 dropped the older constraint.
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -168,6 +167,14 @@ class ExamSubject(Base, TimestampMixin):
     )
     display_order: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0",
+    )
+    # Share of the subject's final mark. On a single-paper subject
+    # this stays at 100. For ZIMSEC English (Paper 1 + Paper 2) both
+    # rows sit at 50; for Combined Science (Paper 1 MC, Paper 2
+    # Structured, Paper 3 Practical) typically 30/50/20. The service
+    # validates sum-to-100 per subject at save time.
+    weight_percent: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=100, server_default="100",
     )
 
     # Relationships
