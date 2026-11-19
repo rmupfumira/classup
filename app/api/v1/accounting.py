@@ -51,6 +51,10 @@ class ChartAccountUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    # Toggle invoice-only on custom accounts. The seeded Tuition Fees row
+    # (is_system=True) stays invoice_only=True regardless — the service
+    # refuses to flip it off so billing's auto-link target can't be bypassed.
+    invoice_only: bool | None = None
 
 
 class BankAccountIn(BaseModel):
@@ -165,6 +169,7 @@ def _account_dict(a) -> dict:
         "description": a.description,
         "is_active": a.is_active,
         "is_system": a.is_system,
+        "invoice_only": a.invoice_only,
         "display_order": a.display_order,
     }
 
@@ -270,7 +275,8 @@ async def update_account(
     account_id: uuid.UUID, body: ChartAccountUpdate, db: AsyncSession = Depends(get_db),
 ):
     a = await get_accounting_service().update_chart_account(
-        db, account_id, name=body.name, description=body.description, is_active=body.is_active
+        db, account_id, name=body.name, description=body.description,
+        is_active=body.is_active, invoice_only=body.invoice_only,
     )
     await db.commit()
     return APIResponse(data=_account_dict(a), message="Account updated")

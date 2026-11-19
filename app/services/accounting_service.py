@@ -128,6 +128,10 @@ class AccountingService:
             for code, name, is_system in defaults:
                 if code in existing_codes:
                     continue  # Tenant already has this account
+                # Billing's auto-link target (the system Tuition account) is
+                # invoice-only by definition. Other seeded accounts aren't —
+                # admins can flip it per-account later.
+                invoice_only = bool(is_system and type_ == AccountType.INCOME)
                 db.add(ChartAccount(
                     tenant_id=tenant_id,
                     code=code,
@@ -135,6 +139,7 @@ class AccountingService:
                     type=type_.value,
                     is_active=True,
                     is_system=is_system,
+                    invoice_only=invoice_only,
                     display_order=order,
                 ))
                 order += 1
@@ -267,6 +272,7 @@ class AccountingService:
         name: str | None = None,
         description: str | None = None,
         is_active: bool | None = None,
+        invoice_only: bool | None = None,
     ) -> ChartAccount:
         acct = await self.get_chart_account(db, account_id)
         if name is not None:
@@ -281,6 +287,25 @@ class AccountingService:
                     {"field": "is_active", "message": "Cannot deactivate a system account"}
                 ])
             acct.is_active = is_active
+        if invoice_only is not None:
+            # invoice_only only makes sense for INCOME accounts.
+            if invoice_only and acct.type != AccountType.INCOME.value:
+                raise ValidationException([{
+                    "field": "invoice_only",
+                    "message": "Only Income accounts can be marked invoice-only.",
+                }])
+            # The system Tuition account must stay invoice-only — it's the
+            # billing auto-link target and flipping it off would let someone
+            # bypass invoice tracking.
+            if not invoice_only and acct.is_system:
+                raise ValidationException([{
+                    "field": "invoice_only",
+                    "message": (
+                        "This system account must stay invoice-only. "
+                        "Create a separate Income category instead."
+                    ),
+                }])
+            acct.invoice_only = invoice_only
         await db.flush()
         await db.refresh(acct)
         return acct
@@ -748,6 +773,18 @@ class AccountingService:
             raise ValidationException([
                 {"field": "account_id", "message": "Selected account must be an Income account"}
             ])
+        # Invoice-only accounts (e.g. Tuition Fees) can only be credited
+        # through the billing flow — record a payment against the parent's
+        # invoice and the matching AccountingTransaction is auto-created.
+        # Blocks double-counting revenue against the same category.
+        if acct.invoice_only:
+            raise ValidationException([{
+                "field": "account_id",
+                "message": (
+                    f"'{acct.name}' can only receive income via Billing. "
+                    "Record a payment against the student's invoice instead."
+                ),
+            }])
         await self.get_bank_account(db, bank_account_id)
 
         tenant_id = get_tenant_id()

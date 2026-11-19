@@ -180,7 +180,9 @@ class TestBankAccounts:
         bank.opening_balance = Decimal("500")
         await db.flush()
 
-        income_acct = await svc.get_account_by_code(db, SYSTEM_TUITION_CODE)
+        # Donations isn't invoice-only, so it can receive manual income
+        # without going through the billing flow.
+        income_acct = await svc.get_account_by_code(db, "4030")
         expense_acct = await svc.get_account_by_code(db, "5010")
 
         await svc.record_income(
@@ -320,7 +322,8 @@ class TestReports:
         await svc.seed_defaults_for_tenant(db, test_tenant.id)
         await db.commit()
         bank = (await svc.list_bank_accounts(db))[0]
-        income_acct = await svc.get_account_by_code(db, SYSTEM_TUITION_CODE)
+        # Non-invoice-only income account so we can call record_income directly
+        income_acct = await svc.get_account_by_code(db, "4030")
         rent = await svc.get_account_by_code(db, "5010")
         utilities = await svc.get_account_by_code(db, "5020")
 
@@ -401,7 +404,8 @@ class TestReports:
         await svc.seed_defaults_for_tenant(db, test_tenant.id)
         await db.commit()
         bank = (await svc.list_bank_accounts(db))[0]
-        income_acct = await svc.get_account_by_code(db, SYSTEM_TUITION_CODE)
+        # Non-invoice-only income account — direct record_income is allowed here.
+        income_acct = await svc.get_account_by_code(db, "4030")
         await svc.record_income(
             db, date_=date.today(), amount=Decimal("1234.56"),
             account_id=income_acct.id, bank_account_id=bank.id,
@@ -541,3 +545,120 @@ class TestAutoLink:
 
         with pytest.raises(ValidationException):
             await svc.update_transaction(db, tx.id, amount=Decimal("999"))
+
+
+# =========================================================================
+# invoice_only lockdown — Option B
+# =========================================================================
+
+
+class TestInvoiceOnly:
+    """The Tuition Fees account is invoice-only by default. Users can't
+    record direct manual income against it — the only way revenue lands
+    there is through the billing auto-link path. Protects P&L from
+    double-counting.
+    """
+
+    async def test_seed_marks_tuition_invoice_only(
+        self, db: AsyncSession, test_tenant: Tenant
+    ):
+        svc = get_accounting_service()
+        await svc.seed_defaults_for_tenant(db, test_tenant.id)
+        await db.commit()
+        tuition = await svc.get_account_by_code(db, SYSTEM_TUITION_CODE)
+        assert tuition.invoice_only is True
+        # The non-system income accounts stay open for direct entry
+        donations = await svc.get_account_by_code(db, "4030")
+        assert donations.invoice_only is False
+
+    async def test_record_income_refuses_invoice_only_account(
+        self, db: AsyncSession, test_tenant: Tenant
+    ):
+        svc = get_accounting_service()
+        await svc.seed_defaults_for_tenant(db, test_tenant.id)
+        await db.commit()
+        bank = (await svc.list_bank_accounts(db))[0]
+        tuition = await svc.get_account_by_code(db, SYSTEM_TUITION_CODE)
+
+        with pytest.raises(ValidationException) as exc_info:
+            await svc.record_income(
+                db, date_=date.today(), amount=Decimal("1000"),
+                account_id=tuition.id, bank_account_id=bank.id,
+            )
+        # Error names the account + points admins at the billing flow,
+        # so the UI can show a helpful message instead of a bare 422.
+        msg = " ".join(e["message"].lower() for e in exc_info.value.errors)
+        assert "tuition" in msg or "invoice" in msg
+        assert exc_info.value.errors[0]["field"] == "account_id"
+
+    async def test_toggle_invoice_only_on_custom_account(
+        self, db: AsyncSession, test_tenant: Tenant
+    ):
+        svc = get_accounting_service()
+        await svc.seed_defaults_for_tenant(db, test_tenant.id)
+        await db.commit()
+        # Donations starts non-invoice-only — admin can flip it on
+        donations = await svc.get_account_by_code(db, "4030")
+        assert donations.invoice_only is False
+
+        updated = await svc.update_chart_account(
+            db, donations.id, invoice_only=True
+        )
+        await db.commit()
+        assert updated.invoice_only is True
+
+        # Now record_income should refuse it too
+        bank = (await svc.list_bank_accounts(db))[0]
+        with pytest.raises(ValidationException):
+            await svc.record_income(
+                db, date_=date.today(), amount=Decimal("100"),
+                account_id=donations.id, bank_account_id=bank.id,
+            )
+
+    async def test_cannot_turn_off_invoice_only_on_system_account(
+        self, db: AsyncSession, test_tenant: Tenant
+    ):
+        svc = get_accounting_service()
+        await svc.seed_defaults_for_tenant(db, test_tenant.id)
+        await db.commit()
+        tuition = await svc.get_account_by_code(db, SYSTEM_TUITION_CODE)
+
+        with pytest.raises(ValidationException):
+            await svc.update_chart_account(
+                db, tuition.id, invoice_only=False
+            )
+
+    async def test_cannot_mark_expense_invoice_only(
+        self, db: AsyncSession, test_tenant: Tenant
+    ):
+        svc = get_accounting_service()
+        await svc.seed_defaults_for_tenant(db, test_tenant.id)
+        await db.commit()
+        # Attempting to flag an EXPENSE as invoice-only is nonsense
+        rent = await svc.get_account_by_code(db, "5010")
+
+        with pytest.raises(ValidationException):
+            await svc.update_chart_account(
+                db, rent.id, invoice_only=True
+            )
+
+    async def test_billing_auto_link_still_works_despite_lockdown(
+        self,
+        db: AsyncSession,
+        test_tenant: Tenant,
+        billing_payment: BillingPayment,
+    ):
+        """The lockdown refuses *manual* record_income against Tuition,
+        but the billing auto-link path still credits it — that's the
+        whole point."""
+        svc = get_accounting_service()
+        await svc.seed_defaults_for_tenant(db, test_tenant.id)
+        await db.commit()
+
+        tx = await svc.link_billing_payment(db, billing_payment)
+        await db.flush()
+
+        assert tx is not None
+        tuition = await svc.get_account_by_code(db, SYSTEM_TUITION_CODE)
+        assert tx.account_id == tuition.id
+        assert tx.amount == billing_payment.amount

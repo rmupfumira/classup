@@ -92,6 +92,11 @@ class ChartAccount(TenantScopedModel):
     # Marks accounts the system uses for auto-linkage (e.g. tuition payments
     # default to "Tuition Fees"). We don't allow deleting these.
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Accounts marked invoice_only=True can ONLY be credited via the billing
+    # flow (invoice → payment → auto-linked INCOME transaction). Direct manual
+    # "Record income" entries against them are refused server-side. Keeps
+    # Tuition revenue counted once, with a student + invoice attached.
+    invoice_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
 

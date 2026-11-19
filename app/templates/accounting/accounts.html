@@ -50,6 +50,22 @@
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Description (optional)</label>
                 <textarea id="a-desc" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
             </div>
+            <div id="a-invoice-only-wrap" class="sm:col-span-2 hidden">
+                <label class="inline-flex items-start gap-2 text-sm">
+                    <input type="checkbox" id="a-invoice-only" class="mt-0.5">
+                    <span>
+                        <span class="font-medium text-neutral-800">Invoice-only</span>
+                        <span class="block text-xs text-neutral-500">
+                            Income on this account is only accepted via an invoice payment —
+                            the manual "Record income" form switches to invoice mode when it's picked.
+                            Use this for fees you bill through the Billing module (tuition, boarding, uniforms&hellip;).
+                        </span>
+                    </span>
+                </label>
+                <p id="a-invoice-only-locked" class="hidden text-xs text-neutral-500 mt-1">
+                    This is the system Tuition account — invoice-only is locked on.
+                </p>
+            </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
             <button type="button" onclick="document.getElementById('acct-modal').close()"
@@ -118,6 +134,7 @@ async function load() {
                                 <td class="px-3 py-2 font-medium text-neutral-800">
                                     ${a.name}
                                     ${a.is_system ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 ml-1">System</span>' : ''}
+                                    ${a.invoice_only ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 ml-1" title="Credited only via invoice payments">Invoice-only</span>' : ''}
                                     ${!a.is_active ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-700 ml-1">Inactive</span>' : ''}
                                 </td>
                                 <td class="px-3 py-2 text-neutral-500 text-xs">${a.description || ''}</td>
@@ -146,6 +163,16 @@ function openAccount(a) {
     document.getElementById('a-type').disabled = !!isEdit;
     document.getElementById('a-name').value = isEdit ? a.name : '';
     document.getElementById('a-desc').value = isEdit ? (a.description || '') : '';
+    // Invoice-only toggle — only meaningful for INCOME accounts. System
+    // accounts (Tuition) stay locked on.
+    const wrap = document.getElementById('a-invoice-only-wrap');
+    const cb = document.getElementById('a-invoice-only');
+    const locked = document.getElementById('a-invoice-only-locked');
+    const isIncome = (isEdit ? a.type : 'EXPENSE') === 'INCOME';
+    wrap.classList.toggle('hidden', !isIncome);
+    cb.checked = isEdit ? !!a.invoice_only : false;
+    cb.disabled = !!(isEdit && a.is_system);
+    locked.classList.toggle('hidden', !(isEdit && a.is_system));
     document.getElementById('acct-modal').showModal();
 }
 
@@ -157,6 +184,10 @@ async function submitAccount(e) {
             name: document.getElementById('a-name').value,
             description: document.getElementById('a-desc').value || null,
         };
+        const cb = document.getElementById('a-invoice-only');
+        if (!document.getElementById('a-invoice-only-wrap').classList.contains('hidden') && !cb.disabled) {
+            body.invoice_only = cb.checked;
+        }
         try {
             await ClassUp.fetch('/api/v1/accounting/accounts/' + id, { method: 'PUT', body: JSON.stringify(body) });
             document.getElementById('acct-modal').close();
