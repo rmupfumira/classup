@@ -777,6 +777,318 @@ class MisService:
 
 
     # ------------------------------------------------------------------
+    # Phase 4 — Longitudinal performance
+    # ------------------------------------------------------------------
+
+    def _term_key_for_date(self, d: date) -> tuple[int, int]:
+        """Group a date into (year, term_number). Falls back to the
+        calendar quarter when the tenant has no Zimbabwe/SA academic
+        term boundaries set — same behaviour the dashboard uses for
+        the "This term" preset.
+
+        Returns (year, 1..4). The academic calendar service will
+        later let us swap this for real term windows.
+        """
+        return (d.year, (d.month - 1) // 3 + 1)
+
+    def _term_label(self, year: int, term: int) -> str:
+        return f"Term {term} {year}"
+
+    async def student_longitudinal(
+        self,
+        db: AsyncSession,
+        student_id: uuid.UUID,
+        from_date: date,
+        to_date: date,
+    ) -> dict:
+        """One student's performance across the terms in the window.
+
+        Per term returns:
+          - aggregate percentage
+          - per-subject marks + percentage
+          - rank + rank_of_total in the student's class
+          - rank movement vs previous term (when there is one)
+
+        Phase 5's Early Warning uses the delta field to flag declines
+        of >=X% for a student.
+        """
+        tenant_id = get_tenant_id()
+        # 1. Pull the student + their class so we can rank them later
+        student = (await db.execute(
+            select(Student).where(
+                Student.id == student_id,
+                Student.tenant_id == tenant_id,
+                Student.deleted_at.is_(None),
+            )
+        )).scalar_one_or_none()
+        if not student:
+            return {
+                "student_id": str(student_id),
+                "student_name": None,
+                "terms": [],
+            }
+
+        student_name = f"{student.first_name} {student.last_name}".strip()
+        student_class_id = student.class_id
+
+        # 2. Pull every finalised REPORT_CARD / PROGRESS_REPORT in the
+        # window for the student's class (needed for rank). We'll filter
+        # the student's own reports out of this bucket in a moment.
+        stmt = (
+            select(DailyReport)
+            .join(ReportTemplate, DailyReport.template_id == ReportTemplate.id)
+            .where(
+                DailyReport.tenant_id == tenant_id,
+                DailyReport.deleted_at.is_(None),
+                DailyReport.status == "FINALIZED",
+                DailyReport.report_date >= from_date,
+                DailyReport.report_date <= to_date,
+                ReportTemplate.report_type.in_(["REPORT_CARD", "PROGRESS_REPORT"]),
+            )
+        )
+        if student_class_id:
+            stmt = stmt.where(DailyReport.class_id == student_class_id)
+        reports = list((await db.execute(stmt)).scalars().all())
+
+        template_ids = {r.template_id for r in reports if r.template_id}
+        templates = {
+            t.id: t for t in (await db.execute(
+                select(ReportTemplate).where(ReportTemplate.id.in_(template_ids))
+            )).scalars().all()
+        } if template_ids else {}
+
+        # 3. Walk each report → (term_key, student_id, aggregate %,
+        # per-subject %) so we can build per-term rollups.
+        from collections import defaultdict
+
+        # Per-term, per-student aggregated marks
+        per_term_student: dict = defaultdict(
+            lambda: defaultdict(lambda: {"obtained": 0.0, "possible": 0.0,
+                                         "per_subject": {}})
+        )
+        # subject_id → name resolution
+        subject_ids_seen: set[uuid.UUID] = set()
+
+        for r in reports:
+            tpl = templates.get(r.template_id)
+            if not tpl or not tpl.sections:
+                continue
+            ag = next((s for s in tpl.sections if s.get("type") == "ACADEMIC_GRADES"), None)
+            if not ag:
+                continue
+            section_id = ag.get("id")
+            data = (r.report_data or {}).get("sections", {}).get(section_id, {})
+            if not isinstance(data, dict) or not data:
+                continue
+
+            subject_totals: dict[str, float] = {}
+            subject_names: dict[str, str] = {}
+            for s in ag.get("subjects", []) or []:
+                sid = s.get("id") or s.get("subject_id")
+                tot = s.get("total_marks") or 100
+                if sid:
+                    subject_totals[str(sid)] = float(tot)
+                    subject_names[str(sid)] = s.get("name") or ""
+
+            term_key = self._term_key_for_date(r.report_date)
+            bucket = per_term_student[term_key][r.student_id]
+            for subj_id_str, entry in data.items():
+                if not isinstance(entry, dict):
+                    continue
+                marks = entry.get("marks_obtained")
+                if marks in (None, ""):
+                    continue
+                try:
+                    m = float(marks)
+                except (TypeError, ValueError):
+                    continue
+                total = float(subject_totals.get(subj_id_str, 100))
+                if total <= 0:
+                    continue
+                bucket["obtained"] += m
+                bucket["possible"] += total
+                try:
+                    sid_uuid = uuid.UUID(subj_id_str)
+                    subject_ids_seen.add(sid_uuid)
+                except ValueError:
+                    continue
+                prev = bucket["per_subject"].get(subj_id_str)
+                # If multiple reports for the same student / term / subject
+                # exist, keep the best.
+                pct = m / total * 100.0
+                if prev is None or pct > prev["percentage"]:
+                    bucket["per_subject"][subj_id_str] = {
+                        "subject_id": subj_id_str,
+                        "subject_name": subject_names.get(subj_id_str, ""),
+                        "marks_obtained": m,
+                        "total_marks": total,
+                        "percentage": pct,
+                    }
+
+        # 4. Reduce each term into a per-student rank + aggregate
+        bands = await self._resolve_grading_bands(db, student_class_id)
+        ordered_terms = sorted(per_term_student.keys())  # (year, term) ascending
+        timeline: list[dict] = []
+        prev_rank: int | None = None
+        prev_aggregate: float | None = None
+
+        for term_key in ordered_terms:
+            students_bucket = per_term_student[term_key]
+            # Compute aggregate % for every student in the class for this term
+            agg_by_student = {}
+            for sid, data in students_bucket.items():
+                if data["possible"] > 0:
+                    agg_by_student[sid] = data["obtained"] / data["possible"] * 100.0
+            # Rank in class — competition style
+            ranked = sorted(agg_by_student.items(), key=lambda kv: kv[1], reverse=True)
+            rank_of: dict[uuid.UUID, int] = {}
+            last_pct = None
+            current_rank = 0
+            seen = 0
+            for sid, pct in ranked:
+                seen += 1
+                if last_pct is None or pct != last_pct:
+                    current_rank = seen
+                    last_pct = pct
+                rank_of[sid] = current_rank
+
+            own = students_bucket.get(student_id)
+            if not own or own["possible"] <= 0:
+                continue
+            aggregate = own["obtained"] / own["possible"] * 100.0
+            classification = classify_percentage(aggregate, bands)
+
+            # Movement vs previous term
+            if prev_aggregate is not None:
+                delta_pct = aggregate - prev_aggregate
+            else:
+                delta_pct = None
+            rank_in_class = rank_of.get(student_id)
+            if prev_rank is not None and rank_in_class is not None:
+                rank_delta = prev_rank - rank_in_class  # positive = climbed
+            else:
+                rank_delta = None
+
+            timeline.append({
+                "year": term_key[0],
+                "term": term_key[1],
+                "label": self._term_label(*term_key),
+                "aggregate_pct": round(aggregate, 2),
+                "grade": classification["grade"],
+                "bucket": classification["bucket"],
+                "rank_in_class": rank_in_class,
+                "class_size": len(agg_by_student),
+                "aggregate_delta_pct": (round(delta_pct, 2) if delta_pct is not None else None),
+                "rank_delta": rank_delta,
+                "subjects": list(own["per_subject"].values()),
+            })
+            prev_aggregate = aggregate
+            prev_rank = rank_in_class
+
+        # 5. Subject strengths / weaknesses — top and bottom three
+        # subjects across the whole window for this student.
+        subj_totals: dict[str, dict] = {}
+        for t in timeline:
+            for s in t["subjects"]:
+                acc = subj_totals.setdefault(s["subject_id"], {
+                    "subject_id": s["subject_id"],
+                    "subject_name": s["subject_name"],
+                    "pcts": [],
+                })
+                acc["pcts"].append(s["percentage"])
+        strength_source = []
+        for sid, acc in subj_totals.items():
+            if acc["pcts"]:
+                mean_pct = sum(acc["pcts"]) / len(acc["pcts"])
+                strength_source.append({
+                    "subject_id": sid,
+                    "subject_name": acc["subject_name"],
+                    "mean_percentage": round(mean_pct, 2),
+                    "term_count": len(acc["pcts"]),
+                })
+        strength_source.sort(key=lambda s: s["mean_percentage"], reverse=True)
+
+        return {
+            "student_id": str(student_id),
+            "student_name": student_name,
+            "class_id": str(student_class_id) if student_class_id else None,
+            "window": {
+                "from_date": from_date.isoformat(),
+                "to_date": to_date.isoformat(),
+            },
+            "terms": timeline,
+            "strengths": strength_source[:3],
+            "weaknesses": list(reversed(strength_source))[:3] if strength_source else [],
+        }
+
+    async def student_progress(
+        self,
+        db: AsyncSession,
+        student_id: uuid.UUID,
+        from_date: date,
+        to_date: date,
+    ) -> dict:
+        """Current-vs-previous-term summary + attendance for one student.
+
+        Short-form view the Progress Report page uses. Longitudinal is
+        the long form; this is the executive summary.
+        """
+        longi = await self.student_longitudinal(db, student_id, from_date, to_date)
+        terms = longi.get("terms") or []
+        current = terms[-1] if terms else None
+        previous = terms[-2] if len(terms) >= 2 else None
+
+        # Attendance for the same window, scoped to this student
+        tenant_id = get_tenant_id()
+        att_stmt = (
+            select(
+                func.count(AttendanceRecord.id).label("total"),
+                func.sum(
+                    case(
+                        (AttendanceRecord.status.in_(["PRESENT", "LATE", "EXCUSED"]), 1),
+                        else_=0,
+                    )
+                ).label("attended"),
+            )
+            .where(
+                AttendanceRecord.tenant_id == tenant_id,
+                AttendanceRecord.student_id == student_id,
+                AttendanceRecord.date >= from_date,
+                AttendanceRecord.date <= to_date,
+            )
+        )
+        att_row = (await db.execute(att_stmt)).one()
+        total = int(att_row.total or 0)
+        attended = int(att_row.attended or 0)
+        attendance_pct = (attended / total * 100.0) if total else 0.0
+
+        return {
+            "student_id": longi["student_id"],
+            "student_name": longi["student_name"],
+            "class_id": longi.get("class_id"),
+            "current": current,
+            "previous": previous,
+            "aggregate_delta_pct": (
+                round(current["aggregate_pct"] - previous["aggregate_pct"], 2)
+                if current and previous else None
+            ),
+            "rank_delta": (
+                (previous.get("rank_in_class") - current.get("rank_in_class"))
+                if current and previous
+                and current.get("rank_in_class") is not None
+                and previous.get("rank_in_class") is not None
+                else None
+            ),
+            "attendance": {
+                "total": total,
+                "attended": attended,
+                "rate_pct": round(attendance_pct, 2),
+            },
+            "strengths": longi.get("strengths") or [],
+            "weaknesses": longi.get("weaknesses") or [],
+        }
+
+    # ------------------------------------------------------------------
     # Phase 3 — Grade Distribution + Merit Lists
     # ------------------------------------------------------------------
 

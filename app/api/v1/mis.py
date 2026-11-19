@@ -98,3 +98,40 @@ async def merit_list(
         class_id=class_id, grade_level_id=grade_level_id, top_n=top_n,
     )
     return APIResponse(status="success", data=data)
+
+
+@router.get("/mis/students/{student_id}/longitudinal")
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
+async def student_longitudinal(
+    student_id: uuid.UUID,
+    from_date: date,
+    to_date: date,
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Full term-by-term trend for one student — aggregate % per term,
+    per-subject movement, class rank + rank delta, strengths and
+    weaknesses."""
+    data = await get_mis_service().student_longitudinal(
+        db, student_id=student_id,
+        from_date=from_date, to_date=to_date,
+    )
+    return APIResponse(status="success", data=data)
+
+
+@router.get("/mis/students/{student_id}/progress")
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
+async def student_progress(
+    student_id: uuid.UUID,
+    from_date: date,
+    to_date: date,
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Current-vs-previous-term summary + attendance for one student.
+    Shorter than the longitudinal view — same data condensed."""
+    data = await get_mis_service().student_progress(
+        db, student_id=student_id,
+        from_date=from_date, to_date=to_date,
+    )
+    return APIResponse(status="success", data=data)

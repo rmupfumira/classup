@@ -128,3 +128,21 @@ async def mis_merit_lists(request: Request, db: AsyncSession = Depends(get_db)):
             "current_language": get_current_language(),
         },
     )
+
+
+@router.get("/longitudinal", response_class=HTMLResponse)
+async def mis_longitudinal(request: Request, db: AsyncSession = Depends(get_db)):
+    """Phase 4 — Longitudinal performance for one student."""
+    redirect, ctx = await _mis_guard(request, db)
+    if redirect:
+        return redirect
+    user, tenant = ctx
+    return templates.TemplateResponse(
+        "mis/longitudinal.html",
+        {
+            "request": request,
+            "user": user,
+            "tenant": tenant,
+            "current_language": get_current_language(),
+        },
+    )
