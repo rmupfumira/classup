@@ -278,6 +278,23 @@ BEGIN
         END LOOP;
     END LOOP;
 
+    -- ─────────────── 8b. Grade level ↔ subject ──────────────
+    -- "This subject is taught at this Form." Drives the onboarding
+    -- "Link subjects to grades" checklist item + any new class the
+    -- admin creates under a Form auto-inherits its subjects.
+    -- Every ZIMSEC O-Level subject goes under every Form here.
+    FOR i IN 1..4 LOOP  -- Forms 1..4
+        FOR j IN 1..array_length(v_subject_ids, 1) LOOP
+            INSERT INTO grade_level_subjects (id, grade_level_id, subject_id,
+                                              display_order)
+            VALUES (md5('shumba-gls-' || i || '-' || j)::uuid,
+                    md5('shumba-gl-f' || i)::uuid,
+                    v_subject_ids[j],
+                    j)
+            ON CONFLICT (id) DO NOTHING;
+        END LOOP;
+    END LOOP;
+
     -- ─────────────────── 9. Report template ─────────────────
     -- Build the ACADEMIC_GRADES section with the subject list inside the
     -- template so the MIS walker can find per-subject total_marks.
