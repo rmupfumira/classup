@@ -777,6 +777,352 @@ class MisService:
 
 
     # ------------------------------------------------------------------
+    # Phase 5 — Early Warning System
+    # ------------------------------------------------------------------
+
+    DEFAULT_RULES = {
+        # Aggregate-average thresholds (below these → the named level)
+        "aggregate_avg_critical": 40.0,
+        "aggregate_avg_high": 50.0,
+        "aggregate_avg_medium": 60.0,
+        # Attendance thresholds
+        "attendance_critical": 60.0,
+        "attendance_high": 70.0,
+        "attendance_medium": 80.0,
+        # Decline thresholds (absolute % drop vs previous term)
+        "decline_critical": 15.0,
+        "decline_high": 10.0,
+        "decline_medium": 5.0,
+    }
+
+    async def get_early_warning_rules(
+        self, db: AsyncSession,
+    ) -> dict:
+        """Resolve the active rules. Tenant-level overrides in
+        ``tenant.settings.mis_rules`` win per-key; anything missing
+        falls back to ``DEFAULT_RULES``.
+        """
+        from app.models import Tenant
+        tenant_id = get_tenant_id()
+        tenant = await db.get(Tenant, tenant_id) if tenant_id else None
+        overrides = {}
+        if tenant and isinstance(tenant.settings, dict):
+            overrides = tenant.settings.get("mis_rules") or {}
+            if not isinstance(overrides, dict):
+                overrides = {}
+        resolved = dict(self.DEFAULT_RULES)
+        for k, v in overrides.items():
+            if k in resolved:
+                try:
+                    resolved[k] = float(v)
+                except (TypeError, ValueError):
+                    continue
+        return resolved
+
+    async def save_early_warning_rules(
+        self, db: AsyncSession, overrides: dict,
+    ) -> dict:
+        """Persist per-tenant rule overrides.
+
+        Only keys listed in DEFAULT_RULES are kept. Pass {} to clear
+        overrides and fall back to defaults everywhere.
+        """
+        from sqlalchemy.orm.attributes import flag_modified
+
+        from app.models import Tenant
+        tenant_id = get_tenant_id()
+        tenant = await db.get(Tenant, tenant_id) if tenant_id else None
+        if not tenant:
+            return dict(self.DEFAULT_RULES)
+        settings = dict(tenant.settings or {})
+        clean: dict = {}
+        for k, v in (overrides or {}).items():
+            if k in self.DEFAULT_RULES:
+                try:
+                    clean[k] = float(v)
+                except (TypeError, ValueError):
+                    continue
+        settings["mis_rules"] = clean
+        tenant.settings = settings
+        flag_modified(tenant, "settings")
+        await db.flush()
+        return await self.get_early_warning_rules(db)
+
+    def _level_from_threshold(
+        self,
+        value: float,
+        critical: float,
+        high: float,
+        medium: float,
+        direction: str = "below",
+    ) -> str | None:
+        """Pick a risk level based on how far ``value`` is from the
+        configured thresholds.
+
+        direction="below" (aggregates / attendance): a LOW value is BAD.
+        direction="drop" (decline): a HIGH value is BAD.
+        Returns None when the value is safe.
+        """
+        if direction == "below":
+            if value < critical:
+                return "CRITICAL"
+            if value < high:
+                return "HIGH"
+            if value < medium:
+                return "MEDIUM"
+            return None
+        # drop: value is the magnitude of the decline (positive number)
+        if value >= critical:
+            return "CRITICAL"
+        if value >= high:
+            return "HIGH"
+        if value >= medium:
+            return "MEDIUM"
+        return None
+
+    @staticmethod
+    def _max_level(levels: list[str]) -> str | None:
+        order = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
+        best: str | None = None
+        for lvl in levels:
+            if not lvl:
+                continue
+            if best is None or order.get(lvl, 0) > order.get(best, 0):
+                best = lvl
+        return best
+
+    async def scan_at_risk_students(
+        self,
+        db: AsyncSession,
+        from_date: date,
+        to_date: date,
+        class_id: uuid.UUID | None = None,
+    ) -> dict:
+        """Run the Early Warning rules against every student with
+        either a finalised report or an attendance record in the window.
+
+        Returns {"rules": resolved_rules, "counts": {level: n},
+        "students": [...]}.
+        """
+        rules = await self.get_early_warning_rules(db)
+
+        # ---- Academic signal: aggregate per student across the window ----
+        scores, per_subject = await self._iter_student_percentages(
+            db, from_date, to_date, class_id,
+        )
+        agg_by_student: dict[uuid.UUID, float] = {
+            s.student_id: s.percentage for s in scores
+        }
+        meta_by_student = {s.student_id: s for s in scores}
+
+        # ---- Decline signal: compare per-term aggregates.
+        # Scoped to tenant students — reuse longitudinal walker on each
+        # student would be too expensive, so we do a lightweight per-term
+        # walk here.
+        from collections import defaultdict
+        tenant_id = get_tenant_id()
+        term_agg: dict[tuple[int, int], dict[uuid.UUID, dict]] = defaultdict(dict)
+        reports = await self._finalized_report_cards(db, from_date, to_date, class_id)
+        template_ids = {r.template_id for r in reports if r.template_id}
+        templates = {
+            t.id: t for t in (await db.execute(
+                select(ReportTemplate).where(ReportTemplate.id.in_(template_ids))
+            )).scalars().all()
+        } if template_ids else {}
+        for r in reports:
+            tpl = templates.get(r.template_id)
+            if not tpl or not tpl.sections:
+                continue
+            ag = next((s for s in tpl.sections if s.get("type") == "ACADEMIC_GRADES"), None)
+            if not ag:
+                continue
+            section_id = ag.get("id")
+            data = (r.report_data or {}).get("sections", {}).get(section_id, {})
+            if not isinstance(data, dict) or not data:
+                continue
+            subject_totals: dict[str, float] = {}
+            for s in ag.get("subjects", []) or []:
+                sid = s.get("id") or s.get("subject_id")
+                tot = s.get("total_marks") or 100
+                if sid:
+                    subject_totals[str(sid)] = float(tot)
+            term_key = self._term_key_for_date(r.report_date)
+            bucket = term_agg[term_key].setdefault(
+                r.student_id, {"obtained": 0.0, "possible": 0.0},
+            )
+            for subj_id_str, entry in data.items():
+                if not isinstance(entry, dict):
+                    continue
+                marks = entry.get("marks_obtained")
+                if marks in (None, ""):
+                    continue
+                try:
+                    m = float(marks)
+                except (TypeError, ValueError):
+                    continue
+                total = float(subject_totals.get(subj_id_str, 100))
+                if total <= 0:
+                    continue
+                bucket["obtained"] += m
+                bucket["possible"] += total
+
+        # For each student, pick last two terms they appeared in and
+        # compute the decline.
+        decline_by_student: dict[uuid.UUID, float] = {}
+        ordered_terms = sorted(term_agg.keys())
+        per_student_history: dict[uuid.UUID, list[tuple[tuple[int, int], float]]] = defaultdict(list)
+        for tk in ordered_terms:
+            for sid, data in term_agg[tk].items():
+                if data["possible"] > 0:
+                    per_student_history[sid].append((tk, data["obtained"] / data["possible"] * 100.0))
+        for sid, history in per_student_history.items():
+            if len(history) >= 2:
+                last_pct = history[-1][1]
+                prev_pct = history[-2][1]
+                drop = prev_pct - last_pct
+                if drop > 0:
+                    decline_by_student[sid] = drop
+
+        # ---- Attendance signal ----
+        att_stmt = (
+            select(
+                AttendanceRecord.student_id,
+                func.count(AttendanceRecord.id).label("total"),
+                func.sum(
+                    case(
+                        (AttendanceRecord.status.in_(["PRESENT", "LATE", "EXCUSED"]), 1),
+                        else_=0,
+                    )
+                ).label("attended"),
+            )
+            .where(
+                AttendanceRecord.tenant_id == tenant_id,
+                AttendanceRecord.date >= from_date,
+                AttendanceRecord.date <= to_date,
+            )
+            .group_by(AttendanceRecord.student_id)
+        )
+        if class_id:
+            att_stmt = att_stmt.where(AttendanceRecord.class_id == class_id)
+        att_rows = (await db.execute(att_stmt)).all()
+        attendance_by_student: dict[uuid.UUID, float] = {}
+        att_totals: dict[uuid.UUID, tuple[int, int]] = {}
+        for sid, total, attended in att_rows:
+            total = int(total or 0)
+            attended = int(attended or 0)
+            if total == 0:
+                continue
+            attendance_by_student[sid] = attended / total * 100.0
+            att_totals[sid] = (attended, total)
+
+        # ---- Combine every student with any signal ----
+        all_student_ids: set[uuid.UUID] = (
+            set(agg_by_student.keys())
+            | set(decline_by_student.keys())
+            | set(attendance_by_student.keys())
+        )
+        # Resolve names + class names once
+        student_meta = await self._students_meta(db, all_student_ids)
+
+        flagged: list[dict] = []
+        counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+
+        for sid in all_student_ids:
+            trips: list[dict] = []
+            agg = agg_by_student.get(sid)
+            if agg is not None:
+                level = self._level_from_threshold(
+                    agg,
+                    rules["aggregate_avg_critical"],
+                    rules["aggregate_avg_high"],
+                    rules["aggregate_avg_medium"],
+                    direction="below",
+                )
+                if level:
+                    trips.append({
+                        "kind": "aggregate",
+                        "level": level,
+                        "message": f"Aggregate {agg:.1f}%",
+                        "value": round(agg, 2),
+                    })
+
+            att = attendance_by_student.get(sid)
+            if att is not None:
+                level = self._level_from_threshold(
+                    att,
+                    rules["attendance_critical"],
+                    rules["attendance_high"],
+                    rules["attendance_medium"],
+                    direction="below",
+                )
+                if level:
+                    trips.append({
+                        "kind": "attendance",
+                        "level": level,
+                        "message": f"Attendance {att:.1f}%",
+                        "value": round(att, 2),
+                    })
+
+            decline = decline_by_student.get(sid)
+            if decline is not None:
+                level = self._level_from_threshold(
+                    decline,
+                    rules["decline_critical"],
+                    rules["decline_high"],
+                    rules["decline_medium"],
+                    direction="drop",
+                )
+                if level:
+                    trips.append({
+                        "kind": "decline",
+                        "level": level,
+                        "message": f"Dropped {decline:.1f}% since last term",
+                        "value": round(decline, 2),
+                    })
+
+            if not trips:
+                continue
+
+            top_level = self._max_level([t["level"] for t in trips]) or "LOW"
+            counts[top_level] = counts.get(top_level, 0) + 1
+
+            name, cid, cname = student_meta.get(sid, ("Unknown", None, None))
+            flagged.append({
+                "student_id": str(sid),
+                "student_name": name,
+                "class_id": str(cid) if cid else None,
+                "class_name": cname,
+                "level": top_level,
+                "aggregate_pct": round(agg, 2) if agg is not None else None,
+                "attendance_pct": round(att, 2) if att is not None else None,
+                "decline_pct": round(decline, 2) if decline is not None else None,
+                "triggered_rules": trips,
+            })
+
+        # Sort: level desc then aggregate asc (worst-off first), ties
+        # fall to name for stability.
+        level_rank = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
+        flagged.sort(
+            key=lambda s: (
+                -level_rank.get(s["level"], 0),
+                s["aggregate_pct"] if s["aggregate_pct"] is not None else 101.0,
+                s["student_name"] or "",
+            )
+        )
+
+        return {
+            "window": {
+                "from_date": from_date.isoformat(),
+                "to_date": to_date.isoformat(),
+                "class_id": str(class_id) if class_id else None,
+            },
+            "rules": rules,
+            "counts": counts,
+            "total_at_risk": len(flagged),
+            "students": flagged,
+        }
+
+    # ------------------------------------------------------------------
     # Phase 4 — Longitudinal performance
     # ------------------------------------------------------------------
 

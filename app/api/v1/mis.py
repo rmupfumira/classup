@@ -135,3 +135,67 @@ async def student_progress(
         from_date=from_date, to_date=to_date,
     )
     return APIResponse(status="success", data=data)
+
+
+# ──────────── Phase 5 — Early Warning System ────────────
+
+from pydantic import BaseModel
+
+
+class EarlyWarningRules(BaseModel):
+    """Configurable Early Warning thresholds. All optional — missing
+    fields fall back to DEFAULT_RULES on the service."""
+
+    aggregate_avg_critical: float | None = None
+    aggregate_avg_high: float | None = None
+    aggregate_avg_medium: float | None = None
+    attendance_critical: float | None = None
+    attendance_high: float | None = None
+    attendance_medium: float | None = None
+    decline_critical: float | None = None
+    decline_high: float | None = None
+    decline_medium: float | None = None
+
+
+@router.get("/mis/early-warning/rules")
+@require_role(Role.SCHOOL_ADMIN)
+async def get_early_warning_rules(
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Resolved Early Warning rules (tenant overrides + defaults)."""
+    rules = await get_mis_service().get_early_warning_rules(db)
+    return APIResponse(status="success", data=rules)
+
+
+@router.put("/mis/early-warning/rules")
+@require_role(Role.SCHOOL_ADMIN)
+async def update_early_warning_rules(
+    body: EarlyWarningRules,
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Persist tenant-level rule overrides. Passes {} for a key clears
+    the override and reverts to the default for that key."""
+    # Keep only keys the caller actually set
+    overrides = {k: v for k, v in body.model_dump().items() if v is not None}
+    rules = await get_mis_service().save_early_warning_rules(db, overrides)
+    await db.commit()
+    return APIResponse(status="success", data=rules, message="Rules saved")
+
+
+@router.get("/mis/early-warning/scan")
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
+async def scan_early_warning(
+    from_date: date,
+    to_date: date,
+    class_id: uuid.UUID | None = None,
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Run the scanner and return every student the rules flagged,
+    worst-level first, with their triggered-rule breakdown."""
+    data = await get_mis_service().scan_at_risk_students(
+        db, from_date=from_date, to_date=to_date, class_id=class_id,
+    )
+    return APIResponse(status="success", data=data)

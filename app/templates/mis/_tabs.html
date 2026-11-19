@@ -26,9 +26,9 @@
            class="{% if active_tab == 'longitudinal' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
             Longitudinal
         </a>
-        {# Phase 5 lands here when the Early Warning page ships. #}
-        {% if False %}
-        <a href="/mis/early-warning" class="border-transparent text-neutral-500 border-b-2 py-3 px-1 text-sm font-medium">Early warning</a>
-        {% endif %}
+        <a href="/mis/early-warning"
+           class="{% if active_tab == 'early_warning' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+            Early warning
+        </a>
     </nav>
 </div>

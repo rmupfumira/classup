@@ -146,3 +146,21 @@ async def mis_longitudinal(request: Request, db: AsyncSession = Depends(get_db))
             "current_language": get_current_language(),
         },
     )
+
+
+@router.get("/early-warning", response_class=HTMLResponse)
+async def mis_early_warning(request: Request, db: AsyncSession = Depends(get_db)):
+    """Phase 5 — Early Warning rules + at-risk scan."""
+    redirect, ctx = await _mis_guard(request, db)
+    if redirect:
+        return redirect
+    user, tenant = ctx
+    return templates.TemplateResponse(
+        "mis/early_warning.html",
+        {
+            "request": request,
+            "user": user,
+            "tenant": tenant,
+            "current_language": get_current_language(),
+        },
+    )
