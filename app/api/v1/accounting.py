@@ -1,12 +1,15 @@
 """Accounting module API."""
 
+import csv
 import datetime as _dt
+import io
 import logging
 import uuid
 from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +19,29 @@ from app.schemas.common import APIResponse, PaginationMeta
 from app.services.accounting_service import get_accounting_service
 from app.utils.permissions import require_role
 from app.utils.tenant_context import get_tenant_id
+
+
+# ──────────────── CSV helpers ────────────────
+
+def _csv_response(filename: str, rows: list[list]) -> StreamingResponse:
+    """Build a RFC 4180-ish CSV StreamingResponse.
+
+    rows[0] is the header. Numbers are written as plain strings (no locale
+    formatting, no currency symbol) so the CSV can be re-imported into
+    Excel / accounting software without a parse step. Dates stay ISO.
+    The BOM makes Excel open UTF-8 cleanly on Windows.
+    """
+    buf = io.StringIO()
+    buf.write("﻿")  # UTF-8 BOM for Excel compatibility
+    writer = csv.writer(buf, lineterminator="\r\n")
+    for row in rows:
+        writer.writerow(["" if c is None else str(c) for c in row])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -548,3 +574,130 @@ async def cash_position(
     cp["total"] = float(cp["total"])
     cp["banks"] = [{**b, "balance": float(b["balance"])} for b in cp["banks"]]
     return APIResponse(data=cp)
+
+
+# ──────────────── CSV exports ────────────────
+# Mirror the JSON reports above. Every row the UI shows ends up in the
+# CSV so bookkeepers can re-import into Excel / Sage for consolidation.
+
+@router.get("/reports/profit-loss.csv")
+@require_role(Role.SCHOOL_ADMIN)
+async def profit_loss_csv(
+    from_date: date,
+    to_date: date,
+    db: AsyncSession = Depends(get_db),
+):
+    if from_date > to_date:
+        raise HTTPException(status_code=400, detail="from_date must be ≤ to_date")
+    pl = await get_accounting_service().profit_and_loss(db, from_date, to_date)
+    rows: list[list] = [[f"Profit & Loss  {from_date.isoformat()} to {to_date.isoformat()}"], []]
+    rows.append(["Section", "Code", "Name", "Total"])
+    for r in pl["income"]:
+        rows.append(["Income", r["code"], r["name"], str(r["total"])])
+    rows.append(["Income total", "", "", str(pl["income_total"])])
+    rows.append([])
+    for r in pl["expense"]:
+        rows.append(["Expense", r["code"], r["name"], str(r["total"])])
+    rows.append(["Expense total", "", "", str(pl["expense_total"])])
+    rows.append([])
+    rows.append(["Net profit / (loss)", "", "", str(pl["net_profit"])])
+    return _csv_response(
+        f"profit-loss_{from_date.isoformat()}_{to_date.isoformat()}.csv", rows
+    )
+
+
+@router.get("/reports/expenses-by-category.csv")
+@require_role(Role.SCHOOL_ADMIN)
+async def expenses_by_category_csv(
+    from_date: date,
+    to_date: date,
+    db: AsyncSession = Depends(get_db),
+):
+    if from_date > to_date:
+        raise HTTPException(status_code=400, detail="from_date must be ≤ to_date")
+    rows_in = await get_accounting_service().expenses_by_category(db, from_date, to_date)
+    grand = sum((r["total"] for r in rows_in), Decimal("0"))
+    rows: list[list] = [[f"Expenses by category  {from_date.isoformat()} to {to_date.isoformat()}"], []]
+    rows.append(["Code", "Category", "Entries", "Total", "Share %"])
+    for r in rows_in:
+        share = (float(r["total"]) / float(grand) * 100.0) if grand > 0 else 0.0
+        rows.append([r["code"], r["name"], r["count"], str(r["total"]), f"{share:.2f}"])
+    rows.append(["", "Total", "", str(grand), ""])
+    return _csv_response(
+        f"expenses-by-category_{from_date.isoformat()}_{to_date.isoformat()}.csv", rows
+    )
+
+
+@router.get("/reports/cash-position.csv")
+@require_role(Role.SCHOOL_ADMIN)
+async def cash_position_csv(
+    as_of: date | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    cp = await get_accounting_service().cash_position(db, as_of=as_of)
+    rows: list[list] = [[f"Cash position as of {cp['as_of']}"], []]
+    rows.append(["Account", "Bank", "Type", "Currency", "Balance"])
+    for b in cp["banks"]:
+        rows.append([
+            b["name"], b.get("bank_name") or "", b.get("account_type") or "",
+            b.get("currency") or "", str(b["balance"]),
+        ])
+    rows.append(["", "", "", "Total", str(cp["total"])])
+    tag = cp["as_of"] if isinstance(cp["as_of"], str) else cp["as_of"].isoformat()
+    return _csv_response(f"cash-position_{tag}.csv", rows)
+
+
+@router.get("/transactions.csv")
+@require_role(Role.SCHOOL_ADMIN)
+async def transactions_csv(
+    type: str | None = None,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    bank_account_id: uuid.UUID | None = None,
+    account_id: uuid.UUID | None = None,
+    vendor_id: uuid.UUID | None = None,
+    search: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Full transaction list — same filters as GET /transactions but as CSV.
+    Use for bookkeeper exports; large page sizes stream in one response.
+    """
+    # Pull everything matching the filters. page_size cap exists mainly to
+    # stop runaway JSON responses — a bookkeeper CSV is specifically the
+    # case where you want it all.
+    items, _ = await get_accounting_service().list_transactions(
+        db, type_filter=type, from_date=from_date, to_date=to_date,
+        bank_account_id=bank_account_id, account_id=account_id,
+        vendor_id=vendor_id, search=search, page=1, page_size=10000,
+    )
+    rows: list[list] = [[
+        "Date", "Type", "Amount", "Currency", "Account code", "Account name",
+        "Bank account", "Transfer to bank", "Vendor", "Student",
+        "Description", "Reference", "VAT amount", "Auto-linked",
+        "Recorded by",
+    ]]
+    for tx in items:
+        rows.append([
+            tx.date.isoformat() if tx.date else "",
+            tx.type,
+            str(tx.amount),
+            tx.currency,
+            tx.account.code if tx.account else "",
+            tx.account.name if tx.account else "",
+            tx.bank_account.name if tx.bank_account else "",
+            tx.transfer_to_bank_account.name if tx.transfer_to_bank_account else "",
+            tx.vendor.name if tx.vendor else "",
+            f"{tx.student.first_name} {tx.student.last_name}" if tx.student else "",
+            tx.description or "",
+            tx.reference or "",
+            str(tx.vat_amount) if tx.vat_amount is not None else "",
+            "Yes" if tx.billing_payment_id else "",
+            (f"{tx.created_by_user.first_name} {tx.created_by_user.last_name}"
+             if tx.created_by_user else ""),
+        ])
+    tag = (
+        f"_{from_date.isoformat()}" if from_date else ""
+    ) + (
+        f"_{to_date.isoformat()}" if to_date else ""
+    )
+    return _csv_response(f"transactions{tag}.csv", rows)
