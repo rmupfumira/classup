@@ -59,3 +59,11 @@ logs/
 # Database
 *.db
 *.sqlite3
+
+# Demo / seed scripts — kept locally, never committed.
+# These contain fake data (bcrypt-hashed demo passwords, generated
+# Zimbabwean names, 100 fake parents) that has no place in the
+# public repo. Live on-disk so `python scripts/seed_mis_demo_data.py`
+# and the DBeaver .sql file still work for the maintainer.
+scripts/seed_mis_demo_data.py
+scripts/sql/
