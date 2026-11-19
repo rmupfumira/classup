@@ -3,515 +3,544 @@
 {% block title %}{{ school_class.name }} - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Back Button & Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+<div class="space-y-5">
+    <!-- Back button + header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div class="flex items-center gap-3">
-            <a href="/classes" class="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded transition-colors">
+            <a href="/classes" class="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
                 </svg>
             </a>
             <div>
                 <h1 class="text-xl font-semibold text-neutral-800">{{ school_class.name }}</h1>
                 <p class="text-sm text-neutral-500">
-                    {{ students|length }} student{{ 's' if students|length != 1 else '' }}
-                    {% if school_class.capacity %}
-                        / {{ school_class.capacity }} capacity
-                    {% endif %}
+                    {% if school_class.grade_level_rel %}{{ school_class.grade_level_rel.name }} · {% endif %}
+                    <span id="hdr-student-count">{{ students|length }}</span> student{% if (students|length) != 1 %}s{% endif %}
+                    {% if school_class.capacity %} / {{ school_class.capacity }} capacity{% endif %}
                 </p>
             </div>
         </div>
         {% if permissions.can_manage_classes() %}
         <div class="flex flex-wrap gap-2">
             <a href="/classes/{{ school_class.id }}/subjects"
-               class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded text-sm text-neutral-700 bg-white hover:bg-neutral-50 hover:border-neutral-400 transition-colors">
-                <svg class="w-4 h-4 mr-1.5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                </svg>
-                Subjects
+               class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded text-sm text-neutral-700 bg-white hover:bg-neutral-50">
+                Manage subjects
             </a>
             <a href="/classes/{{ school_class.id }}/manage-teachers"
-               class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded text-sm text-neutral-700 bg-white hover:bg-neutral-50 hover:border-neutral-400 transition-colors">
-                <svg class="w-4 h-4 mr-1.5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                </svg>
-                Teachers
+               class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded text-sm text-neutral-700 bg-white hover:bg-neutral-50">
+                Assign teachers
             </a>
             <a href="/classes/{{ school_class.id }}/edit"
-               class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded text-sm text-neutral-700 bg-white hover:bg-neutral-50 hover:border-neutral-400 transition-colors">
-                <svg class="w-4 h-4 mr-1.5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
+               class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded text-sm text-neutral-700 bg-white hover:bg-neutral-50">
                 Edit
             </a>
         </div>
         {% endif %}
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Main Content -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Class Info Card -->
+    <!-- Tab bar -->
+    <div class="border-b border-neutral-200">
+        <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto" aria-label="Class sections">
+            {% set _tabs = [
+                ('overview', 'Overview'),
+                ('students', 'Students'),
+                ('subjects', 'Subjects'),
+                ('teachers', 'Teachers'),
+                ('timetable', 'Timetable'),
+            ] %}
+            {% for slug, label in _tabs %}
+            <button type="button" data-tab="{{ slug }}"
+                    class="tab-btn whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium transition-colors
+                           {% if loop.first %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %}">
+                {{ label }}
+            </button>
+            {% endfor %}
+        </nav>
+    </div>
+
+    <!-- ============== OVERVIEW tab ============== -->
+    <div data-tab-panel="overview" class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 space-y-5">
+            <!-- Class info card -->
             <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5">
                 <div class="flex items-start gap-4">
                     <div class="flex-shrink-0 w-14 h-14 bg-primary-50 rounded-lg flex items-center justify-center">
                         <svg class="w-7 h-7 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                         </svg>
                     </div>
                     <div class="flex-1">
                         <div class="flex items-center gap-2 mb-2">
                             <h2 class="text-lg font-semibold text-neutral-800">{{ school_class.name }}</h2>
                             {% if school_class.is_active %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
-                                Active
-                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">Active</span>
                             {% else %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
-                                Inactive
-                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">Inactive</span>
                             {% endif %}
                         </div>
-
                         {% if school_class.description %}
-                        <p class="text-sm text-neutral-600 mb-4">{{ school_class.description }}</p>
+                        <p class="text-sm text-neutral-600 mb-3">{{ school_class.description }}</p>
                         {% endif %}
-
-                        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                            <div>
-                                <dt class="text-neutral-500">Grade Level</dt>
-                                <dd class="text-neutral-800 font-medium">
-                                    {% if school_class.grade_level_rel %}
-                                        {{ school_class.grade_level_rel.name }}
-                                    {% elif school_class.age_group or school_class.grade_level %}
-                                        {{ school_class.age_group or school_class.grade_level or '-' }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt class="text-neutral-500">Capacity</dt>
-                                <dd class="text-neutral-800 font-medium">{{ school_class.capacity or 'Unlimited' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-neutral-500">Students</dt>
-                                <dd class="text-neutral-800 font-medium">{{ students|length }}</dd>
-                            </div>
+                        <dl class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                            {% if school_class.grade_level_rel %}
+                            <div><dt class="text-xs text-neutral-500 uppercase">Grade level</dt>
+                                <dd class="text-neutral-800 font-medium">{{ school_class.grade_level_rel.name }}</dd></div>
+                            {% endif %}
+                            {% if school_class.capacity %}
+                            <div><dt class="text-xs text-neutral-500 uppercase">Capacity</dt>
+                                <dd class="text-neutral-800 font-medium">{{ school_class.capacity }}</dd></div>
+                            {% endif %}
+                            <div><dt class="text-xs text-neutral-500 uppercase">Students</dt>
+                                <dd class="text-neutral-800 font-medium">{{ students|length }}</dd></div>
                         </dl>
                     </div>
                 </div>
             </div>
 
-            {# Staff on this class — consolidates the general class teacher
-               (homeroom, attendance) and per-subject specialists in one
-               glance so admins don't have to look in two places. Both
-               detailed cards (Teachers in the sidebar, Subject teachers
-               below) stay as the management UIs. #}
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-base font-semibold text-neutral-800">Staff on this class</h3>
-                    {% if permissions.can_manage_classes() %}
-                    <a href="/classes/{{ school_class.id }}/manage-teachers"
-                       class="text-xs text-primary-500 hover:text-primary-600">
-                        Manage
-                    </a>
-                    {% endif %}
+            <!-- Quick-glance tiles (filled in via JS so the API drives the numbers) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+                    <p class="text-xs text-neutral-500 uppercase">Students</p>
+                    <p id="ov-students" class="mt-1 text-2xl font-semibold text-primary-700">{{ students|length }}</p>
                 </div>
-
-                <dl class="space-y-3 text-sm">
-                    <div class="flex items-start gap-3">
-                        <dt class="w-32 flex-shrink-0 text-neutral-500">Class teacher</dt>
-                        <dd class="flex-1 text-neutral-800">
-                            {# One class teacher per class — the first (and
-                               only expected) TeacherClass row is it. #}
-                            {% set ct = teachers[0] if teachers else None %}
-                            {% if ct %}
-                                <span class="font-medium">{{ ct[0].first_name }} {{ ct[0].last_name }}</span>
-                            {% elif not pending_general_teachers %}
-                                <span class="text-amber-700">
-                                    No class teacher assigned yet.
-                                </span>
-                            {% endif %}
-                            {# Pending invitations assigned to this class — show inline
-                               with an amber Pending badge so admins see what WILL be
-                               there when the teacher accepts. #}
-                            {% for inv, _ in pending_general_teachers %}
-                                {% if ct or not loop.first %}, {% endif %}
-                                <span class="text-neutral-600">{{ inv.first_name }} {{ inv.last_name }}</span>
-                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">Pending invite</span>
-                            {% endfor %}
-                        </dd>
-                    </div>
-
-                    {% if class_subjects and tenant and tenant.subject_teacher_enabled %}
-                    {# Terse count row — the full subject-by-subject view
-                       lives in the "Subject teachers" card below, so we
-                       don't repeat it here. #}
-                    {% set subjects_total = class_subjects | length %}
-                    {% set ns = namespace(covered=0) %}
-                    {% for cs in class_subjects %}
-                        {% if subject_teachers_by_subject.get(cs.subject_id | string, []) or pending_subject_teachers_by_subject.get(cs.subject_id | string, []) %}
-                            {% set ns.covered = ns.covered + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    <div class="flex items-start gap-3 pt-2 border-t border-neutral-100">
-                        <dt class="w-32 flex-shrink-0 text-neutral-500">Subjects</dt>
-                        <dd class="flex-1 text-neutral-800">
-                            {% if ns.covered == subjects_total %}
-                                All {{ subjects_total }} subject{{ 's' if subjects_total != 1 }} have a teacher.
-                            {% else %}
-                                {{ ns.covered }} of {{ subjects_total }} subjects have a teacher
-                                {% if subjects_total - ns.covered > 0 %}
-                                    &mdash;
-                                    <span class="text-amber-700">{{ subjects_total - ns.covered }} still need{{ 's' if subjects_total - ns.covered == 1 }} one</span>
-                                {% endif %}.
-                                <span class="block text-xs text-neutral-500 mt-0.5">See "Subject teachers" below to assign.</span>
-                            {% endif %}
-                        </dd>
-                    </div>
-                    {% endif %}
-                </dl>
+                <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+                    <p class="text-xs text-neutral-500 uppercase">Subjects</p>
+                    <p id="ov-subjects" class="mt-1 text-2xl font-semibold text-accent-600">—</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+                    <p class="text-xs text-neutral-500 uppercase">Teachers</p>
+                    <p id="ov-teachers" class="mt-1 text-2xl font-semibold text-neutral-800">—</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+                    <p class="text-xs text-neutral-500 uppercase">Attendance (30d)</p>
+                    <p id="ov-attendance" class="mt-1 text-2xl font-semibold text-info-600">—</p>
+                </div>
             </div>
 
-            <!-- Students List -->
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200">
-                <div class="p-4 border-b border-neutral-100">
-                    <h3 class="text-base font-semibold text-neutral-800">Students</h3>
-                </div>
-
-                {% if students %}
-                <ul class="divide-y divide-neutral-100">
-                    {% for student in students %}
-                    <li>
-                        <a href="/students/{{ student.id }}" class="flex items-center p-4 hover:bg-neutral-50 transition-colors">
-                            <div class="flex-shrink-0 h-9 w-9">
-                                {% if student.photo_path %}
-                                <img class="h-9 w-9 rounded-full object-cover"
-                                     src="{{ student.photo_path }}" alt="">
-                                {% else %}
-                                <div class="h-9 w-9 rounded-full bg-primary-50 flex items-center justify-center">
-                                    <span class="text-primary-600 font-medium text-xs">
-                                        {{ student.first_name[0] }}{{ student.last_name[0] }}
-                                    </span>
-                                </div>
-                                {% endif %}
-                            </div>
-                            <div class="ml-3 flex-1 min-w-0">
-                                <p class="text-sm font-medium text-neutral-800">
-                                    {{ student.first_name }} {{ student.last_name }}
-                                </p>
-                            </div>
-                            {% if student.is_active %}
-                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
-                                Active
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
-                                Inactive
-                            </span>
-                            {% endif %}
-                            <svg class="ml-2 h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <div class="p-8 text-center">
-                    <div class="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg class="h-6 w-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                        </svg>
-                    </div>
-                    <p class="text-sm text-neutral-500 mb-3">No students assigned to this class yet.</p>
-                    {% if permissions.can_manage_students() %}
-                    <a href="/students/new?class_id={{ school_class.id }}"
-                       class="inline-flex items-center text-sm text-primary-500 hover:text-primary-600">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Add a student
-                    </a>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-
-            {# Subject-teacher assignments. Only rendered when the tenant
-               has subject_teacher_enabled on — primary schools don't
-               need it and the clutter would confuse them. Shows each
-               class subject with its currently-assigned specialists and
-               an "Assign" button for admins. #}
-            {% if tenant and tenant.subject_teacher_enabled and class_subjects %}
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5 mt-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h3 class="text-base font-semibold text-neutral-800">Subject teachers</h3>
-                        <p class="text-xs text-neutral-500 mt-0.5">
-                            Specialists assigned per subject. The general class teacher
-                            still handles attendance and overall oversight.
-                        </p>
-                    </div>
-                </div>
-                <ul class="divide-y divide-neutral-100">
-                    {% for cs in class_subjects %}
-                    {% set assigned = subject_teachers_by_subject.get(cs.subject_id | string, []) %}
-                    {% set pending = pending_subject_teachers_by_subject.get(cs.subject_id | string, []) %}
-                    <li class="py-3 flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <p class="text-sm font-medium text-neutral-800">{{ cs.subject.name }}</p>
-                            {% if assigned %}
-                            <p class="text-xs text-neutral-500 mt-0.5">
-                                {% for t in assigned %}{{ t.first_name }} {{ t.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                            </p>
-                            {% elif not pending %}
-                            <p class="text-xs text-amber-600 mt-0.5">
-                                No teacher yet &mdash; nobody can enter grades for this subject.
-                            </p>
-                            {% endif %}
-                            {% if pending %}
-                            <p class="text-xs text-neutral-500 mt-0.5">
-                                {% for inv in pending %}{{ inv.first_name }} {{ inv.last_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                                <span class="ml-1 inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">Pending invite</span>
-                            </p>
-                            {% endif %}
-                        </div>
-                        {% if permissions.can_manage_classes() %}
-                        <button type="button"
-                                onclick="openSubjectTeacherModal('{{ cs.subject_id }}', '{{ cs.subject.name | escape }}')"
-                                class="flex-shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700">
-                            {{ 'Edit' if assigned else 'Assign' }}
-                        </button>
-                        {% endif %}
-                    </li>
-                    {% endfor %}
-                </ul>
+            {% if school_class.description %}
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-5">
+                <h3 class="text-sm font-semibold text-neutral-800 mb-2">Description</h3>
+                <p class="text-sm text-neutral-600">{{ school_class.description }}</p>
             </div>
             {% endif %}
         </div>
 
         <!-- Sidebar -->
-        <div class="space-y-6">
-            <!-- Teachers Card -->
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-base font-semibold text-neutral-800">Teachers</h3>
-                    {% if permissions.can_manage_classes() %}
-                    <a href="/classes/{{ school_class.id }}/manage-teachers"
-                       class="text-xs text-primary-500 hover:text-primary-600">
-                        Manage
-                    </a>
+        <div class="space-y-5">
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-5">
+                <h3 class="text-sm font-semibold text-neutral-800 mb-3">Primary teacher</h3>
+                {# teachers is a list of (user, teacher_class) tuples from
+                   class_service.get_class_teachers — unpack accordingly. #}
+                {% set ns = namespace(primary_user=none) %}
+                {% for pair in teachers %}
+                    {% set tuser = pair[0] %}
+                    {% set tc = pair[1] %}
+                    {% if tc and tc.is_primary and tuser %}
+                        {% set ns.primary_user = tuser %}
                     {% endif %}
+                {% endfor %}
+                {% if ns.primary_user %}
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                        <span class="text-primary-700 font-medium text-sm">
+                            {{ ns.primary_user.first_name[0] }}{{ ns.primary_user.last_name[0] }}
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-neutral-800">{{ ns.primary_user.first_name }} {{ ns.primary_user.last_name }}</p>
+                        <p class="text-xs text-neutral-500">{{ ns.primary_user.email }}</p>
+                    </div>
                 </div>
-
-                {% if teachers or pending_general_teachers %}
-                <ul class="space-y-3">
-                    {% for teacher, tc in teachers %}
-                    <li class="flex items-center gap-3">
-                        <div class="flex-shrink-0 h-9 w-9 rounded-full bg-neutral-100 flex items-center justify-center">
-                            <span class="text-neutral-600 font-medium text-xs">
-                                {{ teacher.first_name[0] }}{{ teacher.last_name[0] }}
-                            </span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-neutral-800">
-                                {{ teacher.first_name }} {{ teacher.last_name }}
-                            </p>
-                            <p class="text-xs text-neutral-500 truncate">{{ teacher.email }}</p>
-                        </div>
-                    </li>
-                    {% endfor %}
-                    {# Pending-invitation class teacher — dashed border + Pending badge #}
-                    {% for inv, _ in pending_general_teachers %}
-                    <li class="flex items-center gap-3 opacity-80">
-                        <div class="flex-shrink-0 h-9 w-9 rounded-full bg-amber-50 border border-dashed border-amber-300 flex items-center justify-center">
-                            <span class="text-amber-700 font-medium text-xs">
-                                {{ inv.first_name[0] if inv.first_name else '?' }}{{ inv.last_name[0] if inv.last_name else '' }}
-                            </span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-neutral-800">
-                                {{ inv.first_name }} {{ inv.last_name }}
-                                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
-                                    Pending invite
-                                </span>
-                            </p>
-                            <p class="text-xs text-neutral-500 truncate">{{ inv.email }}</p>
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
                 {% else %}
-                <p class="text-sm text-neutral-500 mb-3">No teachers assigned yet.</p>
-                {% if permissions.can_manage_classes() %}
-                <a href="/classes/{{ school_class.id }}/manage-teachers"
-                   class="inline-flex items-center text-sm text-primary-500 hover:text-primary-600">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Assign a teacher
-                </a>
-                {% endif %}
+                <p class="text-sm text-neutral-500">No primary teacher assigned.</p>
                 {% endif %}
             </div>
 
-            <!-- Quick Actions -->
-            {% if permissions.can_manage_students() %}
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-5">
-                <h3 class="text-base font-semibold text-neutral-800 mb-4">Quick Actions</h3>
+            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-5">
+                <h3 class="text-sm font-semibold text-neutral-800 mb-3">Quick actions</h3>
                 <div class="space-y-2">
                     <a href="/attendance?class_id={{ school_class.id }}"
-                       class="flex items-center justify-center w-full px-4 py-2 text-sm text-neutral-700 bg-neutral-50 rounded hover:bg-neutral-100 transition-colors">
-                        <svg class="w-4 h-4 mr-2 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                        </svg>
-                        Take Attendance
-                    </a>
+                       class="block w-full px-3 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Mark attendance</a>
                     <a href="/reports/create?class_id={{ school_class.id }}"
-                       class="flex items-center justify-center w-full px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600 transition-colors">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Create Report
-                    </a>
+                       class="block w-full px-3 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Create report</a>
+                    {% if permissions.can_manage_classes() %}
+                    <a href="/classes/{{ school_class.id }}/subjects"
+                       class="block w-full px-3 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Manage subjects</a>
+                    {% endif %}
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ============== STUDENTS tab ============== -->
+    <div data-tab-panel="students" class="hidden bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div class="p-4 border-b border-neutral-100 flex flex-wrap items-center gap-3">
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" id="student-search" placeholder="Search by name…"
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md">
+            </div>
+            <span id="student-count" class="text-xs text-neutral-500">—</span>
+            {% if permissions.can_manage_students() %}
+            <a href="/students/create?class_id={{ school_class.id }}"
+               class="px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">+ Add student</a>
             {% endif %}
         </div>
+        <div id="students-list" class="divide-y divide-neutral-100">
+            <p class="text-center text-neutral-400 py-8 text-sm">Loading…</p>
+        </div>
+    </div>
+
+    <!-- ============== SUBJECTS tab ============== -->
+    <div data-tab-panel="subjects" class="hidden bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div class="p-4 border-b border-neutral-100 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-neutral-800">Subjects taught in this class</h3>
+            {% if permissions.can_manage_classes() %}
+            <a href="/classes/{{ school_class.id }}/subjects"
+               class="text-xs text-primary-600 hover:underline">Manage</a>
+            {% endif %}
+        </div>
+        <div id="subjects-list" class="divide-y divide-neutral-100">
+            <p class="text-center text-neutral-400 py-8 text-sm">Loading…</p>
+        </div>
+    </div>
+
+    <!-- ============== TEACHERS tab ============== -->
+    <div data-tab-panel="teachers" class="hidden bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div class="p-4 border-b border-neutral-100 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-neutral-800">All teachers for this class</h3>
+            {% if permissions.can_manage_classes() %}
+            <a href="/classes/{{ school_class.id }}/manage-teachers"
+               class="text-xs text-primary-600 hover:underline">Assign</a>
+            {% endif %}
+        </div>
+        <ul class="divide-y divide-neutral-100">
+            {% if teachers %}
+                {% for pair in teachers %}
+                {% set tuser = pair[0] %}
+                {% set tc = pair[1] %}
+                {% if tuser %}
+                <li class="p-4 flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center">
+                        <span class="text-neutral-600 font-medium text-sm">
+                            {{ tuser.first_name[0] }}{{ tuser.last_name[0] }}
+                        </span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-neutral-800">
+                            {{ tuser.first_name }} {{ tuser.last_name }}
+                            {% if tc and tc.is_primary %}
+                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700">Primary</span>
+                            {% endif %}
+                        </p>
+                        <p class="text-xs text-neutral-500">{{ tuser.email or '—' }}</p>
+                    </div>
+                    <span id="teacher-subjects-{{ tuser.id }}" class="text-xs text-neutral-500">—</span>
+                </li>
+                {% endif %}
+                {% endfor %}
+            {% else %}
+                <li class="p-6 text-center text-sm text-neutral-500">No teachers assigned yet.</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <!-- ============== TIMETABLE tab ============== -->
+    <div data-tab-panel="timetable" class="hidden bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div class="p-4 border-b border-neutral-100 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-neutral-800">Weekly timetable</h3>
+            <a href="/timetable" class="text-xs text-primary-600 hover:underline">Open timetable editor →</a>
+        </div>
+        <div id="timetable-grid" class="p-4 text-sm text-neutral-500">Loading…</div>
     </div>
 </div>
 
-{# Subject-teacher assign/unassign modal. Lives outside the main
-   content column so backdrop + stacking context don't clip against
-   the sidebar card. Only wired when subject_teacher_enabled is on,
-   but we always render it so Jinja doesn't branch on JS state. #}
-{% if tenant and tenant.subject_teacher_enabled %}
-<dialog id="subject-teacher-modal" class="rounded-xl p-0 w-full max-w-md backdrop:bg-black/60">
-    <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-neutral-800">
-                Assign teacher to <span id="stm-subject-name"></span>
-            </h3>
-            <button type="button" onclick="document.getElementById('subject-teacher-modal').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-
-        <div id="stm-current" class="mb-4 space-y-2"></div>
-
-        <label class="block text-sm font-medium text-neutral-700 mb-1">Add teacher</label>
-        <select id="stm-teacher-picker" class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg">
-            <option value="">Select a teacher...</option>
-            {% for t in assignable_teachers %}
-            <option value="{{ t.id }}">{{ t.first_name }} {{ t.last_name }}</option>
-            {% endfor %}
-        </select>
-
-        <div class="mt-5 flex gap-2 justify-end">
-            <button type="button" onclick="document.getElementById('subject-teacher-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50">
-                Done
-            </button>
-            <button type="button" id="stm-add-btn"
-                    class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700">
-                Assign
-            </button>
-        </div>
-    </div>
-</dialog>
-
 <script>
-// Shared state for the subject-teacher modal — the subject the modal
-// is currently editing. Preloaded teacher map built from server-rendered
-// JSON so re-opening the modal doesn't need a fetch.
-const STM_CLASS_ID = {{ (school_class.id | string) | tojson }};
-let stmCurrentSubjectId = null;
+(function() {
+    const CLASS_ID = {{ (school_class.id | string) | tojson }};
+    const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+    const btns = Array.from(document.querySelectorAll('.tab-btn'));
+    const loaded = new Set();
 
-function openSubjectTeacherModal(subjectId, subjectName) {
-    stmCurrentSubjectId = subjectId;
-    document.getElementById('stm-subject-name').textContent = subjectName;
-    document.getElementById('stm-teacher-picker').value = '';
-    renderCurrentSubjectTeachers();
-    document.getElementById('subject-teacher-modal').showModal();
-}
+    const loaders = {
+        overview: loadOverview,
+        students: loadStudents,
+        subjects: loadSubjects,
+        teachers: loadTeacherSubjectCounts,
+        timetable: loadTimetable,
+    };
 
-async function renderCurrentSubjectTeachers() {
-    const slot = document.getElementById('stm-current');
-    slot.innerHTML = '<p class="text-sm text-neutral-400">Loading...</p>';
-    try {
-        const resp = await ClassUp.fetch(
-            `/api/v1/academic/classes/${STM_CLASS_ID}/subjects/${stmCurrentSubjectId}/teachers`,
-        );
-        const teachers = (resp && resp.data) || [];
-        if (!teachers.length) {
-            slot.innerHTML = '<p class="text-sm text-neutral-500">No teachers assigned yet.</p>';
+    btns.forEach(btn => btn.addEventListener('click', () => activate(btn.dataset.tab)));
+
+    function activate(name) {
+        btns.forEach(b => {
+            const on = b.dataset.tab === name;
+            b.classList.toggle('border-primary-500', on);
+            b.classList.toggle('text-primary-600', on);
+            b.classList.toggle('border-transparent', !on);
+            b.classList.toggle('text-neutral-500', !on);
+        });
+        panels.forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== name));
+        try { history.replaceState(null, '', '#' + name); } catch (_) {}
+        if (!loaded.has(name) && loaders[name]) {
+            loaded.add(name);
+            loaders[name]();
+        }
+    }
+
+    // Pre-run overview loader to populate quick-stats tiles even
+    // if the user never clicks the tab (the panel is visible on load).
+    loaders.overview();
+    loaded.add('overview');
+
+    // Deep-link to a tab via hash
+    const initial = (location.hash || '#overview').slice(1);
+    if (['students', 'subjects', 'teachers', 'timetable'].includes(initial)) {
+        activate(initial);
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return '—';
+        try { return new Date(iso).toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'}); }
+        catch (e) { return iso; }
+    }
+
+    // ───── Overview: subject + teacher + attendance stats ─────
+    async function loadOverview() {
+        // Subjects count
+        try {
+            const r = await ClassUp.fetch(`/api/v1/academic/classes/${CLASS_ID}/subjects`);
+            document.getElementById('ov-subjects').textContent = (r.data || []).length;
+        } catch (_) {
+            document.getElementById('ov-subjects').textContent = '—';
+        }
+        // Teacher count from the server-rendered list
+        const teacherCount = document.querySelectorAll('[data-tab-panel="teachers"] ul li').length;
+        document.getElementById('ov-teachers').textContent = teacherCount || 0;
+        // Attendance rate — last 30 days
+        try {
+            const to = new Date().toISOString().slice(0, 10);
+            const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+            const r = await ClassUp.fetch(
+                `/api/v1/attendance/stats?class_id=${CLASS_ID}&from_date=${from}&to_date=${to}`
+            );
+            const d = r.data || {};
+            const total = d.total || d.total_days || 0;
+            const attended = (d.present || 0) + (d.late || 0) + (d.excused || 0);
+            const pct = total ? ((attended / total) * 100).toFixed(1) + '%' : '—';
+            document.getElementById('ov-attendance').textContent = pct;
+        } catch (_) {
+            document.getElementById('ov-attendance').textContent = '—';
+        }
+    }
+
+    // ───── Students: searchable list ─────
+    let allStudents = [];
+    async function loadStudents() {
+        const listEl = document.getElementById('students-list');
+        const countEl = document.getElementById('student-count');
+        try {
+            // Paginate through — class usually has ≤40 so one page is enough,
+            // but loop defensively in case.
+            allStudents = [];
+            let page = 1;
+            while (true) {
+                const r = await ClassUp.fetch(
+                    `/api/v1/students?class_id=${CLASS_ID}&page=${page}&page_size=100&sort_by=last_name&sort_order=asc`
+                );
+                const items = r.data || [];
+                allStudents = allStudents.concat(items);
+                if (!r.pagination?.has_next || items.length === 0) break;
+                page += 1;
+                if (page > 10) break;
+            }
+            renderStudents(allStudents);
+            countEl.textContent = `${allStudents.length} student${allStudents.length === 1 ? '' : 's'}`;
+        } catch (err) {
+            listEl.innerHTML = `<p class="text-center text-danger-600 py-6 text-sm">${err.message || 'Failed to load students'}</p>`;
+        }
+    }
+    function renderStudents(list) {
+        const el = document.getElementById('students-list');
+        if (!list.length) {
+            el.innerHTML = '<p class="text-center text-neutral-500 py-8 text-sm">No students match.</p>';
             return;
         }
-        slot.innerHTML = teachers.map(t => `
-            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-neutral-200">
-                <span class="text-sm">${t.first_name} ${t.last_name}</span>
-                <button type="button" onclick="unassignSubjectTeacher('${t.id}')"
-                        class="text-xs text-red-600 hover:text-red-700 font-medium">Remove</button>
-            </div>
+        el.innerHTML = list.map(s => `
+            <a href="/students/${s.id}" class="flex items-center gap-3 p-3 hover:bg-neutral-50">
+                <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                    <span class="text-primary-700 font-medium text-sm">${(s.first_name[0] || '?')}${(s.last_name[0] || '')}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-neutral-800 truncate">${s.last_name}, ${s.first_name}</p>
+                    <p class="text-xs text-neutral-500">
+                        ${s.gender || '—'}
+                        ${s.date_of_birth ? ' · DOB ' + fmtDate(s.date_of_birth) : ''}
+                    </p>
+                </div>
+                ${s.is_active
+                    ? '<span class="text-xs px-2 py-0.5 rounded bg-success-50 text-success-700">Active</span>'
+                    : '<span class="text-xs px-2 py-0.5 rounded bg-neutral-100 text-neutral-600">Inactive</span>'}
+            </a>
         `).join('');
-    } catch (err) {
-        slot.innerHTML = '<p class="text-sm text-red-600">Failed to load.</p>';
     }
-}
-
-document.getElementById('stm-add-btn')?.addEventListener('click', async () => {
-    const teacherId = document.getElementById('stm-teacher-picker').value;
-    if (!teacherId) {
-        ClassUp.toast('Pick a teacher to assign first.', 'warning');
-        return;
-    }
-    try {
-        await ClassUp.fetch(
-            `/api/v1/academic/classes/${STM_CLASS_ID}/subjects/${stmCurrentSubjectId}/teachers`,
-            { method: 'POST', body: { teacher_id: teacherId } },
+    document.getElementById('student-search').addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (!q) { renderStudents(allStudents); return; }
+        const filtered = allStudents.filter(s =>
+            (s.first_name || '').toLowerCase().includes(q) ||
+            (s.last_name || '').toLowerCase().includes(q)
         );
-        ClassUp.toast('Teacher assigned.', 'success');
-        document.getElementById('stm-teacher-picker').value = '';
-        // Close the dialog + reload the page so the Staff summary +
-        // Subject teachers card refresh with the new assignment.
-        // (Previously the modal stayed open behind the toast and
-        // admins had to click Done manually.)
-        document.getElementById('subject-teacher-modal').close();
-        setTimeout(() => window.location.reload(), 400);
-    } catch (err) {
-        // ClassUp.fetch already toasted the error.
-    }
-});
+        renderStudents(filtered);
+        document.getElementById('student-count').textContent = `${filtered.length} of ${allStudents.length}`;
+    });
 
-async function unassignSubjectTeacher(teacherId) {
-    const ok = await ClassUp.confirm(
-        'Remove this teacher from the subject?',
-        { confirmText: 'Remove', cancelText: 'Cancel' },
-    );
-    if (!ok) return;
-    try {
-        await ClassUp.fetch(
-            `/api/v1/academic/classes/${STM_CLASS_ID}/subjects/${stmCurrentSubjectId}/teachers/${teacherId}`,
-            { method: 'DELETE' },
-        );
-        renderCurrentSubjectTeachers();
-    } catch (err) {
-        // Already toasted.
+    // ───── Subjects: list + teacher per subject (inline fetch) ─────
+    async function loadSubjects() {
+        const el = document.getElementById('subjects-list');
+        try {
+            const r = await ClassUp.fetch(`/api/v1/academic/classes/${CLASS_ID}/subjects`);
+            const subs = r.data || [];
+            if (!subs.length) {
+                el.innerHTML = '<p class="text-center text-neutral-500 py-8 text-sm">No subjects assigned to this class yet.</p>';
+                return;
+            }
+            el.innerHTML = subs.map(s => `
+                <div class="p-4 flex items-start gap-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-neutral-800">${s.subject_name}
+                            ${s.is_compulsory ? '<span class="ml-1 text-xs text-neutral-400">(compulsory)</span>' : ''}
+                        </p>
+                        <p class="text-xs text-neutral-500">${s.subject_code || ''} · out of ${s.total_marks}</p>
+                        <p id="subj-teacher-${s.subject_id}" class="text-xs text-neutral-500 mt-1">
+                            <span class="text-neutral-400">Loading teacher…</span>
+                        </p>
+                    </div>
+                </div>
+            `).join('');
+            // Fetch each subject's teachers in parallel (small N — usually ≤12)
+            await Promise.all(subs.map(async s => {
+                try {
+                    const t = await ClassUp.fetch(
+                        `/api/v1/academic/classes/${CLASS_ID}/subjects/${s.subject_id}/teachers`
+                    );
+                    const teachers = t.data || [];
+                    const el2 = document.getElementById(`subj-teacher-${s.subject_id}`);
+                    if (!el2) return;
+                    if (!teachers.length) {
+                        el2.innerHTML = '<span class="text-amber-600">No teacher assigned</span>';
+                    } else {
+                        el2.innerHTML = 'Taught by ' + teachers.map(te =>
+                            `<span class="text-primary-700">${te.first_name || te.name || ''} ${te.last_name || ''}</span>`
+                        ).join(', ');
+                    }
+                } catch (_) {
+                    const el2 = document.getElementById(`subj-teacher-${s.subject_id}`);
+                    if (el2) el2.textContent = '';
+                }
+            }));
+        } catch (err) {
+            el.innerHTML = `<p class="text-center text-danger-600 py-6 text-sm">${err.message || 'Failed'}</p>`;
+        }
     }
-}
+
+    // ───── Teachers tab: fetch how many subjects each teaches ─────
+    async function loadTeacherSubjectCounts() {
+        // Fetch all class subjects once, then for each subject grab its teachers
+        // and tally per teacher.
+        try {
+            const r = await ClassUp.fetch(`/api/v1/academic/classes/${CLASS_ID}/subjects`);
+            const subs = r.data || [];
+            const perTeacher = {};
+            await Promise.all(subs.map(async s => {
+                try {
+                    const t = await ClassUp.fetch(
+                        `/api/v1/academic/classes/${CLASS_ID}/subjects/${s.subject_id}/teachers`
+                    );
+                    (t.data || []).forEach(te => {
+                        perTeacher[te.id] = (perTeacher[te.id] || 0) + 1;
+                    });
+                } catch (_) {}
+            }));
+            Object.entries(perTeacher).forEach(([tid, n]) => {
+                const el = document.getElementById(`teacher-subjects-${tid}`);
+                if (el) el.textContent = `${n} subject${n === 1 ? '' : 's'}`;
+            });
+            // Also set "—" to "0" for teachers with no subject assignment
+            document.querySelectorAll('[id^="teacher-subjects-"]').forEach(el => {
+                if (el.textContent === '—') el.textContent = '0 subjects';
+            });
+        } catch (_) {}
+    }
+
+    // ───── Timetable tab ─────
+    async function loadTimetable() {
+        const el = document.getElementById('timetable-grid');
+        try {
+            // Fetch the full list and filter by class_id client-side —
+            // the API doesn't take a class_id filter today.
+            const r = await ClassUp.fetch('/api/v1/timetable/timetables?page_size=100');
+            const tts = (r.data || []).filter(t => t.class_id === CLASS_ID);
+            if (!tts.length) {
+                el.innerHTML = '<p class="text-neutral-500 text-sm py-6 text-center">No timetable created for this class yet.</p>';
+                return;
+            }
+            // Pick the active one, else first
+            const tt = tts.find(t => t.is_active) || tts[0];
+            const full = await ClassUp.fetch(`/api/v1/timetable/timetables/${tt.id}`);
+            const entries = full.data.entries || [];
+            if (!entries.length) {
+                el.innerHTML = '<p class="text-neutral-500 text-sm py-6 text-center">Timetable exists but has no entries yet.</p>';
+                return;
+            }
+            // Build a Monday→Friday grid
+            const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+            const dayLabels = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri' };
+            // Normalise times to buckets
+            const slots = Array.from(new Set(entries.map(e => `${e.start_time}|${e.end_time}`))).sort();
+            // Index entries by [day][slot]
+            const idx = {};
+            entries.forEach(e => {
+                const key = `${e.start_time}|${e.end_time}`;
+                (idx[e.day_of_week] = idx[e.day_of_week] || {})[key] = e;
+            });
+            el.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm border border-neutral-200">
+                        <thead class="bg-neutral-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs text-neutral-500 uppercase border border-neutral-200">Time</th>
+                                ${days.map(d => `<th class="px-3 py-2 text-left text-xs text-neutral-500 uppercase border border-neutral-200">${dayLabels[d]}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${slots.map(slot => {
+                                const [s, e] = slot.split('|');
+                                return `<tr>
+                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-neutral-500 border border-neutral-200 bg-neutral-50">${s} - ${e}</td>
+                                    ${days.map(d => {
+                                        const entry = (idx[d] || {})[slot];
+                                        if (!entry) return '<td class="border border-neutral-200 bg-neutral-50/40"></td>';
+                                        return `<td class="px-3 py-2 border border-neutral-200 align-top">
+                                            <p class="text-xs font-medium text-neutral-800">${entry.subject_name || '—'}</p>
+                                            ${entry.teacher_name ? `<p class="text-xs text-neutral-500">${entry.teacher_name}</p>` : ''}
+                                            ${entry.room ? `<p class="text-xs text-neutral-400">${entry.room}</p>` : ''}
+                                        </td>`;
+                                    }).join('')}
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+        } catch (err) {
+            if (err.message && err.message.includes('402')) {
+                el.innerHTML = '<p class="text-neutral-500 text-sm py-6 text-center">Timetable feature isn\'t on your current plan.</p>';
+            } else {
+                el.innerHTML = `<p class="text-danger-600 text-sm py-6 text-center">${err.message || 'Failed to load timetable'}</p>`;
+            }
+        }
+    }
+})();
 </script>
-{% endif %}
 {% endblock %}
