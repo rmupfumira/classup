@@ -36,7 +36,16 @@ router = APIRouter()
 
 def _build_class_list_response(school_class) -> SchoolClassListResponse:
     """Build class list response with computed fields."""
-    student_count = len([s for s in school_class.students if s.deleted_at is None and s.is_active])
+    # ``class_service.get_classes`` attaches a plain int student_count via
+    # a grouped aggregate — preferred over iterating .students because that
+    # relationship is lazy="noload" and can return empty when invoked
+    # outside the right loading context.
+    student_count = getattr(school_class, "student_count", None)
+    if student_count is None:
+        student_count = len([
+            s for s in school_class.students
+            if s.deleted_at is None and s.is_active
+        ])
     teacher_count = len(school_class.teacher_classes)
 
     primary_teacher_name = None

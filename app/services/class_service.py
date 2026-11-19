@@ -79,6 +79,32 @@ class ClassService:
         result = await db.execute(query)
         classes = list(result.scalars().unique().all())
 
+        # Attach a plain integer ``student_count`` to each class object.
+        # Rationale: SchoolClass.students is ``lazy="noload"`` so Jinja's
+        # ``{{ cls.students | selectattr(...) | list | length }}`` on the
+        # list page resolves to 0 even when selectinload was requested
+        # (the collection stays empty on the detached-ish objects that
+        # reach the template). The API builder used to catch this by
+        # iterating in Python before returning, but the web template
+        # couldn't. Computing counts up-front with a single grouped
+        # aggregate sidesteps the whole lazy-load dance.
+        if classes:
+            class_ids = [c.id for c in classes]
+            count_rows = (await db.execute(
+                select(Student.class_id, func.count(Student.id))
+                .where(
+                    Student.class_id.in_(class_ids),
+                    Student.deleted_at.is_(None),
+                    Student.is_active.is_(True),
+                )
+                .group_by(Student.class_id)
+            )).all()
+            counts = {cid: n for cid, n in count_rows}
+            for c in classes:
+                # Set as a transient attr — Pydantic response builders +
+                # Jinja templates both see it as ``cls.student_count``.
+                c.student_count = counts.get(c.id, 0)
+
         return classes, total
 
     async def get_class(

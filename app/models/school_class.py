@@ -103,17 +103,22 @@ class SchoolClass(TenantScopedModel):
         lazy="noload",
     )
 
-    @property
-    def student_count(self) -> int:
-        """Get the number of students in this class."""
-        return len([s for s in self.students if not s.is_deleted and s.is_active])
+    # Removed the @property student_count — it used to iterate
+    # self.students, which is lazy="noload" and returned 0 outside the
+    # exact loading context, silently breaking the classes list page.
+    # ClassService.get_classes now attaches a plain int student_count
+    # via a grouped aggregate query at list time; readers reach for it
+    # the same way (cls.student_count), they just get accurate numbers.
 
     @property
     def is_at_capacity(self) -> bool:
         """Check if the class is at capacity."""
         if self.capacity is None:
             return False
-        return self.student_count >= self.capacity
+        count = getattr(self, "student_count", None)
+        if count is None:
+            count = len([s for s in self.students if not s.is_deleted and s.is_active])
+        return count >= self.capacity
 
     @property
     def primary_teacher(self) -> "TeacherClass | None":
