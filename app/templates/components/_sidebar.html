@@ -614,6 +614,22 @@
                     </svg>
                     {{ t('nav.settings', current_language) }}
                 </a>
+
+                <!-- Activity log -->
+                <a href="/settings/audit"
+                   class="group flex items-center px-3 py-2.5 text-sm rounded-md
+                          {% if '/settings/audit' in request.url.path %}
+                          bg-primary-50 text-primary-600 font-medium
+                          {% else %}
+                          text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900
+                          {% endif %}">
+                    <svg class="mr-3 h-4 w-4 {% if '/settings/audit' in request.url.path %}text-primary-500{% else %}text-neutral-400 group-hover:text-neutral-600{% endif %}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Activity log
+                </a>
                 {% endif %}
 
                 <!-- Help & Guides -->

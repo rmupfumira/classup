@@ -329,6 +329,42 @@ async def settings_terminology_save(
     return RedirectResponse(url="/settings/terminology?saved=1", status_code=302)
 
 
+@router.get("/audit", response_class=HTMLResponse)
+async def settings_audit(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Tenant-scoped audit log viewer.
+
+    Shows every recorded action on this school's data — who signed in,
+    who created invoices, who recorded or deleted payments, who changed
+    settings. Useful for the admin to answer "did someone touch X?".
+    Scoping is enforced server-side in /api/v1/audit/events.
+    """
+    user_id = get_current_user_id_or_none()
+    if not user_id:
+        return RedirectResponse(url="/login?next=/settings/audit", status_code=302)
+    role = get_current_user_role()
+    if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    auth_service = get_auth_service()
+    user = await auth_service.get_current_user(db, user_id)
+    tenant_id = get_tenant_id()
+    tenant = await db.get(Tenant, tenant_id) if tenant_id else None
+
+    from app.utils.tenant_context import get_current_language
+    return templates.TemplateResponse(
+        "settings/audit.html",
+        {
+            "request": request,
+            "user": user,
+            "tenant": tenant,
+            "current_language": get_current_language(),
+        },
+    )
+
+
 @router.get("/webhooks", response_class=HTMLResponse)
 async def settings_webhooks(
     request: Request,

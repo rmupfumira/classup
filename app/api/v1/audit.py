@@ -9,9 +9,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.user import Role
 from app.schemas.common import APIResponse, PaginationMeta
 from app.services.audit_service import get_audit_service
-from app.utils.permissions import require_super_admin
+from app.utils.permissions import require_role, require_super_admin
+from app.utils.tenant_context import get_tenant_id
 
 
 logger = logging.getLogger(__name__)
@@ -139,6 +141,68 @@ async def list_online_users(
     service = get_audit_service()
     users = await service.get_online_users(db, threshold_minutes=threshold_minutes)
     return APIResponse(status="success", data=users)
+
+
+# ──────────────── Tenant-scoped audit (SCHOOL_ADMIN) ────────────────
+# A school admin needs to see "who did what" inside their own school —
+# especially for invoicing / payments / cancellations / refunds. This
+# endpoint is a hard-filtered view: the service query always pins
+# tenant_id to the current tenant, so a SCHOOL_ADMIN can never see
+# another tenant's events.
+
+
+@router.get("/audit/events")
+@require_role(Role.SCHOOL_ADMIN)
+async def list_tenant_audit_events(
+    action_prefix: str | None = Query(
+        None,
+        description="Filter by action prefix, e.g. 'billing.' to see only billing events.",
+    ),
+    user_id: uuid.UUID | None = None,
+    since_minutes: int | None = Query(None, ge=1, le=10080),
+    search: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Tenant-scoped audit event list.
+
+    Always restricted to the caller's tenant. Supports an action_prefix
+    filter so the UI can offer quick views like "Billing", "Students",
+    "Auth" without the user having to know each exact action key.
+    """
+    tenant_id = get_tenant_id()
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant context required")
+
+    service = get_audit_service()
+    since_dt: datetime | None = None
+    if since_minutes:
+        since_dt = datetime.now(timezone.utc) - timedelta(minutes=since_minutes)
+
+    items, total = await service.list_events(
+        db,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        action=action_prefix,
+        since=since_dt,
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
+    total_pages = (total + page_size - 1) // page_size
+    return APIResponse(
+        status="success",
+        data=[_event_to_dict(e) for e in items],
+        pagination=PaginationMeta(
+            page=page,
+            page_size=page_size,
+            total_items=total,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_prev=page > 1,
+        ),
+    )
 
 
 @router.post("/admin/audit-events/purge")
