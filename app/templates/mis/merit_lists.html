@@ -4,16 +4,42 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 pt-6 pb-24 space-y-5">
-    <div>
-        <h1 class="text-xl font-semibold text-neutral-800">Merit lists</h1>
-        <p class="mt-0.5 text-sm text-neutral-500">
-            Students ranked by aggregate performance across all subjects.
-            Ties share a rank (1, 1, 3 style).
-        </p>
+    <div class="flex items-start justify-between flex-wrap gap-2">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Merit lists</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
+                Students ranked by aggregate performance across all subjects.
+                Ties share a rank (1, 1, 3 style).
+            </p>
+        </div>
+        {% include 'mis/_export_bar.html' %}
     </div>
 
     {% set active_tab = 'merit_lists' %}
     {% include 'mis/_tabs.html' %}
+
+    <script>
+    window.MIS_EXPORT = {
+        xlsxUrl: () => {
+            const from = document.getElementById('from-date').value;
+            const to = document.getElementById('to-date').value;
+            if (!from || !to) return null;
+            const scope = document.getElementById('scope').value;
+            const p = new URLSearchParams({
+                from_date: from, to_date: to, scope,
+                top_n: document.getElementById('top-n').value,
+            });
+            if (scope === 'CLASS') {
+                const cid = document.getElementById('class-filter').value;
+                if (cid) p.set('class_id', cid);
+            } else if (scope === 'GRADE_LEVEL') {
+                const gid = document.getElementById('grade-filter').value;
+                if (gid) p.set('grade_level_id', gid);
+            }
+            return '/api/v1/mis/export/merit-list.xlsx?' + p.toString();
+        },
+    };
+    </script>
 
     <!-- Filters -->
     <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">

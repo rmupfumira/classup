@@ -8,15 +8,32 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
-    <div>
-        <h1 class="text-xl font-semibold text-neutral-800">Executive Dashboard</h1>
-        <p class="mt-0.5 text-sm text-neutral-500">
-            Academic + attendance KPIs for <strong>{{ tenant.name if tenant else 'this school' }}</strong>.
-        </p>
+    <div class="flex items-start justify-between flex-wrap gap-2">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Executive Dashboard</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
+                Academic + attendance KPIs for <strong>{{ tenant.name if tenant else 'this school' }}</strong>.
+            </p>
+        </div>
+        {% include 'mis/_export_bar.html' %}
     </div>
 
     {% set active_tab = 'dashboard' %}
     {% include 'mis/_tabs.html' %}
+
+    <script>
+    window.MIS_EXPORT = {
+        xlsxUrl: () => {
+            const from = document.getElementById('from-date').value;
+            const to = document.getElementById('to-date').value;
+            if (!from || !to) return null;
+            const p = new URLSearchParams({ from_date: from, to_date: to });
+            const cid = document.getElementById('class-filter').value;
+            if (cid) p.set('class_id', cid);
+            return '/api/v1/mis/export/kpis.xlsx?' + p.toString();
+        },
+    };
+    </script>
 
     <!-- Window + class filter -->
     <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">

@@ -12,13 +12,30 @@
                 Four risk levels: Critical, High, Medium, Low.
             </p>
         </div>
-        <button onclick="openRulesModal()" class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
-            Configure rules
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="openRulesModal()" class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                Configure rules
+            </button>
+            {% include 'mis/_export_bar.html' %}
+        </div>
     </div>
 
     {% set active_tab = 'early_warning' %}
     {% include 'mis/_tabs.html' %}
+
+    <script>
+    window.MIS_EXPORT = {
+        xlsxUrl: () => {
+            const from = document.getElementById('from-date').value;
+            const to = document.getElementById('to-date').value;
+            if (!from || !to) return null;
+            const p = new URLSearchParams({ from_date: from, to_date: to });
+            const cid = document.getElementById('class-filter').value;
+            if (cid) p.set('class_id', cid);
+            return '/api/v1/mis/export/early-warning.xlsx?' + p.toString();
+        },
+    };
+    </script>
 
     <!-- Filters -->
     <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">

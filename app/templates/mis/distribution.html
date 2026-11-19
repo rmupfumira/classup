@@ -8,16 +8,38 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
-    <div>
-        <h1 class="text-xl font-semibold text-neutral-800">Grade distribution</h1>
-        <p class="mt-0.5 text-sm text-neutral-500">
-            Histogram + bell curve overlay to see whether an assessment produced a healthy spread
-            or an abnormal concentration. Pick a subject to isolate it.
-        </p>
+    <div class="flex items-start justify-between flex-wrap gap-2">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Grade distribution</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
+                Histogram + bell curve overlay to see whether an assessment produced a healthy spread
+                or an abnormal concentration. Pick a subject to isolate it.
+            </p>
+        </div>
+        {% include 'mis/_export_bar.html' %}
     </div>
 
     {% set active_tab = 'distribution' %}
     {% include 'mis/_tabs.html' %}
+
+    <script>
+    window.MIS_EXPORT = {
+        xlsxUrl: () => {
+            const from = document.getElementById('from-date').value;
+            const to = document.getElementById('to-date').value;
+            if (!from || !to) return null;
+            const p = new URLSearchParams({
+                from_date: from, to_date: to,
+                bin_size: document.getElementById('bin-size').value,
+            });
+            const cid = document.getElementById('class-filter').value;
+            if (cid) p.set('class_id', cid);
+            const sid = document.getElementById('subject-filter').value;
+            if (sid) p.set('subject_id', sid);
+            return '/api/v1/mis/export/grade-distribution.xlsx?' + p.toString();
+        },
+    };
+    </script>
 
     <!-- Filters -->
     <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
