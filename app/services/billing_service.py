@@ -635,6 +635,190 @@ class BillingService:
         payment.accounting_linked = accounting_tx_created  # type: ignore[attr-defined]
         return payment
 
+    async def bulk_import_payments(
+        self, db: AsyncSession, rows: list[dict],
+    ) -> dict:
+        """Apply a parsed bulk-payment template row-by-row.
+
+        Each row is applied as its own payment (BillingPayment +
+        accounting auto-link). Failures are captured per-row so the
+        admin sees exactly which rows succeeded, which failed, and why
+        — instead of a half-complete batch rolling back opaquely.
+
+        Returns {total, success, failed, errors[]} — same shape the
+        existing CSV import jobs use so the UI can render it with the
+        same table.
+        """
+        from app.schemas.billing import PaymentCreate
+        from app.models.billing import PaymentMethod
+
+        tenant_id = get_tenant_id()
+        success = 0
+        failed = 0
+        errors: list[dict] = []
+
+        for row in rows:
+            row_num = row.get("_row_number", 0)
+
+            # Resolve the invoice — explicit invoice_number wins; if blank,
+            # use the student_id's oldest unpaid invoice (OVERDUE > SENT >
+            # PARTIALLY_PAID, oldest first).
+            invoice: BillingInvoice | None = None
+            inv_num = (row.get("invoice_number") or "").strip()
+            if inv_num:
+                q = select(BillingInvoice).where(
+                    BillingInvoice.tenant_id == tenant_id,
+                    BillingInvoice.invoice_number == inv_num,
+                    BillingInvoice.deleted_at.is_(None),
+                )
+                invoice = (await db.execute(q)).scalar_one_or_none()
+                if not invoice:
+                    errors.append({
+                        "row": row_num, "field": "invoice_number",
+                        "value": inv_num,
+                        "message": f"No invoice '{inv_num}' found on this school.",
+                    })
+                    failed += 1
+                    continue
+            else:
+                student_id_str = (row.get("student_id") or "").strip()
+                if not student_id_str:
+                    errors.append({
+                        "row": row_num, "field": "student_id",
+                        "value": "",
+                        "message": "Row has no invoice_number and no student_id.",
+                    })
+                    failed += 1
+                    continue
+                try:
+                    student_uuid = uuid.UUID(student_id_str)
+                except ValueError:
+                    errors.append({
+                        "row": row_num, "field": "student_id",
+                        "value": student_id_str,
+                        "message": "student_id is not a valid UUID.",
+                    })
+                    failed += 1
+                    continue
+                q = select(BillingInvoice).where(
+                    BillingInvoice.tenant_id == tenant_id,
+                    BillingInvoice.student_id == student_uuid,
+                    BillingInvoice.deleted_at.is_(None),
+                    BillingInvoice.status.in_([
+                        InvoiceStatus.SENT.value,
+                        InvoiceStatus.PARTIALLY_PAID.value,
+                        InvoiceStatus.OVERDUE.value,
+                    ]),
+                ).order_by(BillingInvoice.due_date.asc(), BillingInvoice.created_at.asc())
+                invoice = (await db.execute(q)).scalars().first()
+                if not invoice:
+                    errors.append({
+                        "row": row_num, "field": "invoice_number",
+                        "value": "",
+                        "message": "No open invoice for this student.",
+                    })
+                    failed += 1
+                    continue
+
+            # Amount
+            amount = row.get("amount")
+            if amount is None:
+                errors.append({
+                    "row": row_num, "field": "amount",
+                    "value": "",
+                    "message": "Amount is missing or not a number.",
+                })
+                failed += 1
+                continue
+            try:
+                amt = Decimal(str(amount))
+            except Exception:
+                errors.append({
+                    "row": row_num, "field": "amount",
+                    "value": str(amount),
+                    "message": "Amount could not be parsed.",
+                })
+                failed += 1
+                continue
+            if amt <= 0:
+                errors.append({
+                    "row": row_num, "field": "amount",
+                    "value": str(amount),
+                    "message": "Amount must be greater than zero.",
+                })
+                failed += 1
+                continue
+
+            # Payment method
+            method_raw = (row.get("payment_method") or "BANK_TRANSFER").strip().upper()
+            try:
+                method = PaymentMethod(method_raw)
+            except ValueError:
+                errors.append({
+                    "row": row_num, "field": "payment_method",
+                    "value": method_raw,
+                    "message": f"Not a valid payment method: {method_raw}.",
+                })
+                failed += 1
+                continue
+
+            # Payment date
+            date_raw = (row.get("payment_date") or "").strip()
+            if not date_raw:
+                errors.append({
+                    "row": row_num, "field": "payment_date",
+                    "value": "",
+                    "message": "Payment date is required (YYYY-MM-DD).",
+                })
+                failed += 1
+                continue
+            try:
+                from datetime import date as _date
+                pay_date = _date.fromisoformat(date_raw)
+            except ValueError:
+                errors.append({
+                    "row": row_num, "field": "payment_date",
+                    "value": date_raw,
+                    "message": "Date must be YYYY-MM-DD.",
+                })
+                failed += 1
+                continue
+
+            # Apply the payment the same way the UI flow does — this
+            # updates invoice balance + creates the accounting entry.
+            try:
+                payload = PaymentCreate(
+                    invoice_id=invoice.id,
+                    amount=amt,
+                    payment_method=method,
+                    reference_number=(row.get("reference_number") or "").strip() or None,
+                    payment_date=pay_date,
+                    notes=(row.get("notes") or "").strip() or None,
+                )
+                await self.record_payment(db, payload)
+                success += 1
+            except ValidationException as exc:
+                errors.append({
+                    "row": row_num, "field": "amount",
+                    "value": str(amt),
+                    "message": str(exc.errors if hasattr(exc, "errors") else exc),
+                })
+                failed += 1
+            except Exception as exc:
+                logger.exception("Bulk payment row %s failed", row_num)
+                errors.append({
+                    "row": row_num, "field": "general",
+                    "value": "", "message": str(exc),
+                })
+                failed += 1
+
+        return {
+            "total": len(rows),
+            "success": success,
+            "failed": failed,
+            "errors": errors,
+        }
+
     async def delete_payment(
         self, db: AsyncSession, payment_id: uuid.UUID
     ) -> None:

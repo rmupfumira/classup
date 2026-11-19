@@ -472,6 +472,41 @@ async def payments_list(
     return templates.TemplateResponse("billing/payments/list.html", context)
 
 
+@router.get("/payments/import", response_class=HTMLResponse)
+async def payments_import_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Render the bulk payment upload page.
+
+    Admins download the pre-populated template (every active student with
+    their oldest open invoice + current balance), fill in the amounts for
+    students being paid for, and upload it back here.
+    """
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+
+    user = await _get_current_user(db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    if get_current_user_role() not in (Role.SCHOOL_ADMIN.value, Role.SUPER_ADMIN.value):
+        raise ForbiddenException("Access denied")
+
+    tenant = await _get_tenant(db)
+    currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
+
+    context = {
+        "request": request,
+        "user": user,
+        "currency_code": currency,
+        "current_language": get_current_language(),
+        "permissions": PermissionChecker(user.role),
+    }
+    return templates.TemplateResponse("billing/payments/import.html", context)
+
+
 # =========================================================================
 # Parent Routes
 # =========================================================================

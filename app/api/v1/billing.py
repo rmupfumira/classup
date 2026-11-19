@@ -3,7 +3,9 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -25,8 +27,9 @@ from app.schemas.billing import (
 )
 from app.schemas.common import APIResponse, PaginationMeta
 from app.services.billing_service import get_billing_service
+from app.services.payment_template_service import get_payment_template_service
 from app.utils.permissions import require_role
-from app.utils.tenant_context import get_current_user_id, get_current_user_role
+from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 router = APIRouter()
 
@@ -429,6 +432,115 @@ async def delete_payment(
     service = get_billing_service()
     await service.delete_payment(db, payment_id)
     return APIResponse(message="Payment deleted")
+
+
+# =========================================================================
+# Bulk payment upload — one XLSX, many payments
+# =========================================================================
+
+@router.get("/payments/import/template.xlsx")
+@require_role(Role.SCHOOL_ADMIN)
+async def bulk_payments_template(db: AsyncSession = Depends(get_db)):
+    """Download the bulk-payment XLSX template.
+
+    Pre-populates every active student with their oldest unpaid invoice +
+    current balance so the admin only has to type the amount being paid.
+    """
+    from app.models.billing import BillingInvoice, InvoiceStatus
+    from app.models.student import Student
+
+    tenant_id = get_tenant_id()
+    # Active students for this tenant
+    students = (await db.execute(
+        select(Student).where(
+            Student.tenant_id == tenant_id,
+            Student.is_active == True,  # noqa: E712
+            Student.deleted_at.is_(None),
+        ).order_by(Student.last_name, Student.first_name)
+    )).scalars().all()
+
+    # Build an index of the oldest open invoice per student in one round-trip.
+    open_invoices = (await db.execute(
+        select(BillingInvoice).where(
+            BillingInvoice.tenant_id == tenant_id,
+            BillingInvoice.deleted_at.is_(None),
+            BillingInvoice.status.in_([
+                InvoiceStatus.SENT.value,
+                InvoiceStatus.PARTIALLY_PAID.value,
+                InvoiceStatus.OVERDUE.value,
+            ]),
+        ).order_by(BillingInvoice.due_date.asc(), BillingInvoice.created_at.asc())
+    )).scalars().all()
+    oldest_by_student: dict = {}
+    for inv in open_invoices:
+        oldest_by_student.setdefault(inv.student_id, inv)
+
+    rows = []
+    for s in students:
+        inv = oldest_by_student.get(s.id)
+        rows.append({
+            "student_id": str(s.id),
+            "student_name": f"{s.last_name}, {s.first_name}",
+            "invoice_number": inv.invoice_number if inv else "",
+            "current_balance": float(inv.balance) if inv else 0,
+        })
+
+    svc = get_payment_template_service()
+    data = svc.generate_template(
+        students_with_invoices=rows,
+        default_payment_date=date.today(),
+    )
+    return StreamingResponse(
+        iter([data]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="bulk-payments-template_{date.today().isoformat()}.xlsx"'
+            ),
+        },
+    )
+
+
+@router.post("/payments/import", response_model=APIResponse[dict])
+@require_role(Role.SCHOOL_ADMIN)
+async def bulk_payments_import(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a filled bulk-payment template.
+
+    Returns a per-row result so the admin sees which rows succeeded and
+    which failed. The whole batch commits at once — failures land in the
+    error list, successful rows persist.
+    """
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        raise HTTPException(
+            status_code=400,
+            detail="Upload must be a .xlsx file saved from the template.",
+        )
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Upload was empty.")
+    try:
+        rows, total = get_payment_template_service().parse_excel(data)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not read the file: {exc}",
+        )
+    if not rows:
+        return APIResponse(data={
+            "total": 0, "success": 0, "failed": 0, "errors": [],
+        }, message="No rows with an amount to import.")
+
+    result = await get_billing_service().bulk_import_payments(db, rows)
+    await db.commit()
+    msg = (
+        f"Imported {result['success']} of {result['total']} rows"
+        + (f" — {result['failed']} failed" if result["failed"] else "")
+        + "."
+    )
+    return APIResponse(data=result, message=msg)
 
 
 # =========================================================================
