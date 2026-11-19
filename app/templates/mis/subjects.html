@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Subject performance - {{ app_name }}{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
+    <div>
+        <h1 class="text-xl font-semibold text-neutral-800">Subject performance</h1>
+        <p class="mt-0.5 text-sm text-neutral-500">
+            Pass, fail, distinction, merit and credit rates per subject — scored against each
+            class's grading scale. Falls back to the tenant default when a class has no scale set.
+        </p>
+    </div>
+
+    {% set active_tab = 'subjects' %}
+    {% include 'mis/_tabs.html' %}
+
+    <!-- Window + class filter -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">From</label>
+                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">To</label>
+                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This month</button>
+                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">Term</button>
+                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">YTD</button>
+            </div>
+            <div class="flex-1 min-w-[180px]">
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
+                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="">Whole school</option>
+                </select>
+            </div>
+            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">Refresh</button>
+        </div>
+        <p id="grading-caption" class="mt-2 text-xs text-neutral-500"></p>
+    </div>
+
+    <!-- Overview chart -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <h2 class="text-sm font-semibold text-neutral-800 mb-3">Pass rate by subject</h2>
+        <div class="h-72"><canvas id="pass-chart"></canvas></div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Subject</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Students</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Mean</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Median</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-success-700 uppercase">Pass</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-danger-700 uppercase">Fail</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Distinction</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Merit</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Credit</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Best / Weakest</th>
+                    </tr>
+                </thead>
+                <tbody id="subjects-body" class="divide-y divide-neutral-100">
+                    <tr><td colspan="10" class="text-center text-neutral-400 py-8 text-sm">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let passChart;
+let _lastData = null;
+
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+function fmtPct(n) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toFixed(1) + '%';
+}
+
+function setRange(kind) {
+    const today = new Date();
+    let from, to;
+    if (kind === 'month') {
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+        to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (kind === 'term') {
+        const q = Math.floor(today.getMonth() / 3);
+        from = new Date(today.getFullYear(), q * 3, 1);
+        to = new Date(today.getFullYear(), q * 3 + 3, 0);
+    } else if (kind === 'ytd') {
+        from = new Date(today.getFullYear(), 0, 1);
+        to = today;
+    }
+    document.getElementById('from-date').value = isoDate(from);
+    document.getElementById('to-date').value = isoDate(to);
+    load();
+}
+
+async function populateClassFilter() {
+    try {
+        const r = await ClassUp.fetch('/api/v1/classes?page_size=200&active_only=true');
+        const classes = (r && r.data) || [];
+        const sel = document.getElementById('class-filter');
+        classes.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+    } catch (_) {}
+}
+
+function renderPassChart(subjects) {
+    const ctx = document.getElementById('pass-chart').getContext('2d');
+    if (passChart) passChart.destroy();
+    const labels = subjects.map(s => s.subject_name);
+    const passPct = subjects.map(s => s.rates.pass_pct);
+    const failPct = subjects.map(s => s.rates.fail_pct);
+    passChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Pass %', data: passPct, backgroundColor: '#16A34A', borderRadius: 4, stack: 'rate' },
+                { label: 'Fail %', data: failPct, backgroundColor: '#DC2626', borderRadius: 4, stack: 'rate' },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            scales: {
+                x: { stacked: true, beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+                y: { stacked: true },
+            },
+            plugins: { legend: { position: 'bottom' } },
+        },
+    });
+}
+
+function renderTable(data) {
+    const body = document.getElementById('subjects-body');
+    const subs = data.subjects || [];
+    if (!subs.length) {
+        body.innerHTML = '<tr><td colspan="10" class="text-center text-neutral-400 py-8 text-sm">No finalised report cards in this window. Finalise reports first to see subject-level analysis.</td></tr>';
+        return;
+    }
+    body.innerHTML = subs.map(s => {
+        const r = s.rates;
+        return `
+            <tr class="hover:bg-neutral-50">
+                <td class="px-3 py-2 text-neutral-800 font-medium">${s.subject_name}</td>
+                <td class="px-3 py-2 text-right text-neutral-600">${s.student_count}</td>
+                <td class="px-3 py-2 text-right text-neutral-800">${fmtPct(s.mean)}</td>
+                <td class="px-3 py-2 text-right text-neutral-600">${fmtPct(s.median)}</td>
+                <td class="px-3 py-2 text-right font-medium text-success-700">${fmtPct(r.pass_pct)}</td>
+                <td class="px-3 py-2 text-right font-medium ${r.fail_pct > 25 ? 'text-danger-700' : 'text-neutral-500'}">${fmtPct(r.fail_pct)}</td>
+                <td class="px-3 py-2 text-right text-neutral-700">${fmtPct(r.distinction_pct)}</td>
+                <td class="px-3 py-2 text-right text-neutral-700">${fmtPct(r.merit_pct)}</td>
+                <td class="px-3 py-2 text-right text-neutral-700">${fmtPct(r.credit_pct)}</td>
+                <td class="px-3 py-2 text-right text-xs">
+                    <div class="text-success-700">${s.best_student.name} · ${fmtPct(s.best_student.percentage)}</div>
+                    <div class="text-danger-700">${s.worst_student.name} · ${fmtPct(s.worst_student.percentage)}</div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function load() {
+    const from = document.getElementById('from-date').value;
+    const to = document.getElementById('to-date').value;
+    const classId = document.getElementById('class-filter').value;
+    if (!from || !to) return;
+
+    const params = new URLSearchParams({ from_date: from, to_date: to });
+    if (classId) params.set('class_id', classId);
+
+    try {
+        const r = await ClassUp.fetch('/api/v1/mis/subject-performance?' + params.toString());
+        _lastData = r.data;
+        const caption = document.getElementById('grading-caption');
+        const gs = r.data.grading_system;
+        caption.textContent = gs
+            ? `Classified against the resolved grading scale · pass mark ${r.data.pass_mark_pct}%`
+            : `No grading scale configured — showing a simple pass/fail at ${r.data.pass_mark_pct}%`;
+        renderPassChart(r.data.subjects || []);
+        renderTable(r.data);
+    } catch (err) {
+        console.error(err);
+        ClassUp.toast(err.message || 'Failed to load subject performance', 'error');
+    }
+}
+
+populateClassFilter();
+setRange('term');
+</script>
+{% endblock %}

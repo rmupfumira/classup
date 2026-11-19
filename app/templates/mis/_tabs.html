@@ -1,0 +1,26 @@
+{#
+    Shared tab nav for the MIS module. Phases 1-6 all land under /mis/*
+    and this strip keeps the navigation consistent — each page just
+    passes active_tab={dashboard|subjects|distribution|longitudinal|
+    early_warning} so the right tab lights up.
+#}
+<div class="border-b border-neutral-200">
+    <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto">
+        <a href="/mis"
+           class="{% if active_tab == 'dashboard' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+            Dashboard
+        </a>
+        <a href="/mis/subjects"
+           class="{% if active_tab == 'subjects' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+            Subject performance
+        </a>
+        {# Placeholder tabs for the phases still in flight — kept
+           hidden so the strip doesn't look broken until the page
+           behind them ships. #}
+        {% if False %}
+        <a href="/mis/distribution" class="border-transparent text-neutral-500 border-b-2 py-3 px-1 text-sm font-medium">Grade distribution</a>
+        <a href="/mis/longitudinal" class="border-transparent text-neutral-500 border-b-2 py-3 px-1 text-sm font-medium">Longitudinal</a>
+        <a href="/mis/early-warning" class="border-transparent text-neutral-500 border-b-2 py-3 px-1 text-sm font-medium">Early warning</a>
+        {% endif %}
+    </nav>
+</div>

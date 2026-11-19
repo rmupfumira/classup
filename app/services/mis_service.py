@@ -1,15 +1,17 @@
-"""MIS & Academic Analytics service — Phase 1.
+"""MIS & Academic Analytics service — Phases 1 + 2.
 
-Computes the top-level KPIs the Executive Dashboard shows. Everything
-here derives from existing data (finalised REPORT_CARD reports +
-attendance_records) — no new tables, no new migration.
+Phase 1 (``kpi_summary``) → Executive Dashboard KPIs.
+Phase 2 (``subject_performance``) → per-subject pass / fail /
+distinction / merit / credit rates + mean + median.
+
+Everything here derives from existing data (finalised REPORT_CARD
+reports + attendance_records) — no new tables, no new migration.
 
 Later phases build on this module:
-  - subject performance analysis (Phase 2) will reuse
-    ``_iter_student_percentages`` to produce per-subject rollups
   - longitudinal reports (Phase 4) will loop this per term
   - early-warning rules (Phase 5) will scan the output of
-    ``kpi_summary`` to flag at-risk students
+    ``kpi_summary`` and ``subject_performance`` to flag at-risk
+    students + subjects that need intervention
 """
 
 from __future__ import annotations
@@ -24,12 +26,78 @@ from typing import Iterable
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.academic import Subject
+from app.models.academic import GradingSystem, Subject
 from app.models.attendance import AttendanceRecord
 from app.models.report import DailyReport, ReportTemplate
 from app.models.school_class import SchoolClass
 from app.models.student import Student
 from app.utils.tenant_context import get_tenant_id
+
+
+# ---------------------------------------------------------------------------
+# Grading-band classification — shared by Phase 2 + Phase 3.
+# ---------------------------------------------------------------------------
+
+# Semantic bucket names. All grading scales we ship have at least five
+# bands ordered high → low; the top band is always the distinction and
+# the bottom is always the fail. The middle three are labelled by
+# position so the labels mean the same thing to a parent on ZIMSEC vs
+# Cambridge vs CAPS: "distinction = top band", "merit = second-top",
+# "credit = third-top", "pass = anything above the fail band",
+# "fail = lowest band".
+BUCKET_DISTINCTION = "distinction"
+BUCKET_MERIT = "merit"
+BUCKET_CREDIT = "credit"
+BUCKET_PASS = "pass"
+BUCKET_FAIL = "fail"
+
+
+def classify_percentage(pct: float, bands: list[dict] | None) -> dict:
+    """Pick the band a % falls into, and tag it with a semantic bucket.
+
+    ``bands`` is the grading system's ``grades`` array:
+      [{min, max, grade, description, points?}, ...]
+    Returns {"grade", "bucket", "description"}.
+
+    When no bands are provided, falls back to a 50% pass mark and
+    labels only pass/fail — that way Phase 2 still computes something
+    usable on a tenant that hasn't configured a grading system.
+    """
+    if not bands:
+        return {
+            "grade": "-",
+            "bucket": BUCKET_PASS if pct >= 50 else BUCKET_FAIL,
+            "description": "Pass" if pct >= 50 else "Fail",
+        }
+    # Order high → low by the max boundary — matches how admins read
+    # the scale. Stable sort so same-max bands keep their order.
+    ordered = sorted(bands, key=lambda b: b.get("max", 0), reverse=True)
+    match = next(
+        (b for b in ordered if b.get("min", 0) <= pct <= b.get("max", 100)),
+        ordered[-1],  # below the lowest band's min → treat as last band
+    )
+    # Bucket by POSITION in the ordered list — robust across naming
+    # conventions ("Distinction" in ZIMSEC vs "Outstanding" in Cambridge).
+    try:
+        pos = ordered.index(match)
+    except ValueError:
+        pos = len(ordered) - 1
+    bottom = len(ordered) - 1
+    if pos == 0:
+        bucket = BUCKET_DISTINCTION
+    elif pos == 1:
+        bucket = BUCKET_MERIT
+    elif pos == 2:
+        bucket = BUCKET_CREDIT
+    elif pos == bottom:
+        bucket = BUCKET_FAIL
+    else:
+        bucket = BUCKET_PASS
+    return {
+        "grade": match.get("grade", "-"),
+        "bucket": bucket,
+        "description": match.get("description", ""),
+    }
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +215,30 @@ class MisService:
             out[sid] = (f"{fn} {ln}".strip(), cid, cname)
         return out
 
+    async def _resolve_grading_bands(
+        self,
+        db: AsyncSession,
+        class_id: uuid.UUID | None,
+    ) -> list[dict] | None:
+        """Get the grading scale we should classify marks against.
+
+        Reuses the chain unified in c1e85ae — class's grading system
+        wins, otherwise tenant default. (The template.grading_system_id
+        path lives in the report viewer and isn't reachable from
+        analytics without knowing which template to pick; the class
+        chain is what matters for subject-level rollups.)
+        """
+        from app.services.academic_service import get_academic_service
+        academic = get_academic_service()
+        gs = None
+        if class_id:
+            gs = await academic.resolve_class_grading_system(db, class_id)
+        if not gs:
+            gs = await academic.get_default_grading_system(db)
+        if gs and gs.grades:
+            return list(gs.grades)
+        return None
+
     async def _iter_student_percentages(
         self,
         db: AsyncSession,
@@ -179,8 +271,12 @@ class MisService:
         per_student_total: defaultdict[uuid.UUID, dict] = defaultdict(
             lambda: {"obtained": 0.0, "possible": 0.0}
         )
+        # per-subject accumulator carries the raw list of (student_id, pct)
+        # tuples so Phase 2 can compute median + classify each one against
+        # the grading bands.
         per_subject: defaultdict[uuid.UUID, dict] = defaultdict(
-            lambda: {"obtained": 0.0, "possible": 0.0, "students": set()}
+            lambda: {"obtained": 0.0, "possible": 0.0, "students": set(),
+                     "student_percentages": []}
         )
         subject_ids_seen: set[uuid.UUID] = set()
         student_ids_seen: set[uuid.UUID] = set()
@@ -231,6 +327,9 @@ class MisService:
                 per_subject[subj_uuid]["obtained"] += marks_f
                 per_subject[subj_uuid]["possible"] += total
                 per_subject[subj_uuid]["students"].add(r.student_id)
+                per_subject[subj_uuid]["student_percentages"].append(
+                    (r.student_id, marks_f / total * 100.0)
+                )
                 subject_ids_seen.add(subj_uuid)
 
         meta = await self._students_meta(db, student_ids_seen)
@@ -522,6 +621,158 @@ class MisService:
                  "mean_percentage": s.mean_percentage}
                 for s in subject_rows
             ],
+        }
+
+
+    # ------------------------------------------------------------------
+    # Phase 2 — Subject Performance Analysis
+    # ------------------------------------------------------------------
+
+    async def subject_performance(
+        self,
+        db: AsyncSession,
+        from_date: date,
+        to_date: date,
+        class_id: uuid.UUID | None = None,
+    ) -> dict:
+        """Per-subject analysis for the given window.
+
+        For every subject graded on at least one finalised report in
+        the window, returns pass/fail/distinction/merit/credit rates
+        + mean + median + grade-letter band counts for the histogram
+        in Phase 3. The grading scale is resolved via the standard
+        class → tenant-default chain so the numbers match what the
+        parent sees on the report card.
+
+        Output shape:
+          {
+            "grading_system": {"name", "bands": [...]},
+            "pass_mark_pct": 50.0,   # default when no bands resolve
+            "subjects": [
+              {
+                "subject_id", "subject_name",
+                "student_count",
+                "mean", "median",
+                "rates": {
+                   "distinction_pct", "merit_pct", "credit_pct",
+                   "pass_pct", "fail_pct",
+                },
+                "band_counts": {"A": 5, "B": 7, "C": 4, ...},
+                "best_student": {"id", "name", "percentage"},
+                "worst_student": {"id", "name", "percentage"},
+              },
+              ...
+            ]
+          }
+        """
+        _scores, per_subject = await self._iter_student_percentages(
+            db, from_date, to_date, class_id,
+        )
+        bands = await self._resolve_grading_bands(db, class_id)
+
+        # The pass mark is the minimum of the lowest NON-fail band
+        # (bucket != "fail"). Phase 2 needs a single number for the
+        # overall pass_rate math. Falls back to 50 when no bands.
+        pass_mark_pct = 50.0
+        if bands:
+            # Sort ascending by min to identify the fail band as the
+            # lowest; the pass mark is the min of the next band up.
+            asc = sorted(bands, key=lambda b: b.get("min", 0))
+            if len(asc) >= 2:
+                pass_mark_pct = float(asc[1].get("min", 50))
+
+        from statistics import mean as _mean, median as _median
+
+        subject_meta = await self._subjects_by_id(db, per_subject.keys())
+        # Pull student names once for best/worst highlights
+        all_student_ids: set[uuid.UUID] = set()
+        for bucket in per_subject.values():
+            all_student_ids.update(bucket["students"])
+        student_meta = await self._students_meta(db, all_student_ids)
+
+        subjects_out: list[dict] = []
+        for sid, bucket in per_subject.items():
+            pairs = bucket.get("student_percentages") or []
+            if not pairs:
+                continue
+            # Use the best score per student in case a student has
+            # multiple reports in the window — otherwise a student
+            # appears twice and skews median.
+            best_per_student: dict[uuid.UUID, float] = {}
+            for st_id, pct in pairs:
+                prev = best_per_student.get(st_id)
+                if prev is None or pct > prev:
+                    best_per_student[st_id] = pct
+            pcts = list(best_per_student.values())
+            if not pcts:
+                continue
+
+            # Classify each student's % into a bucket
+            counters = {
+                BUCKET_DISTINCTION: 0, BUCKET_MERIT: 0, BUCKET_CREDIT: 0,
+                BUCKET_PASS: 0, BUCKET_FAIL: 0,
+            }
+            band_counts: dict[str, int] = {}
+            for pct in pcts:
+                c = classify_percentage(pct, bands)
+                counters[c["bucket"]] = counters.get(c["bucket"], 0) + 1
+                band_counts[c["grade"]] = band_counts.get(c["grade"], 0) + 1
+
+            total = len(pcts)
+            # Pass = anything except the fail bucket
+            fail_count = counters[BUCKET_FAIL]
+            pass_count = total - fail_count
+
+            # Best + worst for this subject (not per-report — summarised
+            # per-student so the UI can call out who to celebrate / help)
+            ranked = sorted(best_per_student.items(), key=lambda kv: kv[1], reverse=True)
+            best_sid, best_pct = ranked[0]
+            worst_sid, worst_pct = ranked[-1]
+
+            subjects_out.append({
+                "subject_id": str(sid),
+                "subject_name": (
+                    subject_meta.get(sid).name
+                    if subject_meta.get(sid) else "(unknown)"
+                ),
+                "student_count": total,
+                "mean": round(_mean(pcts), 2),
+                "median": round(_median(pcts), 2),
+                "rates": {
+                    "distinction_pct": round(counters[BUCKET_DISTINCTION] / total * 100.0, 2),
+                    "merit_pct":       round(counters[BUCKET_MERIT]       / total * 100.0, 2),
+                    "credit_pct":      round(counters[BUCKET_CREDIT]      / total * 100.0, 2),
+                    "pass_pct":        round(pass_count                   / total * 100.0, 2),
+                    "fail_pct":        round(fail_count                   / total * 100.0, 2),
+                },
+                "band_counts": band_counts,
+                "best_student": {
+                    "id": str(best_sid),
+                    "name": student_meta.get(best_sid, ("Unknown", None, None))[0],
+                    "percentage": round(best_pct, 2),
+                },
+                "worst_student": {
+                    "id": str(worst_sid),
+                    "name": student_meta.get(worst_sid, ("Unknown", None, None))[0],
+                    "percentage": round(worst_pct, 2),
+                },
+            })
+
+        # Pass rate desc — weakest subjects (high intervention need)
+        # float to the bottom of the list, strongest to the top.
+        subjects_out.sort(key=lambda s: s["rates"]["pass_pct"], reverse=True)
+
+        return {
+            "window": {
+                "from_date": from_date.isoformat(),
+                "to_date": to_date.isoformat(),
+                "class_id": str(class_id) if class_id else None,
+            },
+            "grading_system": (
+                {"bands": bands} if bands else None
+            ),
+            "pass_mark_pct": pass_mark_pct,
+            "subjects": subjects_out,
         }
 
 

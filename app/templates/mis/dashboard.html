@@ -12,9 +12,11 @@
         <h1 class="text-xl font-semibold text-neutral-800">Executive Dashboard</h1>
         <p class="mt-0.5 text-sm text-neutral-500">
             Academic + attendance KPIs for <strong>{{ tenant.name if tenant else 'this school' }}</strong>.
-            Drill-down + term comparisons + exports coming next — this is the first slice.
         </p>
     </div>
+
+    {% set active_tab = 'dashboard' %}
+    {% include 'mis/_tabs.html' %}
 
     <!-- Window + class filter -->
     <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">

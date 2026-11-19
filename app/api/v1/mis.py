@@ -39,3 +39,23 @@ async def kpi_summary(
         at_risk_attendance_threshold=attendance_threshold,
     )
     return APIResponse(status="success", data=data)
+
+
+@router.get("/mis/subject-performance")
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
+async def subject_performance(
+    from_date: date,
+    to_date: date,
+    class_id: uuid.UUID | None = None,
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Per-subject pass / fail / distinction / merit / credit rates +
+    mean + median, scored against the class's (or tenant default)
+    grading scale. Powers the Subject Performance page in Phase 2 and
+    the grade distribution histogram in Phase 3.
+    """
+    data = await get_mis_service().subject_performance(
+        db, from_date=from_date, to_date=to_date, class_id=class_id,
+    )
+    return APIResponse(status="success", data=data)
