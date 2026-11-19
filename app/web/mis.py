@@ -92,3 +92,39 @@ async def mis_subjects(request: Request, db: AsyncSession = Depends(get_db)):
             "current_language": get_current_language(),
         },
     )
+
+
+@router.get("/distribution", response_class=HTMLResponse)
+async def mis_distribution(request: Request, db: AsyncSession = Depends(get_db)):
+    """Phase 3 — Grade Distribution charts."""
+    redirect, ctx = await _mis_guard(request, db)
+    if redirect:
+        return redirect
+    user, tenant = ctx
+    return templates.TemplateResponse(
+        "mis/distribution.html",
+        {
+            "request": request,
+            "user": user,
+            "tenant": tenant,
+            "current_language": get_current_language(),
+        },
+    )
+
+
+@router.get("/merit-lists", response_class=HTMLResponse)
+async def mis_merit_lists(request: Request, db: AsyncSession = Depends(get_db)):
+    """Phase 3 — Merit lists / rankings."""
+    redirect, ctx = await _mis_guard(request, db)
+    if redirect:
+        return redirect
+    user, tenant = ctx
+    return templates.TemplateResponse(
+        "mis/merit_lists.html",
+        {
+            "request": request,
+            "user": user,
+            "tenant": tenant,
+            "current_language": get_current_language(),
+        },
+    )

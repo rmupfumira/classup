@@ -14,11 +14,16 @@
            class="{% if active_tab == 'subjects' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
             Subject performance
         </a>
-        {# Placeholder tabs for the phases still in flight — kept
-           hidden so the strip doesn't look broken until the page
-           behind them ships. #}
+        <a href="/mis/distribution"
+           class="{% if active_tab == 'distribution' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+            Grade distribution
+        </a>
+        <a href="/mis/merit-lists"
+           class="{% if active_tab == 'merit_lists' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+            Merit lists
+        </a>
+        {# Phases 4 + 5 land here when their pages ship. #}
         {% if False %}
-        <a href="/mis/distribution" class="border-transparent text-neutral-500 border-b-2 py-3 px-1 text-sm font-medium">Grade distribution</a>
         <a href="/mis/longitudinal" class="border-transparent text-neutral-500 border-b-2 py-3 px-1 text-sm font-medium">Longitudinal</a>
         <a href="/mis/early-warning" class="border-transparent text-neutral-500 border-b-2 py-3 px-1 text-sm font-medium">Early warning</a>
         {% endif %}

@@ -59,3 +59,42 @@ async def subject_performance(
         db, from_date=from_date, to_date=to_date, class_id=class_id,
     )
     return APIResponse(status="success", data=data)
+
+
+@router.get("/mis/grade-distribution")
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
+async def grade_distribution(
+    from_date: date,
+    to_date: date,
+    class_id: uuid.UUID | None = None,
+    subject_id: uuid.UUID | None = None,
+    bin_size: int = Query(10, ge=1, le=50),
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Histogram + bell-curve parameters for marks in the window."""
+    data = await get_mis_service().grade_distribution(
+        db, from_date=from_date, to_date=to_date,
+        class_id=class_id, subject_id=subject_id, bin_size=bin_size,
+    )
+    return APIResponse(status="success", data=data)
+
+
+@router.get("/mis/merit-list")
+@require_role(Role.SCHOOL_ADMIN, Role.TEACHER)
+async def merit_list(
+    from_date: date,
+    to_date: date,
+    scope: str = Query("SCHOOL", pattern="^(CLASS|GRADE_LEVEL|SCHOOL)$"),
+    class_id: uuid.UUID | None = None,
+    grade_level_id: uuid.UUID | None = None,
+    top_n: int = Query(100, ge=1, le=1000),
+    _feat: None = Depends(require_feature("mis")),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse:
+    """Ranked student list — competition-style ties (1,1,3)."""
+    data = await get_mis_service().merit_list(
+        db, from_date=from_date, to_date=to_date, scope=scope,
+        class_id=class_id, grade_level_id=grade_level_id, top_n=top_n,
+    )
+    return APIResponse(status="success", data=data)

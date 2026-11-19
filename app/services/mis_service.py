@@ -776,6 +776,223 @@ class MisService:
         }
 
 
+    # ------------------------------------------------------------------
+    # Phase 3 — Grade Distribution + Merit Lists
+    # ------------------------------------------------------------------
+
+    async def grade_distribution(
+        self,
+        db: AsyncSession,
+        from_date: date,
+        to_date: date,
+        class_id: uuid.UUID | None = None,
+        subject_id: uuid.UUID | None = None,
+        bin_size: int = 10,
+    ) -> dict:
+        """Distribution of marks across the window.
+
+        Returns a histogram + the parameters needed to draw a bell
+        curve overlay (mean, stddev, n). When ``subject_id`` is set,
+        the distribution is just that subject's scores — otherwise
+        it's every per-student-per-subject score in scope.
+
+        bin_size controls the histogram bucket width (default 10, so
+        bins are 0-9, 10-19, …, 90-100). Last bucket is inclusive of
+        100.
+        """
+        from statistics import mean as _mean, stdev as _stdev
+
+        _scores, per_subject = await self._iter_student_percentages(
+            db, from_date, to_date, class_id,
+        )
+
+        # Flatten into a single list of percentages — one entry per
+        # (student, subject) pair, or filtered to one subject.
+        pcts: list[float] = []
+        if subject_id:
+            bucket = per_subject.get(subject_id)
+            if bucket:
+                pcts = [p for _sid, p in bucket.get("student_percentages", [])]
+        else:
+            for bucket in per_subject.values():
+                pcts.extend(p for _sid, p in bucket.get("student_percentages", []))
+
+        bands = await self._resolve_grading_bands(db, class_id)
+
+        # Build the percentage-range histogram
+        bin_size = max(1, min(bin_size, 50))
+        num_bins = (100 // bin_size) + (1 if 100 % bin_size else 0)
+        hist_counts = [0] * num_bins
+        for p in pcts:
+            idx = min(int(p // bin_size), num_bins - 1)
+            if p < 0:
+                idx = 0
+            hist_counts[idx] += 1
+
+        total = len(pcts)
+        histogram = []
+        for i, c in enumerate(hist_counts):
+            lo = i * bin_size
+            hi = min(lo + bin_size - 1, 100)
+            # Last bucket is inclusive of 100 to avoid a dead bucket
+            if i == num_bins - 1:
+                hi = 100
+            histogram.append({
+                "label": f"{lo}-{hi}%",
+                "lo": lo,
+                "hi": hi,
+                "count": c,
+                "percentage": round(c / total * 100.0, 2) if total else 0.0,
+            })
+
+        # Band-letter histogram — the "A/B/C/D/E/U" bars admins
+        # actually recognise
+        band_counts: dict[str, int] = {}
+        band_totals: dict[str, int] = {}
+        ordered_grades: list[str] = []
+        if bands:
+            ordered = sorted(bands, key=lambda b: b.get("max", 0), reverse=True)
+            for b in ordered:
+                g = b.get("grade", "-")
+                band_counts[g] = 0
+                band_totals[g] = 0
+                if g not in ordered_grades:
+                    ordered_grades.append(g)
+        for p in pcts:
+            cls = classify_percentage(p, bands)
+            g = cls["grade"]
+            band_counts[g] = band_counts.get(g, 0) + 1
+            if g not in ordered_grades:
+                ordered_grades.append(g)
+
+        band_histogram = [
+            {
+                "grade": g,
+                "count": band_counts.get(g, 0),
+                "percentage": round(band_counts.get(g, 0) / total * 100.0, 2) if total else 0.0,
+            }
+            for g in ordered_grades
+        ]
+
+        # Bell curve parameters — mean + population stddev.
+        # statistics.stdev needs 2+ samples; fall back to 0 when thin.
+        mu = round(_mean(pcts), 2) if pcts else 0.0
+        sigma = round(_stdev(pcts), 2) if len(pcts) >= 2 else 0.0
+
+        # Pass mark for the shaded overlay
+        pass_mark = 50.0
+        if bands:
+            asc = sorted(bands, key=lambda b: b.get("min", 0))
+            if len(asc) >= 2:
+                pass_mark = float(asc[1].get("min", 50))
+
+        return {
+            "window": {
+                "from_date": from_date.isoformat(),
+                "to_date": to_date.isoformat(),
+                "class_id": str(class_id) if class_id else None,
+                "subject_id": str(subject_id) if subject_id else None,
+            },
+            "n": total,
+            "mean": mu,
+            "stddev": sigma,
+            "pass_mark_pct": pass_mark,
+            "bin_size": bin_size,
+            "histogram": histogram,
+            "band_histogram": band_histogram,
+        }
+
+    async def merit_list(
+        self,
+        db: AsyncSession,
+        from_date: date,
+        to_date: date,
+        scope: str = "SCHOOL",
+        class_id: uuid.UUID | None = None,
+        grade_level_id: uuid.UUID | None = None,
+        top_n: int = 100,
+    ) -> dict:
+        """Ranked list of students by their aggregate % across all
+        subjects they were graded on.
+
+        scope ∈ {"CLASS", "GRADE_LEVEL", "SCHOOL"}. Rankings respect
+        ties — two students with the same aggregate share a rank and
+        the next distinct score skips the count, so a 1,1,3 ordering
+        (not 1,1,2) is what shows up.
+
+        For a weighted average later (Phase 5 config), swap the
+        average builder in ``_iter_student_percentages`` for a
+        subject-weighted version — the public merit_list shape stays
+        the same.
+        """
+        # Scope-based filtering happens after the extraction so the
+        # same walker handles CLASS / GRADE_LEVEL / SCHOOL cleanly.
+        scores, _ = await self._iter_student_percentages(
+            db,
+            from_date,
+            to_date,
+            # Pass the class_id down when scope is CLASS so the query
+            # itself stays cheap.
+            class_id=class_id if scope == "CLASS" else None,
+        )
+
+        # GRADE_LEVEL needs class→grade_level resolution for every
+        # student in scope. One query, in-memory filter.
+        kept = scores
+        if scope == "GRADE_LEVEL" and grade_level_id:
+            class_ids = [s.class_id for s in scores if s.class_id]
+            class_ids = list({cid for cid in class_ids})
+            if class_ids:
+                rows = (await db.execute(
+                    select(SchoolClass.id, SchoolClass.grade_level_id)
+                    .where(SchoolClass.id.in_(class_ids))
+                )).all()
+                in_grade = {
+                    cid for (cid, gid) in rows
+                    if gid == grade_level_id
+                }
+                kept = [s for s in scores if s.class_id in in_grade]
+
+        # Rank highest first, break ties with earliest class listing
+        kept = sorted(kept, key=lambda s: s.percentage, reverse=True)
+
+        ranked: list[dict] = []
+        prev_pct = None
+        current_rank = 0
+        seen = 0
+        for s in kept:
+            seen += 1
+            # Competition-style ranking: tied students share rank,
+            # the next distinct score takes the index they would have
+            # occupied if there were no ties.
+            if prev_pct is None or s.percentage != prev_pct:
+                current_rank = seen
+                prev_pct = s.percentage
+            ranked.append({
+                "rank": current_rank,
+                "student_id": str(s.student_id),
+                "student_name": s.student_name,
+                "class_id": str(s.class_id) if s.class_id else None,
+                "class_name": s.class_name,
+                "mean_percentage": round(s.percentage, 2),
+                "subjects_graded": None,  # Phase 2 output doesn't carry the count; Phase 4 will
+            })
+            if len(ranked) >= top_n:
+                break
+
+        return {
+            "window": {
+                "from_date": from_date.isoformat(),
+                "to_date": to_date.isoformat(),
+                "class_id": str(class_id) if class_id else None,
+                "grade_level_id": str(grade_level_id) if grade_level_id else None,
+            },
+            "scope": scope,
+            "total_in_scope": len(kept),
+            "ranking": ranked,
+        }
+
+
 _service: MisService | None = None
 
 

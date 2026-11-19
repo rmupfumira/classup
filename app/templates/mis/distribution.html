@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Grade distribution - {{ app_name }}{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
+    <div>
+        <h1 class="text-xl font-semibold text-neutral-800">Grade distribution</h1>
+        <p class="mt-0.5 text-sm text-neutral-500">
+            Histogram + bell curve overlay to see whether an assessment produced a healthy spread
+            or an abnormal concentration. Pick a subject to isolate it.
+        </p>
+    </div>
+
+    {% set active_tab = 'distribution' %}
+    {% include 'mis/_tabs.html' %}
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">From</label>
+                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">To</label>
+                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This month</button>
+                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">Term</button>
+                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">YTD</button>
+            </div>
+            <div class="min-w-[180px]">
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
+                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="">Whole school</option>
+                </select>
+            </div>
+            <div class="min-w-[180px]">
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Subject</label>
+                <select id="subject-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="">All subjects</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Bin size</label>
+                <select id="bin-size" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="5">5%</option>
+                    <option value="10" selected>10%</option>
+                    <option value="20">20%</option>
+                </select>
+            </div>
+            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">Refresh</button>
+        </div>
+    </div>
+
+    <!-- KPI line -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+                <p class="text-xs text-neutral-500 uppercase">Entries</p>
+                <p id="kpi-n" class="mt-1 text-xl font-semibold text-neutral-800">—</p>
+            </div>
+            <div>
+                <p class="text-xs text-neutral-500 uppercase">Mean</p>
+                <p id="kpi-mean" class="mt-1 text-xl font-semibold text-primary-700">—</p>
+            </div>
+            <div>
+                <p class="text-xs text-neutral-500 uppercase">Std deviation</p>
+                <p id="kpi-stddev" class="mt-1 text-xl font-semibold text-neutral-800">—</p>
+            </div>
+            <div>
+                <p class="text-xs text-neutral-500 uppercase">Pass mark</p>
+                <p id="kpi-passmark" class="mt-1 text-xl font-semibold text-success-700">—</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Histogram + bell curve -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <h2 class="text-sm font-semibold text-neutral-800 mb-3">Percentage distribution + bell curve</h2>
+        <div class="h-80"><canvas id="hist-chart"></canvas></div>
+        <p class="mt-2 text-xs text-neutral-500">
+            Bars = actual count per band · dotted line = expected normal (bell) curve with the same mean and standard deviation.
+        </p>
+    </div>
+
+    <!-- Band distribution -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <h2 class="text-sm font-semibold text-neutral-800 mb-3">Grade-letter distribution</h2>
+        <div class="h-56"><canvas id="band-chart"></canvas></div>
+    </div>
+</div>
+
+<script>
+let histChart, bandChart;
+
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+
+function setRange(kind) {
+    const today = new Date();
+    let from, to;
+    if (kind === 'month') {
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+        to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (kind === 'term') {
+        const q = Math.floor(today.getMonth() / 3);
+        from = new Date(today.getFullYear(), q * 3, 1);
+        to = new Date(today.getFullYear(), q * 3 + 3, 0);
+    } else if (kind === 'ytd') {
+        from = new Date(today.getFullYear(), 0, 1);
+        to = today;
+    }
+    document.getElementById('from-date').value = isoDate(from);
+    document.getElementById('to-date').value = isoDate(to);
+    load();
+}
+
+async function populateFilters() {
+    try {
+        const r = await ClassUp.fetch('/api/v1/classes?page_size=200&active_only=true');
+        const sel = document.getElementById('class-filter');
+        (r.data || []).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id; opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+    } catch (_) {}
+    try {
+        const r = await ClassUp.fetch('/api/v1/academic/subjects?active_only=true');
+        const sel = document.getElementById('subject-filter');
+        (r.data || []).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = s.name;
+            sel.appendChild(opt);
+        });
+    } catch (_) {}
+}
+
+/**
+ * Normal pdf at x, given mean μ and stddev σ. Returned on the same
+ * frequency scale as the histogram so the overlay lines up: we scale
+ * by n * bin_size (rectangle area approximation).
+ */
+function normalFreq(x, mu, sigma, n, binSize) {
+    if (!sigma || !n) return 0;
+    const z = (x - mu) / sigma;
+    const pdf = Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+    return pdf * n * binSize;
+}
+
+function renderHistogram(d) {
+    const ctx = document.getElementById('hist-chart').getContext('2d');
+    if (histChart) histChart.destroy();
+
+    const bins = d.histogram || [];
+    const labels = bins.map(b => b.label);
+    const counts = bins.map(b => b.count);
+
+    // Build the bell curve: one point per bin mid-point
+    const bellPoints = bins.map(b => {
+        const mid = (b.lo + b.hi) / 2;
+        return normalFreq(mid, d.mean, d.stddev, d.n, d.bin_size);
+    });
+
+    histChart = new Chart(ctx, {
+        data: {
+            labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Students',
+                    data: counts,
+                    backgroundColor: '#2A5298',
+                    borderRadius: 4,
+                    yAxisID: 'y',
+                },
+                {
+                    type: 'line',
+                    label: 'Expected (normal)',
+                    data: bellPoints,
+                    borderColor: '#C9962A',
+                    borderDash: [5, 4],
+                    backgroundColor: 'transparent',
+                    tension: 0.35,
+                    pointRadius: 0,
+                    yAxisID: 'y',
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Entries' } },
+                x: { title: { display: true, text: 'Percentage band' } },
+            },
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: { mode: 'index', intersect: false },
+            },
+        },
+    });
+}
+
+function renderBands(d) {
+    const ctx = document.getElementById('band-chart').getContext('2d');
+    if (bandChart) bandChart.destroy();
+    const bands = d.band_histogram || [];
+    const colours = {
+        'A': '#16A34A', 'A+': '#16A34A', 'A*': '#16A34A',
+        'B': '#2A5298',
+        'C': '#C9962A',
+        'D': '#D97706',
+        'E': '#DC2626',
+        'U': '#9f1239', 'F': '#9f1239',
+    };
+    bandChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: bands.map(b => b.grade),
+            datasets: [{
+                label: 'Students',
+                data: bands.map(b => b.count),
+                backgroundColor: bands.map(b => colours[b.grade] || '#64748b'),
+                borderRadius: 4,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } },
+        },
+    });
+}
+
+async function load() {
+    const from = document.getElementById('from-date').value;
+    const to = document.getElementById('to-date').value;
+    if (!from || !to) return;
+    const classId = document.getElementById('class-filter').value;
+    const subjectId = document.getElementById('subject-filter').value;
+    const binSize = document.getElementById('bin-size').value;
+
+    const params = new URLSearchParams({ from_date: from, to_date: to, bin_size: binSize });
+    if (classId) params.set('class_id', classId);
+    if (subjectId) params.set('subject_id', subjectId);
+
+    try {
+        const r = await ClassUp.fetch('/api/v1/mis/grade-distribution?' + params.toString());
+        const d = r.data;
+        document.getElementById('kpi-n').textContent = d.n;
+        document.getElementById('kpi-mean').textContent = d.mean.toFixed(1) + '%';
+        document.getElementById('kpi-stddev').textContent = d.stddev.toFixed(1);
+        document.getElementById('kpi-passmark').textContent = d.pass_mark_pct + '%';
+        renderHistogram(d);
+        renderBands(d);
+    } catch (err) {
+        console.error(err);
+        ClassUp.toast(err.message || 'Failed to load distribution', 'error');
+    }
+}
+
+populateFilters();
+setRange('term');
+</script>
+{% endblock %}

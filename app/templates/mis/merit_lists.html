@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Merit lists - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 pt-6 pb-24 space-y-5">
+    <div>
+        <h1 class="text-xl font-semibold text-neutral-800">Merit lists</h1>
+        <p class="mt-0.5 text-sm text-neutral-500">
+            Students ranked by aggregate performance across all subjects.
+            Ties share a rank (1, 1, 3 style).
+        </p>
+    </div>
+
+    {% set active_tab = 'merit_lists' %}
+    {% include 'mis/_tabs.html' %}
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">From</label>
+                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">To</label>
+                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This month</button>
+                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">Term</button>
+                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">YTD</button>
+            </div>
+            <div class="min-w-[160px]">
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Scope</label>
+                <select id="scope" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="SCHOOL">Whole school</option>
+                    <option value="GRADE_LEVEL">By grade level</option>
+                    <option value="CLASS">By class</option>
+                </select>
+            </div>
+            <div class="min-w-[180px]" id="class-wrap" style="display:none">
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
+                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="">—</option>
+                </select>
+            </div>
+            <div class="min-w-[180px]" id="grade-wrap" style="display:none">
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Grade level</label>
+                <select id="grade-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="">—</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-600 mb-1">Top N</label>
+                <select id="top-n" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                    <option value="25">Top 25</option>
+                    <option value="50" selected>Top 50</option>
+                    <option value="100">Top 100</option>
+                    <option value="1000">Everyone</option>
+                </select>
+            </div>
+            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">Refresh</button>
+        </div>
+    </div>
+
+    <!-- Ranking -->
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-neutral-800">Ranking</h2>
+            <span id="ranking-meta" class="text-xs text-neutral-500">—</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase w-14">Rank</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Student</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Class</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Aggregate</th>
+                    </tr>
+                </thead>
+                <tbody id="rank-body" class="divide-y divide-neutral-100">
+                    <tr><td colspan="4" class="text-center text-neutral-400 py-8 text-sm">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+
+function setRange(kind) {
+    const today = new Date();
+    let from, to;
+    if (kind === 'month') {
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+        to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (kind === 'term') {
+        const q = Math.floor(today.getMonth() / 3);
+        from = new Date(today.getFullYear(), q * 3, 1);
+        to = new Date(today.getFullYear(), q * 3 + 3, 0);
+    } else if (kind === 'ytd') {
+        from = new Date(today.getFullYear(), 0, 1);
+        to = today;
+    }
+    document.getElementById('from-date').value = isoDate(from);
+    document.getElementById('to-date').value = isoDate(to);
+    load();
+}
+
+async function populateFilters() {
+    try {
+        const r = await ClassUp.fetch('/api/v1/classes?page_size=200&active_only=true');
+        const sel = document.getElementById('class-filter');
+        (r.data || []).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id; opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+    } catch (_) {}
+    try {
+        const r = await ClassUp.fetch('/api/v1/grade-levels?active_only=true');
+        const sel = document.getElementById('grade-filter');
+        (r.data || []).forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id; opt.textContent = g.name;
+            sel.appendChild(opt);
+        });
+    } catch (_) {}
+}
+
+function toggleScopeControls() {
+    const scope = document.getElementById('scope').value;
+    document.getElementById('class-wrap').style.display = scope === 'CLASS' ? '' : 'none';
+    document.getElementById('grade-wrap').style.display = scope === 'GRADE_LEVEL' ? '' : 'none';
+}
+
+function medal(rank) {
+    if (rank === 1) return '🥇';
+    if (rank === 2) return '🥈';
+    if (rank === 3) return '🥉';
+    return '';
+}
+
+async function load() {
+    toggleScopeControls();
+    const from = document.getElementById('from-date').value;
+    const to = document.getElementById('to-date').value;
+    if (!from || !to) return;
+    const scope = document.getElementById('scope').value;
+    const topN = document.getElementById('top-n').value;
+
+    const params = new URLSearchParams({ from_date: from, to_date: to, scope, top_n: topN });
+    if (scope === 'CLASS') {
+        const cid = document.getElementById('class-filter').value;
+        if (cid) params.set('class_id', cid);
+    } else if (scope === 'GRADE_LEVEL') {
+        const gid = document.getElementById('grade-filter').value;
+        if (gid) params.set('grade_level_id', gid);
+    }
+
+    const body = document.getElementById('rank-body');
+    body.innerHTML = '<tr><td colspan="4" class="text-center text-neutral-400 py-8 text-sm">Loading…</td></tr>';
+
+    try {
+        const r = await ClassUp.fetch('/api/v1/mis/merit-list?' + params.toString());
+        const d = r.data;
+        const rows = d.ranking || [];
+        document.getElementById('ranking-meta').textContent =
+            `Scope: ${d.scope} · ${d.total_in_scope} student${d.total_in_scope === 1 ? '' : 's'} with marks`;
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="4" class="text-center text-neutral-400 py-8 text-sm">No ranked students for this window. Finalise reports with marks to populate the list.</td></tr>';
+            return;
+        }
+        body.innerHTML = rows.map(r => `
+            <tr class="hover:bg-neutral-50">
+                <td class="px-3 py-2 text-neutral-800 font-medium whitespace-nowrap">${medal(r.rank)} ${r.rank}</td>
+                <td class="px-3 py-2 text-neutral-800">${r.student_name}</td>
+                <td class="px-3 py-2 text-neutral-500">${r.class_name || '—'}</td>
+                <td class="px-3 py-2 text-right font-semibold ${r.mean_percentage >= 70 ? 'text-success-700' : r.mean_percentage >= 50 ? 'text-neutral-700' : 'text-danger-700'}">${r.mean_percentage.toFixed(1)}%</td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error(err);
+        ClassUp.toast(err.message || 'Failed to load merit list', 'error');
+    }
+}
+
+document.getElementById('scope').addEventListener('change', () => { toggleScopeControls(); load(); });
+populateFilters();
+setRange('term');
+</script>
+{% endblock %}
