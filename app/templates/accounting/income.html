@@ -186,8 +186,19 @@ async function loadOptions() {
 async function loadStudentsLazy() {
     if (_students.length) return;
     try {
-        const r = await ClassUp.fetch('/api/v1/students?page_size=500&sort_by=last_name&sort_order=asc');
-        _students = (r && r.data) || [];
+        // Students API caps page_size at 100; paginate through pages so
+        // the invoice-mode dropdown works for schools with >100 students.
+        _students = [];
+        let page = 1;
+        while (true) {
+            const r = await ClassUp.fetch(`/api/v1/students?page=${page}&page_size=100&sort_by=last_name&sort_order=asc`);
+            const items = (r && r.data) || [];
+            _students = _students.concat(items);
+            const pg = r && r.pagination;
+            if (!pg || !pg.has_next || items.length === 0) break;
+            page += 1;
+            if (page > 20) break;  // hard safety cap — 2k students should be enough
+        }
     } catch (err) {
         console.error('Students load failed:', err);
         _students = [];

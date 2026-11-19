@@ -18,6 +18,7 @@ from app.web import (
     imports,
     invitations,
     messages,
+    mis,
     onboarding,
     parents,
     photos,
@@ -80,6 +81,10 @@ web_router.include_router(
     accounting.router,
     dependencies=[Depends(require_feature("accounting"))],
 )
+# MIS / Analytics — the web route checks the feature flag internally
+# so it can show a clean "upgrade to see this" state rather than a
+# plain 402.
+web_router.include_router(mis.router)
 
 # Must be registered LAST — /{slug} is a catch-all that matches any
 # top-level path not claimed by another route. Keep it at the bottom.

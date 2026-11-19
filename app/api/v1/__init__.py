@@ -19,6 +19,7 @@ from app.api.v1 import (
     imports,
     invitations,
     messages,
+    mis,
     payment_webhooks,
     photos,
     push,
@@ -95,3 +96,8 @@ api_router.include_router(
     tags=["Accounting"],
     dependencies=[Depends(require_feature("accounting"))],
 )
+# MIS & Academic Analytics — Phase 1 Executive Dashboard. The
+# endpoint uses its own require_feature("mis") so a tenant whose
+# plan doesn't include analytics gets a 402 with a clear "MIS
+# is on higher plans" message rather than a confusing 404.
+api_router.include_router(mis.router)
