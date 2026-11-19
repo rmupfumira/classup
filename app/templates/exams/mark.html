@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Mark {{ exam_subject.subject.name if exam_subject.subject else 'paper' }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 pt-6 pb-24 space-y-5">
+    <div class="flex items-start justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+            <a href="/exams/{{ exam.id }}#papers" class="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-xl font-semibold text-neutral-800">
+                    {{ exam_subject.subject.name if exam_subject.subject else '—' }}
+                </h1>
+                <p class="text-sm text-neutral-500">
+                    {{ exam.name }} · {{ exam.school_class.name if exam.school_class else '—' }} ·
+                    Out of {{ exam_subject.total_marks }}{% if exam_subject.pass_mark %} · Pass {{ exam_subject.pass_mark }}{% endif %}
+                </p>
+            </div>
+        </div>
+        <button type="button" id="save-btn" onclick="saveAll()"
+                class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
+            Save all
+        </button>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase w-8">#</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Student</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase w-28">Marks / {{ exam_subject.total_marks }}</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-neutral-500 uppercase w-20">Absent</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase w-20">%</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-neutral-500 uppercase w-16">Grade</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody id="mark-tbody" class="divide-y divide-neutral-100">
+                    {% for s in students %}
+                    <tr data-student-id="{{ s.id }}">
+                        <td class="px-3 py-2 text-neutral-500 text-xs">{{ loop.index }}</td>
+                        <td class="px-3 py-2 text-neutral-800 font-medium">{{ s.last_name }}, {{ s.first_name }}</td>
+                        <td class="px-3 py-2">
+                            <input type="number" data-field="marks" min="0" max="{{ exam_subject.total_marks }}" step="0.5"
+                                   class="block w-full h-9 px-2 text-sm text-right border border-neutral-300 rounded">
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            <input type="checkbox" data-field="absent" class="h-4 w-4">
+                        </td>
+                        <td class="px-3 py-2 text-right text-xs text-neutral-500" data-field="pct">—</td>
+                        <td class="px-3 py-2 text-center text-xs font-medium" data-field="grade">—</td>
+                        <td class="px-3 py-2">
+                            <input type="text" data-field="remarks" maxlength="200"
+                                   class="block w-full h-9 px-3 text-xs border border-neutral-300 rounded"
+                                   placeholder="Optional">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const EXAM_SUBJECT_ID = {{ (exam_subject.id | string) | tojson }};
+const TOTAL_MARKS = {{ exam_subject.total_marks }};
+// The exam's grading scale, inlined so the UI can colour grades without a round-trip
+const BANDS = {{ (exam.grading_system.grades if exam.grading_system and exam.grading_system.grades else []) | tojson }};
+
+function gradeFor(pct) {
+    if (pct == null || Number.isNaN(pct)) return '—';
+    for (const b of BANDS) {
+        if (pct >= b.min && pct <= b.max) return b.grade;
+    }
+    return '—';
+}
+
+// Load existing results and prefill the table
+(async function(){
+    try {
+        const r = await ClassUp.fetch(`/api/v1/exams/subjects/${EXAM_SUBJECT_ID}/results`);
+        const byStudent = {};
+        (r.data || []).forEach(x => { byStudent[x.student_id] = x; });
+        document.querySelectorAll('[data-student-id]').forEach(tr => {
+            const sid = tr.dataset.studentId;
+            const d = byStudent[sid];
+            if (!d) return;
+            if (d.marks_obtained != null) {
+                tr.querySelector('[data-field="marks"]').value = d.marks_obtained;
+            }
+            tr.querySelector('[data-field="absent"]').checked = !!d.is_absent;
+            tr.querySelector('[data-field="remarks"]').value = d.remarks || '';
+            if (d.percentage != null) {
+                tr.querySelector('[data-field="pct"]').textContent = d.percentage.toFixed(1) + '%';
+                tr.querySelector('[data-field="grade"]').textContent = d.grade_letter || gradeFor(d.percentage);
+            }
+        });
+    } catch (_) {
+        // nothing saved yet — rows stay blank
+    }
+})();
+
+// Live recompute % + grade as marks change
+document.getElementById('mark-tbody').addEventListener('input', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const marksInput = tr.querySelector('[data-field="marks"]');
+    const absent = tr.querySelector('[data-field="absent"]').checked;
+    const pctEl = tr.querySelector('[data-field="pct"]');
+    const gradeEl = tr.querySelector('[data-field="grade"]');
+    if (absent) {
+        marksInput.disabled = true;
+        marksInput.value = '';
+        pctEl.textContent = '—';
+        gradeEl.textContent = '—';
+        return;
+    }
+    marksInput.disabled = false;
+    const m = parseFloat(marksInput.value);
+    if (Number.isNaN(m)) {
+        pctEl.textContent = '—';
+        gradeEl.textContent = '—';
+        return;
+    }
+    const pct = (m / TOTAL_MARKS) * 100;
+    pctEl.textContent = pct.toFixed(1) + '%';
+    gradeEl.textContent = gradeFor(pct);
+});
+
+async function saveAll() {
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const rows = [];
+    document.querySelectorAll('[data-student-id]').forEach(tr => {
+        const sid = tr.dataset.studentId;
+        const marksStr = tr.querySelector('[data-field="marks"]').value;
+        const absent = tr.querySelector('[data-field="absent"]').checked;
+        const remarks = tr.querySelector('[data-field="remarks"]').value;
+        // Skip rows with no entry at all
+        if (!absent && (marksStr === '' || marksStr == null) && !remarks) return;
+        rows.push({
+            student_id: sid,
+            marks_obtained: absent ? null : (marksStr === '' ? null : parseFloat(marksStr)),
+            is_absent: absent,
+            remarks: remarks || null,
+        });
+    });
+    try {
+        const r = await ClassUp.fetch(`/api/v1/exams/subjects/${EXAM_SUBJECT_ID}/results`, {
+            method: 'POST', body: JSON.stringify({results: rows}),
+        });
+        ClassUp.toast(r.message || 'Saved', 'success');
+    } catch (err) {
+        ClassUp.toast(err.message || 'Save failed', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save all';
+    }
+}
+</script>
+{% endblock %}

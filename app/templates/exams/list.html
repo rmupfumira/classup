@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Exams - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
+    <div class="flex items-start justify-between flex-wrap gap-2">
+        <div>
+            <h1 class="text-xl font-semibold text-neutral-800">Exams</h1>
+            <p class="mt-0.5 text-sm text-neutral-500">
+                Set exams per class and term. Each exam auto-seeds one paper per subject
+                using the class's grading scale. Finalising an exam pushes the marks into
+                the end-of-term report card.
+            </p>
+        </div>
+        {% if permissions.can_manage_classes() %}
+        <button type="button" onclick="document.getElementById('new-exam-modal').showModal()"
+                class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
+            + New exam
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Exam</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Class</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Year / Term</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Grading</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Papers</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    {% if exams %}
+                        {% for e in exams %}
+                        <tr class="hover:bg-neutral-50">
+                            <td class="px-3 py-2 text-neutral-800 font-medium">
+                                <a href="/exams/{{ e.id }}" class="text-primary-700 hover:underline">{{ e.name }}</a>
+                            </td>
+                            <td class="px-3 py-2 text-neutral-600">{{ e.school_class.name if e.school_class else '—' }}</td>
+                            <td class="px-3 py-2 text-neutral-600">{{ e.academic_year }} · Term {{ e.term }}</td>
+                            <td class="px-3 py-2 text-neutral-500 text-xs">{{ e.grading_system.name if e.grading_system else '—' }}</td>
+                            <td class="px-3 py-2">
+                                {% set st_cls = {
+                                    'DRAFT': 'bg-neutral-100 text-neutral-600',
+                                    'SCHEDULED': 'bg-info-100 text-info-600',
+                                    'IN_PROGRESS': 'bg-warning-100 text-warning-700',
+                                    'COMPLETED': 'bg-success-100 text-success-700',
+                                    'FINALIZED': 'bg-primary-100 text-primary-700',
+                                }.get(e.status, 'bg-neutral-100 text-neutral-600') %}
+                                <span class="text-xs font-medium px-2 py-0.5 rounded {{ st_cls }}">{{ e.status }}</span>
+                            </td>
+                            <td class="px-3 py-2 text-right text-neutral-600">{{ e.exam_subjects | length }}</td>
+                            <td class="px-3 py-2 text-right">
+                                <a href="/exams/{{ e.id }}" class="text-xs text-primary-600 hover:underline">Open</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="7" class="text-center text-neutral-400 py-8 text-sm">No exams yet. Click <strong>+ New exam</strong> to create one.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if permissions.can_manage_classes() %}
+<dialog id="new-exam-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+    <form class="p-6" onsubmit="createExam(event)">
+        <h3 class="text-lg font-semibold text-neutral-800 mb-4">New exam</h3>
+        <p class="text-xs text-neutral-500 mb-4">
+            One exam per (class, term). On save we auto-create a paper for every subject
+            the class takes, using each subject's total marks.
+        </p>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Name</label>
+                <input type="text" id="e-name" required maxlength="200" placeholder="e.g. End of Term 1 Exam"
+                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Class</label>
+                <select id="e-class" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                    <option value="">Pick a class…</option>
+                    {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-700 mb-1">Academic year</label>
+                    <input type="text" id="e-year" required maxlength="10" value="{{ (exams[0].academic_year if exams else '') or '' }}"
+                           placeholder="2026" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-neutral-700 mb-1">Term</label>
+                    <select id="e-term" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                        <option value="1">Term 1</option>
+                        <option value="2">Term 2</option>
+                        <option value="3">Term 3</option>
+                        <option value="4">Term 4</option>
+                    </select>
+                </div>
+            </div>
+            {% if templates_list %}
+            <div>
+                <label class="block text-xs font-medium text-neutral-700 mb-1">Report template</label>
+                <select id="e-template" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                    <option value="">Use first active template (default)</option>
+                    {% for t in templates_list %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="mt-1 text-xs text-neutral-500">Which report card gets the finalised marks.</p>
+            </div>
+            {% endif %}
+        </div>
+        <div class="flex justify-end gap-2 mt-5">
+            <button type="button" onclick="document.getElementById('new-exam-modal').close()"
+                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Create</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+async function createExam(ev) {
+    ev.preventDefault();
+    const body = {
+        name: document.getElementById('e-name').value.trim(),
+        class_id: document.getElementById('e-class').value,
+        academic_year: document.getElementById('e-year').value.trim(),
+        term: parseInt(document.getElementById('e-term').value, 10),
+    };
+    const tpl = document.getElementById('e-template');
+    if (tpl && tpl.value) body.report_template_id = tpl.value;
+    try {
+        const r = await ClassUp.fetch('/api/v1/exams', {method: 'POST', body: JSON.stringify(body)});
+        window.location = `/exams/${r.data.id}`;
+    } catch (err) {
+        ClassUp.toast(err.message || 'Create failed', 'error');
+    }
+}
+</script>
+{% endif %}
+{% endblock %}

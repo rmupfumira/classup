@@ -68,6 +68,7 @@ from app.models.timetable import (
     get_default_periods,
 )
 from app.models.audit import AuditLog, AuditLevel
+from app.models.exam import Exam, ExamSubject, ExamResult, ExamStatus
 from app.models.accounting import (
     AccountType,
     AccountingTransaction,

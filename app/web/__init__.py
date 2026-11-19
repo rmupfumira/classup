@@ -14,6 +14,7 @@ from app.web import (
     dashboard,
     documents,
     events,
+    exams,
     help as help_web,
     imports,
     invitations,
@@ -85,6 +86,10 @@ web_router.include_router(
 # so it can show a clean "upgrade to see this" state rather than a
 # plain 402.
 web_router.include_router(mis.router)
+# Exams — the page's own guard redirects to /subscription?locked=…
+# when the feature's off, so we register unconditionally rather than
+# wrapping with require_feature here.
+web_router.include_router(exams.router)
 
 # Must be registered LAST — /{slug} is a catch-all that matches any
 # top-level path not claimed by another route. Keep it at the bottom.

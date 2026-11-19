@@ -14,6 +14,7 @@ from app.api.v1 import (
     classes,
     documents,
     events,
+    exams,
     files,
     grade_levels,
     imports,
@@ -101,3 +102,7 @@ api_router.include_router(
 # plan doesn't include analytics gets a 402 with a clear "MIS
 # is on higher plans" message rather than a confusing 404.
 api_router.include_router(mis.router)
+# Exams — individual endpoints apply require_feature("exam_management")
+# themselves so the clean 402 lands per-endpoint and the whole module
+# doesn't 404 when the flag is off.
+api_router.include_router(exams.router)
