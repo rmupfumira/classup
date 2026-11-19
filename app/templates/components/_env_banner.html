@@ -1,25 +1,31 @@
 {#
-    Environment banner — tiny top strip, demo-safe. Only renders when
-    app_env is explicitly 'staging' or 'development'. Anything else is
-    production and the banner stays hidden. Hidden in print.
+    Environment pill — tiny floating badge in the bottom-right.
 
-    Design goal: present but subtle, so staging can be shown to a
-    client during a demo without the UI screaming "TEST!" at them.
+    Only renders when app_env is explicitly 'staging' or 'development';
+    production never sees it. Fixed-positioned so it doesn't affect page
+    layout at all — the old top-strip version pushed the navbar down and
+    the fixed sidebar then overlapped it. This version sits above the
+    mobile bottom nav on small screens, and is suppressed when printing
+    or when running as an installed PWA.
+
+    Design goal: present but subtle, so staging can be shown to a client
+    during a demo without the UI screaming "TEST!" at them.
 #}
 {% if settings.app_env in ('staging', 'development') %}
 {% set env = settings.app_env | upper %}
 {% if env == 'STAGING' %}
-    {% set banner_class = 'bg-sky-50 text-sky-800 border-sky-200' %}
+    {% set pill_class = 'bg-sky-50 text-sky-800 border-sky-200' %}
     {% set dot_class = 'bg-sky-500' %}
     {% set label = 'Staging preview' %}
 {% else %}
-    {% set banner_class = 'bg-neutral-100 text-neutral-700 border-neutral-200' %}
+    {% set pill_class = 'bg-neutral-100 text-neutral-700 border-neutral-200' %}
     {% set dot_class = 'bg-neutral-500' %}
     {% set label = 'Local dev' %}
 {% endif %}
-<div class="env-banner {{ banner_class }} border-b text-[11px] font-medium py-0.5 px-3 print:hidden"
+<div class="env-pill fixed bottom-24 md:bottom-3 right-3 z-[60] print:hidden hide-in-standalone pointer-events-none"
      role="status" aria-live="polite">
-    <span class="inline-flex items-center gap-1.5">
+    <span class="inline-flex items-center gap-1.5 {{ pill_class }} border rounded-full
+                 shadow-sm text-[11px] font-medium py-1 px-2.5 backdrop-blur-sm">
         <span class="inline-block w-1.5 h-1.5 rounded-full {{ dot_class }}" aria-hidden="true"></span>
         {{ label }}
     </span>
