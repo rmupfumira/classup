@@ -200,9 +200,21 @@ async def _enrich_sections(
 
         academic = get_academic_service()
         class_subjects = await academic.get_class_subjects(db, report.class_id)
-        class_grading = await academic.resolve_class_grading_system(
-            db, report.class_id,
+        # Full resolver chain so the PDF uses the same scale the web
+        # view + edit screen do — template > class > tenant default.
+        class_grading = None
+        tpl_grading_id = (
+            getattr(report.template, "grading_system_id", None)
+            if report.template else None
         )
+        if tpl_grading_id:
+            class_grading = await academic.get_grading_system(db, tpl_grading_id)
+        if not class_grading:
+            class_grading = await academic.resolve_class_grading_system(
+                db, report.class_id,
+            )
+        if not class_grading:
+            class_grading = await academic.get_default_grading_system(db)
         subject_rows = [cs.subject for cs in class_subjects if cs.subject]
         per_subject_scales = await academic.resolve_subject_grading_scales(
             db, subject_rows,

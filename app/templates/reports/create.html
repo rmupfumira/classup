@@ -366,6 +366,17 @@ document.getElementById('report_date').addEventListener('change', function() {
 templateSections = {{ selected_template.sections | tojson | safe }};
 {% endif %}
 
+// Server-resolved live grading scale (template → class → tenant default).
+// This is what the parent sees on the finalised view, so prefer it over
+// the template-embedded scale for the on-screen Grade column and the
+// calculations in updateSubjectGrade. Empty when no scale resolves —
+// JS falls back to section.grading_system in that case.
+{% if grading_system and grading_system.grades %}
+let LIVE_GRADING_SCALE = {{ grading_system.grades | tojson | safe }};
+{% else %}
+let LIVE_GRADING_SCALE = [];
+{% endif %}
+
 async function handleClassChange() {
     const classId = document.getElementById('class_id').value;
     const studentSelect = document.getElementById('student_id');
@@ -570,7 +581,9 @@ function renderAcademicGradesSection(section) {
         return '<p class="text-sm text-neutral-500 italic">No subjects configured. Please assign subjects to this class under Settings &gt; Academic &gt; Class Subjects.</p>';
     }
 
-    const gradingSystem = section.grading_system || [];
+    const gradingSystem = (LIVE_GRADING_SCALE && LIVE_GRADING_SCALE.length)
+        ? LIVE_GRADING_SCALE
+        : (section.grading_system || []);
 
     let html = '<div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">';
     html += '<table class="min-w-[600px] w-full border border-neutral-300">';
@@ -631,9 +644,13 @@ function updateSubjectGrade(input, totalMarks) {
 
     const percentage = (marks / totalMarks) * 100;
 
-    // Find the ACADEMIC_GRADES section to get grading system
+    // Prefer the server-resolved live grading scale so the Grade
+    // column matches the parent's view. Fall back to the section's
+    // embedded scale when no live scale resolved.
     const section = templateSections.find(s => s.type === 'ACADEMIC_GRADES');
-    const gradingSystem = section ? (section.grading_system || []) : [];
+    const gradingSystem = (LIVE_GRADING_SCALE && LIVE_GRADING_SCALE.length)
+        ? LIVE_GRADING_SCALE
+        : (section ? (section.grading_system || []) : []);
 
     let grade = '-';
     for (const g of gradingSystem) {

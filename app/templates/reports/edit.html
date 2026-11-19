@@ -55,7 +55,12 @@
                 {% if section.type == 'ACADEMIC_GRADES' %}
                 <!-- Academic grades table -->
                 {% set subjects_list = class_subjects if class_subjects else section.subjects %}
-                {% set grades_config = section.grading_system or [] %}
+                {# Prefer the server-resolved live grading system over the
+                   template-embedded one so the admin's edit-time legend
+                   matches what the parent will see on the finalised view.
+                   Template-embedded is kept as the fallback when nothing
+                   else is resolvable. #}
+                {% set grades_config = grading_system.grades if grading_system else (section.grading_system or []) %}
                 {% if subjects_list %}
                 <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
                     <table class="min-w-[550px] w-full border border-neutral-300">

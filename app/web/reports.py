@@ -36,6 +36,31 @@ async def _get_current_user(db: AsyncSession) -> User | None:
         return None
 
 
+async def _resolve_grading_system(
+    db: AsyncSession, *, template=None, class_id: uuid.UUID | None = None,
+):
+    """Resolve the grading scale to use for a report card, matching the
+    view_report_card.html chain so the edit / create / view screens all
+    agree. Priority:
+      1. Template's explicit grading_system_id (most specific).
+      2. Class's grading system (set by curriculum inferrer or admin).
+      3. Tenant default.
+    Returned object has `.name` and `.grades` (JSONB list of
+    {min,max,grade,description[,points]}).
+    """
+    from app.services.academic_service import get_academic_service
+    academic_service = get_academic_service()
+    gs = None
+    tpl_id = getattr(template, "grading_system_id", None) if template else None
+    if tpl_id:
+        gs = await academic_service.get_grading_system(db, tpl_id)
+    if not gs and class_id:
+        gs = await academic_service.resolve_class_grading_system(db, class_id)
+    if not gs:
+        gs = await academic_service.get_default_grading_system(db)
+    return gs
+
+
 def _require_auth(request: Request):
     """Check authentication and return redirect if not authenticated."""
     user_id = get_current_user_id_or_none()
@@ -164,6 +189,22 @@ async def reports_create(
     if template_id:
         selected_template = await report_service.get_template(db, template_id)
 
+    # Resolve the live grading scale — same chain the view/PDF uses —
+    # so the create page's live grade computation matches the parent's
+    # final view. Guard with try/except so a missing grading system
+    # never blocks report creation.
+    grading_system = None
+    try:
+        class_id_for_grading = (
+            selected_student.class_id if selected_student and selected_student.class_id else None
+        )
+        if selected_template or class_id_for_grading:
+            grading_system = await _resolve_grading_system(
+                db, template=selected_template, class_id=class_id_for_grading,
+            )
+    except Exception:
+        grading_system = None
+
     today = date.today()
     context = {
         "request": request,
@@ -172,6 +213,7 @@ async def reports_create(
         "templates": templates_list,
         "selected_student": selected_student,
         "selected_template": selected_template,
+        "grading_system": grading_system,
         "report_date": report_date or today,
         "today": today,
         "current_language": get_current_language(),
@@ -247,27 +289,13 @@ async def reports_view(
     if report.template and report.template.report_type == "REPORT_CARD":
         template_name = "reports/view_report_card.html"
 
-        # Get grading system for report cards
         from app.services.academic_service import get_academic_service
         academic_service = get_academic_service()
-
-        # Grading system resolution — in priority order:
-        #   1. Template's explicit grading system (pinned by whoever
-        #      built this template — most specific, wins everything).
-        #   2. The class's grading system (set by the curriculum
-        #      inferrer, or pinned by the admin on the class edit
-        #      page). This is the 2026-10-09 curriculum→class link.
-        #   3. The tenant default.
-        if report.template.grading_system_id:
-            grading_system = await academic_service.get_grading_system(
-                db, report.template.grading_system_id
-            )
-        if not grading_system and report.class_id:
-            grading_system = await academic_service.resolve_class_grading_system(
-                db, report.class_id
-            )
-        if not grading_system:
-            grading_system = await academic_service.get_default_grading_system(db)
+        # Grading scale resolution lives in _resolve_grading_system so
+        # create / edit / view can't drift. See the helper for priority.
+        grading_system = await _resolve_grading_system(
+            db, template=report.template, class_id=report.class_id,
+        )
 
         # Get class subjects for this class
         if report.class_id:
@@ -346,11 +374,22 @@ async def reports_edit(
         except Exception:
             pass
 
+    # Resolve the live grading scale the same way the view page does,
+    # so the edit-time legend + computed grade matches what parents see.
+    grading_system = None
+    try:
+        grading_system = await _resolve_grading_system(
+            db, template=report.template, class_id=report.class_id,
+        )
+    except Exception:
+        grading_system = None
+
     context = {
         "request": request,
         "user": user,
         "report": report,
         "class_subjects": class_subjects,
+        "grading_system": grading_system,
         "current_language": get_current_language(),
         "permissions": permissions,
     }
