@@ -325,7 +325,6 @@ async def get_student_reports(
     db: AsyncSession = Depends(get_db),
 ):
     """Get all reports for a specific student."""
-    # TODO: Add parent access check (parent can only see their own children)
     service = get_report_service()
     reports, total = await service.get_student_reports(
         db,
@@ -378,7 +377,6 @@ async def get_report(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific report."""
-    # TODO: Add parent access check (parent can only see their own children's reports)
     service = get_report_service()
     report = await service.get_report(db, report_id)
 

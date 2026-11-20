@@ -242,12 +242,11 @@ async def reports_view(
     permissions = PermissionChecker(user.role)
     report_service = get_report_service()
 
-    # Get the report
+    # get_report is scoped to the viewer (teacher: own classes, parent:
+    # own children's finalised reports), so out-of-scope ids land here.
     report = await report_service.get_report(db, report_id)
     if not report:
         return RedirectResponse(url="/reports", status_code=302)
-
-    # TODO: Check parent access (only own children's reports)
 
     # Get tenant for branding on report cards
     from app.models import Tenant

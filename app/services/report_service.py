@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.models.grade_level import GradeLevel
 from app.models.report import DailyReport, ReportStatus, ReportTemplate, ReportTemplateGradeLevel
 from app.models.school_class import SchoolClass, TeacherClass
-from app.models.student import Student
+from app.models.student import ParentStudent, Student
 from app.models.tenant import Tenant
 from app.models.user import Role
 from app.schemas.report import (
@@ -26,6 +26,32 @@ from app.exceptions import ValidationException
 from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 logger = logging.getLogger(__name__)
+
+
+def _scope_reports_to_viewer(query):
+    """Restrict a DailyReport query to what the current user may see.
+
+    Teachers: reports in their assigned classes. Parents: finalised
+    reports for their own linked children only. Admins: unrestricted
+    within the tenant (the tenant filter is applied by the caller).
+    """
+    role = get_current_user_role()
+    if role == Role.TEACHER.value:
+        query = query.where(DailyReport.class_id.in_(
+            select(TeacherClass.class_id).where(
+                TeacherClass.teacher_id == get_current_user_id()
+            )
+        ))
+    elif role == Role.PARENT.value:
+        query = query.where(
+            DailyReport.student_id.in_(
+                select(ParentStudent.student_id).where(
+                    ParentStudent.parent_id == get_current_user_id()
+                )
+            ),
+            DailyReport.status == ReportStatus.FINALIZED.value,
+        )
+    return query
 
 
 class ReportService:
@@ -481,14 +507,7 @@ class ReportService:
             )
         )
 
-        # Teachers only see reports from their assigned classes
-        role = get_current_user_role()
-        if role == Role.TEACHER.value:
-            user_id = get_current_user_id()
-            teacher_classes_subquery = select(TeacherClass.class_id).where(
-                TeacherClass.teacher_id == user_id
-            )
-            query = query.where(DailyReport.class_id.in_(teacher_classes_subquery))
+        query = _scope_reports_to_viewer(query)
 
         if class_id:
             query = query.where(DailyReport.class_id == class_id)
@@ -512,12 +531,10 @@ class ReportService:
         )
 
         # Re-apply filters for count
-        count_base = select(DailyReport.id).where(
+        count_base = _scope_reports_to_viewer(select(DailyReport.id).where(
             DailyReport.tenant_id == tenant_id,
             DailyReport.deleted_at.is_(None),
-        )
-        if role == Role.TEACHER.value:
-            count_base = count_base.where(DailyReport.class_id.in_(teacher_classes_subquery))
+        ))
         if class_id:
             count_base = count_base.where(DailyReport.class_id == class_id)
         if student_id:
@@ -581,6 +598,7 @@ class ReportService:
                 DailyReport.deleted_at.is_(None),
             )
         )
+        query = _scope_reports_to_viewer(query)
 
         result = await db.execute(query)
         return result.scalar_one_or_none()
