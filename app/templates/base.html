@@ -279,7 +279,7 @@
         button:active, a:active { transform: scale(0.98); transition: transform 0.05s; }
     </style>
 
-    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=2">
 
     {# Load app.js in <head> as a blocking script so window.ClassUp is
        always defined BEFORE any inline <script> inside {% block content %}
@@ -293,6 +293,11 @@
     {% block head %}{% endblock %}
 </head>
 <body class="min-h-screen bg-neutral-50 text-neutral-800 antialiased text-sm">
+    {# Global page loader — brand-mark overlay shown during same-origin
+       navigations. Rendered BEFORE the layout branches so auth, public
+       and PWA installs all get it. Hidden by default; static/js/loader.js
+       reveals it on link clicks and form submits. #}
+    {% include 'components/_page_loader.html' %}
     {% include 'components/_env_banner.html' %}
     {% if user %}
         <!-- Authenticated Layout -->
@@ -355,6 +360,10 @@
        (a) the SW push handler needs no help from this file but (b) the
        Notifications settings page uses ClassUpPush.* helpers. #}
     <script src="{{ url_for('static', path='js/push.js') }}?v=2" defer></script>
+    {# Global page loader — intercepts same-origin navigations to show
+       the brand-mark overlay. Loaded everywhere (auth + public) so
+       login submits and dashboard navigations both get it. #}
+    <script src="{{ url_for('static', path='js/loader.js') }}?v=1" defer></script>
     {# Global navbar search — depends on ClassUp.fetch, which the head-
        loaded app.js has already defined. Safe to defer-load. #}
     {% if user %}

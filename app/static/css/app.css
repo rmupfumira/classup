@@ -111,6 +111,60 @@ dialog[open]::backdrop { animation: backdrop-enter 0.2s ease-out; }
 @keyframes dialog-enter { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
 
+/* =============================================================
+   Page loader — brand-mark overlay shown during same-origin
+   navigations and form submits (see static/js/loader.js).
+   The timing (150ms delay to show, 160ms fade) is tuned so fast
+   navigations never flash the overlay: anything that completes
+   in under ~300ms never shows one at all.
+   ============================================================= */
+.page-loader-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Neutral wash (not a dark backdrop) so the loader blends
+       into the app shell rather than reading as a modal. The
+       navy navbar + sidebar stay faintly visible through it. */
+    background: rgba(248, 250, 252, 0.88);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.16s ease-out, visibility 0.16s ease-out;
+    pointer-events: none;
+}
+.page-loader-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+}
+.page-loader-arc {
+    transform-origin: 20px 20px;
+    animation: page-loader-arc-spin 1.2s linear infinite;
+}
+@keyframes page-loader-arc-spin { to { transform: rotate(360deg); } }
+/* Honour the system-wide reduced-motion preference — a static logo
+   is still a valid "something is loading" signal, and users who set
+   this flag have told the browser they do not want spinning motion. */
+@media (prefers-reduced-motion: reduce) {
+    .page-loader-arc { animation: none; }
+}
+/* Screen-reader-only text — standard a11y pattern. The overlay has
+   role="status" aria-live="polite" so AT announces "Loading…" when
+   it appears. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* Status button transition */
 .status-btn { transition: all 0.15s ease-out; }
 
