@@ -158,8 +158,8 @@
 {%- endmacro %}
 
 {# ------------------- Top Bar ------------------- #}
-<header class="sticky top-0 z-40 px-4 md:px-8 pt-4">
-    <nav class="mx-auto max-w-7xl flex items-center gap-3 bg-white/80 backdrop-blur-xl px-3 py-2 rounded-full shadow-soft ring-1 ring-navy-100">
+<header class="sticky top-0 z-40 px-4 md:px-8 lg:px-10 xl:px-14 2xl:px-20 pt-4">
+    <nav class="w-full flex items-center gap-3 bg-white/80 backdrop-blur-xl px-3 py-2 rounded-full shadow-soft ring-1 ring-navy-100">
         <!-- Logo -->
         <a href="/design-showcase/04" class="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-navy-50 transition-colors">
             <svg viewBox="0 0 40 40" fill="none" class="w-8 h-8"><rect width="40" height="40" rx="10" fill="#1B3A6B"/><path d="M25 11a11 11 0 1 0 0 18" stroke="#C9A92A" stroke-width="3.5" stroke-linecap="round" fill="none"/><path d="M25 25V15m0 0l-4 4m4-4l4 4" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -202,7 +202,7 @@
 </header>
 
 {# ------------------- Layout: Sidebar + Main ------------------- #}
-<div class="mx-auto max-w-7xl px-4 md:px-8 py-6 lg:py-8 flex gap-6">
+<div class="w-full px-4 md:px-8 lg:px-10 xl:px-14 2xl:px-20 py-6 lg:py-8 flex gap-6 xl:gap-8">
 
     {# ------------------- Desktop Sidebar ------------------- #}
     <aside class="hidden lg:block w-60 flex-shrink-0">
@@ -296,10 +296,10 @@
         </nav>
 
         <!-- Hero card -->
-        <section class="relative bg-hero-soft rounded-4xl p-6 md:p-8 lg:p-10 text-white overflow-hidden shadow-soft-lg">
-            <!-- Decorative orbs -->
+        <section class="relative bg-hero-soft rounded-4xl p-6 md:p-8 text-white overflow-hidden shadow-soft-lg">
+            <!-- Single decorative orb — keeps the warm highlight, drops
+                 the second one so the hero reads calmer. -->
             <div class="absolute -top-20 -right-20 w-72 h-72 bg-gold-400/20 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -bottom-32 -left-20 w-80 h-80 bg-navy-500/30 rounded-full blur-3xl pointer-events-none"></div>
 
             <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
                 <div class="max-w-xl">
@@ -395,8 +395,10 @@
             </div>
         </section>
 
-        <!-- Exam cards grid -->
-        <section class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {# Exam cards grid — now flexes: 1-col mobile, 2-col lg/xl,
+           3-col on 2xl (2560+ or ultrawide) so wide screens stop
+           feeling half-empty. #}
+        <section class="mt-6 grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-5">
             {% for exam in exams %}
             <article class="group bg-white rounded-3xl shadow-soft ring-1 ring-navy-100/70 card-hover overflow-hidden">
                 <!-- Card header: avatar + name -->
@@ -427,29 +429,27 @@
                                 {{ status_pill(exam.status) }}
                             </div>
 
-                            <!-- Metadata chips -->
+                            {# Metadata chips — pared down from four to two so the
+                               card header reads as "subject · schedule" not a chip
+                               wall. The grading system is still available on the
+                               detail page; it adds noise in the list view. #}
                             <div class="flex flex-wrap items-center gap-1.5 mt-2">
                                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-navy-50 text-navy-600 rounded-full">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342"/></svg>
                                     {{ exam.class_name }}
                                 </span>
                                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-navy-50 text-navy-600 rounded-full">
-                                    Term {{ exam.term }}
-                                </span>
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-navy-50 text-navy-600 rounded-full">
-                                    {{ exam.academic_year }}
-                                </span>
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-gold-50 text-gold-700 rounded-full">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                    {{ exam.grading_system }}
+                                    Term {{ exam.term }} · {{ exam.academic_year }}
                                 </span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Progress section -->
-                <div class="px-5 py-4 bg-gradient-to-br from-navy-50/50 to-transparent">
+                {# Progress section — removed the navy-50 gradient tier so
+                   the card has ONE surface rather than three visually
+                   separate zones. The progress bar carries enough shape. #}
+                <div class="px-5 pb-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-semibold text-navy-600">
                             {% if exam.marked_pct >= 100 %}
@@ -468,8 +468,9 @@
                     {{ progress_bar(exam.marked_pct) }}
                 </div>
 
-                <!-- Footer: schedule + CTA -->
-                <div class="px-5 py-3.5 flex items-center justify-between border-t border-navy-50">
+                {# Footer — border divider removed; spacing alone separates
+                   the schedule line from the progress above it. #}
+                <div class="px-5 py-3.5 flex items-center justify-between">
                     <div class="flex items-center gap-2 text-xs text-navy-500 min-w-0">
                         {% if exam.scheduled_start %}
                             <svg class="w-3.5 h-3.5 shrink-0 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
