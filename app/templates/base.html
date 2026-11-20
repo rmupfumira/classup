@@ -10,6 +10,18 @@
     <meta charset="UTF-8">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
 
+    {# Anti-FOUC: apply the user's saved sidebar-collapsed state before Tailwind
+       paints, so the sidebar doesn't visibly jump from 224px → 56px on load. #}
+    <script>
+      (function() {
+        try {
+          if (localStorage.getItem('cu.sidebar.collapsed') === '1') {
+            document.documentElement.classList.add('sidebar-collapsed');
+          }
+        } catch (e) { /* localStorage blocked — fall back to the default */ }
+      })();
+    </script>
+
     {# PWA head — viewport + manifest + apple touch + splash screens #}
     {% include 'components/_pwa_head.html' %}
 
@@ -272,7 +284,12 @@
                pb-safe handles the iPhone home-indicator. max-w-[1600px]
                keeps content from stretching edge-to-edge on ultra-wide
                monitors. #}
-            <main class="flex-1 pb-24 md:pb-0 md:ml-56 min-w-0">
+            <main class="flex-1 pb-24 md:pb-0 min-w-0 md:ml-[var(--cu-sidebar-w)]"
+                  style="transition: margin-left 0.18s ease;">
+                {# md:ml-[var(--cu-sidebar-w)] follows the sidebar's own width —
+                   when the user collapses the sidebar to a 56px rail, this
+                   margin shrinks to match so the main column grows into the
+                   gap. See _sidebar.html. #}
                 <div class="p-6 pb-safe md:pb-6 max-w-[1600px] mx-auto w-full">
                     {# Toast Container — on mobile toasts land under the
                        sticky navbar as a single centered column so they
