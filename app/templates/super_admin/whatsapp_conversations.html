@@ -6,35 +6,35 @@
 <div class="max-w-6xl mx-auto space-y-4">
 
     <div>
-        <h1 class="text-2xl font-bold text-neutral-900">WhatsApp Conversations</h1>
-        <p class="text-sm text-neutral-500">
+        <h1 class="text-2xl font-bold text-navy-900">WhatsApp Conversations</h1>
+        <p class="text-sm text-navy-500">
             Every WhatsApp thread between the platform and a parent, grouped by phone.
             Includes bot replies, notifications sent by the app, and inbound messages from parents.
         </p>
     </div>
 
     <!-- Filter bar -->
-    <form id="conv-filter" class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 flex flex-col sm:flex-row gap-3">
+    <form id="conv-filter" class="cu-card p-4 flex flex-col sm:flex-row gap-3">
         <input type="text" id="q" placeholder="Search by phone number…"
-               class="flex-1 h-10 px-3 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+               class="flex-1 h-10 px-3 text-sm border border-navy-200 rounded-lg focus:ring-navy-500 focus:border-navy-500">
         <button type="submit"
                 class="inline-flex items-center justify-center h-10 px-4 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
             Search
         </button>
     </form>
 
-    <p id="conv-count" class="text-xs text-neutral-500"></p>
+    <p id="conv-count" class="text-xs text-navy-500"></p>
 
     <div id="conv-list" class="space-y-2">
-        <p class="text-sm text-neutral-500 py-4">Loading conversations…</p>
+        <p class="text-sm text-navy-500 py-4">Loading conversations…</p>
     </div>
 
     <div id="conv-pagination" class="flex items-center justify-between text-sm hidden">
         <button type="button" id="prev-page"
-                class="px-3 py-1.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed">← Previous</button>
-        <p id="page-indicator" class="text-xs text-neutral-500"></p>
+                class="px-3 py-1.5 border border-navy-200 rounded-xl text-navy-700 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed">← Previous</button>
+        <p id="page-indicator" class="text-xs text-navy-500"></p>
         <button type="button" id="next-page"
-                class="px-3 py-1.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed">Next →</button>
+                class="px-3 py-1.5 border border-navy-200 rounded-xl text-navy-700 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed">Next →</button>
     </div>
 </div>
 {% endblock %}
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentSearch) params.set('q', currentSearch);
 
         const wrap = document.getElementById('conv-list');
-        wrap.innerHTML = '<p class="text-sm text-neutral-500 py-4">Loading conversations…</p>';
+        wrap.innerHTML = '<p class="text-sm text-navy-500 py-4">Loading conversations…</p>';
 
         try {
             const res = await ClassUp.fetch(`/api/v1/admin/whatsapp-conversations?${params}`);
@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!conversations.length) {
                 wrap.innerHTML = `
-                    <div class="bg-white rounded-lg border border-neutral-200 p-12 text-center">
-                        <p class="text-sm text-neutral-500">
+                    <div class="cu-card p-12 text-center">
+                        <p class="text-sm text-navy-500">
                             ${currentSearch ? 'No conversations match that search.' : 'No WhatsApp conversations yet.'}
                         </p>
                     </div>`;
@@ -94,18 +94,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const isOut = c.preview_direction === 'OUT';
         const dirBadge = isOut
             ? '<span class="text-[10px] px-1 py-0.5 rounded bg-blue-100 text-blue-700 uppercase font-medium">Out</span>'
-            : '<span class="text-[10px] px-1 py-0.5 rounded bg-neutral-100 text-neutral-600 uppercase font-medium">In</span>';
+            : '<span class="text-[10px] px-1 py-0.5 rounded bg-navy-100 text-navy-600 uppercase font-medium">In</span>';
         const nameOrPhone = c.matched_user
-            ? `<span class="font-medium text-neutral-900">${escapeHtml(c.matched_user.name)}</span>
-               <span class="text-neutral-400 text-xs ml-1">${escapeHtml(c.phone)}</span>`
-            : `<span class="font-medium text-neutral-900">+${escapeHtml(c.phone)}</span>
-               <span class="text-neutral-400 text-xs ml-1">unknown sender</span>`;
+            ? `<span class="font-medium text-navy-900">${escapeHtml(c.matched_user.name)}</span>
+               <span class="text-navy-400 text-xs ml-1">${escapeHtml(c.phone)}</span>`
+            : `<span class="font-medium text-navy-900">+${escapeHtml(c.phone)}</span>
+               <span class="text-navy-400 text-xs ml-1">unknown sender</span>`;
         const tenantLine = c.tenant
-            ? `<p class="text-xs text-neutral-500">${escapeHtml(c.tenant.name)}</p>`
+            ? `<p class="text-xs text-navy-500">${escapeHtml(c.tenant.name)}</p>`
             : '';
         return `
             <a href="/admin/whatsapp-conversations/${encodeURIComponent(c.phone)}"
-               class="block bg-white rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-sm transition-all p-4">
+               class="block cu-card hover:border-primary-300 hover:shadow-sm transition-all p-4">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
@@ -114,12 +114,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${tenantLine}
                         <div class="mt-1 flex items-start gap-2">
                             ${dirBadge}
-                            <p class="text-sm text-neutral-600 truncate flex-1">${escapeHtml(c.preview || '(no preview)')}</p>
+                            <p class="text-sm text-navy-600 truncate flex-1">${escapeHtml(c.preview || '(no preview)')}</p>
                         </div>
                     </div>
                     <div class="text-right shrink-0">
-                        <p class="text-xs text-neutral-500">${when}</p>
-                        <p class="text-xs text-neutral-400 mt-1">${c.msg_count} msg${c.msg_count === 1 ? '' : 's'}</p>
+                        <p class="text-xs text-navy-500">${when}</p>
+                        <p class="text-xs text-navy-400 mt-1">${c.msg_count} msg${c.msg_count === 1 ? '' : 's'}</p>
                     </div>
                 </div>
             </a>

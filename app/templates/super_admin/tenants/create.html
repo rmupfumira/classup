@@ -3,185 +3,134 @@
 {% block title %}Create Tenant - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
-    <!-- Page Header -->
+<div class="max-w-3xl mx-auto space-y-6">
     <div class="flex items-center gap-4">
-        <a href="/admin/tenants"
-           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
-            </svg>
+        <a href="/admin/tenants" class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-50 rounded-2xl transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/></svg>
         </a>
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Create New Tenant</h1>
-            <p class="mt-1 text-sm text-neutral-500">
-                Add a new school or organization to the platform
-            </p>
+            <span class="cu-eyebrow">Platform</span>
+            <h1 class="cu-page-title mt-1">Create New Tenant</h1>
+            <p class="mt-1 text-sm text-navy-500">Add a new school or organization to the platform.</p>
         </div>
     </div>
 
-    <!-- Form Card -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <section class="cu-card p-6">
         <form id="create-tenant-form" class="space-y-6">
-            <!-- Basic Information -->
             <div>
-                <h3 class="text-sm font-medium text-neutral-800 mb-4">Basic Information</h3>
+                <h3 class="text-sm font-semibold text-navy-800 mb-4">Basic Information</h3>
                 <div class="space-y-4">
-                    <!-- Name -->
                     <div>
-                        <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Organization Name <span class="text-error-500">*</span>
+                        <label for="name" class="block text-sm font-medium text-navy-700 mb-1">
+                            Organization Name <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" id="name" name="name" required
-                               placeholder="e.g., Sunshine Daycare"
-                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <input type="text" id="name" name="name" required placeholder="e.g., Sunshine Daycare" class="cu-input">
                     </div>
 
-                    <!-- Slug -->
                     <div>
-                        <label for="slug" class="block text-sm font-medium text-neutral-700 mb-1">
-                            URL Slug
-                        </label>
+                        <label for="slug" class="block text-sm font-medium text-navy-700 mb-1">URL Slug</label>
                         <div class="flex items-center">
-                            <span class="px-3 py-2 text-sm text-neutral-500 bg-neutral-100 border border-r-0 border-neutral-300 rounded-l-md truncate max-w-[60%]">
+                            <span class="px-4 py-2.5 text-sm text-navy-500 bg-navy-50 rounded-l-full truncate max-w-[60%]" style="box-shadow: inset 0 0 0 1px #e3ebf5;">
                                 {{ settings.app_base_url.replace('http://', '').replace('https://', '').rstrip('/') }}/
                             </span>
-                            <input type="text" id="slug" name="slug"
-                                   placeholder="sunshine-daycare"
-                                   pattern="^[a-z0-9-]+$"
-                                   class="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-r-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                            <input type="text" id="slug" name="slug" placeholder="sunshine-daycare" pattern="^[a-z0-9-]+$"
+                                   class="flex-1 px-4 py-2.5 text-sm bg-white placeholder-navy-400 rounded-r-full focus:outline-none"
+                                   style="box-shadow: inset 0 0 0 1px #e3ebf5;">
                         </div>
-                        <p class="mt-1 text-xs text-neutral-500">Parents use this URL to reach your school's login page. Leave blank to auto-generate from name. Lowercase letters, numbers, and hyphens only.</p>
+                        <p class="mt-1 text-xs text-navy-500">Parents use this URL to reach your school's login page. Leave blank to auto-generate from name. Lowercase letters, numbers, and hyphens only.</p>
                     </div>
 
-                    <!-- Education Type -->
                     <div>
-                        <label for="education_type" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Education Type <span class="text-error-500">*</span>
+                        <label for="education_type" class="block text-sm font-medium text-navy-700 mb-1">
+                            Education Type <span class="text-red-500">*</span>
                         </label>
-                        <select id="education_type" name="education_type" required
-                                class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <select id="education_type" name="education_type" required class="cu-select">
                             <option value="DAYCARE">Daycare / Early Childhood</option>
                             <option value="PRIMARY_SCHOOL">Primary School</option>
                             <option value="HIGH_SCHOOL">High School</option>
                             <option value="K12">K-12 (Full Range)</option>
                             <option value="COMBINED">Combined / Other</option>
                         </select>
-                        <p class="mt-1 text-xs text-neutral-500">This determines default features and terminology.</p>
+                        <p class="mt-1 text-xs text-navy-500">This determines default features and terminology.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Divider -->
-            <div class="border-t border-neutral-200"></div>
+            <div class="border-t border-navy-50"></div>
 
-            <!-- Jurisdiction & Curriculum -->
             <div>
-                <h3 class="text-sm font-medium text-neutral-800 mb-4">Jurisdiction & Curriculum</h3>
+                <h3 class="text-sm font-semibold text-navy-800 mb-4">Jurisdiction &amp; Curriculum</h3>
                 <div class="space-y-4">
-                    <!-- Country -->
                     <div>
-                        <label for="country" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Country <span class="text-error-500">*</span>
+                        <label for="country" class="block text-sm font-medium text-navy-700 mb-1">
+                            Country <span class="text-red-500">*</span>
                         </label>
-                        <select id="country" name="country" required
-                                class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <select id="country" name="country" required class="cu-select">
                             <option value="">-- Select country --</option>
                             {% for c in countries %}
                             <option value="{{ c.code }}">{{ c.name }} ({{ c.currency }})</option>
                             {% endfor %}
                         </select>
-                        <p class="mt-1 text-xs text-neutral-500">
-                            Sets the tenant's currency and the list of curricula available for them to choose from.
-                        </p>
+                        <p class="mt-1 text-xs text-navy-500">Sets the tenant's currency and the list of curricula available for them to choose from.</p>
                     </div>
 
-                    <!-- Curriculum -->
                     <div>
-                        <label for="curriculum_pack" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Curriculum <span class="text-error-500">*</span>
+                        <label for="curriculum_pack" class="block text-sm font-medium text-navy-700 mb-1">
+                            Curriculum <span class="text-red-500">*</span>
                         </label>
-                        <select id="curriculum_pack" name="curriculum_pack" required disabled
-                                class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-50 disabled:text-neutral-400">
+                        <select id="curriculum_pack" name="curriculum_pack" required disabled class="cu-select disabled:opacity-60">
                             <option value="">-- Pick a country first --</option>
                         </select>
-                        <p id="curriculum-help" class="mt-1 text-xs text-neutral-500">
-                            Subjects and grading system auto-load from the pack. Pick Custom to configure manually.
-                        </p>
+                        <p id="curriculum-help" class="mt-1 text-xs text-navy-500">Subjects and grading system auto-load from the pack. Pick Custom to configure manually.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Divider -->
-            <div class="border-t border-neutral-200"></div>
+            <div class="border-t border-navy-50"></div>
 
-            <!-- Contact Information -->
             <div>
-                <h3 class="text-sm font-medium text-neutral-800 mb-4">Contact Information</h3>
+                <h3 class="text-sm font-semibold text-navy-800 mb-4">Contact Information</h3>
                 <div class="space-y-4">
-                    <!-- Email -->
                     <div>
-                        <label for="email" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Email Address <span class="text-error-500">*</span>
+                        <label for="email" class="block text-sm font-medium text-navy-700 mb-1">
+                            Email Address <span class="text-red-500">*</span>
                         </label>
-                        <input type="email" id="email" name="email" required
-                               placeholder="admin@school.com"
-                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <input type="email" id="email" name="email" required placeholder="admin@school.com" class="cu-input">
                     </div>
-
-                    <!-- Phone -->
                     <div>
-                        <label for="phone" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Phone Number
-                        </label>
-                        <input type="tel" id="phone" name="phone"
-                               placeholder="+27 12 345 6789"
-                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <label for="phone" class="block text-sm font-medium text-navy-700 mb-1">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" placeholder="+27 12 345 6789" class="cu-input">
                     </div>
-
-                    <!-- Address -->
                     <div>
-                        <label for="address" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Address
-                        </label>
-                        <textarea id="address" name="address" rows="3"
-                                  placeholder="123 Main Street, City, Province"
-                                  class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                        <label for="address" class="block text-sm font-medium text-navy-700 mb-1">Address</label>
+                        <textarea id="address" name="address" rows="3" placeholder="123 Main Street, City, Province" class="cu-textarea"></textarea>
                     </div>
                 </div>
             </div>
 
-            <!-- Divider -->
-            <div class="border-t border-neutral-200"></div>
+            <div class="border-t border-navy-50"></div>
 
-            <!-- Form Actions -->
             <div class="flex items-center justify-end gap-3">
-                <a href="/admin/tenants"
-                   class="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800 transition-colors">
-                    Cancel
-                </a>
-                <button type="submit" id="submit-btn"
-                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg class="w-4 h-4 mr-1.5 hidden" id="submit-spinner" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <a href="/admin/tenants" class="cu-btn-soft">Cancel</a>
+                <button type="submit" id="submit-btn" class="cu-btn-primary">
+                    <svg class="w-4 h-4 hidden animate-spin" id="submit-spinner" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                     </svg>
                     Create Tenant
                 </button>
             </div>
         </form>
-    </div>
+    </section>
 
-    <!-- Info Box -->
-    <div class="bg-primary-50 border border-primary-200 rounded-xl p-4">
+    <div class="cu-card p-4" style="background: #f4f7fb; box-shadow: inset 0 0 0 1px #c2d2e7;">
         <div class="flex gap-3">
-            <svg class="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            <svg class="w-5 h-5 text-navy-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <div class="text-sm text-primary-800">
-                <p class="font-medium">What happens next?</p>
-                <p class="mt-1 text-primary-700">
+            <div class="text-sm text-navy-800">
+                <p class="font-semibold">What happens next?</p>
+                <p class="mt-1 text-navy-700">
                     After creating the tenant, you'll need to create an admin user for them.
                     The admin will complete the onboarding wizard to set up their school.
                 </p>
@@ -193,11 +142,8 @@
 <script>
 document.getElementById('create-tenant-form').addEventListener('submit', async function(e) {
     e.preventDefault();
-
     const submitBtn = document.getElementById('submit-btn');
     const spinner = document.getElementById('submit-spinner');
-
-    // Disable button and show spinner
     submitBtn.disabled = true;
     spinner.classList.remove('hidden');
 
@@ -212,27 +158,19 @@ document.getElementById('create-tenant-form').addEventListener('submit', async f
         country: formData.get('country') || null,
         curriculum_pack: formData.get('curriculum_pack') || null
     };
-
     try {
         const response = await fetch('/api/v1/admin/tenants', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: {'Content-Type': 'application/json'},
             credentials: 'same-origin',
             body: JSON.stringify(data)
         });
-
         const result = await response.json();
-
         if (response.ok) {
-            // Show success and redirect
             ClassUp.toast('Tenant created successfully', 'success');
             window.location.href = '/admin/tenants/' + result.data.id;
         } else {
-            // Show error
-            const message = result.message || 'Failed to create tenant';
-            ClassUp.toast(message, 'error');
+            ClassUp.toast(result.message || 'Failed to create tenant', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -243,24 +181,17 @@ document.getElementById('create-tenant-form').addEventListener('submit', async f
     }
 });
 
-// Curriculum packs keyed by country code — rendered server-side from
-// app.utils.curriculum_packs so no extra round-trip is needed. "Custom"
-// is appended to every country's list by the UI (not stored in the pack
-// registry) because every tenant must be allowed to opt out.
 const CURRICULUM_PACKS_BY_COUNTRY = {{ curriculum_packs_json | safe }};
-
 document.getElementById('country').addEventListener('change', function() {
     const country = this.value;
     const picker = document.getElementById('curriculum_pack');
     const packs = CURRICULUM_PACKS_BY_COUNTRY[country] || [];
-
     picker.innerHTML = '';
     if (!country) {
         picker.innerHTML = '<option value="">-- Pick a country first --</option>';
         picker.disabled = true;
         return;
     }
-
     picker.disabled = false;
     picker.innerHTML = '<option value="">-- Select curriculum --</option>';
     packs.forEach(p => {
@@ -269,25 +200,16 @@ document.getElementById('country').addEventListener('change', function() {
         opt.textContent = `${p.name} (${p.subject_count} subjects)`;
         picker.appendChild(opt);
     });
-    // Custom is ALWAYS an option — even for countries we have packs for,
-    // because a school might not follow any mainstream curriculum.
     const custom = document.createElement('option');
     custom.value = 'CUSTOM';
     custom.textContent = 'Custom — I\'ll configure manually';
     picker.appendChild(custom);
 });
 
-// Auto-generate slug from name
 document.getElementById('name').addEventListener('input', function() {
     const slugInput = document.getElementById('slug');
     if (!slugInput.value) {
-        // Only auto-fill if slug is empty
-        const slug = this.value
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .substring(0, 100);
+        const slug = this.value.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').substring(0, 100);
         slugInput.placeholder = slug || 'sunshine-daycare';
     }
 });

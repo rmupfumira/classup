@@ -7,74 +7,74 @@
     <!-- Page Header -->
     <div class="flex items-center gap-4">
         <a href="/admin/tenants/{{ tenant.id }}"
-           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+           class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-lg transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
             </svg>
         </a>
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Edit Tenant</h1>
-            <p class="mt-1 text-sm text-neutral-500">
+            <h1 class="text-xl font-semibold text-navy-800">Edit Tenant</h1>
+            <p class="mt-1 text-sm text-navy-500">
                 {{ tenant.name }}
             </p>
         </div>
     </div>
 
     <!-- Form Card -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <div class="cu-card p-6">
         <form id="edit-tenant-form" class="space-y-6">
             <!-- Basic Information -->
             <div>
-                <h3 class="text-sm font-medium text-neutral-800 mb-4">Basic Information</h3>
+                <h3 class="text-sm font-medium text-navy-800 mb-4">Basic Information</h3>
                 <div class="space-y-4">
                     <!-- Name -->
                     <div>
-                        <label for="name" class="block text-sm font-medium text-neutral-700 mb-1">
+                        <label for="name" class="block text-sm font-medium text-navy-700 mb-1">
                             Organization Name <span class="text-error-500">*</span>
                         </label>
                         <input type="text" id="name" name="name" required
                                value="{{ tenant.name }}"
-                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                     </div>
 
                     <!-- Slug (editable) -->
                     <div>
-                        <label for="slug" class="block text-sm font-medium text-neutral-700 mb-1">
+                        <label for="slug" class="block text-sm font-medium text-navy-700 mb-1">
                             URL Slug
                         </label>
                         <div class="flex items-center">
-                            <span class="px-3 py-2 text-sm text-neutral-500 bg-neutral-100 border border-r-0 border-neutral-300 rounded-l-md truncate max-w-[60%]">
+                            <span class="px-3 py-2 text-sm text-navy-500 bg-navy-100 border border-r-0 border-navy-200 rounded-l-md truncate max-w-[60%]">
                                 {{ settings.app_base_url.replace('http://', '').replace('https://', '').rstrip('/') }}/
                             </span>
                             <input type="text" id="slug" name="slug"
                                    value="{{ tenant.slug }}"
                                    pattern="^[a-z0-9-]+$"
                                    required
-                                   class="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-r-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                   class="flex-1 px-3 py-2 text-sm border border-navy-200 rounded-r-md focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                         </div>
-                        <p class="mt-1 text-xs text-neutral-500">
-                            <a href="{{ settings.app_base_url }}/{{ tenant.slug }}" target="_blank" class="text-primary-600 hover:underline">Test the URL ↗</a>
+                        <p class="mt-1 text-xs text-navy-500">
+                            <a href="{{ settings.app_base_url }}/{{ tenant.slug }}" target="_blank" class="text-navy-600 hover:underline">Test the URL ↗</a>
                             · Changing the slug will break any existing links to the old URL. Lowercase letters, numbers, and hyphens only.
                         </p>
                     </div>
 
                     <!-- Education Type (read-only) -->
                     <div>
-                        <label class="block text-sm font-medium text-neutral-700 mb-1">
+                        <label class="block text-sm font-medium text-navy-700 mb-1">
                             Education Type
                         </label>
                         <input type="text" value="{{ tenant.education_type.value | replace('_', ' ') | title }}" disabled
-                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md bg-neutral-50 text-neutral-500">
-                        <p class="mt-1 text-xs text-neutral-500">Education type cannot be changed after creation.</p>
+                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl bg-navy-50 text-navy-500">
+                        <p class="mt-1 text-xs text-navy-500">Education type cannot be changed after creation.</p>
                     </div>
 
                     <!-- Status -->
                     <div>
-                        <label for="is_active" class="block text-sm font-medium text-neutral-700 mb-1">
+                        <label for="is_active" class="block text-sm font-medium text-navy-700 mb-1">
                             Status
                         </label>
                         <select id="is_active" name="is_active"
-                                class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                             <option value="true" {% if tenant.is_active %}selected{% endif %}>Active</option>
                             <option value="false" {% if not tenant.is_active %}selected{% endif %}>Inactive</option>
                         </select>
@@ -83,56 +83,56 @@
             </div>
 
             <!-- Divider -->
-            <div class="border-t border-neutral-200"></div>
+            <div class="border-t border-navy-100"></div>
 
             <!-- Contact Information -->
             <div>
-                <h3 class="text-sm font-medium text-neutral-800 mb-4">Contact Information</h3>
+                <h3 class="text-sm font-medium text-navy-800 mb-4">Contact Information</h3>
                 <div class="space-y-4">
                     <!-- Email -->
                     <div>
-                        <label for="email" class="block text-sm font-medium text-neutral-700 mb-1">
+                        <label for="email" class="block text-sm font-medium text-navy-700 mb-1">
                             Email Address <span class="text-error-500">*</span>
                         </label>
                         <input type="email" id="email" name="email" required
                                value="{{ tenant.email }}"
-                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                     </div>
 
                     <!-- Phone -->
                     <div>
-                        <label for="phone" class="block text-sm font-medium text-neutral-700 mb-1">
+                        <label for="phone" class="block text-sm font-medium text-navy-700 mb-1">
                             Phone Number
                         </label>
                         <input type="tel" id="phone" name="phone"
                                value="{{ tenant.phone or '' }}"
                                placeholder="+27 12 345 6789"
-                               class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                     </div>
 
                     <!-- Address -->
                     <div>
-                        <label for="address" class="block text-sm font-medium text-neutral-700 mb-1">
+                        <label for="address" class="block text-sm font-medium text-navy-700 mb-1">
                             Address
                         </label>
                         <textarea id="address" name="address" rows="3"
                                   placeholder="123 Main Street, City, Province"
-                                  class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">{{ tenant.address or '' }}</textarea>
+                                  class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">{{ tenant.address or '' }}</textarea>
                     </div>
                 </div>
             </div>
 
             <!-- Divider -->
-            <div class="border-t border-neutral-200"></div>
+            <div class="border-t border-navy-100"></div>
 
             <!-- Form Actions -->
             <div class="flex items-center justify-end gap-3">
                 <a href="/admin/tenants/{{ tenant.id }}"
-                   class="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800 transition-colors">
+                   class="px-4 py-2 text-sm text-navy-600 hover:text-navy-800 transition-colors">
                     Cancel
                 </a>
                 <button type="submit" id="submit-btn"
-                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="inline-flex items-center px-4 py-2 cu-btn-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="w-4 h-4 mr-1.5 hidden animate-spin" id="submit-spinner" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -145,17 +145,17 @@
 
     <!-- Jurisdiction Card — country + currency + timezone overrides.
          Blank values inherit the platform default (shown as placeholder). -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <div class="cu-card p-6">
         <div class="mb-4">
-            <h3 class="text-sm font-medium text-neutral-800">Jurisdiction</h3>
-            <p class="mt-1 text-xs text-neutral-500">
+            <h3 class="text-sm font-medium text-navy-800">Jurisdiction</h3>
+            <p class="mt-1 text-xs text-navy-500">
                 Country and currency for this school. Leave any field on
                 <span class="font-medium">"Use platform default"</span> to inherit from
-                <a href="/admin/platform-settings" class="text-primary-600 hover:underline">Platform Settings</a>.
+                <a href="/admin/platform-settings" class="text-navy-600 hover:underline">Platform Settings</a>.
                 Country choice controls which payment providers are offered, phone-number
                 formatting, and jurisdiction-specific rules like VAT.
             </p>
-            <p class="mt-2 text-xs text-neutral-600">
+            <p class="mt-2 text-xs text-navy-600">
                 Currently effective:
                 <span class="font-medium">{{ effective_jurisdiction.country_name }}</span>
                 &middot;
@@ -168,11 +168,11 @@
 
         <div class="space-y-4">
             <div>
-                <label for="jur-country" class="block text-sm font-medium text-neutral-700 mb-1">
+                <label for="jur-country" class="block text-sm font-medium text-navy-700 mb-1">
                     Country
                 </label>
                 <select id="jur-country"
-                        class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                     <option value="">Use platform default ({{ platform_defaults.default_country }})</option>
                     {% for c in countries %}
                     <option value="{{ c.code }}" {% if tenant_country_raw == c.code %}selected{% endif %}>
@@ -183,11 +183,11 @@
             </div>
 
             <div>
-                <label for="jur-currency" class="block text-sm font-medium text-neutral-700 mb-1">
+                <label for="jur-currency" class="block text-sm font-medium text-navy-700 mb-1">
                     Billing currency
                 </label>
                 <select id="jur-currency"
-                        class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                     <option value="">Use country / platform default</option>
                     {% for cur in currencies %}
                     <option value="{{ cur.code }}" {% if tenant_currency_raw == cur.code %}selected{% endif %}>
@@ -195,18 +195,18 @@
                     </option>
                     {% endfor %}
                 </select>
-                <p class="mt-1 text-xs text-neutral-500">
+                <p class="mt-1 text-xs text-navy-500">
                     Only override the country's default when the school invoices in a different currency
                     (e.g. Zim schools billing in USD, or a border-town school billing in ZAR).
                 </p>
             </div>
 
             <div>
-                <label for="jur-timezone" class="block text-sm font-medium text-neutral-700 mb-1">
+                <label for="jur-timezone" class="block text-sm font-medium text-navy-700 mb-1">
                     Timezone
                 </label>
                 <select id="jur-timezone"
-                        class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
                     <option value="">Use country / platform default</option>
                     {% for tz in timezones %}
                     <option value="{{ tz }}" {% if tenant_timezone_raw == tz %}selected{% endif %}>{{ tz }}</option>
@@ -216,9 +216,9 @@
         </div>
 
         <div class="mt-6 flex items-center justify-end gap-3">
-            <span id="jur-save-msg" class="text-xs text-neutral-500"></span>
+            <span id="jur-save-msg" class="text-xs text-navy-500"></span>
             <button type="button" id="save-jurisdiction"
-                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors">
+                    class="inline-flex items-center px-4 py-2 cu-btn-primary transition-colors">
                 Save Jurisdiction
             </button>
         </div>
@@ -238,7 +238,7 @@
 
         btn.disabled = true;
         msg.textContent = 'Saving…';
-        msg.className = 'text-xs text-neutral-500';
+        msg.className = 'text-xs text-navy-500';
 
         // Send empty strings so the server explicitly clears an override —
         // absent keys would leave the previous value in place.
@@ -283,10 +283,10 @@
     {% set ai_plan_ok = plan_features.get('whatsapp_ai_enabled', False) %}
     {% set wa_on = tenant_features.get('whatsapp_enabled', False) %}
     {% set ai_on = tenant_features.get('whatsapp_ai_enabled', False) %}
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <div class="cu-card p-6">
         <div class="mb-4">
-            <h3 class="text-sm font-medium text-neutral-800">WhatsApp Bot</h3>
-            <p class="mt-1 text-xs text-neutral-500">
+            <h3 class="text-sm font-medium text-navy-800">WhatsApp Bot</h3>
+            <p class="mt-1 text-xs text-navy-500">
                 Toggle from here as a super admin. Same rules apply as the tenant's own
                 Settings &gt; Features page: the plan must include the feature before it
                 can be enabled. Changes take effect on the next inbound WhatsApp message.
@@ -299,15 +299,15 @@
                 <input type="checkbox" id="feature-whatsapp-enabled"
                        {% if wa_on and wa_plan_ok %}checked{% endif %}
                        {% if not wa_plan_ok %}disabled{% endif %}
-                       class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                       class="mt-1 h-4 w-4 rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                 <span class="ml-3">
-                    <span class="block text-sm font-medium text-neutral-900">
+                    <span class="block text-sm font-medium text-navy-900">
                         WhatsApp Integration
                         {% if not wa_plan_ok %}
-                        <span class="text-xs font-normal text-neutral-400 ml-1">— not in this tenant's plan</span>
+                        <span class="text-xs font-normal text-navy-400 ml-1">— not in this tenant's plan</span>
                         {% endif %}
                     </span>
-                    <span class="block text-sm text-neutral-500">
+                    <span class="block text-sm text-navy-500">
                         Menu-driven bot on WhatsApp. Parents can chat with the school system directly.
                     </span>
                 </span>
@@ -318,17 +318,17 @@
                 <input type="checkbox" id="feature-whatsapp-ai-enabled"
                        {% if ai_on and ai_plan_ok and wa_on %}checked{% endif %}
                        {% if not ai_plan_ok %}disabled{% endif %}
-                       class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                       class="mt-1 h-4 w-4 rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                 <span class="ml-3">
-                    <span class="block text-sm font-medium text-neutral-900">
+                    <span class="block text-sm font-medium text-navy-900">
                         AI-Powered Bot
                         {% if not ai_plan_ok %}
-                        <span class="text-xs font-normal text-neutral-400 ml-1">— not in this tenant's plan</span>
+                        <span class="text-xs font-normal text-navy-400 ml-1">— not in this tenant's plan</span>
                         {% elif not wa_on %}
-                        <span class="text-xs font-normal text-neutral-400 ml-1">— enable WhatsApp first</span>
+                        <span class="text-xs font-normal text-navy-400 ml-1">— enable WhatsApp first</span>
                         {% endif %}
                     </span>
-                    <span class="block text-sm text-neutral-500">
+                    <span class="block text-sm text-navy-500">
                         Upgrade the bot from menu-driven to natural conversation using Claude AI.
                         Adds a small per-message cost.
                     </span>
@@ -337,9 +337,9 @@
         </div>
 
         <div class="mt-6 flex items-center justify-end gap-3">
-            <span id="whatsapp-save-msg" class="text-xs text-neutral-500"></span>
+            <span id="whatsapp-save-msg" class="text-xs text-navy-500"></span>
             <button type="button" id="save-whatsapp-features"
-                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm rounded-md hover:bg-primary-600 transition-colors">
+                    class="inline-flex items-center px-4 py-2 cu-btn-primary transition-colors">
                 Save WhatsApp Settings
             </button>
         </div>
@@ -371,7 +371,7 @@
 
         btn.disabled = true;
         msg.textContent = 'Saving…';
-        msg.className = 'text-xs text-neutral-500';
+        msg.className = 'text-xs text-navy-500';
 
         const payload = { features: {} };
         // Only send what the super admin could actually change (plan allows).

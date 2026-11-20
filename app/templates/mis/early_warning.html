@@ -6,14 +6,14 @@
 <div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
     <div class="flex items-start justify-between flex-wrap gap-2">
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Early warning</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">
+            <h1 class="text-xl font-semibold text-navy-800">Early warning</h1>
+            <p class="mt-0.5 text-sm text-navy-500">
                 Students flagged by the rules — low aggregate, chronic absenteeism, or sharp decline since last term.
                 Four risk levels: Critical, High, Medium, Low.
             </p>
         </div>
         <div class="flex items-center gap-2">
-            <button onclick="openRulesModal()" class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+            <button onclick="openRulesModal()" class="px-3 py-1.5 text-sm text-navy-700 bg-white border border-navy-200 rounded-xl hover:bg-navy-50">
                 Configure rules
             </button>
             {% include 'mis/_export_bar.html' %}
@@ -38,72 +38,72 @@
     </script>
 
     <!-- Filters -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <div class="flex flex-wrap items-end gap-3">
             <div>
-                <label class="block text-xs font-medium text-neutral-600 mb-1">From</label>
-                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+                <label class="block text-xs font-medium text-navy-600 mb-1">From</label>
+                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-600 mb-1">To</label>
-                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+                <label class="block text-xs font-medium text-navy-600 mb-1">To</label>
+                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl">
             </div>
             <div class="flex items-center gap-1">
-                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This month</button>
-                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">Term</button>
-                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">YTD</button>
+                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">This month</button>
+                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">Term</button>
+                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">YTD</button>
             </div>
             <div class="min-w-[180px]">
-                <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
-                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                <label class="block text-xs font-medium text-navy-600 mb-1">Class</label>
+                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-xl bg-white">
                     <option value="">Whole school</option>
                 </select>
             </div>
-            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">Refresh</button>
+            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-navy-500 rounded-xl hover:bg-primary-600">Refresh</button>
         </div>
     </div>
 
     <!-- Level counts -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="cu-card p-4">
             <p class="text-xs uppercase text-danger-700">Critical</p>
             <p id="count-critical" class="mt-1 text-2xl font-semibold text-danger-700">—</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="cu-card p-4">
             <p class="text-xs uppercase text-warning-700">High</p>
             <p id="count-high" class="mt-1 text-2xl font-semibold text-warning-700">—</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="cu-card p-4">
             <p class="text-xs uppercase text-accent-700">Medium</p>
             <p id="count-medium" class="mt-1 text-2xl font-semibold text-accent-700">—</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="cu-card p-4">
             <p class="text-xs uppercase text-info-600">Low</p>
             <p id="count-low" class="mt-1 text-2xl font-semibold text-info-600">—</p>
         </div>
     </div>
 
     <!-- Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-neutral-800">Flagged students</h2>
-            <span id="rules-summary" class="text-xs text-neutral-500">—</span>
+    <div class="cu-card overflow-hidden">
+        <div class="px-4 py-3 border-b border-navy-50 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-navy-800">Flagged students</h2>
+            <span id="rules-summary" class="text-xs text-navy-500">—</span>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-neutral-50 border-b border-neutral-200">
+                <thead class="bg-navy-50 border-b border-navy-100">
                     <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Level</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Student</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Class</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Aggregate</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Attendance</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Decline</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Triggered rules</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Level</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Student</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Class</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Aggregate</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Attendance</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Decline</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Triggered rules</th>
                     </tr>
                 </thead>
-                <tbody id="at-risk-body" class="divide-y divide-neutral-100">
-                    <tr><td colspan="7" class="text-center text-neutral-400 py-8 text-sm">Loading…</td></tr>
+                <tbody id="at-risk-body" class="divide-y divide-navy-50">
+                    <tr><td colspan="7" class="text-center text-navy-400 py-8 text-sm">Loading…</td></tr>
                 </tbody>
             </table>
         </div>
@@ -111,47 +111,47 @@
 </div>
 
 <!-- Rules modal -->
-<dialog id="rules-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-2xl backdrop:bg-black/50">
+<dialog id="rules-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-2xl backdrop:bg-black/50">
     <form class="p-6" onsubmit="saveRules(event)">
-        <h3 class="text-lg font-semibold text-neutral-800 mb-2">Early-warning rules</h3>
-        <p class="text-xs text-neutral-500 mb-4">
+        <h3 class="text-lg font-semibold text-navy-800 mb-2">Early-warning rules</h3>
+        <p class="text-xs text-navy-500 mb-4">
             Set risk thresholds per metric. Leave blank to reset a value to the system default.
             Aggregate + Attendance: a value BELOW the threshold triggers the named level.
             Decline: a drop OF AT LEAST the threshold triggers the level.
         </p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 text-sm">
             <div>
-                <h4 class="font-semibold text-neutral-700 mb-2">Aggregate %</h4>
-                <label class="block text-xs text-neutral-600 mb-1">Critical &lt;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-agg-crit" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
-                <label class="block text-xs text-neutral-600 mt-2 mb-1">High &lt;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-agg-high" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
-                <label class="block text-xs text-neutral-600 mt-2 mb-1">Medium &lt;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-agg-med" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <h4 class="font-semibold text-navy-700 mb-2">Aggregate %</h4>
+                <label class="block text-xs text-navy-600 mb-1">Critical &lt;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-agg-crit" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <label class="block text-xs text-navy-600 mt-2 mb-1">High &lt;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-agg-high" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <label class="block text-xs text-navy-600 mt-2 mb-1">Medium &lt;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-agg-med" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <h4 class="font-semibold text-neutral-700 mb-2">Attendance %</h4>
-                <label class="block text-xs text-neutral-600 mb-1">Critical &lt;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-att-crit" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
-                <label class="block text-xs text-neutral-600 mt-2 mb-1">High &lt;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-att-high" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
-                <label class="block text-xs text-neutral-600 mt-2 mb-1">Medium &lt;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-att-med" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <h4 class="font-semibold text-navy-700 mb-2">Attendance %</h4>
+                <label class="block text-xs text-navy-600 mb-1">Critical &lt;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-att-crit" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <label class="block text-xs text-navy-600 mt-2 mb-1">High &lt;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-att-high" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <label class="block text-xs text-navy-600 mt-2 mb-1">Medium &lt;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-att-med" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <h4 class="font-semibold text-neutral-700 mb-2">Decline since last term</h4>
-                <label class="block text-xs text-neutral-600 mb-1">Critical &ge;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-dec-crit" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
-                <label class="block text-xs text-neutral-600 mt-2 mb-1">High &ge;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-dec-high" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
-                <label class="block text-xs text-neutral-600 mt-2 mb-1">Medium &ge;</label>
-                <input type="number" step="0.1" min="0" max="100" id="r-dec-med" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <h4 class="font-semibold text-navy-700 mb-2">Decline since last term</h4>
+                <label class="block text-xs text-navy-600 mb-1">Critical &ge;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-dec-crit" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <label class="block text-xs text-navy-600 mt-2 mb-1">High &ge;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-dec-high" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <label class="block text-xs text-navy-600 mt-2 mb-1">Medium &ge;</label>
+                <input type="number" step="0.1" min="0" max="100" id="r-dec-med" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
             <button type="button" onclick="document.getElementById('rules-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+                    class="px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">Save</button>
         </div>
     </form>
 </dialog>
@@ -205,7 +205,7 @@ function levelBadge(level) {
         MEDIUM: 'bg-accent-100 text-accent-700',
         LOW: 'bg-info-100 text-info-600',
     };
-    const cls = colours[level] || 'bg-neutral-100 text-neutral-600';
+    const cls = colours[level] || 'bg-navy-100 text-navy-600';
     return `<span class="text-xs font-semibold px-2 py-0.5 rounded ${cls}">${level}</span>`;
 }
 
@@ -219,7 +219,7 @@ async function load() {
     if (classId) params.set('class_id', classId);
 
     const body = document.getElementById('at-risk-body');
-    body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8 text-sm">Scanning…</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="text-center text-navy-400 py-8 text-sm">Scanning…</td></tr>';
 
     try {
         const r = await ClassUp.fetch('/api/v1/mis/early-warning/scan?' + params.toString());
@@ -244,17 +244,17 @@ async function load() {
             const tripsHtml = s.triggered_rules.map(t => `
                 <div class="text-xs flex items-center gap-2">
                     ${levelBadge(t.level)}
-                    <span class="text-neutral-700">${t.message}</span>
+                    <span class="text-navy-700">${t.message}</span>
                 </div>
             `).join('');
             return `
-                <tr class="hover:bg-neutral-50">
+                <tr class="hover:bg-navy-50">
                     <td class="px-3 py-2">${levelBadge(s.level)}</td>
-                    <td class="px-3 py-2 text-neutral-800 font-medium">${s.student_name}</td>
-                    <td class="px-3 py-2 text-neutral-600">${s.class_name || '—'}</td>
-                    <td class="px-3 py-2 text-right text-neutral-800">${s.aggregate_pct !== null ? s.aggregate_pct.toFixed(1) + '%' : '—'}</td>
-                    <td class="px-3 py-2 text-right text-neutral-800">${s.attendance_pct !== null ? s.attendance_pct.toFixed(1) + '%' : '—'}</td>
-                    <td class="px-3 py-2 text-right text-neutral-800">${s.decline_pct !== null ? '−' + s.decline_pct.toFixed(1) + '%' : '—'}</td>
+                    <td class="px-3 py-2 text-navy-800 font-medium">${s.student_name}</td>
+                    <td class="px-3 py-2 text-navy-600">${s.class_name || '—'}</td>
+                    <td class="px-3 py-2 text-right text-navy-800">${s.aggregate_pct !== null ? s.aggregate_pct.toFixed(1) + '%' : '—'}</td>
+                    <td class="px-3 py-2 text-right text-navy-800">${s.attendance_pct !== null ? s.attendance_pct.toFixed(1) + '%' : '—'}</td>
+                    <td class="px-3 py-2 text-right text-navy-800">${s.decline_pct !== null ? '−' + s.decline_pct.toFixed(1) + '%' : '—'}</td>
                     <td class="px-3 py-2 space-y-1">${tripsHtml}</td>
                 </tr>
             `;

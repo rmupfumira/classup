@@ -7,14 +7,14 @@
     <!-- Page Header -->
     <div class="flex items-center gap-4">
         <a href="/admin"
-           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+           class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-lg transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
             </svg>
         </a>
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Payment Gateways</h1>
-            <p class="mt-1 text-sm text-neutral-500">
+            <h1 class="text-xl font-semibold text-navy-800">Payment Gateways</h1>
+            <p class="mt-1 text-sm text-navy-500">
                 Configure how tenants pay subscription invoices on this ClassUp instance.
             </p>
         </div>
@@ -29,40 +29,40 @@
     </div>
 
     <!-- Active state badge + summary -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <div class="cu-card p-6">
         <div class="flex items-start justify-between gap-4">
             <div>
-                <h2 class="text-base font-semibold text-neutral-800">Current configuration</h2>
-                <p class="text-sm text-neutral-500" id="current-summary">Loading…</p>
+                <h2 class="text-base font-semibold text-navy-800">Current configuration</h2>
+                <p class="text-sm text-navy-500" id="current-summary">Loading…</p>
             </div>
             <span id="status-badge"
-                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-navy-100 text-navy-600">
                 Loading…
             </span>
         </div>
     </div>
 
     <!-- Provider picker + credentials form -->
-    <form id="gateway-form" class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-5">
+    <form id="gateway-form" class="cu-card p-6 space-y-5">
 
         <!-- Provider selector — radios -->
         <div>
-            <h2 class="text-base font-semibold text-neutral-800 mb-3">Provider</h2>
+            <h2 class="text-base font-semibold text-navy-800 mb-3">Provider</h2>
             <div class="space-y-2" id="provider-options">
                 <!-- Filled in by JS -->
             </div>
-            <p class="text-xs text-neutral-500 mt-2">
+            <p class="text-xs text-navy-500 mt-2">
                 Pick <em>None</em> to disable card payments and require all tenants to use manual EFT.
             </p>
         </div>
 
         <!-- Credentials — rendered dynamically based on selected provider -->
-        <div id="credentials-section" class="hidden border-t border-neutral-100 pt-5">
-            <h2 class="text-base font-semibold text-neutral-800 mb-3">Credentials</h2>
+        <div id="credentials-section" class="hidden border-t border-navy-50 pt-5">
+            <h2 class="text-base font-semibold text-navy-800 mb-3">Credentials</h2>
             <div id="credential-fields" class="space-y-4">
                 <!-- Filled in by JS based on chosen provider's credential_fields -->
             </div>
-            <p class="text-xs text-neutral-500 mt-3">
+            <p class="text-xs text-navy-500 mt-3">
                 Credentials are stored in the platform's system settings. Secret values are masked
                 when read back — leave them as-is to keep the saved value, or enter a fresh value
                 to replace it.
@@ -70,30 +70,30 @@
         </div>
 
         <!-- Enabled checkbox -->
-        <div id="enabled-section" class="hidden border-t border-neutral-100 pt-5">
+        <div id="enabled-section" class="hidden border-t border-navy-50 pt-5">
             <label class="flex items-center gap-2 text-sm">
                 <input type="checkbox" id="is_enabled" checked
-                       class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                <span class="font-medium text-neutral-700">Enabled</span>
+                       class="rounded border-navy-200 text-navy-600 focus:ring-navy-500">
+                <span class="font-medium text-navy-700">Enabled</span>
             </label>
-            <p class="text-xs text-neutral-500 mt-1">
+            <p class="text-xs text-navy-500 mt-1">
                 Untick to pause card payments without deleting the credentials.
             </p>
         </div>
 
         <!-- Buttons -->
-        <div class="flex flex-wrap justify-between gap-3 pt-3 border-t border-neutral-100">
+        <div class="flex flex-wrap justify-between gap-3 pt-3 border-t border-navy-50">
             <button type="button" id="btn-test"
-                    class="hidden px-3 py-1.5 bg-white text-neutral-700 text-sm font-medium rounded-md border border-neutral-300 hover:bg-neutral-50">
+                    class="hidden px-3 py-1.5 bg-white text-navy-700 text-sm font-medium rounded-xl border border-navy-200 hover:bg-navy-50">
                 Test connection
             </button>
             <div class="ml-auto flex gap-2">
                 <button type="button" onclick="loadConfig()"
-                        class="px-3 py-1.5 bg-white text-neutral-600 text-sm rounded-md border border-neutral-300 hover:bg-neutral-50">
+                        class="px-3 py-1.5 bg-white text-navy-600 text-sm rounded-xl border border-navy-200 hover:bg-navy-50">
                     Revert
                 </button>
                 <button type="submit"
-                        class="px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 disabled:opacity-50">
+                        class="px-4 py-2 bg-navy-500 text-white text-sm font-medium rounded-xl hover:bg-primary-600 disabled:opacity-50">
                     Save
                 </button>
             </div>
@@ -101,22 +101,22 @@
     </form>
 
     <!-- Webhook URL panel -->
-    <div id="webhook-panel" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-        <h2 class="text-base font-semibold text-neutral-800 mb-1">Webhook URL</h2>
-        <p class="text-sm text-neutral-500 mb-3">
+    <div id="webhook-panel" class="hidden cu-card p-6">
+        <h2 class="text-base font-semibold text-navy-800 mb-1">Webhook URL</h2>
+        <p class="text-sm text-navy-500 mb-3">
             Paste this URL into the gateway's dashboard so payment events reach ClassUp:
         </p>
-        <div class="flex items-center gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-md">
-            <code class="flex-1 text-xs font-mono text-neutral-700 break-all" id="webhook-url">—</code>
+        <div class="flex items-center gap-2 p-3 bg-navy-50 border border-navy-100 rounded-xl">
+            <code class="flex-1 text-xs font-mono text-navy-700 break-all" id="webhook-url">—</code>
             <button type="button" id="btn-copy-webhook"
-                    class="flex-shrink-0 px-2 py-1 bg-white text-xs text-neutral-700 border border-neutral-300 rounded hover:bg-neutral-100">
+                    class="flex-shrink-0 px-2 py-1 bg-white text-xs text-navy-700 border border-navy-200 rounded hover:bg-navy-100">
                 Copy
             </button>
         </div>
-        <p class="text-xs text-neutral-500 mt-2" id="webhook-help">—</p>
+        <p class="text-xs text-navy-500 mt-2" id="webhook-help">—</p>
     </div>
 
-    <p class="text-xs text-neutral-400 text-center pt-2">
+    <p class="text-xs text-navy-400 text-center pt-2">
         Manual EFT-with-POP flow is always available. Tenants choose between gateway and EFT on /subscription.
     </p>
 </div>
@@ -156,13 +156,13 @@ function render() {
     ];
     opts.innerHTML = radios.map(r => `
         <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                      ${cur.provider_id === r.id ? 'border-primary-400 bg-primary-50' : 'border-neutral-200 hover:bg-neutral-50'}">
+                      ${cur.provider_id === r.id ? 'border-primary-400 bg-navy-50' : 'border-navy-100 hover:bg-navy-50'}">
             <input type="radio" name="provider_id" value="${r.id}"
                    ${cur.provider_id === r.id ? 'checked' : ''}
-                   class="mt-0.5 text-primary-600 focus:ring-primary-500">
+                   class="mt-0.5 text-navy-600 focus:ring-navy-500">
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-neutral-800">${r.name}</p>
-                <p class="text-xs text-neutral-500 mt-0.5">${r.desc}</p>
+                <p class="text-sm font-medium text-navy-800">${r.name}</p>
+                <p class="text-xs text-navy-500 mt-0.5">${r.desc}</p>
             </div>
         </label>
     `).join('');
@@ -181,7 +181,7 @@ function render() {
     const summary = document.getElementById('current-summary');
     if (!cur.provider_id) {
         badge.textContent = 'Not configured';
-        badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700';
+        badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-navy-100 text-navy-700';
         summary.textContent = 'Card payments are disabled. Tenants must use EFT-with-POP.';
     } else if (!cur.is_enabled) {
         const p = providers.find(p => p.provider_id === cur.provider_id);
@@ -238,7 +238,7 @@ function onProviderChange(providerId) {
                 <div class="border border-amber-200 bg-amber-50 rounded-lg p-3">
                     <label class="flex items-start gap-2 cursor-pointer">
                         <input type="checkbox" name="cred_${f.key}" ${checked ? 'checked' : ''}
-                               class="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                               class="mt-0.5 h-4 w-4 rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                         <span>
                             <span class="block text-sm font-medium text-amber-900">${f.label}</span>
                             ${f.help ? `<span class="block text-xs text-amber-800 mt-1">${f.help}</span>` : ''}
@@ -252,13 +252,13 @@ function onProviderChange(providerId) {
             ? '' : rawValue.replace(/"/g, '&quot;');
         return `
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">${f.label}</label>
+                <label class="block text-sm font-medium text-navy-700 mb-1">${f.label}</label>
                 <input type="${f.type === 'password' ? 'password' : 'text'}"
                        name="cred_${f.key}"
                        placeholder="${f.placeholder || ''}"
                        value="${valueAttr}"
-                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
-                ${f.help ? `<p class="text-xs text-neutral-500 mt-1">${f.help}</p>` : ''}
+                       class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg">
+                ${f.help ? `<p class="text-xs text-navy-500 mt-1">${f.help}</p>` : ''}
             </div>`;
     }).join('');
 

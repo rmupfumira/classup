@@ -7,157 +7,157 @@
     <!-- Page Header -->
     <div class="flex items-center gap-4">
         <a href="/admin"
-           class="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+           class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-lg transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
             </svg>
         </a>
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Push Notification Settings</h1>
-            <p class="mt-1 text-sm text-neutral-500">
+            <h1 class="text-xl font-semibold text-navy-800">Push Notification Settings</h1>
+            <p class="mt-1 text-sm text-navy-500">
                 Platform-wide VAPID keypair. Required before any tenant can use Web Push.
             </p>
         </div>
     </div>
 
     <!-- Status card -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <div class="cu-card p-6">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
-                <h2 class="text-base font-semibold text-neutral-800">Current configuration</h2>
-                <p class="text-xs text-neutral-500 mt-0.5">One keypair per platform — shared across every tenant.</p>
+                <h2 class="text-base font-semibold text-navy-800">Current configuration</h2>
+                <p class="text-xs text-navy-500 mt-0.5">One keypair per platform — shared across every tenant.</p>
             </div>
             <span id="status-badge"
-                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600">
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-navy-100 text-navy-600">
                 Loading…
             </span>
         </div>
 
         <dl class="space-y-3 text-sm">
             <div class="flex items-start gap-3">
-                <dt class="text-neutral-500 w-32 flex-shrink-0">Public key</dt>
-                <dd id="pk-display" class="font-mono text-xs text-neutral-700 break-all">—</dd>
+                <dt class="text-navy-500 w-32 flex-shrink-0">Public key</dt>
+                <dd id="pk-display" class="font-mono text-xs text-navy-700 break-all">—</dd>
             </div>
             <div class="flex items-start gap-3">
-                <dt class="text-neutral-500 w-32 flex-shrink-0">Subject</dt>
-                <dd id="subject-display" class="text-neutral-700">—</dd>
+                <dt class="text-navy-500 w-32 flex-shrink-0">Subject</dt>
+                <dd id="subject-display" class="text-navy-700">—</dd>
             </div>
             <div class="flex items-start gap-3">
-                <dt class="text-neutral-500 w-32 flex-shrink-0">Generated</dt>
-                <dd id="generated-display" class="text-neutral-700">—</dd>
+                <dt class="text-navy-500 w-32 flex-shrink-0">Generated</dt>
+                <dd id="generated-display" class="text-navy-700">—</dd>
             </div>
         </dl>
     </div>
 
     <!-- Stats card -->
     <div class="grid grid-cols-3 gap-3">
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">Subscriptions</p>
-            <p class="mt-1 text-2xl font-semibold text-neutral-800" id="stat-total">—</p>
-            <p class="text-xs text-neutral-400 mt-0.5">across all tenants</p>
+        <div class="cu-card p-4">
+            <p class="text-xs text-navy-500 uppercase tracking-wider">Subscriptions</p>
+            <p class="mt-1 text-2xl font-semibold text-navy-800" id="stat-total">—</p>
+            <p class="text-xs text-navy-400 mt-0.5">across all tenants</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">Tenants</p>
-            <p class="mt-1 text-2xl font-semibold text-neutral-800" id="stat-tenants">—</p>
-            <p class="text-xs text-neutral-400 mt-0.5">with active devices</p>
+        <div class="cu-card p-4">
+            <p class="text-xs text-navy-500 uppercase tracking-wider">Tenants</p>
+            <p class="mt-1 text-2xl font-semibold text-navy-800" id="stat-tenants">—</p>
+            <p class="text-xs text-navy-400 mt-0.5">with active devices</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">Failing</p>
+        <div class="cu-card p-4">
+            <p class="text-xs text-navy-500 uppercase tracking-wider">Failing</p>
             <p class="mt-1 text-2xl font-semibold" id="stat-failing">—</p>
-            <p class="text-xs text-neutral-400 mt-0.5">last send errored</p>
+            <p class="text-xs text-navy-400 mt-0.5">last send errored</p>
         </div>
     </div>
 
     <!-- Generate (first time) -->
-    <div id="card-generate" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-        <h2 class="text-base font-semibold text-neutral-800 mb-1">Generate keypair</h2>
-        <p class="text-sm text-neutral-500 mb-4">
-            One-time setup. Creates a fresh P-256 keypair and stores it in <code class="text-xs bg-neutral-100 px-1 rounded">system_settings.vapid_config</code>.
+    <div id="card-generate" class="hidden cu-card p-6">
+        <h2 class="text-base font-semibold text-navy-800 mb-1">Generate keypair</h2>
+        <p class="text-sm text-navy-500 mb-4">
+            One-time setup. Creates a fresh P-256 keypair and stores it in <code class="text-xs bg-navy-100 px-1 rounded">system_settings.vapid_config</code>.
             After this, any user can enable push from <strong>Settings → Notifications</strong>.
         </p>
         <form id="generate-form" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Contact email</label>
+                <label class="block text-sm font-medium text-navy-700 mb-1">Contact email</label>
                 <input type="email" id="gen-subject-email" required
                        placeholder="admin@your-school-platform.co.za"
                        value="admin@classup.co.za"
-                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
-                <p class="text-xs text-neutral-500 mt-1">
+                       class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg">
+                <p class="text-xs text-navy-500 mt-1">
                     Push services (FCM, APNs, Mozilla) use this if they need to reach you about delivery issues.
                     Stored as <code class="text-xs">mailto:&lt;email&gt;</code> in the VAPID JWT.
                 </p>
             </div>
             <button type="submit"
-                    class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 disabled:opacity-50">
+                    class="inline-flex items-center px-4 py-2 bg-navy-500 text-white text-sm font-medium rounded-xl hover:bg-primary-600 disabled:opacity-50">
                 Generate keypair
             </button>
         </form>
     </div>
 
     <!-- Send test push (when configured) -->
-    <div id="card-test" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-        <h2 class="text-base font-semibold text-neutral-800 mb-1">Send a test push</h2>
-        <p class="text-sm text-neutral-500 mb-4">
+    <div id="card-test" class="hidden cu-card p-6">
+        <h2 class="text-base font-semibold text-navy-800 mb-1">Send a test push</h2>
+        <p class="text-sm text-navy-500 mb-4">
             Fires a notification to every device belonging to the named user. Use this to verify the
             push pipeline end-to-end without enabling push on your own browser, or when a user reports
             "I'm not getting notifications" — you can confirm whether their devices receive it.
         </p>
         <form id="test-push-form" class="space-y-3">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Recipient email</label>
+                <label class="block text-sm font-medium text-navy-700 mb-1">Recipient email</label>
                 <input type="email" id="test-email" required maxlength="255"
                        placeholder="parent@example.com"
-                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
-                <p class="text-xs text-neutral-500 mt-1">
+                       class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg">
+                <p class="text-xs text-navy-500 mt-1">
                     Any active user account on this platform. Searches across all tenants.
                 </p>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-neutral-700 mb-1">Title (optional)</label>
+                    <label class="block text-xs font-medium text-navy-700 mb-1">Title (optional)</label>
                     <input type="text" id="test-title" maxlength="120"
                            placeholder="ClassUp admin test"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                           class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-lg">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-neutral-700 mb-1">Body (optional)</label>
+                    <label class="block text-xs font-medium text-navy-700 mb-1">Body (optional)</label>
                     <input type="text" id="test-body" maxlength="500"
                            placeholder="If you see this, push is working."
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                           class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-lg">
                 </div>
             </div>
             <div class="flex items-center justify-end gap-2">
                 <button type="submit"
-                        class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 disabled:opacity-50">
+                        class="inline-flex items-center px-4 py-2 bg-navy-500 text-white text-sm font-medium rounded-xl hover:bg-primary-600 disabled:opacity-50">
                     Send test push
                 </button>
             </div>
-            <div id="test-result" class="hidden p-3 rounded-md text-sm">—</div>
+            <div id="test-result" class="hidden p-3 rounded-xl text-sm">—</div>
         </form>
     </div>
 
     <!-- Update subject + Rotate (when configured) -->
-    <div id="card-configured" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-6">
+    <div id="card-configured" class="hidden cu-card p-6 space-y-6">
         <div>
-            <h2 class="text-base font-semibold text-neutral-800 mb-1">Update contact email</h2>
-            <p class="text-sm text-neutral-500 mb-3">
+            <h2 class="text-base font-semibold text-navy-800 mb-1">Update contact email</h2>
+            <p class="text-sm text-navy-500 mb-3">
                 Change the subject email without rotating keys — existing subscriptions keep working.
             </p>
             <form id="subject-form" class="flex flex-wrap gap-2 items-end">
                 <div class="flex-1 min-w-[200px]">
                     <input type="email" id="subject-input" required
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                           class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-lg">
                 </div>
                 <button type="submit"
-                        class="px-3 py-1.5 bg-white border border-neutral-300 text-neutral-700 text-sm font-medium rounded-md hover:bg-neutral-50">
+                        class="px-3 py-1.5 bg-white border border-navy-200 text-navy-700 text-sm font-medium rounded-xl hover:bg-navy-50">
                     Save
                 </button>
             </form>
         </div>
 
-        <div class="border-t border-neutral-100 pt-6">
+        <div class="border-t border-navy-50 pt-6">
             <h2 class="text-base font-semibold text-danger-700 mb-1">Danger zone — rotate keypair</h2>
-            <p class="text-sm text-neutral-600 mb-3">
+            <p class="text-sm text-navy-600 mb-3">
                 Replaces the existing keypair with a brand new one. <strong>Every existing push subscription
                 becomes unusable</strong> — affected users will see their device drop to "Off" in
                 Settings → Notifications and must re-enable on each device. Only do this if the private
@@ -165,16 +165,16 @@
             </p>
             <form id="rotate-form" class="space-y-3">
                 <div>
-                    <label class="block text-xs font-medium text-neutral-700 mb-1">Contact email for new keypair</label>
+                    <label class="block text-xs font-medium text-navy-700 mb-1">Contact email for new keypair</label>
                     <input type="email" id="rotate-subject-email" required
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-lg">
+                           class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-lg">
                 </div>
-                <label class="flex items-start gap-2 text-sm text-neutral-700">
+                <label class="flex items-start gap-2 text-sm text-navy-700">
                     <input type="checkbox" id="rotate-confirm" class="mt-0.5">
                     <span>I understand this will invalidate every existing subscription (<span id="rotate-count">0</span> currently active).</span>
                 </label>
                 <button type="submit" id="rotate-btn" disabled
-                        class="inline-flex items-center px-3 py-1.5 bg-danger-600 text-white text-sm font-medium rounded-md hover:bg-danger-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="inline-flex items-center px-3 py-1.5 bg-danger-600 text-white text-sm font-medium rounded-xl hover:bg-danger-700 disabled:opacity-50 disabled:cursor-not-allowed">
                     Rotate keypair
                 </button>
             </form>
@@ -182,7 +182,7 @@
     </div>
 
     <!-- Footer note -->
-    <p class="text-xs text-neutral-400 text-center pt-2">
+    <p class="text-xs text-navy-400 text-center pt-2">
         Push notifications are platform-wide. Per-tenant settings live under each school's
         <em>Settings → Notifications</em> page (per device, per user).
     </p>
@@ -236,7 +236,7 @@ function render() {
     document.getElementById('stat-tenants').textContent = (s.tenants_with_subscriptions ?? 0).toLocaleString();
     const failingEl = document.getElementById('stat-failing');
     failingEl.textContent = (s.currently_failing ?? 0).toLocaleString();
-    failingEl.className = 'mt-1 text-2xl font-semibold ' + ((s.currently_failing ?? 0) > 0 ? 'text-danger-700' : 'text-neutral-800');
+    failingEl.className = 'mt-1 text-2xl font-semibold ' + ((s.currently_failing ?? 0) > 0 ? 'text-danger-700' : 'text-navy-800');
     document.getElementById('rotate-count').textContent = (s.total ?? 0).toLocaleString();
 
     // Which card to show
@@ -277,13 +277,13 @@ document.getElementById('test-push-form').addEventListener('submit', async (e) =
             body: JSON.stringify(payload),
         });
         resultEl.textContent = res.message || 'Sent.';
-        resultEl.className = 'p-3 rounded-md text-sm bg-success-50 border border-success-200 text-success-800';
+        resultEl.className = 'p-3 rounded-xl text-sm bg-success-50 border border-success-200 text-success-800';
         resultEl.classList.remove('hidden');
         ClassUp.toast(res.message || 'Test push sent.', 'success');
     } catch (err) {
         const msg = err && err.message ? err.message : 'Could not send test push.';
         resultEl.textContent = msg;
-        resultEl.className = 'p-3 rounded-md text-sm bg-danger-50 border border-danger-200 text-danger-800';
+        resultEl.className = 'p-3 rounded-xl text-sm bg-danger-50 border border-danger-200 text-danger-800';
         resultEl.classList.remove('hidden');
     } finally {
         btn.disabled = false;

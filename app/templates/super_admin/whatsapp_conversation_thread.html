@@ -7,26 +7,26 @@
 
     <!-- Header -->
     <div class="flex items-center gap-3">
-        <a href="/admin/whatsapp-conversations" class="text-neutral-500 hover:text-neutral-700">
+        <a href="/admin/whatsapp-conversations" class="text-navy-500 hover:text-navy-700">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
         </a>
         <div class="flex-1 min-w-0">
-            <h1 id="conv-title" class="text-xl sm:text-2xl font-bold text-neutral-900 truncate">
+            <h1 id="conv-title" class="text-xl sm:text-2xl font-bold text-navy-900 truncate">
                 Loading conversation…
             </h1>
-            <p id="conv-subtitle" class="text-sm text-neutral-500 truncate"></p>
+            <p id="conv-subtitle" class="text-sm text-navy-500 truncate"></p>
         </div>
     </div>
 
     <!-- Thread -->
     <div id="thread"
-         class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 min-h-[300px]">
-        <p class="text-sm text-neutral-500 text-center py-8">Loading messages…</p>
+         class="cu-card p-4 min-h-[300px]">
+        <p class="text-sm text-navy-500 text-center py-8">Loading messages…</p>
     </div>
 
-    <p class="text-xs text-neutral-400 text-center">
+    <p class="text-xs text-navy-400 text-center">
         Oldest first. Bot replies are logged with a summary of what was sent.
     </p>
 </div>
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         subtitleEl.textContent = subtitle;
 
         if (!messages.length) {
-            threadEl.innerHTML = '<p class="text-sm text-neutral-500 text-center py-8">No messages found for this phone.</p>';
+            threadEl.innerHTML = '<p class="text-sm text-navy-500 text-center py-8">No messages found for this phone.</p>';
             return;
         }
 
@@ -77,13 +77,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         const isOut = m.direction === 'OUT';
         const bubbleCls = isOut
-            ? 'ml-auto bg-primary-50 border-primary-200'
-            : 'mr-auto bg-neutral-50 border-neutral-200';
-        const arrowCls = isOut ? 'text-primary-600' : 'text-neutral-500';
+            ? 'ml-auto bg-navy-50 border-primary-200'
+            : 'mr-auto bg-navy-50 border-navy-100';
+        const arrowCls = isOut ? 'text-navy-600' : 'text-navy-500';
         const arrow = isOut ? '→' : '←';
         const typeBadge = m.template_name
-            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-neutral-200 text-neutral-600 font-mono">${escapeHtml(m.template_name)}</span>`
-            : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-neutral-200 text-neutral-500">${escapeHtml(m.message_type || 'text')}</span>`;
+            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-navy-100 text-navy-600 font-mono">${escapeHtml(m.template_name)}</span>`
+            : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-navy-100 text-navy-500">${escapeHtml(m.message_type || 'text')}</span>`;
         const errorLine = m.error
             ? `<p class="mt-1 text-xs text-red-600">⚠ ${escapeHtml(m.error)}</p>`
             : '';
@@ -99,9 +99,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                     ${typeBadge}
                     ${inboundNote}
                 </div>
-                <p class="text-sm text-neutral-800 whitespace-pre-wrap break-words">${escapeHtml(m.text || '(no body)')}</p>
+                <p class="text-sm text-navy-800 whitespace-pre-wrap break-words">${escapeHtml(m.text || '(no body)')}</p>
                 ${errorLine}
-                <p class="mt-1 text-[10px] text-neutral-400">${when}</p>
+                <p class="mt-1 text-[10px] text-navy-400">${when}</p>
             </div>
         `;
     }

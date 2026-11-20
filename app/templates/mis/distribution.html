@@ -10,8 +10,8 @@
 <div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
     <div class="flex items-start justify-between flex-wrap gap-2">
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Grade distribution</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">
+            <h1 class="text-xl font-semibold text-navy-800">Grade distribution</h1>
+            <p class="mt-0.5 text-sm text-navy-500">
                 Histogram + bell curve overlay to see whether an assessment produced a healthy spread
                 or an abnormal concentration. Pick a subject to isolate it.
             </p>
@@ -42,79 +42,79 @@
     </script>
 
     <!-- Filters -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <div class="flex flex-wrap items-end gap-3">
             <div>
-                <label class="block text-xs font-medium text-neutral-600 mb-1">From</label>
-                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+                <label class="block text-xs font-medium text-navy-600 mb-1">From</label>
+                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-600 mb-1">To</label>
-                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md">
+                <label class="block text-xs font-medium text-navy-600 mb-1">To</label>
+                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl">
             </div>
             <div class="flex items-center gap-1">
-                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This month</button>
-                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">Term</button>
-                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">YTD</button>
+                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">This month</button>
+                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">Term</button>
+                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">YTD</button>
             </div>
             <div class="min-w-[180px]">
-                <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
-                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                <label class="block text-xs font-medium text-navy-600 mb-1">Class</label>
+                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-xl bg-white">
                     <option value="">Whole school</option>
                 </select>
             </div>
             <div class="min-w-[180px]">
-                <label class="block text-xs font-medium text-neutral-600 mb-1">Subject</label>
-                <select id="subject-filter" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                <label class="block text-xs font-medium text-navy-600 mb-1">Subject</label>
+                <select id="subject-filter" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-xl bg-white">
                     <option value="">All subjects</option>
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-600 mb-1">Bin size</label>
-                <select id="bin-size" class="block h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                <label class="block text-xs font-medium text-navy-600 mb-1">Bin size</label>
+                <select id="bin-size" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl bg-white">
                     <option value="5">5%</option>
                     <option value="10" selected>10%</option>
                     <option value="20">20%</option>
                 </select>
             </div>
-            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">Refresh</button>
+            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-navy-500 rounded-xl hover:bg-primary-600">Refresh</button>
         </div>
     </div>
 
     <!-- KPI line -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-                <p class="text-xs text-neutral-500 uppercase">Entries</p>
-                <p id="kpi-n" class="mt-1 text-xl font-semibold text-neutral-800">—</p>
+                <p class="text-xs text-navy-500 uppercase">Entries</p>
+                <p id="kpi-n" class="mt-1 text-xl font-semibold text-navy-800">—</p>
             </div>
             <div>
-                <p class="text-xs text-neutral-500 uppercase">Mean</p>
-                <p id="kpi-mean" class="mt-1 text-xl font-semibold text-primary-700">—</p>
+                <p class="text-xs text-navy-500 uppercase">Mean</p>
+                <p id="kpi-mean" class="mt-1 text-xl font-semibold text-navy-700">—</p>
             </div>
             <div>
-                <p class="text-xs text-neutral-500 uppercase">Std deviation</p>
-                <p id="kpi-stddev" class="mt-1 text-xl font-semibold text-neutral-800">—</p>
+                <p class="text-xs text-navy-500 uppercase">Std deviation</p>
+                <p id="kpi-stddev" class="mt-1 text-xl font-semibold text-navy-800">—</p>
             </div>
             <div>
-                <p class="text-xs text-neutral-500 uppercase">Pass mark</p>
+                <p class="text-xs text-navy-500 uppercase">Pass mark</p>
                 <p id="kpi-passmark" class="mt-1 text-xl font-semibold text-success-700">—</p>
             </div>
         </div>
     </div>
 
     <!-- Histogram + bell curve -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
-        <h2 class="text-sm font-semibold text-neutral-800 mb-3">Percentage distribution + bell curve</h2>
+    <div class="cu-card p-4">
+        <h2 class="text-sm font-semibold text-navy-800 mb-3">Percentage distribution + bell curve</h2>
         <div class="h-80"><canvas id="hist-chart"></canvas></div>
-        <p class="mt-2 text-xs text-neutral-500">
+        <p class="mt-2 text-xs text-navy-500">
             Bars = actual count per band · dotted line = expected normal (bell) curve with the same mean and standard deviation.
         </p>
     </div>
 
     <!-- Band distribution -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
-        <h2 class="text-sm font-semibold text-neutral-800 mb-3">Grade-letter distribution</h2>
+    <div class="cu-card p-4">
+        <h2 class="text-sm font-semibold text-navy-800 mb-3">Grade-letter distribution</h2>
         <div class="h-56"><canvas id="band-chart"></canvas></div>
     </div>
 </div>

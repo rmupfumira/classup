@@ -7,23 +7,23 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div class="flex items-center gap-3">
-            <a href="/exams" class="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded">
+            <a href="/exams" class="p-1.5 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
                 </svg>
             </a>
             <div>
-                <h1 class="text-xl font-semibold text-neutral-800">{{ exam.name }}</h1>
-                <p class="text-sm text-neutral-500">
+                <h1 class="text-xl font-semibold text-navy-800">{{ exam.name }}</h1>
+                <p class="text-sm text-navy-500">
                     {{ exam.school_class.name if exam.school_class else '—' }} ·
                     {{ exam.academic_year }} · Term {{ exam.term }} ·
                     {% set st_cls = {
-                        'DRAFT': 'text-neutral-600',
+                        'DRAFT': 'text-navy-600',
                         'SCHEDULED': 'text-info-600',
                         'IN_PROGRESS': 'text-warning-700',
                         'COMPLETED': 'text-success-700',
-                        'FINALIZED': 'text-primary-700',
-                    }.get(exam.status, 'text-neutral-600') %}
+                        'FINALIZED': 'text-navy-700',
+                    }.get(exam.status, 'text-navy-600') %}
                     <span class="font-medium {{ st_cls }}">{{ exam.status }}</span>
                 </p>
             </div>
@@ -32,17 +32,17 @@
         <div class="flex flex-wrap gap-2">
             {% if exam.status != 'FINALIZED' %}
             <button type="button" onclick="applyCurriculum()"
-                    class="inline-flex items-center px-3 py-1.5 border border-neutral-300 text-sm text-neutral-700 bg-white rounded hover:bg-neutral-50"
+                    class="inline-flex items-center px-3 py-1.5 border border-navy-200 text-sm text-navy-700 bg-white rounded hover:bg-navy-50"
                     title="Replace the paper list with the curriculum-pack template (ZIMSEC / Cambridge) — clears if any paper has results.">
                 Apply curriculum structure
             </button>
             <button type="button" onclick="finalizeExam()"
-                    class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
+                    class="inline-flex items-center px-3 py-1.5 cu-btn-primary">
                 Finalise + push to reports
             </button>
             {% else %}
             <button type="button" onclick="reopenExam()"
-                    class="inline-flex items-center px-3 py-1.5 border border-neutral-300 text-sm text-neutral-700 bg-white rounded hover:bg-neutral-50">
+                    class="inline-flex items-center px-3 py-1.5 border border-navy-200 text-sm text-navy-700 bg-white rounded hover:bg-navy-50">
                 Reopen
             </button>
             {% endif %}
@@ -51,13 +51,13 @@
     </div>
 
     <!-- Tabs -->
-    <div class="border-b border-neutral-200">
+    <div class="border-b border-navy-100">
         <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto">
             {% set _tabs = [('overview','Overview'), ('timetable','Timetable'), ('papers','Papers')] %}
             {% for slug, label in _tabs %}
             <button type="button" data-tab="{{ slug }}"
                     class="tab-btn whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium transition-colors
-                           {% if loop.first %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %}">
+                           {% if loop.first %}border-primary-500 text-navy-600{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %}">
                 {{ label }}
             </button>
             {% endfor %}
@@ -67,88 +67,88 @@
     <!-- OVERVIEW -->
     <div data-tab-panel="overview" class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="lg:col-span-2 space-y-5">
-            <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
-                <h3 class="text-sm font-semibold text-neutral-800 mb-3">Exam setup</h3>
+            <div class="cu-card p-5">
+                <h3 class="text-sm font-semibold text-navy-800 mb-3">Exam setup</h3>
                 <dl class="grid grid-cols-2 gap-3 text-sm">
-                    <div><dt class="text-neutral-500">Grading system</dt>
-                        <dd class="text-neutral-800 font-medium">{{ exam.grading_system.name if exam.grading_system else '—' }}</dd></div>
-                    <div><dt class="text-neutral-500">Report template</dt>
-                        <dd class="text-neutral-800 font-medium">{{ exam.report_template.name if exam.report_template else 'Default active template' }}</dd></div>
-                    <div><dt class="text-neutral-500">Papers</dt>
-                        <dd class="text-neutral-800 font-medium">{{ exam.exam_subjects | length }}</dd></div>
-                    <div><dt class="text-neutral-500">Created</dt>
-                        <dd class="text-neutral-800 font-medium">{{ exam.created_at.strftime('%b %d, %Y') if exam.created_at else '—' }}</dd></div>
+                    <div><dt class="text-navy-500">Grading system</dt>
+                        <dd class="text-navy-800 font-medium">{{ exam.grading_system.name if exam.grading_system else '—' }}</dd></div>
+                    <div><dt class="text-navy-500">Report template</dt>
+                        <dd class="text-navy-800 font-medium">{{ exam.report_template.name if exam.report_template else 'Default active template' }}</dd></div>
+                    <div><dt class="text-navy-500">Papers</dt>
+                        <dd class="text-navy-800 font-medium">{{ exam.exam_subjects | length }}</dd></div>
+                    <div><dt class="text-navy-500">Created</dt>
+                        <dd class="text-navy-800 font-medium">{{ exam.created_at.strftime('%b %d, %Y') if exam.created_at else '—' }}</dd></div>
                     {% if exam.finalized_at %}
-                    <div class="col-span-2"><dt class="text-neutral-500">Finalised at</dt>
-                        <dd class="text-neutral-800 font-medium">{{ exam.finalized_at.strftime('%b %d, %Y %H:%M') }}</dd></div>
+                    <div class="col-span-2"><dt class="text-navy-500">Finalised at</dt>
+                        <dd class="text-navy-800 font-medium">{{ exam.finalized_at.strftime('%b %d, %Y %H:%M') }}</dd></div>
                     {% endif %}
                 </dl>
                 {% if exam.notes %}
-                <div class="mt-4 pt-4 border-t border-neutral-100">
-                    <p class="text-xs text-neutral-500 uppercase mb-1">Notes</p>
-                    <p class="text-sm text-neutral-700">{{ exam.notes }}</p>
+                <div class="mt-4 pt-4 border-t border-navy-50">
+                    <p class="text-xs text-navy-500 uppercase mb-1">Notes</p>
+                    <p class="text-sm text-navy-700">{{ exam.notes }}</p>
                 </div>
                 {% endif %}
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
-                <h3 class="text-sm font-semibold text-neutral-800 mb-3">Papers at a glance</h3>
-                <ul class="divide-y divide-neutral-100">
+            <div class="cu-card p-5">
+                <h3 class="text-sm font-semibold text-navy-800 mb-3">Papers at a glance</h3>
+                <ul class="divide-y divide-navy-50">
                     {% for es in exam.exam_subjects %}
                     <li class="py-2 flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-neutral-800">{{ es.subject.name if es.subject else '—' }}</p>
-                            <p class="text-xs text-neutral-500">
+                            <p class="text-sm font-medium text-navy-800">{{ es.subject.name if es.subject else '—' }}</p>
+                            <p class="text-xs text-navy-500">
                                 Out of {{ es.total_marks }}{% if es.scheduled_at %} · {{ es.scheduled_at.strftime('%a %b %d, %H:%M') }}{% endif %}{% if es.room %} · {{ es.room }}{% endif %}
                             </p>
                         </div>
-                        <a href="/exams/{{ exam.id }}/papers/{{ es.id }}/mark" class="text-xs text-primary-600 hover:underline">Mark →</a>
+                        <a href="/exams/{{ exam.id }}/papers/{{ es.id }}/mark" class="text-xs text-navy-600 hover:underline">Mark →</a>
                     </li>
                     {% endfor %}
                 </ul>
             </div>
         </div>
         <div class="space-y-5">
-            <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
-                <h3 class="text-sm font-semibold text-neutral-800 mb-3">Progress</h3>
-                <div id="overview-progress" class="text-sm text-neutral-500">Loading…</div>
+            <div class="cu-card p-5">
+                <h3 class="text-sm font-semibold text-navy-800 mb-3">Progress</h3>
+                <div id="overview-progress" class="text-sm text-navy-500">Loading…</div>
             </div>
         </div>
     </div>
 
     <!-- TIMETABLE -->
-    <div data-tab-panel="timetable" class="hidden bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="p-4 border-b border-neutral-100 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-neutral-800">Exam timetable</h3>
-            <p class="text-xs text-neutral-500">Click any row to schedule the paper.</p>
+    <div data-tab-panel="timetable" class="hidden cu-card overflow-hidden">
+        <div class="p-4 border-b border-navy-50 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-navy-800">Exam timetable</h3>
+            <p class="text-xs text-navy-500">Click any row to schedule the paper.</p>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-neutral-50 border-b border-neutral-200">
+                <thead class="bg-navy-50 border-b border-navy-100">
                     <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Subject</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Time</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Duration</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Room</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Total marks</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Subject</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Date</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Time</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Duration</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Room</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Total marks</th>
                         <th class="px-3 py-2"></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-100">
+                <tbody class="divide-y divide-navy-50">
                     {% for es in exam.exam_subjects %}
-                    <tr data-exam-subject-id="{{ es.id }}" class="hover:bg-neutral-50">
-                        <td class="px-3 py-2 text-neutral-800 font-medium">{{ es.subject.name if es.subject else '—' }}</td>
-                        <td class="px-3 py-2 text-neutral-600" data-field="date">
+                    <tr data-exam-subject-id="{{ es.id }}" class="hover:bg-navy-50">
+                        <td class="px-3 py-2 text-navy-800 font-medium">{{ es.subject.name if es.subject else '—' }}</td>
+                        <td class="px-3 py-2 text-navy-600" data-field="date">
                             {{ es.scheduled_at.strftime('%Y-%m-%d') if es.scheduled_at else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-neutral-600" data-field="time">
+                        <td class="px-3 py-2 text-navy-600" data-field="time">
                             {{ es.scheduled_at.strftime('%H:%M') if es.scheduled_at else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-neutral-600" data-field="duration">
+                        <td class="px-3 py-2 text-navy-600" data-field="duration">
                             {{ es.duration_minutes ~ ' min' if es.duration_minutes else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-neutral-600" data-field="room">{{ es.room or '—' }}</td>
-                        <td class="px-3 py-2 text-right text-neutral-800">{{ es.total_marks }}</td>
+                        <td class="px-3 py-2 text-navy-600" data-field="room">{{ es.room or '—' }}</td>
+                        <td class="px-3 py-2 text-right text-navy-800">{{ es.total_marks }}</td>
                         <td class="px-3 py-2 text-right">
                             {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                             <button type="button" onclick='openScheduleModal({{ {
@@ -159,7 +159,7 @@
                                 "room": es.room or "",
                                 "total_marks": es.total_marks,
                                 "pass_mark": es.pass_mark or 0
-                            } | tojson }})' class="text-xs text-primary-600 hover:underline">Edit</button>
+                            } | tojson }})' class="text-xs text-navy-600 hover:underline">Edit</button>
                             {% endif %}
                         </td>
                     </tr>
@@ -185,18 +185,18 @@
         {% set subj = group.subject %}
         {% set papers = group.papers %}
         {% set weight_total = papers | sum(attribute='weight_percent') %}
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden"
+        <div class="cu-card overflow-hidden"
              data-subject-id="{{ sid }}">
-            <div class="p-4 border-b border-neutral-100 flex items-center justify-between gap-3">
+            <div class="p-4 border-b border-navy-50 flex items-center justify-between gap-3">
                 <div class="min-w-0">
-                    <h3 class="text-sm font-semibold text-neutral-800">
+                    <h3 class="text-sm font-semibold text-navy-800">
                         {{ subj.name if subj else '—' }}
-                        <span class="text-neutral-400 text-xs font-normal">
+                        <span class="text-navy-400 text-xs font-normal">
                             · {{ papers | length }} paper{% if (papers | length) != 1 %}s{% endif %}
                         </span>
                     </h3>
                     <p class="weight-summary text-xs mt-0.5
-                              {% if weight_total == 100 %}text-neutral-500
+                              {% if weight_total == 100 %}text-navy-500
                               {% else %}text-warning-700 font-medium{% endif %}">
                         Weights sum to <strong class="weight-total">{{ weight_total }}%</strong><span class="weight-balanced-suffix">{% if weight_total != 100 %} — not balanced{% endif %}</span>
                     </p>
@@ -204,56 +204,56 @@
                 {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                 <button type="button"
                         onclick='addPaper({{ {"subject_id": sid, "subject_name": subj.name if subj else ""} | tojson }})'
-                        class="text-xs text-primary-600 hover:underline">+ Add paper</button>
+                        class="text-xs text-navy-600 hover:underline">+ Add paper</button>
                 {% endif %}
             </div>
             <table class="min-w-full text-sm">
-                <thead class="bg-neutral-50 border-b border-neutral-200">
+                <thead class="bg-navy-50 border-b border-navy-100">
                     <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Paper</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Total marks</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Weight %</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Scheduled</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Room</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Progress</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Paper</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Total marks</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Weight %</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Scheduled</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Room</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Progress</th>
                         <th class="px-3 py-2"></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-100">
+                <tbody class="divide-y divide-navy-50">
                     {% for es in papers %}
-                    <tr data-exam-subject-id="{{ es.id }}" class="hover:bg-neutral-50">
-                        <td class="px-3 py-2 text-neutral-800">
+                    <tr data-exam-subject-id="{{ es.id }}" class="hover:bg-navy-50">
+                        <td class="px-3 py-2 text-navy-800">
                             {# Fall back to "Paper N" by position so legacy rows
                                written before the service started defaulting the
                                name still render cleanly. #}
                             {{ es.paper_name or ('Paper ' ~ loop.index) }}
                             {% if es.duration_minutes %}
-                            <span class="text-xs text-neutral-400">· {{ es.duration_minutes }} min</span>
+                            <span class="text-xs text-navy-400">· {{ es.duration_minutes }} min</span>
                             {% endif %}
                         </td>
-                        <td class="px-3 py-2 text-right text-neutral-700">{{ es.total_marks }}</td>
+                        <td class="px-3 py-2 text-right text-navy-700">{{ es.total_marks }}</td>
                         <td class="px-3 py-2 text-right">
                             {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                             <input type="number" min="0" max="100" value="{{ es.weight_percent }}"
                                    data-paper-weight-input="{{ es.id }}"
-                                   class="w-16 h-8 px-2 text-sm text-right border border-neutral-300 rounded">
+                                   class="w-16 h-8 px-2 text-sm text-right border border-navy-200 rounded">
                             {% else %}
                             {{ es.weight_percent }}%
                             {% endif %}
                         </td>
-                        <td class="px-3 py-2 text-neutral-600">
+                        <td class="px-3 py-2 text-navy-600">
                             {{ es.scheduled_at.strftime('%b %d, %H:%M') if es.scheduled_at else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-neutral-600">{{ es.room or '—' }}</td>
+                        <td class="px-3 py-2 text-navy-600">{{ es.room or '—' }}</td>
                         <td class="px-3 py-2 text-right">
-                            <span id="paper-progress-{{ es.id }}" class="text-xs text-neutral-500">—</span>
+                            <span id="paper-progress-{{ es.id }}" class="text-xs text-navy-500">—</span>
                         </td>
                         <td class="px-3 py-2 text-right whitespace-nowrap">
                             <a href="/exams/{{ exam.id }}/papers/{{ es.id }}/mark"
-                               class="text-xs text-primary-600 hover:underline mr-3">Mark</a>
+                               class="text-xs text-navy-600 hover:underline mr-3">Mark</a>
                             {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                             <button type="button" onclick="savePaperWeight('{{ es.id }}')"
-                                    class="text-xs text-neutral-500 hover:text-primary-600 mr-2">Save weight</button>
+                                    class="text-xs text-navy-500 hover:text-navy-600 mr-2">Save weight</button>
                             <button type="button" onclick="deletePaper('{{ es.id }}', '{{ (subj.name if subj else '') | escape }}')"
                                     class="text-xs text-danger-600 hover:underline">Delete</button>
                             {% endif %}
@@ -268,76 +268,76 @@
 </div>
 
 <!-- Add-paper modal -->
-<dialog id="add-paper-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+<dialog id="add-paper-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
     <form class="p-6" onsubmit="submitAddPaper(event)">
-        <h3 class="text-lg font-semibold text-neutral-800 mb-1">Add paper</h3>
-        <p id="ap-subj" class="text-sm text-neutral-500 mb-4">—</p>
+        <h3 class="text-lg font-semibold text-navy-800 mb-1">Add paper</h3>
+        <p id="ap-subj" class="text-sm text-navy-500 mb-4">—</p>
         <div class="grid grid-cols-2 gap-3">
             <div class="col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Paper name</label>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Paper name</label>
                 <input type="text" id="ap-name" maxlength="100"
                        placeholder="e.g. Paper 3 - Practical"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Total marks</label>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Total marks</label>
                 <input type="number" id="ap-total" min="1" value="100"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Weight %</label>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Weight %</label>
                 <input type="number" id="ap-weight" min="0" max="100" value="50"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div class="col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Duration (min, optional)</label>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Duration (min, optional)</label>
                 <input type="number" id="ap-duration" min="0" step="15"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
         </div>
-        <p class="text-xs text-neutral-500 mt-3">
+        <p class="text-xs text-navy-500 mt-3">
             Weights across a subject's papers should sum to 100. You can adjust
             the existing paper's weight after adding this one.
         </p>
         <div class="flex justify-end gap-2 mt-5">
             <button type="button" onclick="document.getElementById('add-paper-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Add paper</button>
+                    class="px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">Add paper</button>
         </div>
     </form>
 </dialog>
 
 <!-- Schedule modal -->
-<dialog id="schedule-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+<dialog id="schedule-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
     <form class="p-6" onsubmit="saveSchedule(event)">
-        <h3 class="text-lg font-semibold text-neutral-800 mb-4">Schedule paper</h3>
-        <p id="sch-subj" class="text-sm text-neutral-600 mb-4">—</p>
+        <h3 class="text-lg font-semibold text-navy-800 mb-4">Schedule paper</h3>
+        <p id="sch-subj" class="text-sm text-navy-600 mb-4">—</p>
         <div class="grid grid-cols-2 gap-3">
             <div class="col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Date &amp; time</label>
-                <input type="datetime-local" id="sch-when" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Date &amp; time</label>
+                <input type="datetime-local" id="sch-when" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Duration (min)</label>
-                <input type="number" id="sch-duration" min="0" step="15" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Duration (min)</label>
+                <input type="number" id="sch-duration" min="0" step="15" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Room</label>
-                <input type="text" id="sch-room" maxlength="100" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Room</label>
+                <input type="text" id="sch-room" maxlength="100" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Total marks</label>
-                <input type="number" id="sch-total" min="1" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Total marks</label>
+                <input type="number" id="sch-total" min="1" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Pass mark</label>
-                <input type="number" id="sch-pass" min="0" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Pass mark</label>
+                <input type="number" id="sch-pass" min="0" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
             <button type="button" onclick="document.getElementById('schedule-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+                    class="px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">Save</button>
         </div>
     </form>
 </dialog>
@@ -355,9 +355,9 @@ const EXAM_STATUS = {{ exam.status | tojson }};
         btns.forEach(b => {
             const on = b.dataset.tab === name;
             b.classList.toggle('border-primary-500', on);
-            b.classList.toggle('text-primary-600', on);
+            b.classList.toggle('text-navy-600', on);
             b.classList.toggle('border-transparent', !on);
-            b.classList.toggle('text-neutral-500', !on);
+            b.classList.toggle('text-navy-500', !on);
         });
         panels.forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== name));
         try { history.replaceState(null, '', '#' + name); } catch (_) {}
@@ -383,7 +383,7 @@ const EXAM_STATUS = {{ exam.status | tojson }};
     }
     const overview = document.getElementById('overview-progress');
     if (overview) {
-        overview.innerHTML = `<p class="text-xs text-neutral-500">${papers.length} papers · ${EXAM_STATUS}</p>`;
+        overview.innerHTML = `<p class="text-xs text-navy-500">${papers.length} papers · ${EXAM_STATUS}</p>`;
     }
 })();
 
@@ -625,9 +625,9 @@ function updateWeightSummary(subjectBox) {
     if (summary) {
         if (total === 100) {
             summary.classList.remove('text-warning-700', 'font-medium');
-            summary.classList.add('text-neutral-500');
+            summary.classList.add('text-navy-500');
         } else {
-            summary.classList.remove('text-neutral-500');
+            summary.classList.remove('text-navy-500');
             summary.classList.add('text-warning-700', 'font-medium');
         }
     }

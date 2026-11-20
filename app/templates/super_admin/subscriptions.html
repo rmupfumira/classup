@@ -7,11 +7,11 @@
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Subscriptions & Revenue</h1>
-            <p class="mt-1 text-sm text-neutral-500">Manage plans, view subscriptions, and track revenue</p>
+            <h1 class="text-xl font-semibold text-navy-800">Subscriptions & Revenue</h1>
+            <p class="mt-1 text-sm text-navy-500">Manage plans, view subscriptions, and track revenue</p>
         </div>
         <button onclick="showPlanModal()"
-                class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 transition-colors shadow-sm">
+                class="inline-flex items-center px-4 py-2 bg-navy-500 text-white text-sm font-medium rounded-xl hover:bg-primary-600 transition-colors shadow-sm">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
@@ -21,43 +21,43 @@
 
     <!-- Revenue Metrics -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white rounded-xl border border-neutral-200 p-5">
-            <p class="text-sm font-medium text-neutral-500">Monthly Recurring Revenue</p>
-            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="mrr">{{ platform_currency_symbol }} 0.00</p>
+        <div class="cu-card p-5">
+            <p class="text-sm font-medium text-navy-500">Monthly Recurring Revenue</p>
+            <p class="mt-2 text-3xl font-semibold text-navy-900" id="mrr">{{ platform_currency_symbol }} 0.00</p>
         </div>
-        <div class="bg-white rounded-xl border border-neutral-200 p-5">
-            <p class="text-sm font-medium text-neutral-500">Revenue This Month</p>
+        <div class="cu-card p-5">
+            <p class="text-sm font-medium text-navy-500">Revenue This Month</p>
             <p class="mt-2 text-3xl font-semibold text-success-600" id="monthly-revenue">{{ platform_currency_symbol }} 0.00</p>
         </div>
-        <div class="bg-white rounded-xl border border-neutral-200 p-5">
-            <p class="text-sm font-medium text-neutral-500">Total Revenue</p>
-            <p class="mt-2 text-3xl font-semibold text-neutral-900" id="total-revenue">{{ platform_currency_symbol }} 0.00</p>
+        <div class="cu-card p-5">
+            <p class="text-sm font-medium text-navy-500">Total Revenue</p>
+            <p class="mt-2 text-3xl font-semibold text-navy-900" id="total-revenue">{{ platform_currency_symbol }} 0.00</p>
         </div>
-        <div class="bg-white rounded-xl border border-neutral-200 p-5">
-            <p class="text-sm font-medium text-neutral-500">Active Subscriptions</p>
-            <p class="mt-2 text-3xl font-semibold text-primary-600" id="active-count">0</p>
-            <div class="mt-2 text-xs text-neutral-500" id="status-breakdown"></div>
+        <div class="cu-card p-5">
+            <p class="text-sm font-medium text-navy-500">Active Subscriptions</p>
+            <p class="mt-2 text-3xl font-semibold text-navy-600" id="active-count">0</p>
+            <div class="mt-2 text-xs text-navy-500" id="status-breakdown"></div>
         </div>
     </div>
 
     <!-- Plans Section -->
-    <div class="bg-white rounded-xl border border-neutral-200">
-        <div class="px-6 py-4 border-b border-neutral-200">
-            <h2 class="text-lg font-semibold text-neutral-800">Subscription Plans</h2>
+    <div class="cu-card">
+        <div class="px-6 py-4 border-b border-navy-100">
+            <h2 class="text-lg font-semibold text-navy-800">Subscription Plans</h2>
         </div>
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="plans-grid">
-                <div class="text-center text-neutral-400 py-8 col-span-full">Loading plans...</div>
+                <div class="text-center text-navy-400 py-8 col-span-full">Loading plans...</div>
             </div>
         </div>
     </div>
 
     <!-- Subscriptions Table -->
-    <div class="bg-white rounded-xl border border-neutral-200">
-        <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-neutral-800">Tenant Subscriptions</h2>
+    <div class="cu-card">
+        <div class="px-6 py-4 border-b border-navy-100 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-navy-800">Tenant Subscriptions</h2>
             <select id="status-filter" onchange="loadSubscriptions()"
-                    class="text-sm border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                    class="text-sm border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500">
                 <option value="">All Statuses</option>
                 <option value="TRIALING">Trialing</option>
                 <option value="ACTIVE">Active</option>
@@ -67,43 +67,43 @@
             </select>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-neutral-200">
-                <thead class="bg-neutral-50">
+            <table class="min-w-full divide-y divide-navy-100">
+                <thead class="bg-navy-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Tenant</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Plan</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Trial End</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Next Billing</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Price</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Tenant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Plan</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Trial End</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Next Billing</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Price</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="subscriptions-body" class="bg-white divide-y divide-neutral-200">
-                    <tr><td colspan="7" class="px-6 py-8 text-center text-neutral-400">Loading...</td></tr>
+                <tbody id="subscriptions-body" class="bg-white divide-y divide-navy-100">
+                    <tr><td colspan="7" class="px-6 py-8 text-center text-navy-400">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
     <!-- Recent Invoices -->
-    <div class="bg-white rounded-xl border border-neutral-200">
-        <div class="px-6 py-4 border-b border-neutral-200">
-            <h2 class="text-lg font-semibold text-neutral-800">Recent Platform Invoices</h2>
+    <div class="cu-card">
+        <div class="px-6 py-4 border-b border-navy-100">
+            <h2 class="text-lg font-semibold text-navy-800">Recent Platform Invoices</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-neutral-200">
-                <thead class="bg-neutral-50">
+            <table class="min-w-full divide-y divide-navy-100">
+                <thead class="bg-navy-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Tenant</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Amount</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Period</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Paid At</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Tenant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Period</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Paid At</th>
                     </tr>
                 </thead>
-                <tbody id="invoices-body" class="bg-white divide-y divide-neutral-200">
-                    <tr><td colspan="5" class="px-6 py-8 text-center text-neutral-400">Loading...</td></tr>
+                <tbody id="invoices-body" class="bg-white divide-y divide-navy-100">
+                    <tr><td colspan="5" class="px-6 py-8 text-center text-navy-400">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -111,34 +111,34 @@
 </div>
 
 <!-- Plan Modal (create & edit) -->
-<dialog id="plan-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+<dialog id="plan-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
     <div class="p-6">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold" id="plan-modal-title">Create Subscription Plan</h3>
-            <button onclick="document.getElementById('plan-modal').close()" class="text-neutral-400 hover:text-neutral-600">
+            <button onclick="document.getElementById('plan-modal').close()" class="text-navy-400 hover:text-navy-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
         <form id="plan-form" onsubmit="savePlan(event)" class="space-y-4">
             <input type="hidden" name="plan_id" value="">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Plan Name</label>
-                <input type="text" name="name" required class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. Starter">
+                <label class="block text-sm font-medium text-navy-700 mb-1">Plan Name</label>
+                <input type="text" name="name" required class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="e.g. Starter">
             </div>
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                <label class="block text-sm font-medium text-navy-700 mb-1">Description</label>
                 <div class="flex gap-2 items-start">
-                    <textarea name="description" rows="2" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="What's included"></textarea>
+                    <textarea name="description" rows="2" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="What's included"></textarea>
                     <button type="button" onclick="autoGenerateDescription()" title="Auto-generate from features"
-                            class="shrink-0 mt-1 p-1.5 text-neutral-400 hover:text-primary-600 border border-neutral-200 rounded-md hover:border-primary-300 transition-colors">
+                            class="shrink-0 mt-1 p-1.5 text-navy-400 hover:text-navy-600 border border-navy-100 rounded-xl hover:border-primary-300 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     </button>
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Currency</label>
+                <label class="block text-sm font-medium text-navy-700 mb-1">Currency</label>
                 <select name="currency" id="plan-currency"
-                        class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                        class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500"
                         onchange="updatePriceLabels(this.value)">
                     {% for cur in currencies %}
                     <option value="{{ cur.code }}"
@@ -147,23 +147,23 @@
                     </option>
                     {% endfor %}
                 </select>
-                <p class="text-xs text-neutral-500 mt-1">
+                <p class="text-xs text-navy-500 mt-1">
                     New plans default to the platform currency ({{ platform_currency_code }}). Existing
                     ZAR plans can be switched here — no data migration needed.
                 </p>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                    <label class="block text-sm font-medium text-navy-700 mb-1">
                         Monthly Price (<span class="price-currency-label">{{ platform_currency_code }}</span>)
                     </label>
-                    <input type="number" name="price_monthly" step="0.01" required class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="299.00">
+                    <input type="number" name="price_monthly" step="0.01" required class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="299.00">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                    <label class="block text-sm font-medium text-navy-700 mb-1">
                         Annual Price (<span class="price-currency-label">{{ platform_currency_code }}</span>)
                     </label>
-                    <input type="number" name="price_annually" step="0.01" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="2990.00">
+                    <input type="number" name="price_annually" step="0.01" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="2990.00">
                 </div>
             </div>
             {# Charge model + per-student rate. See ChargeModel enum
@@ -175,27 +175,27 @@
                non-FLAT models (JS toggles the field visibility). #}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Charge model</label>
+                    <label class="block text-sm font-medium text-navy-700 mb-1">Charge model</label>
                     <select name="charge_model" id="plan-charge-model"
-                            class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                            class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500"
                             onchange="togglePerStudentField()">
                         <option value="FLAT">Flat — one price per cycle</option>
                         <option value="PER_STUDENT">Per student — price × active student count</option>
                         <option value="HYBRID">Hybrid — base + per-student</option>
                     </select>
-                    <p class="text-xs text-neutral-500 mt-1">
+                    <p class="text-xs text-navy-500 mt-1">
                         Per-student plans count active students at cycle start.
                         Inactive and soft-deleted students don't incur charges.
                     </p>
                 </div>
                 <div id="plan-per-student-wrap">
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">
+                    <label class="block text-sm font-medium text-navy-700 mb-1">
                         Per-student amount (<span class="price-currency-label">{{ platform_currency_code }}</span>)
                     </label>
                     <input type="number" name="per_student_amount" step="0.01"
-                           class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                           class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500"
                            placeholder="1.00">
-                    <p class="text-xs text-neutral-500 mt-1">
+                    <p class="text-xs text-navy-500 mt-1">
                         Per student per billing cycle. Annual plans phrase this as
                         "per student per year" (so $12 annual ≈ $1 monthly).
                     </p>
@@ -203,67 +203,67 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Max Students</label>
-                    <input type="number" name="max_students" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="Unlimited">
+                    <label class="block text-sm font-medium text-navy-700 mb-1">Max Students</label>
+                    <input type="number" name="max_students" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="Unlimited">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Max Staff</label>
-                    <input type="number" name="max_staff" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500" placeholder="Unlimited">
+                    <label class="block text-sm font-medium text-navy-700 mb-1">Max Staff</label>
+                    <input type="number" name="max_staff" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="Unlimited">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Trial Days</label>
-                    <input type="number" name="trial_days" value="30" class="w-full border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+                    <label class="block text-sm font-medium text-navy-700 mb-1">Trial Days</label>
+                    <input type="number" name="trial_days" value="30" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500">
                 </div>
             </div>
             <!-- Active toggle (edit only) -->
             <div id="plan-active-toggle" class="hidden">
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="is_active" checked class="rounded border-neutral-300 text-primary-600">
-                    <span class="font-medium text-neutral-700">Plan is active</span>
+                    <input type="checkbox" name="is_active" checked class="rounded border-navy-200 text-navy-600">
+                    <span class="font-medium text-navy-700">Plan is active</span>
                 </label>
             </div>
             <!-- Plan Features -->
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-2">Included Features</label>
-                <div class="max-h-56 overflow-y-auto border border-neutral-200 rounded-md p-3 space-y-3">
-                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide">Core</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_attendance_tracking" checked class="rounded border-neutral-300 text-primary-600"> Attendance Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_messaging" checked class="rounded border-neutral-300 text-primary-600"> Messaging</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_photo_sharing" checked class="rounded border-neutral-300 text-primary-600"> Photo Sharing</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_document_sharing" checked class="rounded border-neutral-300 text-primary-600"> Document Sharing</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_parent_communication" checked class="rounded border-neutral-300 text-primary-600"> Parent Communication</label>
+                <label class="block text-sm font-medium text-navy-700 mb-2">Included Features</label>
+                <div class="max-h-56 overflow-y-auto border border-navy-100 rounded-xl p-3 space-y-3">
+                    <p class="text-xs text-navy-500 font-medium uppercase tracking-wide">Core</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_attendance_tracking" checked class="rounded border-navy-200 text-navy-600"> Attendance Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_messaging" checked class="rounded border-navy-200 text-navy-600"> Messaging</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_photo_sharing" checked class="rounded border-navy-200 text-navy-600"> Photo Sharing</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_document_sharing" checked class="rounded border-navy-200 text-navy-600"> Document Sharing</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_parent_communication" checked class="rounded border-navy-200 text-navy-600"> Parent Communication</label>
 
-                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide pt-2">Daycare</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_daily_reports" checked class="rounded border-neutral-300 text-primary-600"> Daily Reports</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_nap_tracking" checked class="rounded border-neutral-300 text-primary-600"> Nap Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_bathroom_tracking" checked class="rounded border-neutral-300 text-primary-600"> Bathroom Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_fluid_tracking" checked class="rounded border-neutral-300 text-primary-600"> Fluid Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_meal_tracking" checked class="rounded border-neutral-300 text-primary-600"> Meal Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_diaper_tracking" checked class="rounded border-neutral-300 text-primary-600"> Diaper Tracking</label>
+                    <p class="text-xs text-navy-500 font-medium uppercase tracking-wide pt-2">Daycare</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_daily_reports" checked class="rounded border-navy-200 text-navy-600"> Daily Reports</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_nap_tracking" checked class="rounded border-navy-200 text-navy-600"> Nap Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_bathroom_tracking" checked class="rounded border-navy-200 text-navy-600"> Bathroom Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_fluid_tracking" checked class="rounded border-navy-200 text-navy-600"> Fluid Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_meal_tracking" checked class="rounded border-navy-200 text-navy-600"> Meal Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_diaper_tracking" checked class="rounded border-navy-200 text-navy-600"> Diaper Tracking</label>
 
-                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide pt-2">School</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_homework_tracking" checked class="rounded border-neutral-300 text-primary-600"> Homework Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_grade_tracking" checked class="rounded border-neutral-300 text-primary-600"> Grade Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_behavior_tracking" checked class="rounded border-neutral-300 text-primary-600"> Behavior Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_timetable_management" checked class="rounded border-neutral-300 text-primary-600"> Timetable Management</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_subject_management" checked class="rounded border-neutral-300 text-primary-600"> Subject Management</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_exam_management" checked class="rounded border-neutral-300 text-primary-600"> Exam Management</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_disciplinary_records" checked class="rounded border-neutral-300 text-primary-600"> Disciplinary Records</label>
+                    <p class="text-xs text-navy-500 font-medium uppercase tracking-wide pt-2">School</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_homework_tracking" checked class="rounded border-navy-200 text-navy-600"> Homework Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_grade_tracking" checked class="rounded border-navy-200 text-navy-600"> Grade Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_behavior_tracking" checked class="rounded border-navy-200 text-navy-600"> Behavior Tracking</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_timetable_management" checked class="rounded border-navy-200 text-navy-600"> Timetable Management</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_subject_management" checked class="rounded border-navy-200 text-navy-600"> Subject Management</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_exam_management" checked class="rounded border-navy-200 text-navy-600"> Exam Management</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_disciplinary_records" checked class="rounded border-navy-200 text-navy-600"> Disciplinary Records</label>
 
-                    <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide pt-2">Admin & Integrations</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_billing" checked class="rounded border-neutral-300 text-primary-600"> Billing & Invoicing</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_accounting" class="rounded border-neutral-300 text-primary-600"> Accounting</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_enabled" class="rounded border-neutral-300 text-primary-600"> WhatsApp Integration</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_ai_enabled" class="rounded border-neutral-300 text-primary-600"> AI-Powered WhatsApp Bot</label>
+                    <p class="text-xs text-navy-500 font-medium uppercase tracking-wide pt-2">Admin & Integrations</p>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_billing" checked class="rounded border-navy-200 text-navy-600"> Billing & Invoicing</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_accounting" class="rounded border-navy-200 text-navy-600"> Accounting</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_enabled" class="rounded border-navy-200 text-navy-600"> WhatsApp Integration</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_ai_enabled" class="rounded border-navy-200 text-navy-600"> AI-Powered WhatsApp Bot</label>
                 </div>
             </div>
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" onclick="document.getElementById('plan-modal').close()"
-                        class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                        class="px-4 py-2 text-sm font-medium text-navy-700 bg-white border border-navy-200 rounded-xl hover:bg-navy-50">
                     Cancel
                 </button>
                 <button type="submit" id="plan-submit-btn"
-                        class="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                        class="px-4 py-2 text-sm font-medium text-white bg-navy-500 rounded-xl hover:bg-primary-600">
                     Create Plan
                 </button>
             </div>
@@ -272,11 +272,11 @@
 </dialog>
 
 <!-- Extend Trial Modal -->
-<dialog id="extend-trial-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+<dialog id="extend-trial-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
     <div class="p-6">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-neutral-800">Extend Trial</h3>
-            <button onclick="document.getElementById('extend-trial-modal').close()" class="text-neutral-400 hover:text-neutral-600">
+            <h3 class="text-lg font-semibold text-navy-800">Extend Trial</h3>
+            <button onclick="document.getElementById('extend-trial-modal').close()" class="text-navy-400 hover:text-navy-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -285,29 +285,29 @@
         <form onsubmit="submitExtendTrial(event)">
             <input type="hidden" id="extend-sub-id">
             <div class="mb-4">
-                <p class="text-sm text-neutral-600 mb-1">Tenant: <strong id="extend-tenant-name"></strong></p>
-                <p class="text-sm text-neutral-600">Current trial end: <strong id="extend-current-end"></strong></p>
+                <p class="text-sm text-navy-600 mb-1">Tenant: <strong id="extend-tenant-name"></strong></p>
+                <p class="text-sm text-navy-600">Current trial end: <strong id="extend-current-end"></strong></p>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Days to extend</label>
+                <label class="block text-sm font-medium text-navy-700 mb-1">Days to extend</label>
                 <input type="number" id="extend-days" min="1" max="365" value="14" required
-                       class="block w-full rounded-md border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm">
-                <p class="mt-1 text-xs text-neutral-400">New end date will be calculated from current trial end</p>
+                       class="block w-full rounded-xl border-navy-200 shadow-sm focus:border-navy-500 focus:ring-navy-500 text-sm">
+                <p class="mt-1 text-xs text-navy-400">New end date will be calculated from current trial end</p>
             </div>
             <!-- Quick select buttons -->
             <div class="flex gap-2 mb-4">
                 <button type="button" onclick="document.getElementById('extend-days').value=7"
-                        class="px-3 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 rounded-full hover:bg-neutral-200">7 days</button>
+                        class="px-3 py-1 text-xs font-medium text-navy-600 bg-navy-100 rounded-full hover:bg-neutral-200">7 days</button>
                 <button type="button" onclick="document.getElementById('extend-days').value=14"
-                        class="px-3 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 rounded-full hover:bg-neutral-200">14 days</button>
+                        class="px-3 py-1 text-xs font-medium text-navy-600 bg-navy-100 rounded-full hover:bg-neutral-200">14 days</button>
                 <button type="button" onclick="document.getElementById('extend-days').value=30"
-                        class="px-3 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 rounded-full hover:bg-neutral-200">30 days</button>
+                        class="px-3 py-1 text-xs font-medium text-navy-600 bg-navy-100 rounded-full hover:bg-neutral-200">30 days</button>
                 <button type="button" onclick="document.getElementById('extend-days').value=90"
-                        class="px-3 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 rounded-full hover:bg-neutral-200">90 days</button>
+                        class="px-3 py-1 text-xs font-medium text-navy-600 bg-navy-100 rounded-full hover:bg-neutral-200">90 days</button>
             </div>
             <div class="flex justify-end gap-2">
                 <button type="button" onclick="document.getElementById('extend-trial-modal').close()"
-                        class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200">Cancel</button>
+                        class="px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded-lg hover:bg-neutral-200">Cancel</button>
                 <button type="submit"
                         class="px-4 py-2 text-sm text-white bg-primary-600 rounded-lg hover:bg-primary-700">Extend Trial</button>
             </div>
@@ -321,7 +321,7 @@ const statusColors = {
     ACTIVE: 'bg-green-100 text-green-800',
     PAST_DUE: 'bg-yellow-100 text-yellow-800',
     SUSPENDED: 'bg-red-100 text-red-800',
-    CANCELLED: 'bg-neutral-100 text-neutral-600',
+    CANCELLED: 'bg-navy-100 text-navy-600',
     PAID: 'bg-green-100 text-green-800',
     PENDING: 'bg-yellow-100 text-yellow-800',
     FAILED: 'bg-red-100 text-red-800',
@@ -357,7 +357,7 @@ const featureLabels = {
 let plansCache = [];
 
 function badge(status) {
-    const cls = statusColors[status] || 'bg-neutral-100 text-neutral-600';
+    const cls = statusColors[status] || 'bg-navy-100 text-navy-600';
     return `<span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${cls}">${status}</span>`;
 }
 
@@ -599,33 +599,33 @@ async function loadPlans() {
         plansCache = res.data || [];
         const grid = document.getElementById('plans-grid');
         if (!plansCache.length) {
-            grid.innerHTML = '<div class="text-center text-neutral-400 py-8 col-span-full">No plans yet. Create your first plan above.</div>';
+            grid.innerHTML = '<div class="text-center text-navy-400 py-8 col-span-full">No plans yet. Create your first plan above.</div>';
             return;
         }
         grid.innerHTML = plansCache.map(p => {
             const enabledFeatures = p.features ? Object.entries(p.features).filter(([,v]) => v).map(([k]) => featureLabels[k] || k) : [];
             const featureSummary = enabledFeatures.length
-                ? `<div class="mt-2 text-xs text-neutral-400">${enabledFeatures.slice(0, 5).join(', ')}${enabledFeatures.length > 5 ? ` +${enabledFeatures.length - 5} more` : ''}</div>`
+                ? `<div class="mt-2 text-xs text-navy-400">${enabledFeatures.slice(0, 5).join(', ')}${enabledFeatures.length > 5 ? ` +${enabledFeatures.length - 5} more` : ''}</div>`
                 : '<div class="mt-2 text-xs text-yellow-600">No features configured</div>';
             return `
-            <div class="border border-neutral-200 rounded-lg p-5 ${p.is_active ? '' : 'opacity-50'} relative group">
+            <div class="border border-navy-100 rounded-lg p-5 ${p.is_active ? '' : 'opacity-50'} relative group">
                 <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onclick="showPlanModal('${p.id}')" title="Edit plan"
-                            class="p-1 text-neutral-400 hover:text-primary-600 rounded hover:bg-primary-50">
+                            class="p-1 text-navy-400 hover:text-navy-600 rounded hover:bg-navy-50">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </button>
                     <button onclick="deletePlan('${p.id}', '${p.name.replace(/'/g, "\\'")}')" title="Delete plan"
-                            class="p-1 text-neutral-400 hover:text-red-600 rounded hover:bg-red-50">
+                            class="p-1 text-navy-400 hover:text-red-600 rounded hover:bg-red-50">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </div>
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="font-semibold text-neutral-800">${p.name}</h3>
-                    ${p.is_active ? '<span class="text-xs text-green-600">Active</span>' : '<span class="text-xs text-neutral-400">Inactive</span>'}
+                    <h3 class="font-semibold text-navy-800">${p.name}</h3>
+                    ${p.is_active ? '<span class="text-xs text-green-600">Active</span>' : '<span class="text-xs text-navy-400">Inactive</span>'}
                 </div>
-                <p class="text-2xl font-bold text-primary-600">${fmtMoney(p.price_monthly, p.currency)}<span class="text-sm font-normal text-neutral-500">/mo</span></p>
-                <p class="text-sm text-neutral-500 mt-2">${p.description || ''}</p>
-                <div class="mt-3 space-y-1 text-xs text-neutral-500">
+                <p class="text-2xl font-bold text-navy-600">${fmtMoney(p.price_monthly, p.currency)}<span class="text-sm font-normal text-navy-500">/mo</span></p>
+                <p class="text-sm text-navy-500 mt-2">${p.description || ''}</p>
+                <div class="mt-3 space-y-1 text-xs text-navy-500">
                     <div>Students: ${p.max_students || 'Unlimited'}</div>
                     <div>Staff: ${p.max_staff || 'Unlimited'}</div>
                     <div>Trial: ${p.trial_days} days</div>
@@ -671,22 +671,22 @@ async function loadSubscriptions() {
         const res = await ClassUp.fetch(url);
         const tbody = document.getElementById('subscriptions-body');
         if (!res.data || !res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-neutral-400">No subscriptions found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-navy-400">No subscriptions found</td></tr>';
             return;
         }
         tbody.innerHTML = res.data.map(s => {
             const canExtend = ['TRIALING', 'SUSPENDED', 'CANCELLED'].includes(s.status);
             return `
-            <tr class="hover:bg-neutral-50">
-                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${s.tenant_name || 'Unknown'}</td>
-                <td class="px-6 py-4 text-sm text-neutral-600">${s.plan_name || '-'}</td>
+            <tr class="hover:bg-navy-50">
+                <td class="px-6 py-4 text-sm font-medium text-navy-900">${s.tenant_name || 'Unknown'}</td>
+                <td class="px-6 py-4 text-sm text-navy-600">${s.plan_name || '-'}</td>
                 <td class="px-6 py-4 text-sm">${badge(s.status)}</td>
-                <td class="px-6 py-4 text-sm text-neutral-600">${s.trial_end || '-'}</td>
-                <td class="px-6 py-4 text-sm text-neutral-600">${s.current_period_end || '-'}</td>
-                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${s.plan_price ? fmtMoney(s.plan_price, s.plan_currency) : '-'}</td>
+                <td class="px-6 py-4 text-sm text-navy-600">${s.trial_end || '-'}</td>
+                <td class="px-6 py-4 text-sm text-navy-600">${s.current_period_end || '-'}</td>
+                <td class="px-6 py-4 text-sm font-medium text-navy-900">${s.plan_price ? fmtMoney(s.plan_price, s.plan_currency) : '-'}</td>
                 <td class="px-6 py-4 text-sm">
                     ${canExtend ? `<button onclick="showExtendTrialModal('${s.id}', '${s.tenant_name || 'Unknown'}', '${s.trial_end || ''}')"
-                        class="inline-flex items-center px-2 py-1 text-xs font-medium text-primary-600 bg-primary-50 rounded hover:bg-primary-100 transition-colors"
+                        class="inline-flex items-center px-2 py-1 text-xs font-medium text-navy-600 bg-navy-50 rounded hover:bg-navy-100 transition-colors"
                         title="Extend trial">
                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -704,16 +704,16 @@ async function loadInvoices() {
         const res = await ClassUp.fetch('/api/v1/admin/platform-invoices?page_size=10');
         const tbody = document.getElementById('invoices-body');
         if (!res.data || !res.data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-neutral-400">No invoices yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-navy-400">No invoices yet</td></tr>';
             return;
         }
         tbody.innerHTML = res.data.map(inv => `
-            <tr class="hover:bg-neutral-50">
-                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${inv.tenant_name || 'Unknown'}</td>
-                <td class="px-6 py-4 text-sm font-medium text-neutral-900">${fmtMoney(inv.amount, inv.currency)}</td>
-                <td class="px-6 py-4 text-sm text-neutral-600">${inv.billing_period_start} - ${inv.billing_period_end}</td>
+            <tr class="hover:bg-navy-50">
+                <td class="px-6 py-4 text-sm font-medium text-navy-900">${inv.tenant_name || 'Unknown'}</td>
+                <td class="px-6 py-4 text-sm font-medium text-navy-900">${fmtMoney(inv.amount, inv.currency)}</td>
+                <td class="px-6 py-4 text-sm text-navy-600">${inv.billing_period_start} - ${inv.billing_period_end}</td>
                 <td class="px-6 py-4 text-sm">${badge(inv.status)}</td>
-                <td class="px-6 py-4 text-sm text-neutral-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
+                <td class="px-6 py-4 text-sm text-navy-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
             </tr>
         `).join('');
     } catch (e) { console.error('Failed to load invoices', e); }
