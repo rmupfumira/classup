@@ -55,6 +55,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
     EXEMPT_PREFIXES = {
         "/static/",
         "/favicon",
+        # Design-prototype showcase — we want the person deciding the
+        # app's visual direction to open the URL from any browser
+        # (tablet, phone, review session) without logging in first.
+        "/design-showcase",
     }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

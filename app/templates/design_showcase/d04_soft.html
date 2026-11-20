@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exams · Soft Modern · ClassUp</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' fill='none'><rect width='40' height='40' rx='10' fill='%231B3A6B'/><path d='M25 11a11 11 0 1 0 0 18' stroke='%23C9A92A' stroke-width='3.5' stroke-linecap='round' fill='none'/><path d='M25 25V15m0 0l-4 4m4-4l4 4' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                },
+                colors: {
+                    navy: {
+                        50:  '#f4f7fb',
+                        100: '#e3ebf5',
+                        200: '#c2d2e7',
+                        300: '#95b0d2',
+                        400: '#5e82b2',
+                        500: '#3a5f96',
+                        600: '#1B3A6B',
+                        700: '#172f57',
+                        800: '#122546',
+                        900: '#0e1b34',
+                    },
+                    gold: {
+                        50:  '#fdf9ec',
+                        100: '#faf0c9',
+                        200: '#f4df8e',
+                        300: '#ecc74f',
+                        400: '#dcae31',
+                        500: '#C9962A',
+                        600: '#a07420',
+                        700: '#7f5b1c',
+                        800: '#5a3f14',
+                        900: '#3b290d',
+                    },
+                },
+                boxShadow: {
+                    'soft':      '0 2px 8px -2px rgba(27, 58, 107, 0.08), 0 1px 3px -1px rgba(27, 58, 107, 0.05)',
+                    'soft-md':   '0 8px 24px -8px rgba(27, 58, 107, 0.12), 0 2px 6px -2px rgba(27, 58, 107, 0.06)',
+                    'soft-lg':   '0 20px 40px -12px rgba(27, 58, 107, 0.18), 0 6px 12px -6px rgba(27, 58, 107, 0.08)',
+                    'soft-gold': '0 10px 30px -10px rgba(201, 150, 42, 0.45)',
+                    'inner-soft':'inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+                },
+                borderRadius: {
+                    '4xl': '2rem',
+                },
+            },
+        },
+    };
+</script>
+<style>
+    body {
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        letter-spacing: -0.005em;
+    }
+    /* Soft background wash */
+    .bg-app {
+        background:
+            radial-gradient(1200px 500px at 85% -5%, rgba(201, 150, 42, 0.08), transparent 60%),
+            radial-gradient(900px 500px at -10% 110%, rgba(27, 58, 107, 0.06), transparent 60%),
+            #f4f7fb;
+    }
+    /* Hero gradient */
+    .bg-hero-soft {
+        background:
+            radial-gradient(90% 120% at 80% 10%, rgba(201, 150, 42, 0.25), transparent 55%),
+            linear-gradient(135deg, #1B3A6B 0%, #162f57 55%, #0e1b34 100%);
+    }
+    /* Gold gradient CTA */
+    .bg-cta-gold {
+        background: linear-gradient(135deg, #dcae31 0%, #C9962A 60%, #a07420 100%);
+    }
+    .bg-cta-gold:hover {
+        background: linear-gradient(135deg, #ecc74f 0%, #dcae31 60%, #C9962A 100%);
+    }
+    /* Breathy transitions */
+    .card-hover {
+        transition: transform 300ms cubic-bezier(.2, .9, .3, 1),
+                    box-shadow 300ms cubic-bezier(.2, .9, .3, 1),
+                    border-color 300ms ease;
+    }
+    .card-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 20px 40px -12px rgba(27, 58, 107, 0.18), 0 6px 12px -6px rgba(27, 58, 107, 0.08);
+    }
+    /* Pulsing live dot for the In-Progress chip */
+    @keyframes pulse-dot {
+        0%, 100% { transform: scale(1);   opacity: 1; }
+        50%      { transform: scale(1.3); opacity: 0.6; }
+    }
+    .pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+
+    /* Scrollbar: soft */
+    ::-webkit-scrollbar          { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb    { background: #c2d2e7; border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+    ::-webkit-scrollbar-thumb:hover { background: #95b0d2; background-clip: content-box; border: 2px solid transparent; }
+</style>
+</head>
+<body class="bg-app text-navy-800 min-h-screen">
+
+{# ------------------- Macros ------------------- #}
+{% macro class_initials(name) -%}
+    {%- set parts = name.split() -%}
+    {%- if parts|length >= 2 -%}
+        {{ (parts[0][0] ~ parts[1][0]) | upper }}
+    {%- else -%}
+        {{ name[:2] | upper }}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro status_pill(status) -%}
+    {%- if status == 'FINALIZED' -%}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Finalised
+        </span>
+    {%- elif status == 'IN_PROGRESS' -%}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-gold-100 text-gold-700 ring-1 ring-inset ring-gold-200">
+            <span class="relative flex h-2 w-2">
+                <span class="pulse-dot absolute inline-flex h-full w-full rounded-full bg-gold-500 opacity-70"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-gold-600"></span>
+            </span>
+            In progress
+        </span>
+    {%- elif status == 'SCHEDULED' -%}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-navy-50 text-navy-700 ring-1 ring-inset ring-navy-200">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            Scheduled
+        </span>
+    {%- else -%}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-neutral-100 text-neutral-600 ring-1 ring-inset ring-neutral-200">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            Draft
+        </span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro progress_bar(pct) -%}
+    <div class="w-full h-2 bg-navy-50 rounded-full overflow-hidden">
+        {%- if pct >= 100 -%}
+            <div class="h-full bg-emerald-500 rounded-full" style="width: 100%"></div>
+        {%- elif pct > 0 -%}
+            <div class="h-full bg-gold-500 rounded-full" style="width: {{ pct }}%"></div>
+        {%- else -%}
+            <div class="h-full bg-navy-200 rounded-full" style="width: 4%"></div>
+        {%- endif -%}
+    </div>
+{%- endmacro %}
+
+{# ------------------- Top Bar ------------------- #}
+<header class="sticky top-0 z-40 px-4 md:px-8 pt-4">
+    <nav class="mx-auto max-w-7xl flex items-center gap-3 bg-white/80 backdrop-blur-xl px-3 py-2 rounded-full shadow-soft ring-1 ring-navy-100">
+        <!-- Logo -->
+        <a href="/design-showcase/04" class="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-navy-50 transition-colors">
+            <svg viewBox="0 0 40 40" fill="none" class="w-8 h-8"><rect width="40" height="40" rx="10" fill="#1B3A6B"/><path d="M25 11a11 11 0 1 0 0 18" stroke="#C9A92A" stroke-width="3.5" stroke-linecap="round" fill="none"/><path d="M25 25V15m0 0l-4 4m4-4l4 4" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="font-bold text-navy-700 text-lg tracking-tight hidden sm:block">ClassUp</span>
+        </a>
+
+        <!-- Pill nav group -->
+        <div class="hidden lg:flex items-center gap-0.5 bg-navy-50 rounded-full p-1 ml-2">
+            <a href="#" class="px-4 py-1.5 text-sm font-medium text-navy-600 rounded-full hover:bg-white/60 transition">Dashboard</a>
+            <a href="#" class="px-4 py-1.5 text-sm font-medium text-navy-600 rounded-full hover:bg-white/60 transition">Students</a>
+            <a href="#" class="px-4 py-1.5 text-sm font-medium text-navy-600 rounded-full hover:bg-white/60 transition">Classes</a>
+            <a href="#" class="px-4 py-1.5 text-sm font-semibold bg-white text-navy-700 rounded-full shadow-soft">Exams</a>
+            <a href="#" class="px-4 py-1.5 text-sm font-medium text-navy-600 rounded-full hover:bg-white/60 transition">Reports</a>
+            <a href="#" class="px-4 py-1.5 text-sm font-medium text-navy-600 rounded-full hover:bg-white/60 transition">Billing</a>
+        </div>
+
+        <div class="flex-1"></div>
+
+        <!-- Back to showcase + user -->
+        <a href="/design-showcase" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-navy-700 bg-gold-50 hover:bg-gold-100 rounded-full ring-1 ring-inset ring-gold-200 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Showcase
+        </a>
+
+        <button class="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-navy-50 transition">
+            <svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+            <span class="absolute top-2 right-2 w-2 h-2 bg-gold-500 rounded-full ring-2 ring-white"></span>
+        </button>
+
+        <button class="flex items-center gap-2 pl-1.5 pr-3 py-1 hover:bg-navy-50 rounded-full transition">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white shadow-soft">
+                HM
+            </div>
+            <div class="hidden md:block text-left">
+                <div class="text-xs font-semibold text-navy-800 leading-tight">Headmaster</div>
+                <div class="text-[10px] text-navy-500 leading-tight">School Admin</div>
+            </div>
+        </button>
+    </nav>
+</header>
+
+{# ------------------- Layout: Sidebar + Main ------------------- #}
+<div class="mx-auto max-w-7xl px-4 md:px-8 py-6 lg:py-8 flex gap-6">
+
+    {# ------------------- Desktop Sidebar ------------------- #}
+    <aside class="hidden lg:block w-60 flex-shrink-0">
+        <div class="sticky top-24 space-y-5">
+            <!-- Primary nav group -->
+            <div class="bg-white rounded-3xl p-3 shadow-soft ring-1 ring-navy-100">
+                <div class="px-3 pt-2 pb-3">
+                    <div class="text-[10px] font-bold text-gold-600 uppercase tracking-widest">Academic</div>
+                </div>
+                <nav class="space-y-1">
+                    {% set nav_items = [
+                        ('Dashboard',   'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'),
+                        ('Students',    'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'),
+                        ('Classes',     'M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342')
+                    ] %}
+                    {% for label, path in nav_items %}
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-2xl text-navy-600 hover:bg-navy-50 transition group">
+                        <div class="w-8 h-8 flex items-center justify-center rounded-xl bg-navy-50 group-hover:bg-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ path }}"/></svg>
+                        </div>
+                        <span class="text-sm font-medium">{{ label }}</span>
+                    </a>
+                    {% endfor %}
+
+                    <!-- Exams: active -->
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-navy-600 text-white shadow-soft-md">
+                        <div class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/15">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        </div>
+                        <span class="text-sm font-semibold flex-1">Exams</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 bg-gold-400/30 text-gold-100 rounded-full">5</span>
+                    </a>
+
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-2xl text-navy-600 hover:bg-navy-50 transition group">
+                        <div class="w-8 h-8 flex items-center justify-center rounded-xl bg-navy-50 group-hover:bg-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <span class="text-sm font-medium">Reports</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Finance group -->
+            <div class="bg-white rounded-3xl p-3 shadow-soft ring-1 ring-navy-100">
+                <div class="px-3 pt-2 pb-3">
+                    <div class="text-[10px] font-bold text-gold-600 uppercase tracking-widest">Finance</div>
+                </div>
+                <nav class="space-y-1">
+                    {% for label, path in [
+                        ('Billing',      'M9 7h6M9 11h6M9 15h3m-3 6h12a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h4'),
+                        ('Accounting',   'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'),
+                        ('Subscription', 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z'),
+                    ] %}
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-2xl text-navy-600 hover:bg-navy-50 transition group">
+                        <div class="w-8 h-8 flex items-center justify-center rounded-xl bg-navy-50 group-hover:bg-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ path }}"/></svg>
+                        </div>
+                        <span class="text-sm font-medium">{{ label }}</span>
+                    </a>
+                    {% endfor %}
+                </nav>
+            </div>
+
+            <!-- Upsell card -->
+            <div class="relative bg-hero-soft rounded-3xl p-5 text-white overflow-hidden shadow-soft-md">
+                <div class="absolute -top-8 -right-8 w-24 h-24 bg-gold-400/20 rounded-full blur-2xl"></div>
+                <div class="relative">
+                    <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center mb-3 ring-1 ring-white/10">
+                        <svg class="w-5 h-5 text-gold-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    </div>
+                    <h4 class="font-bold text-sm mb-1">You're on the Growth plan</h4>
+                    <p class="text-xs text-navy-100 mb-4 leading-relaxed">13 days left in your trial. Upgrade to keep running exams.</p>
+                    <a href="#" class="block w-full text-center text-xs font-semibold py-2 bg-white text-navy-700 rounded-xl hover:bg-gold-50 transition">
+                        View plans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    {# ------------------- Main Content ------------------- #}
+    <main class="flex-1 min-w-0 pb-24 lg:pb-8">
+
+        <!-- Breadcrumbs -->
+        <nav class="flex items-center gap-1.5 text-xs text-navy-500 mb-5">
+            <a href="#" class="hover:text-navy-700">Home</a>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <a href="#" class="hover:text-navy-700">Academic</a>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <span class="font-semibold text-navy-700">Exams</span>
+        </nav>
+
+        <!-- Hero card -->
+        <section class="relative bg-hero-soft rounded-4xl p-6 md:p-8 lg:p-10 text-white overflow-hidden shadow-soft-lg">
+            <!-- Decorative orbs -->
+            <div class="absolute -top-20 -right-20 w-72 h-72 bg-gold-400/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-32 -left-20 w-80 h-80 bg-navy-500/30 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+                <div class="max-w-xl">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-sm text-gold-200 text-[10px] font-bold uppercase tracking-widest rounded-full ring-1 ring-inset ring-white/15 mb-4">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.664 1.319a.75.75 0 01.672 0 41.059 41.059 0 018.198 5.424.75.75 0 01-.254 1.285 31.372 31.372 0 00-7.86 3.83.75.75 0 01-.84 0 31.508 31.508 0 00-2.08-1.287V9.394c0-.244.116-.463.302-.592a35.504 35.504 0 013.305-2.033.75.75 0 00-.714-1.319 37 37 0 00-3.446 2.12A2.216 2.216 0 006 9.393v.38a31.293 31.293 0 00-4.28-1.746.75.75 0 01-.254-1.285 41.059 41.059 0 018.198-5.424zM6 11.459a29.848 29.848 0 00-2.455-1.158 41.029 41.029 0 00-.39 3.114.75.75 0 00.419.74c.528.256 1.046.53 1.554.82-.21.324-.455.63-.73.914a.75.75 0 101.044 1.074 6.52 6.52 0 001.019-1.3 10.014 10.014 0 017.47-1.88 10.014 10.014 0 017.47 1.88c.302.448.628.882.98 1.3a.75.75 0 101.044-1.074 7.99 7.99 0 01-.73-.914 20.3 20.3 0 011.554-.82.75.75 0 00.419-.74 41.027 41.027 0 00-.39-3.114 29.878 29.878 0 00-2.455 1.158V13.5A2.5 2.5 0 0117 16h-2.027a1.5 1.5 0 00-1.03.41l-1.586 1.587a1.5 1.5 0 01-2.121 0l-1.586-1.586a1.5 1.5 0 00-1.03-.41H5.5A2.5 2.5 0 013 13.5V11.46z" clip-rule="evenodd"/></svg>
+                        Academic
+                    </div>
+                    <h1 class="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight mb-3 leading-[1.05]">
+                        Exams
+                    </h1>
+                    <p class="text-navy-100 text-base md:text-lg leading-relaxed">
+                        Set up, run and finalise exams. Marks flow straight into end-of-term report cards.
+                    </p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                    <button class="group inline-flex items-center justify-center gap-2 px-5 py-3 bg-cta-gold rounded-2xl text-navy-900 text-sm font-bold shadow-soft-gold hover:shadow-soft-lg transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                        New exam
+                    </button>
+                    <button class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white/10 backdrop-blur-sm rounded-2xl text-white text-sm font-semibold ring-1 ring-inset ring-white/20 hover:bg-white/20 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                        Import
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats row -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+            {% set stats = [
+                ('Total exams',    exams | length,                                                   'Across all classes',    'navy'),
+                ('Finalised',      exams | selectattr('status', 'equalto', 'FINALIZED') | list | length, 'Marks in report cards','emerald'),
+                ('In progress',    exams | selectattr('status', 'equalto', 'IN_PROGRESS') | list | length,'Marks being captured','gold'),
+                ('Scheduled',      exams | selectattr('status', 'equalto', 'SCHEDULED') | list | length,'Upcoming',             'navy'),
+            ] %}
+            {% for label, value, hint, tone in stats %}
+            <div class="bg-white rounded-3xl p-5 shadow-soft ring-1 ring-navy-100/70 card-hover">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="text-xs font-semibold text-navy-500 uppercase tracking-wider">{{ label }}</div>
+                    {% if tone == 'emerald' %}
+                        <div class="w-9 h-9 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                    {% elif tone == 'gold' %}
+                        <div class="w-9 h-9 rounded-2xl bg-gold-50 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-gold-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                    {% else %}
+                        <div class="w-9 h-9 rounded-2xl bg-navy-50 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="text-3xl font-extrabold text-navy-800 tracking-tight">{{ value }}</div>
+                <div class="text-xs text-navy-500 mt-1">{{ hint }}</div>
+            </div>
+            {% endfor %}
+        </section>
+
+        <!-- Filter + search row -->
+        <section class="mt-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+            <!-- Filter chips -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 -mb-1 flex-1">
+                {% set filters = [
+                    ('All', exams | length, true),
+                    ('Scheduled', exams | selectattr('status', 'equalto', 'SCHEDULED') | list | length, false),
+                    ('In progress', exams | selectattr('status', 'equalto', 'IN_PROGRESS') | list | length, false),
+                    ('Finalised', exams | selectattr('status', 'equalto', 'FINALIZED') | list | length, false),
+                    ('Draft', exams | selectattr('status', 'equalto', 'DRAFT') | list | length, false),
+                ] %}
+                {% for label, count, active in filters %}
+                <button type="button" class="shrink-0 inline-flex items-center gap-2 pl-4 pr-3 py-2 rounded-full text-sm font-semibold transition
+                    {% if active %}
+                        bg-navy-600 text-white shadow-soft-md
+                    {% else %}
+                        bg-white text-navy-600 ring-1 ring-inset ring-navy-100 hover:ring-navy-300 hover:bg-navy-50
+                    {% endif %}">
+                    {{ label }}
+                    <span class="text-xs font-bold px-1.5 py-0.5 rounded-full
+                        {% if active %}bg-white/20 text-white{% else %}bg-navy-50 text-navy-500{% endif %}">
+                        {{ count }}
+                    </span>
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- Search -->
+            <div class="relative md:w-72">
+                <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" placeholder="Search exams…"
+                       class="w-full pl-10 pr-4 py-2.5 text-sm bg-white border-0 ring-1 ring-inset ring-navy-100 rounded-full placeholder-navy-400 focus:outline-none focus:ring-2 focus:ring-navy-500 transition">
+            </div>
+        </section>
+
+        <!-- Exam cards grid -->
+        <section class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for exam in exams %}
+            <article class="group bg-white rounded-3xl shadow-soft ring-1 ring-navy-100/70 card-hover overflow-hidden">
+                <!-- Card header: avatar + name -->
+                <div class="p-5 pb-4">
+                    <div class="flex items-start gap-4">
+                        <!-- Avatar circle -->
+                        <div class="relative shrink-0">
+                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-navy-100 to-navy-200 flex items-center justify-center shadow-inner-soft ring-1 ring-navy-200">
+                                <span class="text-lg font-extrabold text-navy-700 tracking-tight">{{ class_initials(exam.class_name) }}</span>
+                            </div>
+                            {% if exam.status == 'IN_PROGRESS' %}
+                                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold-500 ring-2 ring-white flex items-center justify-center">
+                                    <span class="pulse-dot w-2 h-2 bg-white rounded-full"></span>
+                                </span>
+                            {% elif exam.status == 'FINALIZED' %}
+                                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-white flex items-center justify-center">
+                                    <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Title + status -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between gap-3 mb-1.5">
+                                <h3 class="font-bold text-navy-800 text-base leading-snug tracking-tight">
+                                    {{ exam.name }}
+                                </h3>
+                                {{ status_pill(exam.status) }}
+                            </div>
+
+                            <!-- Metadata chips -->
+                            <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-navy-50 text-navy-600 rounded-full">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342"/></svg>
+                                    {{ exam.class_name }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-navy-50 text-navy-600 rounded-full">
+                                    Term {{ exam.term }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-navy-50 text-navy-600 rounded-full">
+                                    {{ exam.academic_year }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium bg-gold-50 text-gold-700 rounded-full">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    {{ exam.grading_system }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress section -->
+                <div class="px-5 py-4 bg-gradient-to-br from-navy-50/50 to-transparent">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-navy-600">
+                            {% if exam.marked_pct >= 100 %}
+                                All marks captured
+                            {% elif exam.marked_pct > 0 %}
+                                {{ exam.marked_pct }}% marked
+                            {% else %}
+                                Not yet marked
+                            {% endif %}
+                        </span>
+                        <span class="text-xs text-navy-500">
+                            {{ exam.papers_count }} paper{{ 's' if exam.papers_count != 1 else '' }}
+                            · {{ exam.student_count }} students
+                        </span>
+                    </div>
+                    {{ progress_bar(exam.marked_pct) }}
+                </div>
+
+                <!-- Footer: schedule + CTA -->
+                <div class="px-5 py-3.5 flex items-center justify-between border-t border-navy-50">
+                    <div class="flex items-center gap-2 text-xs text-navy-500 min-w-0">
+                        {% if exam.scheduled_start %}
+                            <svg class="w-3.5 h-3.5 shrink-0 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="truncate"><span class="font-medium text-navy-600">Starts</span> {{ exam.scheduled_start }}</span>
+                        {% else %}
+                            <svg class="w-3.5 h-3.5 shrink-0 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                            <span class="truncate">Created {{ exam.created_at }}</span>
+                        {% endif %}
+                    </div>
+                    <a href="#" class="inline-flex items-center gap-1.5 pl-4 pr-3 py-1.5 bg-navy-50 group-hover:bg-navy-600 text-navy-700 group-hover:text-white rounded-full text-xs font-bold transition-all">
+                        Open
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+
+        <!-- Pagination placeholder -->
+        <div class="mt-6 flex items-center justify-between bg-white rounded-2xl p-4 shadow-soft ring-1 ring-navy-100">
+            <span class="text-xs text-navy-500 font-medium">Showing {{ exams | length }} of {{ exams | length }} exams</span>
+            <div class="flex items-center gap-1">
+                <button class="w-9 h-9 rounded-full flex items-center justify-center text-navy-300 hover:bg-navy-50 hover:text-navy-500" disabled>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <span class="px-3 py-1 text-xs font-bold text-white bg-navy-600 rounded-full">1</span>
+                <button class="w-9 h-9 rounded-full flex items-center justify-center text-navy-300 hover:bg-navy-50 hover:text-navy-500" disabled>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
+
+{# ------------------- Mobile bottom tab bar ------------------- #}
+<nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 pointer-events-none p-3 pb-safe">
+    <div class="pointer-events-auto mx-auto max-w-md bg-white/90 backdrop-blur-xl rounded-full shadow-soft-lg ring-1 ring-navy-100 p-1.5 flex items-center justify-around">
+        {% set mobile_tabs = [
+            ('Home',    'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',    false),
+            ('Classes', 'M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84',    false),
+            ('Exams',   'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2',    true),
+            ('Reports', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',    false),
+            ('More',    'M4 6h16M4 12h16M4 18h16',    false),
+        ] %}
+        {% for label, path, active in mobile_tabs %}
+            {% if active %}
+                <a href="#" class="flex items-center gap-2 px-4 py-2.5 bg-navy-600 text-white rounded-full shadow-soft-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ path }}"/></svg>
+                    <span class="text-xs font-semibold">{{ label }}</span>
+                </a>
+            {% else %}
+                <a href="#" class="flex flex-col items-center justify-center px-3 py-2 rounded-full text-navy-500 hover:bg-navy-50 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ path }}"/></svg>
+                </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+</nav>
+
+</body>
+</html>

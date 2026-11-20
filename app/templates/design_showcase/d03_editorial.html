@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exams — ClassUp Design 03</title>
+<link rel="icon" type="image/svg+xml" href="/static/img/icons/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+    fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+    },
+    colors: {
+        navy: {50:'#f0f4f9',100:'#dce4f0',200:'#b9c9e1',300:'#8aa5cc',400:'#5a7eb3',500:'#3a5f96',600:'#1B3A6B',700:'#162f56',800:'#112442',900:'#0c192d'},
+        gold: {50:'#fdf8eb',100:'#f9edcc',200:'#f3db99',300:'#edc966',400:'#e0ad3a',500:'#C9962A',600:'#a67a22',700:'#835f1b',800:'#604514',900:'#3d2c0d'},
+    }
+}}}
+</script>
+<style>
+    body { font-family: Inter, system-ui, sans-serif; background: #FAF8F3; color: #1a1a1a; }
+    /* Editorial typography — the signature move */
+    .serif { font-family: 'Instrument Serif', Georgia, serif; }
+    .eyebrow { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: #a67a22; }
+    .caps-tracked { font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em; color: #525252; }
+
+    /* Drop cap — first letter of the first exam description */
+    .drop-cap::first-letter {
+        font-family: 'Instrument Serif', Georgia, serif;
+        float: left;
+        font-size: 4.5rem;
+        line-height: 0.85;
+        padding-right: 0.65rem;
+        padding-top: 0.25rem;
+        color: #1B3A6B;
+        font-weight: 400;
+    }
+
+    /* Gold hairline underline for editorial links */
+    .gold-underline {
+        text-decoration: underline;
+        text-decoration-color: #C9962A;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 6px;
+    }
+    .gold-underline:hover { text-decoration-color: #a67a22; text-decoration-thickness: 2px; }
+
+    /* Rule lines */
+    .rule-gold { border-top: 1px solid rgba(201, 150, 42, 0.45); }
+    .rule-ink { border-top: 1px solid #262626; }
+
+    /* Running header strip */
+    .running-head {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-style: italic;
+        font-size: 0.85rem;
+        color: #737373;
+        letter-spacing: 0.02em;
+    }
+
+    /* Numbered exam row — mimic old-style editorial numeral */
+    .exam-numeral {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-size: 5.5rem;
+        line-height: 1;
+        color: #1B3A6B;
+        font-weight: 400;
+    }
+    @media (max-width: 767px) {
+        .exam-numeral { font-size: 3.5rem; }
+    }
+
+    /* Pull-quote */
+    .pull-quote {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-style: italic;
+        font-size: clamp(2.5rem, 8vw, 5rem);
+        line-height: 1.05;
+        letter-spacing: -0.015em;
+    }
+
+    /* Mega display serif for hero */
+    .display-serif {
+        font-family: 'Instrument Serif', Georgia, serif;
+        line-height: 0.95;
+        letter-spacing: -0.02em;
+        font-weight: 400;
+    }
+
+    /* Status label dot */
+    .status-dot {
+        display: inline-block;
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+</style>
+</head>
+<body class="min-h-screen antialiased">
+
+<!-- ═══════════════ TOP BAR (editorial masthead) ═══════════════ -->
+<nav class="border-b border-neutral-900/10">
+    <div class="max-w-6xl mx-auto px-6 md:px-10 py-5 flex items-center justify-between gap-6">
+        <a href="/design-showcase" class="flex items-center gap-2.5">
+            <svg class="h-8 w-8" viewBox="0 0 40 40" fill="none">
+                <rect width="40" height="40" rx="10" fill="#1B3A6B"/>
+                <path d="M25 11a11 11 0 1 0 0 18" stroke="#C9A92A" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <path d="M25 25V15m0 0l-4 4m4-4l4 4" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="serif italic text-xl text-neutral-900">ClassUp</span>
+        </a>
+        <div class="hidden md:flex items-center gap-8">
+            <a href="#" class="text-sm text-neutral-700 hover:text-navy-700 hover:gold-underline transition">Academic</a>
+            <a href="#" class="text-sm text-neutral-700 hover:text-navy-700 hover:gold-underline transition">People</a>
+            <a href="#" class="text-sm text-neutral-700 hover:text-navy-700 hover:gold-underline transition">Finance</a>
+            <a href="#" class="text-sm text-neutral-700 hover:text-navy-700 hover:gold-underline transition">Events</a>
+        </div>
+        <a href="/design-showcase" class="text-sm serif italic text-neutral-500 hover:text-navy-700 transition">
+            ← Back to showcase
+        </a>
+    </div>
+</nav>
+
+<!-- Running head strip -->
+<div class="max-w-6xl mx-auto px-6 md:px-10 pt-6 pb-2 flex items-center justify-between">
+    <span class="running-head">The Academic Register</span>
+    <span class="running-head">Vol. 2026 · Term 3</span>
+</div>
+
+<!-- ═══════════════ HERO (navy, oversized serif) ═══════════════ -->
+<section class="bg-navy-700 text-white">
+    <div class="max-w-6xl mx-auto px-6 md:px-10 py-16 md:py-24">
+        <p class="eyebrow text-gold-400 mb-6">Issue 03 · Term 3 Exams</p>
+        <!-- Offset grid — headline spans wide, body sits in right column -->
+        <div class="grid md:grid-cols-12 gap-8 items-end">
+            <div class="md:col-span-8">
+                <h1 class="display-serif text-5xl md:text-7xl lg:text-8xl text-white">
+                    Every exam,<br>
+                    <span class="italic text-gold-300">from set-up<br>to report card.</span>
+                </h1>
+            </div>
+            <div class="md:col-span-4 md:pb-3">
+                <div class="rule-gold mb-4 opacity-60"></div>
+                <p class="text-navy-100 text-base leading-relaxed">
+                    A quiet workspace for teachers to build the term's assessments: one exam per class,
+                    one paper per subject, weights that always sum to a hundred, and marks that land
+                    directly on the report card when you're ready.
+                </p>
+                <p class="text-navy-200 text-sm leading-relaxed mt-4 italic serif">
+                    Edited by the Academic Office. Updated continuously.
+                </p>
+            </div>
+        </div>
+
+        <!-- Editorial-style signature CTA link -->
+        <div class="mt-12 flex items-center gap-6 flex-wrap">
+            <a href="/exams" class="serif italic text-3xl md:text-4xl text-gold-300 gold-underline hover:text-gold-200 transition">
+                New exam&nbsp;↗
+            </a>
+            <span class="caps-tracked text-navy-200">or</span>
+            <a href="#register" class="text-sm text-navy-100 border-b border-navy-300 pb-0.5 hover:text-white hover:border-white transition">
+                Read the register below
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ "I. THE REGISTER" ═══════════════ -->
+<section id="register" class="max-w-6xl mx-auto px-6 md:px-10 pt-20 md:pt-28 pb-10">
+    <!-- Section header with big Roman numeral -->
+    <div class="grid md:grid-cols-12 gap-8 items-start mb-16">
+        <div class="md:col-span-3">
+            <span class="serif text-7xl md:text-9xl text-navy-700 leading-none block">I.</span>
+            <p class="eyebrow mt-2">Section one</p>
+        </div>
+        <div class="md:col-span-9 md:pt-6">
+            <h2 class="display-serif text-4xl md:text-5xl text-neutral-900 mb-4">
+                Current exams, on the <em class="italic text-navy-700">register</em>.
+            </h2>
+            <p class="text-neutral-700 leading-relaxed max-w-2xl">
+                Five exams are open across four classes this term. Those marked
+                <span class="serif italic text-navy-700">finalized</span> have shipped marks
+                to report cards; the rest await marking or scheduling.
+            </p>
+        </div>
+    </div>
+
+    <!-- Rule above the list -->
+    <div class="rule-ink mb-0"></div>
+
+    <!-- Numbered editorial exam list -->
+    <ol class="divide-y divide-neutral-300/60">
+        {% for exam in exams %}
+        <li class="py-10 md:py-14">
+            <div class="grid md:grid-cols-12 gap-6 md:gap-10 items-start">
+
+                <!-- Big serif numeral -->
+                <div class="md:col-span-2">
+                    <span class="exam-numeral">{{ '%02d' % loop.index }}</span>
+                </div>
+
+                <!-- Main editorial card -->
+                <div class="md:col-span-7">
+                    <p class="caps-tracked mb-2">
+                        {{ exam.class_name }} · {{ exam.academic_year }} · Term {{ exam.term }}
+                    </p>
+                    <h3 class="serif text-3xl md:text-4xl text-navy-700 mb-3 leading-tight">
+                        {{ exam.name }}
+                    </h3>
+
+                    {% if loop.first %}
+                    <!-- Drop cap on the first row only, editorial-style -->
+                    <p class="text-neutral-800 leading-relaxed drop-cap">
+                        The term's headline assessment: eleven papers across eleven subjects,
+                        graded on the ZIMSEC O-Level scale. Marks are in, weights balanced, and
+                        the report cards have been dispatched to parents and the headmaster's office.
+                    </p>
+                    {% else %}
+                    <p class="text-neutral-700 leading-relaxed italic serif text-lg">
+                        {% if exam.status == 'SCHEDULED' %}
+                            Awaits the first paper. {{ exam.subjects_count }} subjects seeded,
+                            {% if exam.scheduled_start %}opens {{ exam.scheduled_start }}.{% else %}date pending.{% endif %}
+                        {% elif exam.status == 'IN_PROGRESS' %}
+                            {{ exam.marked_pct }} per cent of papers marked; the rest will follow this week.
+                        {% elif exam.status == 'FINALIZED' %}
+                            All {{ exam.papers_count }} papers marked and pushed to report cards.
+                        {% elif exam.status == 'DRAFT' %}
+                            A draft in waiting. {{ exam.subjects_count }} subjects pencilled, no papers set.
+                        {% endif %}
+                    </p>
+                    {% endif %}
+
+                    <!-- Meta row with hairline gold rule above -->
+                    <div class="rule-gold mt-6 pt-4 flex items-center gap-6 flex-wrap text-sm">
+                        <span class="caps-tracked">
+                            <svg class="inline-block w-3 h-3 -mt-0.5 mr-1 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            {{ exam.papers_count }} papers
+                        </span>
+                        <span class="caps-tracked">
+                            <svg class="inline-block w-3 h-3 -mt-0.5 mr-1 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            {{ exam.student_count }} students
+                        </span>
+                        <span class="caps-tracked">{{ exam.grading_system }}</span>
+                        <span class="caps-tracked italic serif normal-case tracking-normal text-neutral-500">
+                            Registered {{ exam.created_at }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Right column: status + open link -->
+                <div class="md:col-span-3 md:text-right">
+                    <div class="mb-3">
+                        {% if exam.status == 'FINALIZED' %}
+                            <span class="status-dot bg-navy-600"></span>
+                            <span class="caps-tracked text-navy-700">Finalized</span>
+                        {% elif exam.status == 'IN_PROGRESS' %}
+                            <span class="status-dot bg-gold-500"></span>
+                            <span class="caps-tracked text-gold-700">In progress · {{ exam.marked_pct }}%</span>
+                        {% elif exam.status == 'SCHEDULED' %}
+                            <span class="status-dot bg-neutral-400"></span>
+                            <span class="caps-tracked text-neutral-600">Scheduled</span>
+                        {% elif exam.status == 'DRAFT' %}
+                            <span class="status-dot" style="background:#737373"></span>
+                            <span class="caps-tracked text-neutral-500">Draft</span>
+                        {% endif %}
+                    </div>
+
+                    <a href="/exams/{{ exam.id }}"
+                       class="serif italic text-2xl text-gold-700 gold-underline hover:text-gold-800 transition">
+                        Open&nbsp;→
+                    </a>
+
+                    {% if exam.status == 'IN_PROGRESS' %}
+                    <!-- A tiny editorial progress rule -->
+                    <div class="mt-4 h-px bg-neutral-200 relative overflow-hidden md:ml-auto md:w-32">
+                        <div class="absolute inset-y-0 left-0 bg-gold-500" style="width: {{ exam.marked_pct }}%; height: 2px;"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ol>
+
+    <div class="rule-ink"></div>
+</section>
+
+<!-- ═══════════════ PULL-QUOTE / FOOTER ═══════════════ -->
+<section class="bg-neutral-50 border-y border-neutral-200">
+    <div class="max-w-5xl mx-auto px-6 md:px-10 py-20 md:py-28">
+        <p class="eyebrow mb-6">The term, in one figure</p>
+        <blockquote class="pull-quote text-navy-700">
+            &ldquo;Eleven of eleven papers<br>
+            <span class="text-gold-600">marked</span> — the term,<br>
+            delivered on&nbsp;time.&rdquo;
+        </blockquote>
+        <div class="mt-10 flex items-center gap-4">
+            <div class="rule-gold flex-1"></div>
+            <p class="caps-tracked text-neutral-500">
+                The Academic Register &middot; Nov 2026
+            </p>
+            <div class="rule-gold flex-1"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ COLOPHON ═══════════════ -->
+<footer class="max-w-6xl mx-auto px-6 md:px-10 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-neutral-500">
+    <div class="flex items-center gap-2.5">
+        <svg class="h-5 w-5 opacity-60" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="10" fill="#1B3A6B"/>
+            <path d="M25 11a11 11 0 1 0 0 18" stroke="#C9A92A" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M25 25V15m0 0l-4 4m4-4l4 4" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="serif italic">ClassUp — Design 03, Contemporary Editorial</span>
+    </div>
+    <div class="flex items-center gap-5">
+        <a href="/design-showcase" class="hover:text-navy-700 transition">Back to showcase</a>
+        <span class="text-neutral-300">·</span>
+        {% for d in designs %}
+            {% if d.id != '03' %}
+            <a href="/design-showcase/{{ d.id }}" class="hover:text-navy-700 transition">
+                {{ d.id }}
+            </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+</footer>
+
+</body>
+</html>

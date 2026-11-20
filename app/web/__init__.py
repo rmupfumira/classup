@@ -23,6 +23,7 @@ from app.web import (
     onboarding,
     parents,
     photos,
+    design_showcase,
     reports,
     search,
     settings,
@@ -58,6 +59,7 @@ web_router.include_router(help_web.router)
 web_router.include_router(events.router)  # School events + parent RSVPs — always available
 web_router.include_router(unsubscribe.router)  # Public List-Unsubscribe handler (no auth)
 web_router.include_router(search.router)  # Global search results page — role-scoped
+web_router.include_router(design_showcase.router)  # /design-showcase — four UI prototypes
 
 # Plan-gated pages — redirect to /subscription?locked=X when feature is off
 web_router.include_router(

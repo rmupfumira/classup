@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exams — ClassUp (Premium Minimalist)</title>
+<link rel="icon" type="image/svg+xml" href="/static/img/icons/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+    colors: {
+        navy: {50:'#f0f4f9',100:'#dce4f0',200:'#b9c9e1',300:'#8aa5cc',400:'#5a7eb3',500:'#3a5f96',600:'#1B3A6B',700:'#162f56',800:'#112442',900:'#0c192d'},
+        gold: {50:'#fdf8eb',100:'#f9edcc',200:'#f3db99',300:'#edc966',400:'#e0ad3a',500:'#C9962A',600:'#a67a22',700:'#835f1b',800:'#604514',900:'#3d2c0d'},
+    }
+}}}
+</script>
+<style>
+    html, body { font-family: Inter, system-ui, sans-serif; }
+    body {
+        font-size: 13px;
+        color: #111827;
+        background: #fff;
+        letter-spacing: -0.005em;
+        -webkit-font-smoothing: antialiased;
+    }
+    /* Hairline — 0.5px where supported, falls back to 1px solid #e5e7eb */
+    .hairline-b { border-bottom: 1px solid #ececec; }
+    .hairline-r { border-right: 1px solid #ececec; }
+    .hairline-t { border-top: 1px solid #ececec; }
+    @supports (border-width: 0.5px) {
+        .hairline-b { border-bottom-width: 0.5px; }
+        .hairline-r { border-right-width: 0.5px; }
+        .hairline-t { border-top-width: 0.5px; }
+    }
+    .kbd {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 18px; height: 18px; padding: 0 4px;
+        font-size: 11px; font-weight: 500; color: #6b7280;
+        background: #fff; border: 1px solid #ececec; border-radius: 4px;
+        letter-spacing: 0;
+    }
+    /* Status dot */
+    .dot { width: 6px; height: 6px; border-radius: 9999px; display: inline-block; }
+    .dot-finalized { background: #1B3A6B; }
+    .dot-in_progress { background: #a67a22; }
+    .dot-scheduled { background: #9ca3af; }
+    .dot-draft { background: #d1d5db; }
+    /* Table row hover + action reveal */
+    .row-action { opacity: 0; transition: opacity .12s ease; }
+    tr:hover .row-action { opacity: 1; }
+    tbody tr:hover { background: #fafafa; }
+    /* Nav active gold indicator */
+    .nav-item { position: relative; }
+    .nav-item.is-active { color: #111827; font-weight: 500; }
+    .nav-item.is-active::before {
+        content: ""; position: absolute; left: -16px; top: 50%;
+        transform: translateY(-50%);
+        width: 2px; height: 14px; background: #C9962A; border-radius: 1px;
+    }
+    /* Section label — tiny caps */
+    .nav-label {
+        font-size: 10.5px; font-weight: 500; text-transform: uppercase;
+        letter-spacing: 0.1em; color: #9ca3af;
+    }
+    /* Underline link */
+    .link-u { color: #111827; text-decoration: none; }
+    .link-u:hover { text-decoration: underline; text-decoration-color: #C9962A; text-underline-offset: 3px; }
+    /* Button */
+    .btn-primary {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 13px; font-weight: 500;
+        padding: 6px 12px; border-radius: 6px;
+        color: #fff; background: #111827;
+        border: 1px solid #111827;
+    }
+    .btn-primary:hover { background: #1f2937; border-color: #1f2937; }
+    .btn-ghost {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 13px; font-weight: 500;
+        padding: 6px 10px; border-radius: 6px;
+        color: #374151; background: transparent;
+        border: 1px solid #ececec;
+    }
+    .btn-ghost:hover { background: #fafafa; }
+    /* Thin select */
+    .sel {
+        font-size: 12.5px; color: #374151;
+        padding: 5px 24px 5px 10px; border-radius: 6px;
+        background: #fff;
+        border: 1px solid #ececec;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%239ca3af'%3E%3Cpath d='M10 12l-4-4h8z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 6px center;
+        background-size: 14px;
+    }
+    .sel:hover { border-color: #d1d5db; }
+    /* Search */
+    .search-wrap { position: relative; display: flex; align-items: center; flex: 1; max-width: 320px; }
+    .search-wrap svg.search-icon { position: absolute; left: 9px; width: 14px; height: 14px; color: #9ca3af; }
+    .search-wrap input {
+        width: 100%;
+        font-size: 12.5px; color: #111827;
+        padding: 6px 48px 6px 28px; border-radius: 6px;
+        background: #fff; border: 1px solid #ececec;
+    }
+    .search-wrap input::placeholder { color: #9ca3af; }
+    .search-wrap input:focus { outline: none; border-color: #C9962A; }
+    .search-wrap .kbd-wrap { position: absolute; right: 6px; }
+    /* Mobile menu */
+    @media (max-width: 767px) {
+        .mobile-hidden { display: none; }
+        .col-hide-md { display: none; }
+    }
+    /* Keep subtle dot above everything */
+</style>
+</head>
+<body class="min-h-screen">
+
+{# ----- Top bar — thin, logo + breadcrumb + back link ----- #}
+<header class="hairline-b">
+    <div class="h-12 px-4 md:px-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <button type="button"
+                    class="md:hidden text-neutral-500 hover:text-neutral-900"
+                    onclick="document.getElementById('nav').classList.toggle('hidden')"
+                    aria-label="Toggle navigation">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <svg viewBox="0 0 40 40" fill="none" class="h-6 w-6">
+                <rect width="40" height="40" rx="10" fill="#1B3A6B"/>
+                <path d="M25 11a11 11 0 1 0 0 18" stroke="#C9A92A" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <path d="M25 25V15m0 0l-4 4m4-4l4 4" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="flex items-center gap-2 text-neutral-500">
+                <span class="text-[13px] text-neutral-900 font-medium">ClassUp</span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                <span class="text-[13px] text-neutral-700">Exams</span>
+            </div>
+        </div>
+        <a href="/design-showcase" class="text-[12.5px] text-neutral-500 hover:text-neutral-900 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Back to showcase
+        </a>
+    </div>
+</header>
+
+<div class="flex min-h-[calc(100vh-48px)]">
+
+    {# ----- Left nav — no icons, just labels + gold active indicator ----- #}
+    <aside id="nav" class="hidden md:block w-56 hairline-r py-6 pl-6 pr-4 flex-shrink-0 bg-white">
+        <nav class="space-y-7">
+            <div>
+                <p class="nav-label mb-3">Academic</p>
+                <ul class="space-y-1.5 text-[13px] text-neutral-500">
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Attendance</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Timetable</a></li>
+                    <li><a href="#" class="nav-item is-active block">Exams</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Reports</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Report templates</a></li>
+                </ul>
+            </div>
+            <div>
+                <p class="nav-label mb-3">People</p>
+                <ul class="space-y-1.5 text-[13px] text-neutral-500">
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Students</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Classes</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Teachers</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Parents</a></li>
+                </ul>
+            </div>
+            <div>
+                <p class="nav-label mb-3">Finance</p>
+                <ul class="space-y-1.5 text-[13px] text-neutral-500">
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Billing</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Accounting</a></li>
+                    <li><a href="#" class="nav-item block hover:text-neutral-900">Subscription</a></li>
+                </ul>
+            </div>
+        </nav>
+    </aside>
+
+    {# ----- Main content ----- #}
+    <main class="flex-1 min-w-0">
+
+        {# Page header #}
+        <section class="px-4 md:px-10 pt-10 pb-6 hairline-b">
+            <div class="flex items-start justify-between gap-4 max-w-5xl">
+                <div class="min-w-0">
+                    <h1 class="text-[22px] font-semibold text-neutral-900 tracking-tight">Exams</h1>
+                    <p class="mt-1.5 text-[13px] text-neutral-500 max-w-xl">
+                        Manage class exams and push marks into report cards.
+                    </p>
+                </div>
+                <a href="#" class="btn-primary flex-shrink-0">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+                    New exam
+                </a>
+            </div>
+        </section>
+
+        {# Filter / search bar #}
+        <section class="px-4 md:px-10 py-4 hairline-b">
+            <div class="flex items-center gap-2 max-w-5xl flex-wrap">
+                <div class="search-wrap">
+                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" placeholder="Search exams…">
+                    <span class="kbd-wrap"><span class="kbd">⌘K</span></span>
+                </div>
+                <select class="sel" aria-label="Status filter">
+                    <option>All statuses</option>
+                    <option>Scheduled</option>
+                    <option>In progress</option>
+                    <option>Finalized</option>
+                    <option>Draft</option>
+                </select>
+                <select class="sel" aria-label="Class filter">
+                    <option>All classes</option>
+                    <option>Form 1B</option>
+                    <option>Form 2B</option>
+                    <option>Form 3A</option>
+                    <option>Form 4A</option>
+                </select>
+                <select class="sel" aria-label="Year filter">
+                    <option>2026</option>
+                    <option>2025</option>
+                </select>
+            </div>
+        </section>
+
+        {# Table #}
+        <section class="px-4 md:px-10 py-4">
+            <div class="max-w-5xl">
+                <table class="w-full text-[13px]">
+                    <thead>
+                        <tr class="text-left hairline-b">
+                            <th class="py-2.5 pr-4 font-medium text-neutral-500">Name</th>
+                            <th class="py-2.5 pr-4 font-medium text-neutral-500 col-hide-md">Class</th>
+                            <th class="py-2.5 pr-4 font-medium text-neutral-500 col-hide-md">Year / Term</th>
+                            <th class="py-2.5 pr-4 font-medium text-neutral-500">Status</th>
+                            <th class="py-2.5 pr-4 font-medium text-neutral-500 text-right col-hide-md">Papers</th>
+                            <th class="py-2.5 pr-4 font-medium text-neutral-500 col-hide-md">Created</th>
+                            <th class="py-2.5 w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exam in exams %}
+                        {% set status_class = 'dot-' ~ exam.status | lower %}
+                        {% set status_label = exam.status | lower | replace('_', ' ') | capitalize %}
+                        <tr class="hairline-b group">
+                            <td class="py-3 pr-4">
+                                <a href="#" class="link-u font-medium">{{ exam.name }}</a>
+                                <div class="text-[12px] text-neutral-500 mt-0.5 md:hidden">
+                                    {{ exam.class_name }} · {{ exam.academic_year }} · Term {{ exam.term }}
+                                </div>
+                            </td>
+                            <td class="py-3 pr-4 text-neutral-700 col-hide-md">{{ exam.class_name }}</td>
+                            <td class="py-3 pr-4 text-neutral-700 col-hide-md">
+                                {{ exam.academic_year }} · Term {{ exam.term }}
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="inline-flex items-center gap-2 text-neutral-700">
+                                    <span class="dot {{ status_class }}"></span>
+                                    {{ status_label }}
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4 text-right tabular-nums text-neutral-700 col-hide-md">
+                                {{ exam.papers_count }}
+                            </td>
+                            <td class="py-3 pr-4 text-neutral-500 col-hide-md">{{ exam.created_at }}</td>
+                            <td class="py-3">
+                                <button type="button" class="row-action text-neutral-400 hover:text-neutral-900" aria-label="Actions">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01"/></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {# Footer #}
+                <div class="mt-4 flex items-center justify-between text-[12px] text-neutral-500">
+                    <span>Showing {{ exams | length }} of {{ exams | length }} exams</span>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" class="btn-ghost" disabled style="opacity:.4">Previous</button>
+                        <button type="button" class="btn-ghost" disabled style="opacity:.4">Next</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+</body>
+</html>

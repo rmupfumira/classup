@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Showcase — ClassUp</title>
+<link rel="icon" type="image/svg+xml" href="/static/img/icons/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+    fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+    },
+    colors: {
+        navy: {50:'#f0f4f9',100:'#dce4f0',200:'#b9c9e1',300:'#8aa5cc',400:'#5a7eb3',500:'#3a5f96',600:'#1B3A6B',700:'#162f56',800:'#112442',900:'#0c192d'},
+        gold: {50:'#fdf8eb',100:'#f9edcc',200:'#f3db99',300:'#edc966',400:'#e0ad3a',500:'#C9962A',600:'#a67a22',700:'#835f1b',800:'#604514',900:'#3d2c0d'},
+    }
+}}}
+</script>
+<style>
+    body { font-family: Inter, system-ui, sans-serif; }
+    /* Iframe device frames */
+    .device-desktop { aspect-ratio: 16 / 10; }
+    .device-mobile { width: 390px; height: 720px; max-width: 100%; }
+    /* Thumbnail iframe zoom — show the design at smaller scale */
+    .thumb-frame {
+        transform: scale(0.42);
+        transform-origin: top left;
+        width: 238%;  /* 100 / 0.42 */
+        height: 238%;
+    }
+    .thumb-wrap { overflow: hidden; }
+</style>
+</head>
+<body class="min-h-screen bg-neutral-50 text-neutral-900">
+
+<!-- Navy header strip — matches the brand everywhere else -->
+<header class="bg-navy-600 text-white">
+    <div class="max-w-7xl mx-auto px-6 py-10">
+        <div class="flex items-center gap-3 mb-6">
+            <svg class="h-9 w-9" viewBox="0 0 40 40" fill="none">
+                <rect width="40" height="40" rx="10" fill="#1B3A6B"/>
+                <path d="M25 11a11 11 0 1 0 0 18" stroke="#C9A92A" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <path d="M25 25V15m0 0l-4 4m4-4l4 4" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="text-lg font-semibold tracking-tight">ClassUp</span>
+        </div>
+        <p class="text-xs font-bold text-gold-400 uppercase tracking-[0.15em] mb-3">Design Showcase</p>
+        <h1 class="text-3xl md:text-4xl font-bold max-w-3xl leading-tight">
+            Four directions for the ClassUp interface.
+        </h1>
+        <p class="mt-3 text-navy-100 max-w-2xl">
+            Each prototype renders the same Exams page using the same brand palette, logo and content —
+            so the comparison is purely about design execution. Preview full-size, flip between desktop
+            and mobile, then pick the one you want shipped across the app.
+        </p>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-10">
+    <!-- Design selector grid -->
+    <div class="grid md:grid-cols-2 gap-6" id="design-grid">
+        {% for d in designs %}
+        <article class="group bg-white border border-neutral-200 rounded-2xl overflow-hidden flex flex-col transition hover:border-navy-300 hover:shadow-lg"
+                 data-design="{{ d.id }}">
+            <!-- Live preview in an iframe, scaled down -->
+            <div class="thumb-wrap bg-neutral-100 aspect-[16/10] border-b border-neutral-200 relative">
+                <iframe src="/design-showcase/{{ d.id }}?preview=1"
+                        class="thumb-frame absolute inset-0 pointer-events-none"
+                        title="{{ d.name }} preview" loading="lazy"
+                        aria-hidden="true"></iframe>
+            </div>
+            <div class="p-6 flex-1 flex flex-col">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs font-bold text-gold-600 uppercase tracking-wider">Design {{ d.id }}</span>
+                    <span class="text-xs text-neutral-400">— {{ d.hint }}</span>
+                </div>
+                <h3 class="text-xl font-bold text-navy-600 mb-1">{{ d.name }}</h3>
+                <p class="text-sm text-neutral-600 mb-6 flex-1">{{ d.tagline }}</p>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <a href="/design-showcase/{{ d.id }}"
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-white text-sm font-semibold rounded-lg transition">
+                        Open full preview
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    </a>
+                    <button type="button"
+                            data-preview-mobile="{{ d.id }}"
+                            class="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 hover:border-navy-400 hover:bg-navy-50 text-neutral-700 text-sm font-medium rounded-lg transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        Mobile
+                    </button>
+                    <label class="inline-flex items-center gap-2 ml-auto text-sm text-neutral-700 cursor-pointer select-none">
+                        <input type="radio" name="design-choice" value="{{ d.id }}"
+                               class="w-4 h-4 accent-navy-600">
+                        <span>Select</span>
+                    </label>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    <!-- Selection bar — shows up when a design is picked -->
+    <div id="selection-bar" class="hidden mt-8 bg-navy-600 text-white rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div class="flex-1">
+            <p class="text-xs font-bold text-gold-400 uppercase tracking-wider">Your pick</p>
+            <h4 class="text-lg font-semibold mt-1" id="selection-name">—</h4>
+            <p class="text-sm text-navy-100 mt-0.5" id="selection-tag">—</p>
+        </div>
+        <p class="text-sm text-navy-200 max-w-md">
+            Reply with the design number and I'll roll it out across the whole application, align every
+            route, refine shared components and retire the other three prototypes.
+        </p>
+    </div>
+</main>
+
+<!-- Mobile preview modal -->
+<div id="mobile-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+     onclick="if (event.target === this) closeMobile()">
+    <div class="bg-white rounded-2xl overflow-hidden shadow-2xl relative">
+        <button type="button" onclick="closeMobile()"
+                class="absolute top-2 right-2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 hover:bg-white shadow">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <iframe id="mobile-frame"
+                class="device-mobile border-0"
+                title="Mobile preview"></iframe>
+    </div>
+</div>
+
+<script>
+(function () {
+    const designs = {{ designs | tojson }};
+    const grid = document.getElementById('design-grid');
+    const selBar = document.getElementById('selection-bar');
+    const selName = document.getElementById('selection-name');
+    const selTag = document.getElementById('selection-tag');
+
+    // Highlight the chosen card + populate the selection bar.
+    grid.addEventListener('change', (ev) => {
+        const t = ev.target;
+        if (t.name !== 'design-choice') return;
+        const choice = designs.find(d => d.id === t.value);
+        if (!choice) return;
+        document.querySelectorAll('[data-design]').forEach(card => {
+            card.classList.toggle('ring-2', card.dataset.design === t.value);
+            card.classList.toggle('ring-navy-600', card.dataset.design === t.value);
+            card.classList.toggle('ring-offset-2', card.dataset.design === t.value);
+        });
+        selName.textContent = `Design ${choice.id} — ${choice.name}`;
+        selTag.textContent = choice.tagline;
+        selBar.classList.remove('hidden');
+        selBar.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    });
+
+    // Mobile preview buttons
+    grid.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-preview-mobile]');
+        if (!btn) return;
+        const id = btn.getAttribute('data-preview-mobile');
+        document.getElementById('mobile-frame').src = `/design-showcase/${id}?preview=mobile`;
+        document.getElementById('mobile-modal').classList.remove('hidden');
+    });
+
+    window.closeMobile = function () {
+        document.getElementById('mobile-modal').classList.add('hidden');
+        document.getElementById('mobile-frame').src = 'about:blank';
+    };
+})();
+</script>
+
+</body>
+</html>
