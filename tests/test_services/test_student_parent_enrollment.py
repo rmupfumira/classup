@@ -206,8 +206,13 @@ class TestCreateStudentLinksExistingParent:
         assert parent.whatsapp_opted_in is True
         assert parent.whatsapp_phone == "+27827654321"
 
-        # Both notifications fired.
-        email_send.assert_awaited_once()
+        # The parent gets exactly one "new child added" email. Admins
+        # also get an enrolment notice, so count only the parent's.
+        recipients = [
+            c.kwargs.get("to", c.args[0] if c.args else None)
+            for c in email_send.await_args_list
+        ]
+        assert recipients.count("dad@example.com") == 1
         wa_notify.assert_awaited_once()
 
 
