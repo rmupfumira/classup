@@ -3,58 +3,65 @@
 {% block title %}Accounting - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <div>
-        <h1 class="text-xl font-semibold text-neutral-800">Accounting</h1>
-        <p class="mt-0.5 text-sm text-neutral-500">Track income, expenses, and your bank balances.</p>
-    </div>
+<div class="space-y-6">
+
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="max-w-xl">
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
+            <h1 class="cu-page-title text-white">Accounting</h1>
+            <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                Track income, expenses, and your bank balances across the school.
+            </p>
+        </div>
+    </section>
 
     {% include 'accounting/_layout.html' %}
 
-    <!-- This-month summary cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="summary-cards">
-        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">This month — Income</p>
-            <p class="mt-1 text-lg font-semibold text-success-600" id="card-income">—</p>
+    {# ------ Summary tiles ------ #}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="summary-cards">
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">This month — Income</div>
+            <div class="cu-stat-tile-value" id="card-income">—</div>
         </div>
-        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">This month — Expenses</p>
-            <p class="mt-1 text-lg font-semibold text-warning-600" id="card-expense">—</p>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">This month — Expenses</div>
+            <div class="cu-stat-tile-value" id="card-expense">—</div>
         </div>
-        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">This month — Net</p>
-            <p class="mt-1 text-lg font-semibold" id="card-net">—</p>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">This month — Net</div>
+            <div class="cu-stat-tile-value" id="card-net">—</div>
         </div>
-        <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">Cash Position</p>
-            <p class="mt-1 text-lg font-semibold text-primary-600" id="card-cash">—</p>
-        </div>
-    </div>
-
-    <!-- Bank balances -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-neutral-800">Bank balances</h2>
-            <a href="/accounting/banks" class="text-xs text-primary-600 hover:underline">Manage banks</a>
-        </div>
-        <div id="banks-body" class="divide-y divide-neutral-100">
-            <p class="text-center text-neutral-400 py-8 text-sm">Loading...</p>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Cash Position</div>
+            <div class="cu-stat-tile-value" id="card-cash">—</div>
         </div>
     </div>
 
-    <!-- Quick actions -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <a href="/accounting/expenses" class="bg-white rounded-lg shadow-card border border-neutral-200 p-4 hover:border-primary-300 hover:shadow-md transition-all">
-            <p class="text-sm font-semibold text-neutral-800">Record an expense →</p>
-            <p class="text-xs text-neutral-500 mt-1">Bills, salaries, supplies</p>
+    {# ------ Bank balances ------ #}
+    <div class="cu-card">
+        <div class="px-5 py-4 border-b border-navy-100 flex items-center justify-between">
+            <h2 class="text-base font-bold text-navy-800">Bank balances</h2>
+            <a href="/accounting/banks" class="text-sm font-semibold text-navy-600 hover:text-navy-800">Manage banks →</a>
+        </div>
+        <div id="banks-body" class="divide-y divide-navy-50">
+            <p class="text-center text-navy-400 py-8 text-sm">Loading...</p>
+        </div>
+    </div>
+
+    {# ------ Quick actions ------ #}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <a href="/accounting/expenses" class="cu-card cu-card-hover p-5">
+            <p class="text-sm font-bold text-navy-800">Record an expense →</p>
+            <p class="text-xs text-navy-500 mt-1">Bills, salaries, supplies</p>
         </a>
-        <a href="/accounting/income" class="bg-white rounded-lg shadow-card border border-neutral-200 p-4 hover:border-primary-300 hover:shadow-md transition-all">
-            <p class="text-sm font-semibold text-neutral-800">Record income →</p>
-            <p class="text-xs text-neutral-500 mt-1">Donations, grants, fundraising</p>
+        <a href="/accounting/income" class="cu-card cu-card-hover p-5">
+            <p class="text-sm font-bold text-navy-800">Record income →</p>
+            <p class="text-xs text-navy-500 mt-1">Donations, grants, fundraising</p>
         </a>
-        <a href="/accounting/reports" class="bg-white rounded-lg shadow-card border border-neutral-200 p-4 hover:border-primary-300 hover:shadow-md transition-all">
-            <p class="text-sm font-semibold text-neutral-800">Reports →</p>
-            <p class="text-xs text-neutral-500 mt-1">P&amp;L, expenses by category, cash position</p>
+        <a href="/accounting/reports" class="cu-card cu-card-hover p-5">
+            <p class="text-sm font-bold text-navy-800">Reports →</p>
+            <p class="text-xs text-navy-500 mt-1">P&amp;L, expenses by category, cash position</p>
         </a>
     </div>
 </div>
@@ -63,9 +70,7 @@
 const CURRENCY_SYMBOL = {{ currency_symbol | tojson }};
 function fmt(n) { return CURRENCY_SYMBOL + ' ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-function setCardsError(msg) {
-    // Cards show R 0.00 on error so the page doesn't look broken — the
-    // banks list below carries the explicit error message + retry button
+function setCardsError() {
     for (const id of ['card-income', 'card-expense', 'card-net', 'card-cash']) {
         const el = document.getElementById(id);
         if (el) el.textContent = '—';
@@ -81,45 +86,42 @@ function setCardsEmpty() {
 
 async function load() {
     const body = document.getElementById('banks-body');
-    body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">Loading...</p>';
+    body.innerHTML = '<p class="text-center text-navy-400 py-6 text-sm">Loading...</p>';
     try {
         const res = await ClassUp.fetch('/api/v1/accounting/dashboard');
         const d = res && res.data;
         if (!d) {
-            // Should never happen, but don't leave the user stuck on Loading
             setCardsEmpty();
-            body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">No data yet.</p>';
+            body.innerHTML = '<p class="text-center text-navy-400 py-6 text-sm">No data yet.</p>';
             return;
         }
 
         document.getElementById('card-income').textContent = fmt(d.income_this_month);
         document.getElementById('card-expense').textContent = fmt(d.expense_this_month);
-        const netEl = document.getElementById('card-net');
-        netEl.textContent = fmt(d.net_this_month);
-        netEl.className = 'mt-1 text-lg font-semibold ' + (d.net_this_month >= 0 ? 'text-success-600' : 'text-danger-600');
+        document.getElementById('card-net').textContent = fmt(d.net_this_month);
         document.getElementById('card-cash').textContent = fmt(d.cash_total);
 
         if (!d.banks || !d.banks.length) {
-            body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">No bank accounts yet. <a href="/accounting/banks" class="text-primary-600 hover:underline">Add one →</a></p>';
+            body.innerHTML = '<p class="text-center text-navy-400 py-6 text-sm">No bank accounts yet. <a href="/accounting/banks" class="text-navy-600 hover:text-navy-800 font-semibold">Add one →</a></p>';
             return;
         }
         body.innerHTML = d.banks.map(b => `
-            <div class="px-4 py-3 flex items-center justify-between">
+            <div class="px-5 py-3 flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-neutral-800">${b.name}${b.is_default ? ' <span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-primary-100 text-primary-700 ml-1">Default</span>' : ''}</p>
-                    <p class="text-xs text-neutral-500">${b.bank_name || '—'} · ${b.account_type}</p>
+                    <p class="text-sm font-semibold text-navy-800">${b.name}${b.is_default ? ' <span class="ml-1 cu-chip-gold">Default</span>' : ''}</p>
+                    <p class="text-xs text-navy-500">${b.bank_name || '—'} · ${b.account_type}</p>
                 </div>
-                <p class="text-sm font-semibold ${b.balance >= 0 ? 'text-neutral-800' : 'text-danger-600'}">${fmt(b.balance)}</p>
+                <p class="text-sm font-bold ${b.balance >= 0 ? 'text-navy-800' : 'text-rose-700'}">${fmt(b.balance)}</p>
             </div>
         `).join('');
     } catch (err) {
         console.error('Accounting dashboard failed to load:', err);
         setCardsError();
         body.innerHTML = `
-            <div class="px-4 py-6 text-center">
-                <p class="text-sm text-danger-600 mb-2">Couldn't load accounting summary.</p>
-                <p class="text-xs text-neutral-500 mb-3">${(err && err.message) ? err.message : 'Network or server error.'}</p>
-                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            <div class="px-5 py-6 text-center">
+                <p class="text-sm text-rose-700 mb-2">Couldn't load accounting summary.</p>
+                <p class="text-xs text-navy-500 mb-3">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="cu-btn-soft !py-1.5 !px-3 !text-xs">Retry</button>
             </div>`;
     }
 }

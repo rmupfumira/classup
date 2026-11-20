@@ -3,22 +3,24 @@
 {% block title %}Create Announcement - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
-    <!-- Header -->
-    <div class="flex items-center gap-3">
-        <a href="/announcements" class="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </a>
-        <div>
-            <h1 class="text-2xl font-bold text-neutral-800">Create Announcement</h1>
-            <p class="mt-1 text-neutral-500">Notify staff and parents</p>
+<div class="max-w-3xl mx-auto space-y-6">
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex items-center gap-4">
+            <a href="/announcements" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </a>
+            <div>
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-2">Communication</span>
+                <h1 class="cu-page-title text-white">Create announcement</h1>
+            </div>
         </div>
-    </div>
+    </section>
 
     <!-- Form -->
-    <form id="announcement-form" class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-5">
+    <form id="announcement-form" class="cu-card p-6 space-y-5">
         <!-- Title -->
         <div>
             <label for="title" class="block text-sm font-medium text-neutral-700 mb-1">Title <span class="text-red-500">*</span></label>
@@ -102,14 +104,8 @@
 
         <!-- Submit -->
         <div class="flex gap-3 pt-2">
-            <a href="/announcements"
-               class="flex-1 py-2.5 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
-                Cancel
-            </a>
-            <button type="submit"
-                    class="flex-1 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors">
-                Publish Announcement
-            </button>
+            <a href="/announcements" class="cu-btn-soft flex-1">Cancel</a>
+            <button type="submit" class="cu-btn-primary flex-1">Publish announcement</button>
         </div>
     </form>
 </div>

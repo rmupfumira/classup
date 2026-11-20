@@ -3,85 +3,95 @@
 {% block title %}Expenses - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Expenses</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">Money paid to vendors and operating expenses.</p>
+<div class="space-y-6">
+
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance · Accounting</span>
+                <h1 class="cu-page-title text-white">Expenses</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Money paid to vendors and operating expenses.
+                </p>
+            </div>
+            <div class="flex gap-3 shrink-0">
+                <button onclick="openExpense()" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Record expense
+                </button>
+            </div>
         </div>
-        <button onclick="openExpense()"
-                class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
-            + Record expense
-        </button>
-    </div>
+    </section>
 
     {% include 'accounting/_layout.html' %}
 
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+    <div class="cu-table-wrap">
         <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="bg-neutral-50 border-b border-neutral-200">
+        <table class="cu-table">
+            <thead>
                 <tr>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Category</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Vendor</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Description</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bank</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Amount</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Vendor</th>
+                    <th>Description</th>
+                    <th>Bank</th>
+                    <th style="text-align:right">Amount</th>
+                    <th style="text-align:right">Actions</th>
                 </tr>
             </thead>
-            <tbody id="tx-body" class="divide-y divide-neutral-100">
-                <tr><td colspan="7" class="text-center text-neutral-400 py-8">Loading...</td></tr>
+            <tbody id="tx-body">
+                <tr><td colspan="7" class="text-center text-navy-400" style="padding: 2rem;">Loading...</td></tr>
             </tbody>
         </table>
         </div>
     </div>
 </div>
 
-<dialog id="exp-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+<dialog id="exp-modal" class="rounded-3xl shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
     <form class="p-6" onsubmit="submitExpense(event)">
-        <h3 class="text-lg font-semibold text-neutral-800 mb-4">Record an expense</h3>
+        <h3 class="text-lg font-bold text-navy-800 mb-4">Record an expense</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Date</label>
-                <input type="date" id="f-date" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Date</label>
+                <input type="date" id="f-date" required class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Amount ({{ currency_code }})</label>
-                <input type="number" id="f-amount" step="0.01" min="0.01" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Amount ({{ currency_code }})</label>
+                <input type="number" id="f-amount" step="0.01" min="0.01" required class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Category</label>
-                <select id="f-account" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Category</label>
+                <select id="f-account" required class="cu-select">
                     <option value="">—</option>
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Bank account</label>
-                <select id="f-bank" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Bank account</label>
+                <select id="f-bank" required class="cu-select">
                     <option value="">—</option>
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Vendor (optional)</label>
-                <select id="f-vendor" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Vendor (optional)</label>
+                <select id="f-vendor" class="cu-select">
                     <option value="">—</option>
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Reference (optional)</label>
-                <input type="text" id="f-ref" maxlength="100" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Reference (optional)</label>
+                <input type="text" id="f-ref" maxlength="100" class="cu-input">
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Description</label>
-                <textarea id="f-desc" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Description</label>
+                <textarea id="f-desc" rows="2" class="cu-textarea"></textarea>
             </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
-            <button type="button" onclick="document.getElementById('exp-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+            <button type="button" onclick="document.getElementById('exp-modal').close()" class="cu-btn-soft">Cancel</button>
+            <button type="submit" class="cu-btn-primary">Save</button>
         </div>
     </form>
 </dialog>
@@ -92,7 +102,7 @@ function fmt(n) { return CURRENCY_SYMBOL + ' ' + (Number(n) || 0).toLocaleString
 
 async function load() {
     const body = document.getElementById('tx-body');
-    body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">Loading...</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="text-center text-navy-400" style="padding: 2rem;">Loading...</td></tr>';
     let items;
     try {
         const res = await ClassUp.fetch('/api/v1/accounting/transactions?type=EXPENSE&page_size=100');
@@ -100,27 +110,27 @@ async function load() {
     } catch (err) {
         console.error('Failed to load expenses:', err);
         body.innerHTML = `
-            <tr><td colspan="7" class="text-center py-8">
-                <p class="text-sm text-danger-600 mb-1">Couldn't load expenses.</p>
-                <p class="text-xs text-neutral-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
-                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            <tr><td colspan="7" style="padding: 2rem; text-align: center;">
+                <p class="text-sm text-rose-700 mb-1">Couldn't load expenses.</p>
+                <p class="text-xs text-navy-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="cu-btn-soft !py-1.5 !px-3 !text-xs">Retry</button>
             </td></tr>`;
         return;
     }
     if (!items.length) {
-        body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">No expenses recorded yet. Click <strong>+ Record expense</strong> to add one.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="text-center text-navy-400" style="padding: 2rem;">No expenses recorded yet. Click <strong>+ Record expense</strong> to add one.</td></tr>';
         return;
     }
     body.innerHTML = items.map(t => `
-        <tr class="hover:bg-neutral-50">
-            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.date}</td>
-            <td class="px-3 py-2 whitespace-nowrap font-medium text-neutral-800">${t.account_name || '—'}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.vendor_name || '—'}</td>
-            <td class="px-3 py-2 text-neutral-600">${t.description || ''}${t.reference ? `<div class="text-xs text-neutral-400">Ref: ${t.reference}</div>` : ''}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.bank_account_name || '—'}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-right font-medium text-warning-700">-${fmt(t.amount)}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-right">
-                <button onclick="deleteTx('${t.id}')" class="text-xs text-danger-600 hover:underline">Delete</button>
+        <tr>
+            <td class="text-navy-600">${t.date}</td>
+            <td class="font-semibold text-navy-800">${t.account_name || '—'}</td>
+            <td class="text-navy-600">${t.vendor_name || '—'}</td>
+            <td class="text-navy-600">${t.description || ''}${t.reference ? `<div class="text-xs text-navy-400">Ref: ${t.reference}</div>` : ''}</td>
+            <td class="text-navy-600">${t.bank_account_name || '—'}</td>
+            <td style="text-align:right" class="font-bold text-gold-800">-${fmt(t.amount)}</td>
+            <td style="text-align:right">
+                <button onclick="deleteTx('${t.id}')" class="text-xs text-rose-600 hover:text-rose-700 font-semibold">Delete</button>
             </td>
         </tr>
     `).join('');

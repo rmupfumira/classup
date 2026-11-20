@@ -4,28 +4,30 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-neutral-900">Documents</h1>
-            <p class="mt-1 text-sm text-neutral-500">
-                {{ total }} document{{ 's' if total != 1 else '' }}
-            </p>
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Communication</span>
+                <h1 class="cu-page-title text-white">Documents</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    {{ total }} document{{ 's' if total != 1 else '' }}
+                </p>
+            </div>
+            {% if permissions.is_staff %}
+            <a href="/documents/upload" class="cu-btn-gold">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Share document
+            </a>
+            {% endif %}
         </div>
-        {% if permissions.is_staff %}
-        <a href="/documents/upload"
-           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-            </svg>
-            Share Document
-        </a>
-        {% endif %}
-    </div>
+    </section>
 
     <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <form method="get" class="flex flex-col sm:flex-row gap-4">
             {% if classes %}
             <div class="sm:w-64">
@@ -56,8 +58,8 @@
 
     <!-- Documents List -->
     {% if documents %}
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="divide-y divide-neutral-200">
+    <div class="cu-card overflow-hidden">
+        <div class="divide-y divide-navy-100/60">
             {% for doc in documents %}
             <div class="p-4 hover:bg-neutral-50 transition-colors">
                 <div class="flex items-start gap-4">
@@ -182,7 +184,7 @@
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
-    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-neutral-200">
+    <div class="cu-card flex items-center justify-between px-4 py-3">
         <div class="flex-1 flex justify-between sm:hidden">
             {% if page > 1 %}
             <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_scope %}&scope={{ current_scope }}{% endif %}"
@@ -223,27 +225,22 @@
 
     {% else %}
     <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-neutral-900">No documents</h3>
-        <p class="mt-2 text-sm text-neutral-500">
-            {% if current_class_id %}
-                No documents have been shared with this class yet.
-            {% elif current_scope %}
-                No documents found with this scope.
-            {% else %}
-                No documents have been shared yet.
-            {% endif %}
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+        </div>
+        <p class="cu-empty-title">No documents</p>
+        <p class="cu-empty-text">
+            {% if current_class_id %}No documents have been shared with this class yet.
+            {% elif current_scope %}No documents found with this scope.
+            {% else %}No documents have been shared yet.{% endif %}
         </p>
         {% if permissions.is_staff %}
-        <div class="mt-6">
-            <a href="/documents/upload"
-               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                Share Document
-            </a>
+        <div class="mt-5">
+            <a href="/documents/upload" class="cu-btn-gold">Share document</a>
         </div>
         {% endif %}
     </div>

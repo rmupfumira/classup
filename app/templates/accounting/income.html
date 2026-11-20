@@ -3,103 +3,113 @@
 {% block title %}Income - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Income</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">
-                Money received. Invoice payments from <a href="/billing" class="text-primary-600 hover:underline">Billing</a> appear here automatically; use <strong>+ Record income</strong> for grants, donations, or fundraising. If you pick an invoice-only category (e.g. Tuition Fees) the form switches to invoice-payment mode and routes through Billing.
-            </p>
+<div class="space-y-6">
+
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-2xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance · Accounting</span>
+                <h1 class="cu-page-title text-white">Income</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Money received. Invoice payments from <a href="/billing" class="underline underline-offset-2 hover:text-gold-300">Billing</a> appear here automatically; use <strong>+ Record income</strong> for grants, donations, or fundraising.
+                </p>
+            </div>
+            <div class="flex gap-3 shrink-0">
+                <button onclick="openInc()" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Record income
+                </button>
+            </div>
         </div>
-        <button onclick="openInc()" class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
-            + Record income
-        </button>
-    </div>
+    </section>
 
     {% include 'accounting/_layout.html' %}
 
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+    <div class="cu-table-wrap">
         <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="bg-neutral-50 border-b border-neutral-200">
+        <table class="cu-table">
+            <thead>
                 <tr>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Source</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Student</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Description</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bank</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Amount</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Student</th>
+                    <th>Description</th>
+                    <th>Bank</th>
+                    <th style="text-align:right">Amount</th>
+                    <th style="text-align:right">Actions</th>
                 </tr>
             </thead>
-            <tbody id="tx-body" class="divide-y divide-neutral-100">
-                <tr><td colspan="7" class="text-center text-neutral-400 py-8">Loading...</td></tr>
+            <tbody id="tx-body">
+                <tr><td colspan="7" class="text-center text-navy-400" style="padding: 2rem;">Loading...</td></tr>
             </tbody>
         </table>
         </div>
     </div>
 </div>
 
-<dialog id="inc-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+<dialog id="inc-modal" class="rounded-3xl shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
     <form class="p-6" onsubmit="submitInc(event)">
-        <h3 class="text-lg font-semibold text-neutral-800 mb-4">Record income</h3>
-        <p id="inc-helper" class="text-xs text-neutral-500 mb-4">
+        <h3 class="text-lg font-bold text-navy-800 mb-4">Record income</h3>
+        <p id="inc-helper" class="text-xs text-navy-500 mb-4">
             Use this for grants, donations, fundraising, or any income that isn't from invoiced fees.
         </p>
-        <p id="inc-invoice-helper" class="hidden text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2 mb-4">
+        <p id="inc-invoice-helper" class="hidden text-xs text-navy-700 bg-navy-50 border border-navy-100 rounded-2xl p-3 mb-4">
             Invoice-only category selected. Pick the student + their invoice; this will record a payment in Billing
             and the matching accounting entry is auto-posted.
         </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Date</label>
-                <input type="date" id="i-date" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Date</label>
+                <input type="date" id="i-date" required class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Amount (<span id="i-amount-ccy">{{ currency_code }}</span>)</label>
-                <input type="number" id="i-amount" step="0.01" min="0.01" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Amount (<span id="i-amount-ccy">{{ currency_code }}</span>)</label>
+                <input type="number" id="i-amount" step="0.01" min="0.01" required class="cu-input">
             </div>
 
             <div class="sm:col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Source</label>
-                <select id="i-account" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Source</label>
+                <select id="i-account" required class="cu-select">
                     <option value="">—</option>
                 </select>
             </div>
 
-            {# ─── Plain-income fields (hidden in invoice mode) ─── #}
+            {# Plain-income fields (hidden in invoice mode) #}
             <div data-mode="plain">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Bank account</label>
-                <select id="i-bank" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Bank account</label>
+                <select id="i-bank" class="cu-select">
                     <option value="">—</option>
                 </select>
             </div>
             <div data-mode="plain">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Reference (optional)</label>
-                <input type="text" id="i-ref" maxlength="100" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Reference (optional)</label>
+                <input type="text" id="i-ref" maxlength="100" class="cu-input">
             </div>
             <div data-mode="plain" class="sm:col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Description</label>
-                <textarea id="i-desc" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Description</label>
+                <textarea id="i-desc" rows="2" class="cu-textarea"></textarea>
             </div>
 
-            {# ─── Invoice-mode fields (hidden in plain mode) ─── #}
+            {# Invoice-mode fields (hidden in plain mode) #}
             <div data-mode="invoice" class="hidden">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Student</label>
-                <select id="i-student" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Student</label>
+                <select id="i-student" class="cu-select">
                     <option value="">—</option>
                 </select>
             </div>
             <div data-mode="invoice" class="hidden">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Invoice</label>
-                <select id="i-invoice" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded" disabled>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Invoice</label>
+                <select id="i-invoice" class="cu-select" disabled>
                     <option value="">Pick a student first</option>
                 </select>
             </div>
             <div data-mode="invoice" class="hidden">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Payment method</label>
-                <select id="i-method" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Payment method</label>
+                <select id="i-method" class="cu-select">
                     <option value="CASH">Cash</option>
                     <option value="BANK_TRANSFER">Bank transfer</option>
                     <option value="EFT">EFT</option>
@@ -109,19 +119,18 @@
                 </select>
             </div>
             <div data-mode="invoice" class="hidden">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Reference / receipt no. (optional)</label>
-                <input type="text" id="i-inv-ref" maxlength="100" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Reference / receipt no. (optional)</label>
+                <input type="text" id="i-inv-ref" maxlength="100" class="cu-input">
             </div>
             <div data-mode="invoice" class="hidden sm:col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Notes (optional)</label>
-                <textarea id="i-inv-notes" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Notes (optional)</label>
+                <textarea id="i-inv-notes" rows="2" class="cu-textarea"></textarea>
             </div>
         </div>
 
         <div class="flex justify-end gap-2 mt-5">
-            <button type="button" onclick="document.getElementById('inc-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" id="inc-save-btn" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+            <button type="button" onclick="document.getElementById('inc-modal').close()" class="cu-btn-soft">Cancel</button>
+            <button type="submit" id="inc-save-btn" class="cu-btn-primary">Save</button>
         </div>
     </form>
 </dialog>
@@ -132,7 +141,7 @@ function fmt(n) { return CURRENCY_SYMBOL + ' ' + (Number(n) || 0).toLocaleString
 
 async function load() {
     const body = document.getElementById('tx-body');
-    body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">Loading...</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="text-center text-navy-400" style="padding: 2rem;">Loading...</td></tr>';
     let items;
     try {
         const res = await ClassUp.fetch('/api/v1/accounting/transactions?type=INCOME&page_size=100');
@@ -140,30 +149,30 @@ async function load() {
     } catch (err) {
         console.error('Failed to load income:', err);
         body.innerHTML = `
-            <tr><td colspan="7" class="text-center py-8">
-                <p class="text-sm text-danger-600 mb-1">Couldn't load income.</p>
-                <p class="text-xs text-neutral-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
-                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            <tr><td colspan="7" style="padding: 2rem; text-align: center;">
+                <p class="text-sm text-rose-700 mb-1">Couldn't load income.</p>
+                <p class="text-xs text-navy-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="cu-btn-soft !py-1.5 !px-3 !text-xs">Retry</button>
             </td></tr>`;
         return;
     }
     if (!items.length) {
-        body.innerHTML = '<tr><td colspan="7" class="text-center text-neutral-400 py-8">No income recorded yet. Invoice payments from Billing land here automatically; use <strong>+ Record income</strong> for grants, donations, or fundraising.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="text-center text-navy-400" style="padding: 2rem;">No income recorded yet. Invoice payments from Billing land here automatically; use <strong>+ Record income</strong> for grants, donations, or fundraising.</td></tr>';
         return;
     }
     body.innerHTML = items.map(t => `
-        <tr class="hover:bg-neutral-50">
-            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.date}</td>
-            <td class="px-3 py-2 whitespace-nowrap">
-                <span class="font-medium text-neutral-800">${t.account_name || '—'}</span>
-                ${t.is_auto_linked ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 ml-1">Billing</span>' : ''}
+        <tr>
+            <td class="text-navy-600">${t.date}</td>
+            <td>
+                <span class="font-semibold text-navy-800">${t.account_name || '—'}</span>
+                ${t.is_auto_linked ? '<span class="ml-1 cu-chip-navy">Billing</span>' : ''}
             </td>
-            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.student_name || '—'}</td>
-            <td class="px-3 py-2 text-neutral-600">${t.description || ''}${t.reference ? `<div class="text-xs text-neutral-400">Ref: ${t.reference}</div>` : ''}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.bank_account_name || '—'}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-right font-medium text-success-700">+${fmt(t.amount)}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-right">
-                ${t.is_auto_linked ? '<span class="text-xs text-neutral-400">Auto</span>' : `<button onclick="deleteTx('${t.id}')" class="text-xs text-danger-600 hover:underline">Delete</button>`}
+            <td class="text-navy-600">${t.student_name || '—'}</td>
+            <td class="text-navy-600">${t.description || ''}${t.reference ? `<div class="text-xs text-navy-400">Ref: ${t.reference}</div>` : ''}</td>
+            <td class="text-navy-600">${t.bank_account_name || '—'}</td>
+            <td style="text-align:right" class="font-bold text-emerald-700">+${fmt(t.amount)}</td>
+            <td style="text-align:right">
+                ${t.is_auto_linked ? '<span class="text-xs text-navy-400">Auto</span>' : `<button onclick="deleteTx('${t.id}')" class="text-xs text-rose-600 hover:text-rose-700 font-semibold">Delete</button>`}
             </td>
         </tr>
     `).join('');
@@ -186,8 +195,6 @@ async function loadOptions() {
 async function loadStudentsLazy() {
     if (_students.length) return;
     try {
-        // Students API caps page_size at 100; paginate through pages so
-        // the invoice-mode dropdown works for schools with >100 students.
         _students = [];
         let page = 1;
         while (true) {
@@ -197,7 +204,7 @@ async function loadStudentsLazy() {
             const pg = r && r.pagination;
             if (!pg || !pg.has_next || items.length === 0) break;
             page += 1;
-            if (page > 20) break;  // hard safety cap — 2k students should be enough
+            if (page > 20) break;
         }
     } catch (err) {
         console.error('Students load failed:', err);
@@ -215,7 +222,6 @@ async function loadInvoicesForStudent(studentId) {
     if (!studentId) { sel.innerHTML = '<option value="">Pick a student first</option>'; return; }
     let items = [];
     try {
-        // Server-side filter by student; we then narrow to statuses with balance > 0.
         const r = await ClassUp.fetch('/api/v1/billing/invoices?student_id=' + encodeURIComponent(studentId) + '&page_size=100');
         items = ((r && r.data) || []).filter(i =>
             ['SENT', 'PARTIALLY_PAID', 'OVERDUE'].includes(i.status) && Number(i.balance) > 0
@@ -234,19 +240,16 @@ async function loadInvoicesForStudent(studentId) {
         return `<option value="${i.id}" data-balance="${i.balance}">${num} · balance ${fmt(i.balance)}${due}</option>`;
     }).join('');
     sel.disabled = false;
-    // Auto-populate amount with the first invoice's balance
     const first = items[0];
     if (first) document.getElementById('i-amount').value = Number(first.balance).toFixed(2);
 }
 
 function setMode(mode) {
-    // 'plain' = generic income form; 'invoice' = billing-payment form
     document.querySelectorAll('[data-mode="plain"]').forEach(el => el.classList.toggle('hidden', mode !== 'plain'));
     document.querySelectorAll('[data-mode="invoice"]').forEach(el => el.classList.toggle('hidden', mode !== 'invoice'));
     document.getElementById('inc-helper').classList.toggle('hidden', mode !== 'plain');
     document.getElementById('inc-invoice-helper').classList.toggle('hidden', mode !== 'invoice');
     document.getElementById('inc-save-btn').textContent = mode === 'invoice' ? 'Record payment' : 'Save';
-    // Required-field toggling so the browser doesn't block submit on hidden inputs
     document.getElementById('i-bank').required = mode === 'plain';
     document.getElementById('i-student').required = mode === 'invoice';
     document.getElementById('i-invoice').required = mode === 'invoice';

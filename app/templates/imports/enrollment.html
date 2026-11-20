@@ -5,7 +5,7 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="mb-8">
-        <a href="/dashboard" class="text-sm text-neutral-500 hover:text-neutral-700 flex items-center">
+        <a href="/dashboard" class="text-sm text-navy-500 hover:text-neutral-700 flex items-center">
             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
@@ -14,11 +14,11 @@
         <div class="mt-4 flex items-center justify-between flex-wrap gap-2">
             <div>
                 <h1 class="text-2xl font-bold text-neutral-900">Bulk Student Enrollment</h1>
-                <p class="mt-1 text-sm text-neutral-500">Download an Excel template, fill in student details, and upload to enroll students in bulk.</p>
+                <p class="mt-1 text-sm text-navy-500">Download an Excel template, fill in student details, and upload to enroll students in bulk.</p>
             </div>
-            <div class="text-sm text-neutral-500 flex items-center gap-4">
+            <div class="text-sm text-navy-500 flex items-center gap-4">
                 <a href="/imports/upload" class="text-primary-600 hover:text-primary-700">Teachers / Parents CSV import</a>
-                <a href="/imports/jobs" class="text-neutral-500 hover:text-neutral-700">Import history</a>
+                <a href="/imports/jobs" class="text-navy-500 hover:text-neutral-700">Import history</a>
             </div>
         </div>
     </div>
@@ -30,16 +30,16 @@
             <div class="bg-white shadow-sm rounded-xl border border-neutral-200 p-6">
                 <div class="flex items-center gap-3 mb-4">
                     <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">1</span>
-                    <h2 class="text-lg font-semibold text-neutral-900">Download Template</h2>
+                    <h2 class="text-lg font-semibold text-navy-900">Download Template</h2>
                 </div>
-                <p class="text-sm text-neutral-600 mb-4">
+                <p class="text-sm text-navy-600 mb-4">
                     Download the Excel template with the correct column headers. You can optionally select a class to pre-fill the class name column.
                 </p>
 
                 <div class="flex flex-col sm:flex-row items-start sm:items-end gap-4">
                     <div class="flex-1 w-full">
                         <label for="classSelect" class="block text-sm font-medium text-neutral-700 mb-1">
-                            Class <span class="text-neutral-400">(optional)</span>
+                            Class <span class="text-navy-400">(optional)</span>
                         </label>
                         <select id="classSelect" class="block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500">
                             <option value="">All Classes (blank class column)</option>
@@ -62,9 +62,9 @@
             <div class="bg-white shadow-sm rounded-xl border border-neutral-200 p-6">
                 <div class="flex items-center gap-3 mb-4">
                     <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">2</span>
-                    <h2 class="text-lg font-semibold text-neutral-900">Upload Filled Template</h2>
+                    <h2 class="text-lg font-semibold text-navy-900">Upload Filled Template</h2>
                 </div>
-                <p class="text-sm text-neutral-600 mb-4">
+                <p class="text-sm text-navy-600 mb-4">
                     After filling in the template with student data, upload it here. The system will process each row and create student records.
                 </p>
 
@@ -73,17 +73,17 @@
                     <div id="dropzone"
                          class="flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-300 border-dashed rounded-lg hover:border-primary-500 transition-colors cursor-pointer">
                         <div class="space-y-1 text-center">
-                            <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="mx-auto h-12 w-12 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                             </svg>
-                            <div class="flex text-sm text-neutral-600">
+                            <div class="flex text-sm text-navy-600">
                                 <label for="file" class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
                                     <span>Upload a file</span>
                                     <input id="file" name="file" type="file" accept=".xlsx" class="sr-only">
                                 </label>
                                 <p class="pl-1">or drag and drop</p>
                             </div>
-                            <p class="text-xs text-neutral-500">Excel files (.xlsx) only</p>
+                            <p class="text-xs text-navy-500">Excel files (.xlsx) only</p>
                         </div>
                     </div>
 
@@ -122,7 +122,7 @@
                         <div>
                             <span class="font-medium text-neutral-800">First Name</span>
                             <span class="text-red-500">*</span>
-                            <p class="text-neutral-500 text-xs">Required</p>
+                            <p class="text-navy-500 text-xs">Required</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
@@ -130,62 +130,62 @@
                         <div>
                             <span class="font-medium text-neutral-800">Last Name</span>
                             <span class="text-red-500">*</span>
-                            <p class="text-neutral-500 text-xs">Required</p>
+                            <p class="text-navy-500 text-xs">Required</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
                         <div>
                             <span class="font-medium text-neutral-800">Date of Birth</span>
-                            <p class="text-neutral-500 text-xs">Format: YYYY-MM-DD</p>
+                            <p class="text-navy-500 text-xs">Format: YYYY-MM-DD</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
                         <div>
                             <span class="font-medium text-neutral-800">Gender</span>
-                            <p class="text-neutral-500 text-xs">MALE, FEMALE, or OTHER</p>
+                            <p class="text-navy-500 text-xs">MALE, FEMALE, or OTHER</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
                         <div>
                             <span class="font-medium text-neutral-800">Class Name</span>
-                            <p class="text-neutral-500 text-xs">Must match exactly</p>
+                            <p class="text-navy-500 text-xs">Must match exactly</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
                         <div>
                             <span class="font-medium text-neutral-800">Medical Info</span>
-                            <p class="text-neutral-500 text-xs">Optional notes</p>
+                            <p class="text-navy-500 text-xs">Optional notes</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
                         <div>
                             <span class="font-medium text-neutral-800">Allergies</span>
-                            <p class="text-neutral-500 text-xs">Optional</p>
+                            <p class="text-navy-500 text-xs">Optional</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
                         <div>
                             <span class="font-medium text-neutral-800">Parent Email</span>
-                            <p class="text-neutral-500 text-xs">For future linking</p>
+                            <p class="text-navy-500 text-xs">For future linking</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0"></span>
                         <div>
                             <span class="font-medium text-neutral-800">Emergency Contact</span>
-                            <p class="text-neutral-500 text-xs">Name + Phone</p>
+                            <p class="text-navy-500 text-xs">Name + Phone</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="mt-6 pt-4 border-t border-neutral-200">
-                    <p class="text-xs text-neutral-500">
+                    <p class="text-xs text-navy-500">
                         <strong>Tip:</strong> Select a class before downloading to pre-fill the class name column. The Excel template includes dropdown menus for Gender and Class Name.
                     </p>
                 </div>

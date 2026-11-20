@@ -4,45 +4,38 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Back Button & Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex items-center gap-4">
-            <a href="/students" class="text-neutral-500 hover:text-neutral-700 transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <div>
-                <h1 class="text-2xl font-bold text-neutral-900">
+
+    {# ------ Hero banner with student profile ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <a href="/students" class="inline-flex items-center gap-1 text-white/70 hover:text-white text-xs font-semibold mb-3">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    Back to students
+                </a>
+                <h1 class="cu-page-title text-white">
                     {{ student.first_name }} {{ student.last_name }}
                 </h1>
-                <p class="text-sm text-neutral-500">
+                <p class="mt-2 text-sm md:text-base text-white/80">
                     {% if student.school_class %}{{ student.school_class.name }}{% else %}Unassigned{% endif %}
                     {% if student.school_class and student.school_class.grade_level_rel %}
-                        &bull; {{ student.school_class.grade_level_rel.name }}
+                        · {{ student.school_class.grade_level_rel.name }}
                     {% endif %}
                 </p>
             </div>
+            {% if permissions.can_manage_students() %}
+            <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                <a href="/students/{{ student.id }}/edit" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Edit
+                </a>
+            </div>
+            {% endif %}
         </div>
-        {% if permissions.can_manage_students() %}
-        <div class="flex gap-3">
-            <a href="/students/{{ student.id }}/edit"
-               class="inline-flex items-center px-4 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
-                Edit
-            </a>
-        </div>
-        {% endif %}
-    </div>
+    </section>
 
-    {# Tab bar — jump across every facet of the student without
-       leaving the page. Each tab's content lazy-loads via the
-       matching /api endpoint on first activation, so visiting
-       the Overview tab stays cheap. #}
-    <div class="border-b border-neutral-200 mb-4">
+    {# ------ Tab bar ------ #}
+    <div class="border-b border-navy-100">
         <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto" aria-label="Student sections">
             {% set _tabs = [
                 ('overview', 'Overview'),
@@ -53,8 +46,8 @@
             ] %}
             {% for slug, label in _tabs %}
             <button type="button" data-tab="{{ slug }}"
-                    class="tab-btn whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium transition-colors
-                           {% if loop.first %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %}">
+                    class="tab-btn whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold transition-colors
+                           {% if loop.first %}border-navy-600 text-navy-800{% else %}border-transparent text-navy-500 hover:border-navy-300 hover:text-navy-700{% endif %}">
                 {{ label }}
             </button>
             {% endfor %}
@@ -68,32 +61,30 @@
         <!-- Main Info -->
         <div class="lg:col-span-2 space-y-6">
             <!-- Profile Card -->
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <div class="flex items-start gap-6">
                     <div class="flex-shrink-0">
                         {% if student.photo_path %}
                         <img class="h-24 w-24 rounded-full object-cover"
                              src="{{ student.photo_path }}" alt="">
                         {% else %}
-                        <div class="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center">
-                            <span class="text-primary-700 font-bold text-2xl">
-                                {{ student.first_name[0] }}{{ student.last_name[0] }}
-                            </span>
+                        <div class="cu-avatar-lg">
+                            {{ student.first_name[0] }}{{ student.last_name[0] }}
                         </div>
                         {% endif %}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-3 mb-4">
-                            <h2 class="text-xl font-semibold text-neutral-900">
+                            <h2 class="text-xl font-bold text-navy-900 tracking-tight">
                                 {{ student.first_name }} {{ student.last_name }}
                             </h2>
                             {% if student.is_active %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Active
+                            <span class="cu-status cu-status-finalized">
+                                <span class="cu-status-dot"></span>Active
                             </span>
                             {% else %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-800">
-                                Inactive
+                            <span class="cu-status cu-status-draft">
+                                <span class="cu-status-dot"></span>Inactive
                             </span>
                             {% endif %}
                         </div>
@@ -147,7 +138,7 @@
                visible call-to-action to fill it in. 2026-11-18 feature. #}
             {% set is_parent = user and user.role == 'PARENT' %}
             {% if student.medical_info or student.allergies or student.emergency_contacts or is_parent %}
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-neutral-900">Medical Information</h3>
                     {% if is_parent or permissions.can_manage_students() %}
@@ -199,7 +190,7 @@
 
             <!-- Notes -->
             {% if student.notes %}
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-4">Notes</h3>
                 <p class="text-neutral-700">{{ student.notes }}</p>
             </div>
@@ -212,7 +203,7 @@
                individual subjects to the alternate body. #}
             {% if permissions.is_staff and subject_rows %}
             {% set is_combined = tenant and (tenant.settings or {}).get('curriculum_pack') == 'ZW_COMBINED' %}
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h3 class="text-lg font-semibold text-neutral-900">Subject track</h3>
@@ -269,7 +260,7 @@
         <!-- Sidebar -->
         <div class="space-y-6">
             <!-- Parents/Guardians -->
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-neutral-900">Parents/Guardians</h3>
                     {% if permissions.can_invite_parents() %}
@@ -354,7 +345,7 @@
             </div>
 
             <!-- Emergency Contacts -->
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-4">Emergency Contacts</h3>
 
                 {% if student.emergency_contacts %}
@@ -374,7 +365,7 @@
 
             <!-- Quick Actions -->
             {% if permissions.can_manage_students() %}
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-4">Quick Actions</h3>
                 <div class="space-y-2">
                     <a href="/reports/create?student_id={{ student.id }}"
@@ -403,7 +394,7 @@
     <!-- ========================================================= -->
     <div data-tab-panel="academics" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-1">Recent report cards</h3>
                 <p class="text-xs text-neutral-500 mb-4">
                     Finalised and draft reports for this student, newest first.
@@ -414,7 +405,7 @@
             {# Mirror the subject-track card from Overview here too —
                teachers landing on Academics expect the subject list. #}
             {% set is_combined2 = tenant and (tenant.settings or {}).get('curriculum_pack') == 'ZW_COMBINED' %}
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-1">Subject track</h3>
                 <p class="text-xs text-neutral-500 mb-3">What this student actually takes.</p>
                 <ul class="divide-y divide-neutral-100">
@@ -451,7 +442,7 @@
             {# Side panel — term/year aggregates pulled from MIS when
                the feature is on. Silently hides when the tenant isn't
                on the MIS plan. #}
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-1">Progress</h3>
                 <p class="text-xs text-neutral-500 mb-3">Current vs previous term.</p>
                 <div id="academics-progress" class="text-sm text-neutral-500">—</div>
@@ -463,12 +454,12 @@
     <!-- ATTENDANCE TAB                                             -->
     <!-- ========================================================= -->
     <div data-tab-panel="attendance" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+        <div class="lg:col-span-2 cu-card p-6">
             <h3 class="text-lg font-semibold text-neutral-900 mb-1">Recent sessions</h3>
             <p class="text-xs text-neutral-500 mb-4">Last 60 school days.</p>
             <div id="attendance-table" class="text-sm text-neutral-500">Loading…</div>
         </div>
-        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+        <div class="cu-card p-6">
             <h3 class="text-lg font-semibold text-neutral-900 mb-3">Summary</h3>
             <div id="attendance-summary" class="text-sm text-neutral-500">—</div>
         </div>
@@ -479,18 +470,18 @@
     <!-- ========================================================= -->
     <div data-tab-panel="financials" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-1">Invoices</h3>
                 <p class="text-xs text-neutral-500 mb-4">Every invoice + payment on this student.</p>
                 <div id="financials-invoices" class="text-sm text-neutral-500">Loading…</div>
             </div>
         </div>
         <div class="space-y-6">
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-3">Balance</h3>
                 <div id="financials-balance" class="text-sm text-neutral-500">—</div>
             </div>
-            <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+            <div class="cu-card p-6">
                 <h3 class="text-lg font-semibold text-neutral-900 mb-3">Recent payments</h3>
                 <div id="financials-payments" class="text-sm text-neutral-500">—</div>
             </div>
@@ -500,7 +491,7 @@
     <!-- ========================================================= -->
     <!-- REPORTS TAB — big list of finalised cards                 -->
     <!-- ========================================================= -->
-    <div data-tab-panel="reports" class="hidden bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+    <div data-tab-panel="reports" class="hidden cu-card p-6">
         <h3 class="text-lg font-semibold text-neutral-900 mb-1">All report cards</h3>
         <p class="text-xs text-neutral-500 mb-4">
             Grouped by academic year. Click any row to open the full report.

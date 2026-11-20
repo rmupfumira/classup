@@ -1,17 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Forbidden - {{ app_name }}{% endblock %}
+{% block title %}Access Denied - {{ app_name }}{% endblock %}
 
 {% block auth_content %}
-<div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-neutral-50">
-    <div class="text-center">
-        <p class="text-9xl font-bold text-red-500">403</p>
-        <h1 class="mt-4 text-3xl font-bold text-neutral-900">Access Denied</h1>
-        <p class="mt-2 text-neutral-600">{{ message | default("You don't have permission to access this page.") }}</p>
+<div class="min-h-screen flex items-center justify-center px-4 py-12 cu-app-bg">
+    <div class="cu-card max-w-md w-full p-10 text-center">
+        <div class="cu-avatar cu-avatar-lg mx-auto mb-5" style="background: linear-gradient(135deg,#fecdd3 0%,#fda4af 100%); color:#9f1239;">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+            </svg>
+        </div>
+        <span class="cu-eyebrow mb-2" style="color:#9f1239; background:#fff1f2;">Error 403</span>
+        <h1 class="cu-page-title mt-2">Access denied</h1>
+        <p class="mt-3 text-sm text-navy-500 leading-relaxed">
+            {{ message | default("You don't have permission to access this page.") }}
+        </p>
         <div class="mt-6">
-            <a href="/"
-               class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg
-                      text-sm font-medium text-white bg-primary-600 hover:bg-primary-700">
+            <a href="/" class="cu-btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                 Go back home
             </a>
         </div>

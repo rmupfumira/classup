@@ -2,46 +2,54 @@
 
 {% block title %}Pick-up Alert for {{ student_name }}{% endblock %}
 
-{% block header_color %}#1B3A6B{% endblock %}
+{% block preheader %}{{ student_name }} has been checked out of {{ tenant_name }} at {{ checkout_time }}.{% endblock %}
 
 {% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
-    Pick-up Alert
-</h2>
+<div style="font-size: 11px; font-weight: 800; color: #a07420; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    Pick-up alert
+</div>
 
-<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    Picked up safely.
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
     Hi {{ parent_name }},
 </p>
 
-<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    This is to let you know that <strong>{{ student_name }}</strong> has been checked out.
+<p style="margin: 0 0 24px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    <strong style="color: #0e1b34;">{{ student_name }}</strong> has been checked out.
 </p>
 
-<div style="background-color: #E8EDF5; border-left: 4px solid #1B3A6B; border-radius: 4px; padding: 16px; margin: 0 0 24px 0;">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-        <tr>
-            <td style="padding: 0 0 8px 0;">
-                <strong style="font-size: 14px; color: #6B7280;">Student:</strong>
-                <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ student_name }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 0 0 8px 0;">
-                <strong style="font-size: 14px; color: #6B7280;">Date:</strong>
-                <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ date }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <strong style="font-size: 14px; color: #6B7280;">Checked out at:</strong>
-                <span style="font-size: 14px; color: #1B3A6B; font-weight: 600; margin-left: 8px;">{{ checkout_time }}</span>
-            </td>
-        </tr>
-    </table>
-</div>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+    <tr>
+        <td style="background-color: #f4f7fb; border: 1px solid #e3ebf5; border-radius: 16px; padding: 20px; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding: 0 0 10px 0;">
+                        <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Student</strong><br>
+                        <span style="font-size: 15px; color: #0e1b34; font-weight: 600;">{{ student_name }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 0 0 10px 0;">
+                        <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Date</strong><br>
+                        <span style="font-size: 15px; color: #0e1b34; font-weight: 600;">{{ date }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Checked out at</strong><br>
+                        <span style="font-size: 15px; color: #1B3A6B; font-weight: 700;">{{ checkout_time }}</span>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
-<p style="margin: 0 0 16px 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
-    If you have any questions or concerns, please contact {{ tenant_name }} directly.
+<p style="margin: 0; font-size: 14px; color: #3a5f96; line-height: 1.6;">
+    If you have any questions, please contact <strong style="color: #162f57;">{{ tenant_name }}</strong> directly.
 </p>
 {% endblock %}
 

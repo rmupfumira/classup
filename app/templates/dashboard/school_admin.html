@@ -186,108 +186,61 @@
     </div>
     {% endif %}
 
-    <!-- Welcome Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-neutral-800">
-                {{ t('dashboard.welcome', current_language, name=user.first_name) }}
-            </h1>
-            <p class="mt-1 text-neutral-500">
-                {{ t('dashboard.todays_overview', current_language) }}
-            </p>
-        </div>
-        <div class="flex gap-3">
-            <a href="/attendance"
-               class="px-4 py-2 border border-neutral-300 text-neutral-700 font-medium rounded-lg hover:bg-neutral-50 transition-colors flex items-center gap-2">
-                <svg class="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                {{ t('nav.attendance', current_language) }}
-            </a>
-            <a href="/reports/create"
-               class="px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                {{ t('reports.create_report', current_language) }}
-            </a>
-        </div>
-    </div>
-
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total Students -->
-        <div class="bg-white rounded-xl shadow-sm p-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500">{{ t('dashboard.total_students', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">{{ stats.total_students }}</p>
-                </div>
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Dashboard</span>
+                <h1 class="cu-page-title text-white">
+                    {{ t('dashboard.welcome', current_language, name=user.first_name) }}
+                </h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    {{ t('dashboard.todays_overview', current_language) }}
+                </p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                <a href="/reports/create" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    {{ t('reports.create_report', current_language) }}
+                </a>
+                <a href="/attendance" class="cu-btn-ghost-dark">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    {{ t('nav.attendance', current_language) }}
+                </a>
             </div>
         </div>
+    </section>
 
-        <!-- Present Today -->
-        <div class="bg-white rounded-xl shadow-sm p-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-success-50 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500">{{ t('dashboard.present_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">{{ stats.present_today }}</p>
-                </div>
-            </div>
+    {# ------ Stat tiles ------ #}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">{{ t('dashboard.total_students', current_language) }}</div>
+            <div class="cu-stat-tile-value">{{ stats.total_students }}</div>
+            <div class="cu-stat-tile-hint">Enrolled</div>
         </div>
-
-        <!-- Absent Today -->
-        <div class="bg-white rounded-xl shadow-sm p-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-error-50 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-error-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500">{{ t('dashboard.absent_today', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">{{ stats.absent_today }}</p>
-                </div>
-            </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">{{ t('dashboard.present_today', current_language) }}</div>
+            <div class="cu-stat-tile-value">{{ stats.present_today }}</div>
+            <div class="cu-stat-tile-hint">Checked in today</div>
         </div>
-
-        <!-- Pending Reports -->
-        <div class="bg-white rounded-xl shadow-sm p-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500">{{ t('dashboard.pending_reports', current_language) }}</p>
-                    <p class="text-2xl font-bold text-neutral-800">{{ stats.pending_reports }}</p>
-                </div>
-            </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">{{ t('dashboard.absent_today', current_language) }}</div>
+            <div class="cu-stat-tile-value">{{ stats.absent_today }}</div>
+            <div class="cu-stat-tile-hint">Marked absent</div>
+        </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">{{ t('dashboard.pending_reports', current_language) }}</div>
+            <div class="cu-stat-tile-value">{{ stats.pending_reports }}</div>
+            <div class="cu-stat-tile-hint">Awaiting finalise</div>
         </div>
     </div>
 
     <!-- Quick Actions & Recent Activity -->
     <div class="grid lg:grid-cols-2 gap-6">
         <!-- Quick Actions -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-neutral-100">
-                <h3 class="text-lg font-semibold text-neutral-800">{{ t('dashboard.quick_actions', current_language) }}</h3>
+        <div class="cu-card">
+            <div class="px-6 py-4 border-b border-navy-50">
+                <h3 class="text-lg font-bold text-navy-900 tracking-tight">{{ t('dashboard.quick_actions', current_language) }}</h3>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-2 gap-3">
@@ -371,16 +324,16 @@
     </div>
 
     <!-- Attendance Overview -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-neutral-800">Today's Attendance by Class</h3>
-            <a href="/attendance" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">View details</a>
+    <div class="cu-card">
+        <div class="px-6 py-4 border-b border-navy-50 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-navy-900 tracking-tight">Today's Attendance by Class</h3>
+            <a href="/attendance" class="text-sm text-navy-700 hover:text-navy-900 font-semibold">View details →</a>
         </div>
         <div class="p-6">
             {% if stats.class_attendance %}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {% for class_data in stats.class_attendance %}
-                <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
+                <div class="flex items-center justify-between p-4 bg-navy-50/50 rounded-2xl">
                     <div>
                         <p class="font-medium text-neutral-800">{{ class_data.name }}</p>
                         {% if class_data.age_group %}

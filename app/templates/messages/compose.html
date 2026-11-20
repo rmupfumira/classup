@@ -3,19 +3,24 @@
 {% block title %}New Message - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-lg mx-auto space-y-4">
-    <!-- Header -->
-    <div class="flex items-center gap-3">
-        <a href="/messages" class="p-1.5 -ml-1 rounded-lg hover:bg-neutral-100 transition-colors text-neutral-500">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </a>
-        <h1 class="text-xl font-bold text-neutral-800">New Message</h1>
-    </div>
+<div class="max-w-3xl mx-auto space-y-6">
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex items-center gap-4">
+            <a href="/messages" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </a>
+            <div>
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-2">Communication</span>
+                <h1 class="cu-page-title text-white">New message</h1>
+            </div>
+        </div>
+    </section>
 
     <!-- Compose Form -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-5">
+    <div class="cu-card p-6">
         <form id="compose-form" class="space-y-4">
             <!-- Student / child selector — label depends on role -->
             <div>
@@ -69,13 +74,8 @@
 
             <!-- Submit -->
             <div class="flex justify-end gap-3">
-                <a href="/messages" class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
-                    Cancel
-                </a>
-                <button type="submit" id="send-btn"
-                        class="px-5 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    Send Message
-                </button>
+                <a href="/messages" class="cu-btn-soft">Cancel</a>
+                <button type="submit" id="send-btn" class="cu-btn-primary">Send message</button>
             </div>
         </form>
     </div>

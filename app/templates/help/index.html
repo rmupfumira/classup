@@ -3,48 +3,48 @@
 {% block title %}Help & Guides - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-8">
-    <!-- Header -->
-    <div class="text-center py-6">
-        <h1 class="text-2xl sm:text-3xl font-semibold text-neutral-800">How can we help you?</h1>
-        <p class="mt-2 text-sm text-neutral-500">
-            Step-by-step guides for every feature you can use today.
-        </p>
-    </div>
+<div class="space-y-6">
 
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Help centre</span>
+                <h1 class="cu-page-title text-white">How can we help?</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Step-by-step guides for every feature you can use today.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    {# ------ Topic groups ------ #}
     {% for category, topics in grouped_topics.items() %}
-    <div class="space-y-3">
-        <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wider">
-            {{ category }}
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <section class="space-y-3">
+        <h2 class="cu-nav-group-label">{{ category }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {% for t in topics %}
-            <a href="/help/{{ t.slug }}"
-               class="group block p-4 bg-white rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-md transition-all">
+            <a href="/help/{{ t.slug }}" class="cu-card cu-card-hover block p-5">
                 <div class="flex items-start gap-3">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+                    <div class="flex-shrink-0 w-10 h-10 rounded-2xl bg-navy-50 text-navy-600 flex items-center justify-center">
                         {% include 'help/_icons.html' %}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h3 class="text-sm font-semibold text-neutral-800 group-hover:text-primary-700">
-                            {{ t.title }}
-                        </h3>
-                        <p class="mt-1 text-xs text-neutral-500 line-clamp-3">
-                            {{ t.short }}
-                        </p>
+                        <h3 class="text-sm font-semibold text-navy-800">{{ t.title }}</h3>
+                        <p class="mt-1 text-xs text-navy-500 line-clamp-3">{{ t.short }}</p>
                     </div>
                 </div>
             </a>
             {% endfor %}
         </div>
-    </div>
+    </section>
     {% endfor %}
 
-    <!-- Footer hint -->
-    <div class="pt-6 border-t border-neutral-100 text-center">
-        <p class="text-sm text-neutral-500">
+    {# ------ Support footer ------ #}
+    <div class="cu-card p-6 text-center">
+        <p class="text-sm text-navy-500">
             Can't find what you need? Contact your school administrator or
-            <a href="mailto:support@classup.co.za" class="text-primary-600 hover:underline">support@classup.co.za</a>.
+            <a href="mailto:support@classup.co.za" class="text-navy-700 font-semibold hover:text-gold-600">support@classup.co.za</a>.
         </p>
     </div>
 </div>

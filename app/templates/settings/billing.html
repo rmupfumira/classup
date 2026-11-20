@@ -3,61 +3,45 @@
 {% block title %}Billing Settings - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="mb-8">
-        <h1 class="text-2xl font-bold text-neutral-900">Settings</h1>
-        <p class="mt-1 text-sm text-neutral-500">Configure billing, banking details, and payment instructions.</p>
-    </div>
+<div class="space-y-6">
+    <section class="cu-hero">
+        <div>
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Configuration</span>
+            <h1 class="cu-page-title text-white">Settings</h1>
+            <p class="mt-2 text-sm text-white/80">Configure billing, banking details, and payment instructions.</p>
+        </div>
+    </section>
 
     {% if request.query_params.get('saved') %}
-    <div class="mb-6 rounded-lg bg-green-50 p-4">
-        <div class="flex">
-            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-            </svg>
-            <p class="ml-3 text-sm text-green-700">Settings saved successfully.</p>
-        </div>
+    <div class="rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 p-4 flex items-center gap-3">
+        <svg class="h-5 w-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <p class="text-sm text-emerald-700 font-medium">Settings saved successfully.</p>
     </div>
     {% endif %}
 
     <!-- Tabs -->
-    <div class="border-b border-neutral-200 mb-6">
-        <nav class="-mb-px flex space-x-8 overflow-x-auto">
-            <a href="/settings/general"
-               class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
-                General
-            </a>
-            <a href="/settings/features"
-               class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
-                Features
-            </a>
-            <a href="/settings/grade-levels"
-               class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
-                Grade Levels
-            </a>
-            <a href="/settings/terminology"
-               class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
-                Terminology
-            </a>
-            <a href="/settings/billing"
-               class="border-primary-500 text-primary-600 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
-                Billing
-            </a>
-            <a href="/settings/webhooks"
-               class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
-                Webhooks
-            </a>
+    <div class="border-b border-navy-100">
+        <nav class="-mb-px flex space-x-6 overflow-x-auto">
+            {% set inactive = 'border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold' %}
+            {% set active = 'border-gold-500 text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold' %}
+            <a href="/settings/general" class="{{ inactive }}">General</a>
+            <a href="/settings/features" class="{{ inactive }}">Features</a>
+            <a href="/settings/grade-levels" class="{{ inactive }}">Grade Levels</a>
+            <a href="/settings/terminology" class="{{ inactive }}">Terminology</a>
+            <a href="/settings/billing" class="{{ active }}">Billing</a>
+            <a href="/settings/webhooks" class="{{ inactive }}">Webhooks</a>
         </nav>
     </div>
 
     <!-- Form -->
     <form method="POST" action="/settings/billing" class="space-y-6">
-        <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-neutral-900 mb-4">Currency</h3>
+        <div class="cu-card p-6">
+            <h3 class="text-lg font-medium text-navy-900 mb-4">Currency</h3>
             <div>
-                <label for="billing_currency" class="block text-sm font-medium text-neutral-700">Invoice Currency</label>
-                <select name="billing_currency" id="billing_currency"
-                        class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:max-w-xs">
+                <label for="billing_currency" class="block text-sm font-medium text-navy-700 mb-1">Invoice Currency</label>
+                <select name="billing_currency" id="billing_currency" class="cu-select sm:max-w-xs">
                     {% set current_currency = (tenant.settings or {}).get('billing_currency', 'USD') %}
                     {% for cur in currencies %}
                     <option value="{{ cur.code }}" {% if current_currency == cur.code %}selected{% endif %}>
@@ -68,52 +52,51 @@
             </div>
         </div>
 
-        <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-neutral-900 mb-1">Banking Details</h3>
-            <p class="text-sm text-neutral-500 mb-4">These details will be included on invoice emails sent to parents.</p>
+        <div class="cu-card p-6">
+            <h3 class="text-lg font-medium text-navy-900 mb-1">Banking Details</h3>
+            <p class="text-sm text-navy-500 mb-4">These details will be included on invoice emails sent to parents.</p>
             <div>
-                <label for="billing_banking_details" class="block text-sm font-medium text-neutral-700">Banking Details</label>
+                <label for="billing_banking_details" class="block text-sm font-medium text-navy-700 mb-1">Banking Details</label>
                 <textarea name="billing_banking_details" id="billing_banking_details" rows="5"
                           placeholder="Bank: First National Bank&#10;Account Name: Sunshine Daycare&#10;Account Number: 62123456789&#10;Branch Code: 250655&#10;Reference: Student surname + invoice number"
-                          class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">{{ (tenant.settings or {}).get('billing_banking_details', '') }}</textarea>
+                          class="cu-textarea">{{ (tenant.settings or {}).get('billing_banking_details', '') }}</textarea>
             </div>
         </div>
 
-        <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-neutral-900 mb-1">Payment Instructions</h3>
-            <p class="text-sm text-neutral-500 mb-4">Additional instructions for parents on how to make payments.</p>
+        <div class="cu-card p-6">
+            <h3 class="text-lg font-medium text-navy-900 mb-1">Payment Instructions</h3>
+            <p class="text-sm text-navy-500 mb-4">Additional instructions for parents on how to make payments.</p>
             <div>
-                <label for="billing_payment_instructions" class="block text-sm font-medium text-neutral-700">Payment Instructions</label>
+                <label for="billing_payment_instructions" class="block text-sm font-medium text-navy-700 mb-1">Payment Instructions</label>
                 <textarea name="billing_payment_instructions" id="billing_payment_instructions" rows="4"
                           placeholder="Please pay via EFT using your child's surname and invoice number as the payment reference. Payments are due by the date shown on the invoice."
-                          class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">{{ (tenant.settings or {}).get('billing_payment_instructions', '') }}</textarea>
+                          class="cu-textarea">{{ (tenant.settings or {}).get('billing_payment_instructions', '') }}</textarea>
             </div>
         </div>
 
-        <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-neutral-900 mb-1">Overdue Reminders</h3>
-            <p class="text-sm text-neutral-500 mb-4">Automatically send recurring email and in-app reminders to parents with overdue invoices.</p>
+        <div class="cu-card p-6">
+            <h3 class="text-lg font-medium text-navy-900 mb-1">Overdue Reminders</h3>
+            <p class="text-sm text-navy-500 mb-4">Automatically send recurring email and in-app reminders to parents with overdue invoices.</p>
             <div class="space-y-4">
                 <div class="flex items-center">
                     <input type="checkbox" name="billing_overdue_reminders_enabled" id="billing_overdue_reminders_enabled" value="on"
                            {% if (tenant.settings or {}).get('billing_overdue_reminders_enabled', false) %}checked{% endif %}
                            class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <label for="billing_overdue_reminders_enabled" class="ml-2 block text-sm text-neutral-700">Enable overdue invoice reminders</label>
+                    <label for="billing_overdue_reminders_enabled" class="ml-2 block text-sm text-navy-700">Enable overdue invoice reminders</label>
                 </div>
                 <div>
-                    <label for="billing_overdue_reminder_interval_days" class="block text-sm font-medium text-neutral-700">Reminder interval (days)</label>
+                    <label for="billing_overdue_reminder_interval_days" class="block text-sm font-medium text-navy-700 mb-1">Reminder interval (days)</label>
                     <input type="number" name="billing_overdue_reminder_interval_days" id="billing_overdue_reminder_interval_days"
                            value="{{ (tenant.settings or {}).get('billing_overdue_reminder_interval_days', 7) }}"
                            min="1" max="90"
-                           class="mt-1 block w-24 rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
-                    <p class="mt-1 text-xs text-neutral-500">How often to re-send reminders for each overdue invoice (1–90 days).</p>
+                           class="cu-input w-24">
+                    <p class="mt-1 text-xs text-navy-500">How often to re-send reminders for each overdue invoice (1–90 days).</p>
                 </div>
             </div>
         </div>
 
         <div class="flex justify-end">
-            <button type="submit"
-                    class="inline-flex justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+            <button type="submit" class="cu-btn-primary">
                 Save Changes
             </button>
         </div>

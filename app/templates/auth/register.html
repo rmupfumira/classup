@@ -24,7 +24,7 @@
         </div>
 
         <!-- Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 sm:p-8">
+        <div class="cu-card p-6 sm:p-8">
             {% if error %}
             <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div class="flex items-center">
@@ -72,17 +72,13 @@
                         <div>
                             <label for="password" class="block text-sm font-medium text-neutral-700">Password *</label>
                             <input type="password" id="password" name="password" required minlength="8"
-                                   class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
-                                          focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                          placeholder-neutral-400 text-neutral-800"
+                                   class="cu-input mt-1"
                                    placeholder="Minimum 8 characters">
                         </div>
                         <div>
                             <label for="confirm_password" class="block text-sm font-medium text-neutral-700">Confirm *</label>
                             <input type="password" id="confirm_password" name="confirm_password" required minlength="8"
-                                   class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
-                                          focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                          placeholder-neutral-400 text-neutral-800"
+                                   class="cu-input mt-1"
                                    placeholder="Confirm your password">
                         </div>
                     </div>
@@ -97,9 +93,7 @@
                     </label>
                     <input type="tel" id="phone" name="phone" required
                            value="{{ phone | default('') }}"
-                           class="mt-1 block w-full px-4 py-3 border border-neutral-300 rounded-lg shadow-sm
-                                  focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                                  placeholder-neutral-400 text-neutral-800"
+                           class="cu-input mt-1"
                            placeholder="+263 77 123 4567">
                     <p class="text-xs text-neutral-500 mt-1">
                         Use the international format with + and country code. We use this for urgent SMS fallback
@@ -141,11 +135,7 @@
                     <a href="/privacy" class="underline text-neutral-700">Privacy Policy</a>.
                 </p>
 
-                <button type="submit"
-                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg
-                               shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700
-                               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500
-                               transition-colors duration-200">
+                <button type="submit" class="cu-btn-gold w-full !py-3 !rounded-full text-base">
                     Create account
                 </button>
             </form>

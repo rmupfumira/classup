@@ -3,17 +3,25 @@
 {% block title %}Validation Error - {{ app_name }}{% endblock %}
 
 {% block auth_content %}
-<div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-neutral-50">
-    <div class="text-center max-w-md">
-        <p class="text-9xl font-bold text-amber-500">422</p>
-        <h1 class="mt-4 text-3xl font-bold text-neutral-900">Validation Error</h1>
-        <p class="mt-2 text-neutral-600">{{ message | default('The submitted data was invalid.') }}</p>
+<div class="min-h-screen flex items-center justify-center px-4 py-12 cu-app-bg">
+    <div class="cu-card max-w-md w-full p-10 text-center">
+        <div class="cu-avatar cu-avatar-lg mx-auto mb-5" style="background: linear-gradient(135deg,#fef3c7 0%,#fcd34d 100%); color:#854d0e;">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <span class="cu-eyebrow mb-2" style="color:#854d0e; background:#fef3c7;">Error 422</span>
+        <h1 class="cu-page-title mt-2">Validation error</h1>
+        <p class="mt-3 text-sm text-navy-500 leading-relaxed">
+            {{ message | default('The submitted data was invalid.') }}
+        </p>
         {% if errors %}
-        <ul class="mt-4 text-left bg-red-50 rounded-lg p-4 space-y-2">
+        <ul class="mt-5 text-left bg-rose-50 rounded-2xl p-4 space-y-2 border border-rose-100">
             {% for error in errors %}
-            <li class="text-red-700 text-sm">
+            <li class="text-rose-800 text-sm">
                 {% if error.field and error.field != 'general' %}
-                <span class="font-medium">{{ error.field }}:</span>
+                <span class="font-semibold">{{ error.field }}:</span>
                 {% endif %}
                 {{ error.message }}
             </li>
@@ -21,9 +29,8 @@
         </ul>
         {% endif %}
         <div class="mt-6">
-            <a href="javascript:history.back()"
-               class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg
-                      text-sm font-medium text-white bg-primary-600 hover:bg-primary-700">
+            <a href="javascript:history.back()" class="cu-btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                 Go back
             </a>
         </div>

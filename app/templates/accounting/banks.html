@@ -3,68 +3,76 @@
 {% block title %}Bank Accounts - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Bank Accounts</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">Operating accounts, savings, and petty cash floats.</p>
+<div class="space-y-6">
+
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance · Accounting</span>
+                <h1 class="cu-page-title text-white">Bank Accounts</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Operating accounts, savings, and petty cash floats.
+                </p>
+            </div>
+            <div class="flex gap-3 shrink-0">
+                <button onclick="openBank()" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add bank account
+                </button>
+            </div>
         </div>
-        <button onclick="openBank()" class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
-            + Add bank account
-        </button>
-    </div>
+    </section>
 
     {% include 'accounting/_layout.html' %}
 
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
+    <div class="cu-table-wrap">
         <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="bg-neutral-50 border-b border-neutral-200">
+        <table class="cu-table">
+            <thead>
                 <tr>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Name</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bank</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Account #</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Type</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                    <th>Name</th>
+                    <th>Bank</th>
+                    <th>Account #</th>
+                    <th>Type</th>
+                    <th style="text-align:right">Balance</th>
+                    <th style="text-align:right">Actions</th>
                 </tr>
             </thead>
-            <tbody id="body" class="divide-y divide-neutral-100">
-                <tr><td colspan="6" class="text-center text-neutral-400 py-8">Loading...</td></tr>
+            <tbody id="body">
+                <tr><td colspan="6" class="text-center text-navy-400" style="padding: 2rem;">Loading...</td></tr>
             </tbody>
         </table>
         </div>
     </div>
 </div>
 
-<dialog id="bank-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+<dialog id="bank-modal" class="rounded-3xl shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
     <form class="p-6" onsubmit="submitBank(event)">
-        <h3 class="text-lg font-semibold text-neutral-800 mb-4" id="bank-title">Add bank account</h3>
+        <h3 class="text-lg font-bold text-navy-800 mb-4" id="bank-title">Add bank account</h3>
         <input type="hidden" id="b-id">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="sm:col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Account name (internal)</label>
-                <input type="text" id="b-name" required maxlength="120" placeholder="e.g. Operating Account"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Account name (internal)</label>
+                <input type="text" id="b-name" required maxlength="120" placeholder="e.g. Operating Account" class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Bank name</label>
-                <input type="text" id="b-bank" maxlength="120" placeholder="e.g. ABSA"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Bank name</label>
+                <input type="text" id="b-bank" maxlength="120" placeholder="e.g. ABSA" class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Account number</label>
-                <input type="text" id="b-num" maxlength="50"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Account number</label>
+                <input type="text" id="b-num" maxlength="50" class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Branch code</label>
-                <input type="text" id="b-branch" maxlength="20"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Branch code</label>
+                <input type="text" id="b-branch" maxlength="20" class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Type</label>
-                <select id="b-type" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Type</label>
+                <select id="b-type" class="cu-select">
                     <option value="OPERATING">Operating</option>
                     <option value="SAVINGS">Savings</option>
                     <option value="PETTY_CASH">Petty Cash</option>
@@ -72,26 +80,23 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Opening balance ({{ currency_code }})</label>
-                <input type="number" id="b-open" step="0.01" value="0"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Opening balance ({{ currency_code }})</label>
+                <input type="number" id="b-open" step="0.01" value="0" class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Opening balance date</label>
-                <input type="date" id="b-opendate"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Opening balance date</label>
+                <input type="date" id="b-opendate" class="cu-input">
             </div>
             <div class="col-span-2">
-                <label class="inline-flex items-center text-sm">
-                    <input type="checkbox" id="b-default" class="mr-2 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <label class="inline-flex items-center text-sm text-navy-700">
+                    <input type="checkbox" id="b-default" class="mr-2 rounded border-navy-300 text-navy-600 focus:ring-navy-500">
                     Use as default for new transactions
                 </label>
             </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
-            <button type="button" onclick="document.getElementById('bank-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+            <button type="button" onclick="document.getElementById('bank-modal').close()" class="cu-btn-soft">Cancel</button>
+            <button type="submit" class="cu-btn-primary">Save</button>
         </div>
     </form>
 </dialog>
@@ -102,7 +107,7 @@ function fmt(n) { return CURRENCY_SYMBOL + ' ' + (Number(n) || 0).toLocaleString
 
 async function load() {
     const body = document.getElementById('body');
-    body.innerHTML = '<tr><td colspan="6" class="text-center text-neutral-400 py-8">Loading...</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="text-center text-navy-400" style="padding: 2rem;">Loading...</td></tr>';
     let items;
     try {
         const res = await ClassUp.fetch('/api/v1/accounting/banks?with_balance=true');
@@ -110,27 +115,27 @@ async function load() {
     } catch (err) {
         console.error('Failed to load bank accounts:', err);
         body.innerHTML = `
-            <tr><td colspan="6" class="text-center py-8">
-                <p class="text-sm text-danger-600 mb-1">Couldn't load bank accounts.</p>
-                <p class="text-xs text-neutral-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
-                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            <tr><td colspan="6" style="padding: 2rem; text-align: center;">
+                <p class="text-sm text-rose-700 mb-1">Couldn't load bank accounts.</p>
+                <p class="text-xs text-navy-500 mb-2">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="cu-btn-soft !py-1.5 !px-3 !text-xs">Retry</button>
             </td></tr>`;
         return;
     }
     if (!items.length) {
-        body.innerHTML = '<tr><td colspan="6" class="text-center text-neutral-400 py-8">No bank accounts yet. Click <strong>+ Add bank</strong> to create one.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-navy-400" style="padding: 2rem;">No bank accounts yet. Click <strong>+ Add bank</strong> to create one.</td></tr>';
         return;
     }
     body.innerHTML = items.map(b => `
-        <tr class="hover:bg-neutral-50">
-            <td class="px-3 py-2 font-medium text-neutral-800">${b.name}${b.is_default ? ' <span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-primary-100 text-primary-700 ml-1">Default</span>' : ''}</td>
-            <td class="px-3 py-2 text-neutral-600">${b.bank_name || '—'}</td>
-            <td class="px-3 py-2 text-neutral-600">${b.account_number || '—'}</td>
-            <td class="px-3 py-2 text-neutral-600">${b.account_type}</td>
-            <td class="px-3 py-2 text-right font-medium ${b.balance >= 0 ? 'text-neutral-800' : 'text-danger-600'}">${fmt(b.balance)}</td>
-            <td class="px-3 py-2 text-right">
-                <button onclick='openBank(${JSON.stringify(b).replace(/'/g, "&#39;")})' class="text-xs text-primary-600 hover:underline mr-2">Edit</button>
-                <button onclick="deleteBank('${b.id}')" class="text-xs text-danger-600 hover:underline">Deactivate</button>
+        <tr>
+            <td class="font-semibold text-navy-800">${b.name}${b.is_default ? ' <span class="ml-1 cu-chip-gold">Default</span>' : ''}</td>
+            <td class="text-navy-600">${b.bank_name || '—'}</td>
+            <td class="text-navy-600">${b.account_number || '—'}</td>
+            <td><span class="cu-chip-navy">${b.account_type}</span></td>
+            <td style="text-align:right" class="font-bold ${b.balance >= 0 ? 'text-navy-800' : 'text-rose-700'}">${fmt(b.balance)}</td>
+            <td style="text-align:right">
+                <button onclick='openBank(${JSON.stringify(b).replace(/'/g, "&#39;")})' class="text-xs text-navy-600 hover:text-navy-800 font-semibold mr-3">Edit</button>
+                <button onclick="deleteBank('${b.id}')" class="text-xs text-rose-600 hover:text-rose-700 font-semibold">Deactivate</button>
             </td>
         </tr>
     `).join('');

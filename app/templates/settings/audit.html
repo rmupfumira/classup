@@ -5,8 +5,8 @@
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 pt-6 pb-24 space-y-5">
     <div>
-        <h1 class="text-xl font-semibold text-neutral-800">Activity log</h1>
-        <p class="mt-1 text-sm text-neutral-500">
+        <h1 class="text-xl font-semibold text-navy-800">Activity log</h1>
+        <p class="mt-1 text-sm text-navy-500">
             Who did what, scoped to <strong>{{ tenant.name if tenant else 'this school' }}</strong>.
             Captures sign-ins and every write — including invoices, payments, cancellations,
             setting changes, imports, and student / class edits.
@@ -16,7 +16,7 @@
     <!-- Filters -->
     <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 flex flex-wrap items-end gap-3">
         <div class="min-w-[200px]">
-            <label class="block text-xs font-medium text-neutral-600 mb-1">Area</label>
+            <label class="block text-xs font-medium text-navy-600 mb-1">Area</label>
             <select id="f-area" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
                 <option value="">All activity</option>
                 <option value="billing.">Billing (invoices + payments)</option>
@@ -31,7 +31,7 @@
             </select>
         </div>
         <div class="min-w-[160px]">
-            <label class="block text-xs font-medium text-neutral-600 mb-1">Since</label>
+            <label class="block text-xs font-medium text-navy-600 mb-1">Since</label>
             <select id="f-since" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
                 <option value="">Any time</option>
                 <option value="60">Last hour</option>
@@ -40,7 +40,7 @@
             </select>
         </div>
         <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs font-medium text-neutral-600 mb-1">Search (name / email / path)</label>
+            <label class="block text-xs font-medium text-navy-600 mb-1">Search (name / email / path)</label>
             <input id="f-search" type="text"
                    placeholder="e.g. a user's email"
                    class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
@@ -54,19 +54,19 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-neutral-50 border-b border-neutral-200">
                     <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase whitespace-nowrap">When</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Who</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Action</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Path</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase whitespace-nowrap">Status</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase whitespace-nowrap">When</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Who</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Action</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Path</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase whitespace-nowrap">Status</th>
                     </tr>
                 </thead>
                 <tbody id="events-body" class="divide-y divide-neutral-100">
-                    <tr><td colspan="5" class="text-center text-neutral-400 py-8 text-sm">Loading…</td></tr>
+                    <tr><td colspan="5" class="text-center text-navy-400 py-8 text-sm">Loading…</td></tr>
                 </tbody>
             </table>
         </div>
-        <div class="px-3 py-2 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
+        <div class="px-3 py-2 border-t border-neutral-100 flex items-center justify-between text-xs text-navy-500">
             <span id="page-info">—</span>
             <div class="flex gap-2">
                 <button id="prev-btn" onclick="prevPage()" class="px-2 py-1 border border-neutral-200 rounded hover:bg-neutral-50 disabled:opacity-40" disabled>Prev</button>
@@ -93,7 +93,7 @@ function fmtAction(a) {
 }
 
 function statusBadge(code) {
-    if (!code) return '<span class="text-neutral-400">—</span>';
+    if (!code) return '<span class="text-navy-400">—</span>';
     let cls = 'bg-success-100 text-success-700';
     if (code >= 400 && code < 500) cls = 'bg-warning-100 text-warning-700';
     if (code >= 500) cls = 'bg-danger-100 text-danger-700';
@@ -114,7 +114,7 @@ async function load(page = 1) {
     if (search) params.set('search', search);
 
     const body = document.getElementById('events-body');
-    body.innerHTML = '<tr><td colspan="5" class="text-center text-neutral-400 py-8 text-sm">Loading…</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-navy-400 py-8 text-sm">Loading…</td></tr>';
 
     try {
         const res = await ClassUp.fetch('/api/v1/audit/events?' + params.toString());
@@ -123,17 +123,17 @@ async function load(page = 1) {
         _totalPages = pg.total_pages || 1;
 
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="5" class="text-center text-neutral-400 py-8 text-sm">No activity matches those filters.</td></tr>';
+            body.innerHTML = '<tr><td colspan="5" class="text-center text-navy-400 py-8 text-sm">No activity matches those filters.</td></tr>';
         } else {
             body.innerHTML = rows.map(e => `
                 <tr class="hover:bg-neutral-50">
-                    <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${fmtDate(e.created_at)}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-navy-600">${fmtDate(e.created_at)}</td>
                     <td class="px-3 py-2">
                         <div class="text-neutral-800 font-medium">${(e.user_name && e.user_name.trim()) || e.user_email || 'Unknown'}</div>
-                        <div class="text-xs text-neutral-400">${e.user_role || ''}${e.ip_address ? ' · ' + e.ip_address : ''}</div>
+                        <div class="text-xs text-navy-400">${e.user_role || ''}${e.ip_address ? ' · ' + e.ip_address : ''}</div>
                     </td>
                     <td class="px-3 py-2 text-neutral-700">${fmtAction(e.action)}</td>
-                    <td class="px-3 py-2 text-neutral-500 font-mono text-xs break-all">${e.method || ''} ${e.path || ''}</td>
+                    <td class="px-3 py-2 text-navy-500 font-mono text-xs break-all">${e.method || ''} ${e.path || ''}</td>
                     <td class="px-3 py-2 text-right whitespace-nowrap">${statusBadge(e.status_code)}</td>
                 </tr>
             `).join('');
@@ -146,7 +146,7 @@ async function load(page = 1) {
     } catch (err) {
         body.innerHTML = `<tr><td colspan="5" class="text-center py-8">
             <p class="text-sm text-danger-600">Couldn't load activity.</p>
-            <p class="text-xs text-neutral-500 mt-1">${err.message || 'Request failed'}</p>
+            <p class="text-xs text-navy-500 mt-1">${err.message || 'Request failed'}</p>
         </td></tr>`;
     }
 }

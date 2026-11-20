@@ -3,49 +3,50 @@
 {% block title %}{{ topic.title }} - Help - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-    <!-- Breadcrumb -->
+<div class="max-w-4xl mx-auto space-y-6">
+
     <div class="text-sm">
-        <a href="/help" class="text-neutral-500 hover:text-neutral-700">← All guides</a>
+        <a href="/help" class="text-navy-500 hover:text-navy-700 font-medium">← All guides</a>
     </div>
 
-    <!-- Header -->
-    <div class="flex items-start gap-4">
-        <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-primary-50 flex items-center justify-center">
-            {% with t=topic %}{% include 'help/_icons.html' %}{% endwith %}
+    {# ------ Header ------ #}
+    <div class="cu-card p-6">
+        <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-navy-50 text-navy-600 flex items-center justify-center">
+                {% with t=topic %}{% include 'help/_icons.html' %}{% endwith %}
+            </div>
+            <div class="flex-1 min-w-0">
+                <span class="cu-eyebrow mb-2">{{ topic.category }}</span>
+                <h1 class="cu-page-title mt-2">{{ topic.title }}</h1>
+            </div>
         </div>
-        <div class="flex-1 min-w-0">
-            <p class="text-xs font-medium text-primary-600 uppercase tracking-wider">{{ topic.category }}</p>
-            <h1 class="text-2xl font-semibold text-neutral-800 mt-1">{{ topic.title }}</h1>
-        </div>
     </div>
 
-    <!-- Overview -->
-    <div class="bg-primary-50 border border-primary-100 rounded-lg p-4 text-sm text-neutral-700 leading-relaxed">
-        {{ topic.overview }}
+    {# ------ Overview ------ #}
+    <div class="cu-card p-5" style="background: linear-gradient(135deg,#fdf9ec 0%,#faf0c9 100%);">
+        <p class="text-sm text-navy-800 leading-relaxed">{{ topic.overview }}</p>
     </div>
 
-    <!-- Steps -->
+    {# ------ Steps ------ #}
     {% if topic.steps %}
-    <div class="space-y-4">
-        <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wider">Steps</h2>
+    <div class="space-y-3">
+        <h2 class="cu-nav-group-label">Steps</h2>
         {% for step in topic.steps %}
-        <div class="bg-white rounded-lg border border-neutral-200 p-5">
+        <div class="cu-card p-5">
             <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-100 text-primary-700 text-sm font-semibold flex items-center justify-center">
+                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-navy-600 text-white text-sm font-bold flex items-center justify-center">
                     {{ loop.index }}
                 </div>
                 <div class="flex-1 min-w-0 space-y-2">
-                    <h3 class="text-sm font-semibold text-neutral-800">{{ step.title }}</h3>
-                    {# whitespace-pre-line: respects \n line breaks from help_content.py
-                       so multi-paragraph / bulleted steps render as intended. #}
-                    <p class="text-sm text-neutral-600 leading-relaxed whitespace-pre-line">{{ step.body }}</p>
+                    <h3 class="text-sm font-semibold text-navy-800">{{ step.title }}</h3>
+                    {# whitespace-pre-line: respects \n line breaks from help_content.py #}
+                    <p class="text-sm text-navy-600 leading-relaxed whitespace-pre-line">{{ step.body }}</p>
                     {% if step.tip %}
-                    <div class="mt-2 flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                        <svg class="flex-shrink-0 w-4 h-4 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                    <div class="mt-2 flex items-start gap-2 p-3 bg-gold-50 border border-gold-100 rounded-xl">
+                        <svg class="flex-shrink-0 w-4 h-4 text-gold-700 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
                         </svg>
-                        <p class="text-xs text-yellow-800 leading-relaxed"><strong>Tip:</strong> {{ step.tip }}</p>
+                        <p class="text-xs text-gold-800 leading-relaxed"><strong>Tip:</strong> {{ step.tip }}</p>
                     </div>
                     {% endif %}
                 </div>
@@ -55,41 +56,40 @@
     </div>
     {% endif %}
 
-    <!-- Examples -->
+    {# ------ Examples ------ #}
     {% if topic.examples %}
     <div class="space-y-3">
-        <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wider">Examples</h2>
+        <h2 class="cu-nav-group-label">Examples</h2>
         {% for ex in topic.examples %}
-        <div class="bg-white rounded-lg border border-neutral-200 p-5">
-            <h3 class="text-sm font-semibold text-neutral-800 mb-2">{{ ex.title }}</h3>
-            <p class="text-sm text-neutral-600 leading-relaxed">{{ ex.body }}</p>
+        <div class="cu-card p-5">
+            <h3 class="text-sm font-semibold text-navy-800 mb-2">{{ ex.title }}</h3>
+            <p class="text-sm text-navy-600 leading-relaxed">{{ ex.body }}</p>
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
-    <!-- Related -->
+    {# ------ Related ------ #}
     {% if related %}
-    <div class="space-y-3 pt-4 border-t border-neutral-100">
-        <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wider">Related guides</h2>
+    <div class="space-y-3 pt-4">
+        <h2 class="cu-nav-group-label">Related guides</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {% for t in related %}
-            <a href="/help/{{ t.slug }}"
-               class="group flex items-center gap-3 p-3 bg-white rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-sm transition-all">
-                <div class="flex-shrink-0 w-8 h-8 rounded-md bg-primary-50 flex items-center justify-center">
+            <a href="/help/{{ t.slug }}" class="cu-card cu-card-hover flex items-center gap-3 p-4">
+                <div class="flex-shrink-0 w-9 h-9 rounded-xl bg-navy-50 text-navy-600 flex items-center justify-center">
                     {% include 'help/_icons.html' %}
                 </div>
-                <span class="text-sm font-medium text-neutral-800 group-hover:text-primary-700">{{ t.title }}</span>
+                <span class="text-sm font-semibold text-navy-800">{{ t.title }}</span>
             </a>
             {% endfor %}
         </div>
     </div>
     {% endif %}
 
-    <!-- Back to top -->
-    <div class="pt-6 border-t border-neutral-100 flex justify-between items-center">
-        <a href="/help" class="text-sm text-primary-600 hover:underline">← Back to all guides</a>
-        <p class="text-xs text-neutral-400">Need more help? <a href="mailto:support@classup.co.za" class="text-primary-600 hover:underline">Contact support</a></p>
+    {# ------ Footer ------ #}
+    <div class="pt-4 flex justify-between items-center">
+        <a href="/help" class="text-sm text-navy-700 font-semibold hover:text-gold-600">← Back to all guides</a>
+        <p class="text-xs text-navy-500">Need more help? <a href="mailto:support@classup.co.za" class="text-navy-700 font-semibold hover:text-gold-600">Contact support</a></p>
     </div>
 </div>
 {% endblock %}

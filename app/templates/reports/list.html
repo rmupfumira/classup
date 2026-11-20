@@ -4,45 +4,45 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-neutral-900">Reports</h1>
-            <p class="mt-1 text-sm text-neutral-500">
-                {{ total }} report{{ 's' if total != 1 else '' }}
-            </p>
-        </div>
-        <div class="flex gap-2">
+
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Academic</span>
+                <h1 class="cu-page-title text-white">Reports</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    {{ total }} report{{ 's' if total != 1 else '' }} across your classes. Finalising a report pushes marks into the end-of-term card and notifies parents.
+                </p>
+            </div>
             {% if permissions.is_staff %}
-            <a href="/reports/templates/manage"
-               class="inline-flex items-center px-4 py-2 text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
-                </svg>
-                Manage Templates
-            </a>
-            <a href="/reports/create"
-               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M12 4v16m8-8H4"></path>
-                </svg>
-                Create Report
-            </a>
+            <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                <a href="/reports/templates/manage" class="cu-btn-ghost-dark">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                    </svg>
+                    Templates
+                </a>
+                <a href="/reports/create" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Create report
+                </a>
+            </div>
             {% endif %}
         </div>
-    </div>
+    </section>
 
-    <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-        <form method="get" class="flex flex-col sm:flex-row gap-4">
+    {# ------ Filters card ------ #}
+    <section class="cu-card p-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-3 items-end">
             {% if classes %}
             <div class="sm:w-48">
-                <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
-                <select name="class_id" id="class_id" onchange="this.form.submit()"
-                        class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">All Classes</option>
+                <label for="class_id" class="block text-xs font-semibold text-navy-600 mb-1">Class</label>
+                <select name="class_id" id="class_id" onchange="this.form.submit()" class="cu-select">
+                    <option value="">All classes</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
                         {{ cls.name }}
@@ -51,65 +51,57 @@
                 </select>
             </div>
             {% endif %}
-            <div class="sm:w-40">
-                <label for="report_date" class="block text-sm font-medium text-neutral-700 mb-1">Date</label>
+            <div class="sm:w-44">
+                <label for="report_date" class="block text-xs font-semibold text-navy-600 mb-1">Date</label>
                 <input type="date" name="report_date" id="report_date" onchange="this.form.submit()"
-                       value="{{ current_date if current_date else '' }}"
-                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                       value="{{ current_date if current_date else '' }}" class="cu-input">
             </div>
-            <div class="sm:w-36">
-                <label for="status" class="block text-sm font-medium text-neutral-700 mb-1">Status</label>
-                <select name="status" id="status" onchange="this.form.submit()"
-                        class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">All Statuses</option>
+            <div class="sm:w-40">
+                <label for="status" class="block text-xs font-semibold text-navy-600 mb-1">Status</label>
+                <select name="status" id="status" onchange="this.form.submit()" class="cu-select">
+                    <option value="">All statuses</option>
                     <option value="DRAFT" {% if current_status == 'DRAFT' %}selected{% endif %}>Draft</option>
                     <option value="FINALIZED" {% if current_status == 'FINALIZED' %}selected{% endif %}>Finalized</option>
                 </select>
             </div>
         </form>
-    </div>
+    </section>
 
-    <!-- Reports List -->
+    {# ------ Reports list ------ #}
     {% if reports %}
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="divide-y divide-neutral-200">
+    <div class="cu-card overflow-hidden">
+        <div class="divide-y divide-navy-100/60">
             {% for report in reports %}
-            <a href="/reports/{{ report.id }}" class="block p-4 hover:bg-neutral-50 transition-colors">
+            <a href="/reports/{{ report.id }}" class="block p-4 hover:bg-navy-50/40 transition-colors">
                 <div class="flex items-center gap-4">
-                    <!-- Student Info -->
                     <div class="flex-shrink-0">
-                        <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                            <span class="text-primary-600 font-medium text-sm">
-                                {{ report.student_name[0] if report.student_name else '?' }}
-                            </span>
-                        </div>
+                        <span class="cu-avatar cu-avatar-sm">
+                            {{ (report.student_name[0] if report.student_name else '?') | upper }}
+                        </span>
                     </div>
-
-                    <!-- Report Info -->
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <p class="text-sm font-medium text-neutral-900 truncate">{{ report.student_name }}</p>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                {% if report.status == 'FINALIZED' %}bg-green-100 text-green-700
-                                {% else %}bg-amber-100 text-amber-700{% endif %}">
-                                {{ report.status }}
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="text-sm font-semibold text-navy-800 truncate">{{ report.student_name }}</p>
+                            {% if report.status == 'FINALIZED' %}
+                            <span class="cu-status cu-status-finalized">
+                                <span class="cu-status-dot"></span> Finalised
                             </span>
+                            {% else %}
+                            <span class="cu-status cu-status-draft">
+                                <span class="cu-status-dot"></span> Draft
+                            </span>
+                            {% endif %}
                         </div>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-xs text-neutral-500">{{ report.template_name }}</span>
-                            <span class="text-xs text-neutral-300">|</span>
-                            <span class="text-xs text-neutral-500">{{ report.class_name }}</span>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <span class="cu-chip-navy">{{ report.template_name }}</span>
+                            <span class="cu-chip-navy">{{ report.class_name }}</span>
                         </div>
                     </div>
-
-                    <!-- Date -->
                     <div class="flex-shrink-0 text-right">
-                        <p class="text-sm font-medium text-neutral-900">{{ report.report_date.strftime('%b %d, %Y') }}</p>
-                        <p class="text-xs text-neutral-500 mt-1">{{ report.created_at.strftime('%H:%M') }}</p>
+                        <p class="text-sm font-semibold text-navy-800">{{ report.report_date.strftime('%b %d, %Y') }}</p>
+                        <p class="text-xs text-navy-500 mt-0.5">{{ report.created_at.strftime('%H:%M') }}</p>
                     </div>
-
-                    <!-- Arrow -->
-                    <div class="flex-shrink-0 text-neutral-400">
+                    <div class="flex-shrink-0 text-navy-300">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
@@ -120,68 +112,42 @@
         </div>
     </div>
 
-    <!-- Pagination -->
+    {# Pagination #}
     {% if total_pages > 1 %}
-    <div class="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-neutral-200">
-        <div class="flex-1 flex justify-between sm:hidden">
+    <div class="cu-card flex items-center justify-between px-4 py-3">
+        <p class="text-sm text-navy-600">
+            Page <span class="font-semibold text-navy-800">{{ page }}</span> of <span class="font-semibold text-navy-800">{{ total_pages }}</span>
+        </p>
+        <div class="flex gap-2">
             {% if page > 1 %}
             <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
-               class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
-                Previous
-            </a>
+               class="cu-btn-soft !py-1.5 !px-3 !text-xs">Previous</a>
             {% endif %}
             {% if page < total_pages %}
             <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
-               class="ml-auto px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
-                Next
-            </a>
+               class="cu-btn-primary !py-1.5 !px-3 !text-xs">Next</a>
             {% endif %}
-        </div>
-        <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
-            <div>
-                <p class="text-sm text-neutral-700">
-                    Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
-                </p>
-            </div>
-            <div class="flex gap-2">
-                {% if page > 1 %}
-                <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
-                    Previous
-                </a>
-                {% endif %}
-                {% if page < total_pages %}
-                <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}{% if current_date %}&report_date={{ current_date }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
-                    Next
-                </a>
-                {% endif %}
-            </div>
         </div>
     </div>
     {% endif %}
 
     {% else %}
-    <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-neutral-900">No reports found</h3>
-        <p class="mt-2 text-sm text-neutral-500">
-            {% if current_class_id or current_date or current_status %}
-                No reports match your current filters.
-            {% else %}
-                No reports have been created yet.
-            {% endif %}
+    {# Empty state #}
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+        </div>
+        <p class="cu-empty-title">No reports found</p>
+        <p class="cu-empty-text">
+            {% if current_class_id or current_date or current_status %}No reports match your current filters.
+            {% else %}No reports have been created yet.{% endif %}
         </p>
         {% if permissions.is_staff %}
-        <div class="mt-6">
-            <a href="/reports/create"
-               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                Create Report
-            </a>
+        <div class="mt-5">
+            <a href="/reports/create" class="cu-btn-gold">Create report</a>
         </div>
         {% endif %}
     </div>
@@ -199,7 +165,6 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (saved === 'finalized') {
         ClassUp.toast('Report finalized and parents notified!', 'success');
     }
-    // Clean up URL without reloading
     if (saved) {
         params.delete('saved');
         const newUrl = params.toString()

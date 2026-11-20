@@ -4,28 +4,28 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Gradient Hero Header -->
-    <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-bold">Daily Attendance</h1>
-                <p class="mt-1 text-sm text-primary-100">
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Academic</span>
+                <h1 class="cu-page-title text-white">Daily attendance</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                     Record attendance for {{ target_date.strftime('%A, %B %d, %Y') }}
                 </p>
             </div>
-            <a href="/attendance/history"
-               class="inline-flex items-center px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white rounded-lg transition-colors">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="/attendance/history" class="cu-btn-ghost-dark">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                View History
+                View history
             </a>
         </div>
-    </div>
+    </section>
 
     <!-- Class and Date Selection -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <form method="get" class="flex flex-col sm:flex-row sm:items-end gap-4">
             <!-- Class Selection -->
             <div class="flex-1 sm:max-w-xs">
@@ -63,20 +63,20 @@
     {% if attendance_data %}
     <!-- Stats Summary with Icons -->
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="cu-stat-tile">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-lg bg-navy-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                 </div>
                 <div>
-                    <p class="text-xs text-neutral-500">Total</p>
-                    <p class="text-2xl font-bold text-neutral-900">{{ attendance_data.stats.total_students }}</p>
+                    <p class="text-xs text-navy-500 font-semibold uppercase tracking-wider">Total</p>
+                    <p class="text-2xl font-extrabold text-navy-800">{{ attendance_data.stats.total_students }}</p>
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-green-200 p-4">
+        <div class="cu-stat-tile">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                     <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +89,7 @@
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-red-200 p-4">
+        <div class="cu-stat-tile">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
                     <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +102,7 @@
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-amber-200 p-4">
+        <div class="cu-stat-tile">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +115,7 @@
                 </div>
             </div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div class="cu-stat-tile">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-neutral-50 flex items-center justify-center">
                     <svg class="w-5 h-5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,9 +132,9 @@
 
     <!-- Stacked Progress Bar -->
     {% if attendance_data.stats.total_students > 0 %}
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-neutral-700">Attendance Overview</span>
+            <span class="text-sm font-semibold text-navy-700">Attendance overview</span>
             <span class="text-xs text-neutral-500" id="attendance-progress-label">
                 {% set total = attendance_data.stats.total_students %}
                 {% set recorded = attendance_data.stats.present_count + attendance_data.stats.absent_count + attendance_data.stats.late_count + attendance_data.stats.excused_count %}
@@ -164,7 +164,7 @@
     {% endif %}
 
     <!-- Attendance Form -->
-    <form id="attendance-form" class="bg-white rounded-xl shadow-sm border border-neutral-200">
+    <form id="attendance-form" class="cu-card">
         <!-- Form Header -->
         <div class="p-4 border-b border-neutral-200 flex items-center justify-between">
             <div>
@@ -172,7 +172,7 @@
                 <p class="text-sm text-neutral-500">{{ attendance_data.students | length }} student{{ 's' if attendance_data.students | length != 1 else '' }}</p>
             </div>
             <button type="button" onclick="saveAttendance()"
-                    class="hidden sm:inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200">
+                    class="cu-btn-primary hidden sm:inline-flex">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
@@ -290,7 +290,7 @@
         <!-- Save Button (Mobile Fixed) — sits ABOVE the h-14 mobile bottom nav -->
         <div class="sm:hidden fixed bottom-14 left-0 right-0 p-4 bg-white border-t border-neutral-200 shadow-lg z-30">
             <button type="button" onclick="saveAttendance()"
-                    class="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                    class="cu-btn-primary w-full !py-3 !rounded-2xl">
                 Save Attendance
             </button>
         </div>

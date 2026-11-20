@@ -3,53 +3,58 @@
 {% block title %}Fee Items - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Fee Items</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">
-                Manage the fee items that can be added to student invoices
-            </p>
-        </div>
-        <button type="button" onclick="openAddModal()"
-                class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Add Fee Item
-        </button>
-    </div>
+<div class="space-y-6">
 
-    <!-- Fee Items Table -->
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
+                <h1 class="cu-page-title text-white">Fee Items</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Manage the fee items that can be added to student invoices.
+                </p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                <button type="button" onclick="openAddModal()" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add Fee Item
+                </button>
+            </div>
+        </div>
+    </section>
+
+    {# ------ Fee Items table ------ #}
     {% if fee_items %}
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
-        <!-- Desktop Table -->
+    <div class="cu-table-wrap">
+        {# Desktop table #}
         <div class="hidden md:block overflow-x-auto">
-            <table class="min-w-full">
+            <table class="cu-table">
                 <thead>
-                    <tr class="bg-neutral-50 border-b border-neutral-200">
-                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Name</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Amount</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Frequency</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Applies To</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th>
+                    <tr>
+                        <th>Name</th>
+                        <th>Amount</th>
+                        <th>Frequency</th>
+                        <th>Applies To</th>
+                        <th>Status</th>
+                        <th style="text-align:right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-100">
+                <tbody>
                     {% for item in fee_items %}
-                    <tr class="hover:bg-neutral-50 transition-colors" id="row-{{ item.id }}">
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <div class="font-medium text-neutral-800">{{ item.name }}</div>
+                    <tr id="row-{{ item.id }}">
+                        <td>
+                            <div class="font-semibold text-navy-800">{{ item.name }}</div>
                             {% if item.description %}
-                            <div class="text-xs text-neutral-500 truncate max-w-xs">{{ item.description }}</div>
+                            <div class="text-xs text-navy-500 truncate max-w-xs">{{ item.description }}</div>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-800 font-medium">
+                        <td class="font-semibold text-navy-800">
                             {{ currency }} {{ "%.2f"|format(item.amount) }}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                        <td class="text-navy-600">
                             {% if item.frequency == 'MONTHLY' %}Monthly
                             {% elif item.frequency == 'TERMLY' %}Termly
                             {% elif item.frequency == 'QUARTERLY' %}Quarterly
@@ -59,12 +64,10 @@
                             {% else %}{{ item.frequency }}
                             {% endif %}
                             {% if item.applies_to_term %}
-                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
-                                Term {{ item.applies_to_term }}
-                            </span>
+                            <span class="ml-1 cu-chip-navy">Term {{ item.applies_to_term }}</span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
+                        <td class="text-navy-600">
                             {% if item.applies_to == 'ALL' or not item.class_id %}
                                 All Students
                             {% elif item.school_class %}
@@ -73,25 +76,27 @@
                                 Specific Class
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
+                        <td>
                             {% if item.is_active %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                            <span class="cu-status cu-status-finalized">
+                                <span class="cu-status-dot"></span>
                                 Active
                             </span>
                             {% else %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                            <span class="cu-status cu-status-draft">
+                                <span class="cu-status-dot"></span>
                                 Inactive
                             </span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-right">
-                            <div class="flex items-center justify-end gap-2">
+                        <td style="text-align:right">
+                            <div class="flex items-center justify-end gap-3">
                                 <button type="button" onclick="openEditModal('{{ item.id }}')"
-                                        class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                        class="text-xs text-navy-600 hover:text-navy-800 font-semibold">
                                     Edit
                                 </button>
                                 <button type="button" onclick="deleteFeeItem('{{ item.id }}', '{{ item.name }}')"
-                                        class="text-xs text-red-600 hover:text-red-700 font-medium">
+                                        class="text-xs text-rose-600 hover:text-rose-700 font-semibold">
                                     Delete
                                 </button>
                             </div>
@@ -102,28 +107,30 @@
             </table>
         </div>
 
-        <!-- Mobile Cards -->
-        <div class="md:hidden divide-y divide-neutral-100">
+        {# Mobile cards #}
+        <div class="md:hidden border-t border-navy-50">
             {% for item in fee_items %}
-            <div class="p-4" id="card-{{ item.id }}">
+            <div class="p-4 border-b border-navy-50 last:border-b-0" id="card-{{ item.id }}">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-sm font-medium text-neutral-800">{{ item.name }}</p>
-                        <p class="text-sm font-semibold text-neutral-900 mt-0.5">{{ currency }} {{ "%.2f"|format(item.amount) }}</p>
+                        <p class="text-sm font-semibold text-navy-800">{{ item.name }}</p>
+                        <p class="text-sm font-bold text-navy-800 mt-0.5">{{ currency }} {{ "%.2f"|format(item.amount) }}</p>
                     </div>
                     <div class="flex items-center gap-2">
                         {% if item.is_active %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                        <span class="cu-status cu-status-finalized">
+                            <span class="cu-status-dot"></span>
                             Active
                         </span>
                         {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
+                        <span class="cu-status cu-status-draft">
+                            <span class="cu-status-dot"></span>
                             Inactive
                         </span>
                         {% endif %}
                     </div>
                 </div>
-                <div class="mt-1.5 text-xs text-neutral-500">
+                <div class="mt-1.5 text-xs text-navy-500">
                     {% if item.frequency == 'MONTHLY' %}Monthly
                     {% elif item.frequency == 'TERMLY' %}Termly
                     {% elif item.frequency == 'QUARTERLY' %}Quarterly
@@ -132,22 +139,22 @@
                     {% elif item.frequency == 'WEEKLY' %}Weekly
                     {% else %}{{ item.frequency }}
                     {% endif %}
-                    &middot;
+                    ·
                     {% if item.applies_to == 'ALL' or not item.class_id %}All Students
                     {% elif item.school_class %}{{ item.school_class.name }}
                     {% else %}Specific Class
                     {% endif %}
                 </div>
                 {% if item.description %}
-                <p class="mt-1 text-xs text-neutral-400 truncate">{{ item.description }}</p>
+                <p class="mt-1 text-xs text-navy-400 truncate">{{ item.description }}</p>
                 {% endif %}
                 <div class="mt-2 flex gap-3">
                     <button type="button" onclick="openEditModal('{{ item.id }}')"
-                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            class="text-xs text-navy-600 hover:text-navy-800 font-semibold">
                         Edit
                     </button>
                     <button type="button" onclick="deleteFeeItem('{{ item.id }}', '{{ item.name }}')"
-                            class="text-xs text-red-600 hover:text-red-700 font-medium">
+                            class="text-xs text-rose-600 hover:text-rose-700 font-semibold">
                         Delete
                     </button>
                 </div>
@@ -156,23 +163,19 @@
         </div>
     </div>
     {% else %}
-    <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
-        <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"></path>
+                      d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
             </svg>
         </div>
-        <h3 class="text-base font-semibold text-neutral-800">No fee items yet</h3>
-        <p class="mt-1 text-sm text-neutral-500">
-            Create fee items to define tuition, registration fees, and other charges.
-        </p>
+        <p class="cu-empty-title">No fee items yet</p>
+        <p class="cu-empty-text">Create fee items to define tuition, registration fees, and other charges.</p>
         <div class="mt-5">
-            <button type="button" onclick="openAddModal()"
-                    class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+            <button type="button" onclick="openAddModal()" class="cu-btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 Add Fee Item
             </button>
@@ -182,14 +185,14 @@
 </div>
 
 <!-- Fee Item Modal -->
-<dialog id="fee-item-modal" class="rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+<dialog id="fee-item-modal" class="rounded-3xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
     <div class="p-6">
         <div class="flex items-center justify-between mb-4">
-            <h2 id="modal-title" class="text-lg font-semibold text-neutral-800">Add Fee Item</h2>
+            <h2 id="modal-title" class="text-lg font-bold text-navy-800">Add Fee Item</h2>
             <button type="button" onclick="closeModal()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="text-navy-400 hover:text-navy-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
@@ -197,35 +200,24 @@
             <input type="hidden" id="fi-id" value="">
 
             <div>
-                <label for="fi-name" class="block text-sm font-medium text-neutral-700 mb-1">Name</label>
-                <input type="text" id="fi-name" name="name" required
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                              focus:border-primary-500 focus:ring-0"
-                       placeholder="e.g. Monthly Tuition">
+                <label for="fi-name" class="block text-sm font-medium text-navy-700 mb-1">Name</label>
+                <input type="text" id="fi-name" name="name" required class="cu-input" placeholder="e.g. Monthly Tuition">
             </div>
 
             <div>
-                <label for="fi-description" class="block text-sm font-medium text-neutral-700 mb-1">Description</label>
-                <textarea id="fi-description" name="description" rows="2"
-                          class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded-md bg-white
-                                 focus:border-primary-500 focus:ring-0"
+                <label for="fi-description" class="block text-sm font-medium text-navy-700 mb-1">Description</label>
+                <textarea id="fi-description" name="description" rows="2" class="cu-textarea"
                           placeholder="Optional description of this fee item"></textarea>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="fi-amount" class="block text-sm font-medium text-neutral-700 mb-1">Amount ({{ currency }})</label>
-                    <input type="number" id="fi-amount" name="amount" required min="0" step="0.01"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                  focus:border-primary-500 focus:ring-0"
-                           placeholder="0.00">
+                    <label for="fi-amount" class="block text-sm font-medium text-navy-700 mb-1">Amount ({{ currency }})</label>
+                    <input type="number" id="fi-amount" name="amount" required min="0" step="0.01" class="cu-input" placeholder="0.00">
                 </div>
                 <div>
-                    <label for="fi-frequency" class="block text-sm font-medium text-neutral-700 mb-1">Frequency</label>
-                    <select id="fi-frequency" name="frequency" required
-                            class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                   focus:border-primary-500 focus:ring-0"
-                            onchange="toggleTermSelect()">
+                    <label for="fi-frequency" class="block text-sm font-medium text-navy-700 mb-1">Frequency</label>
+                    <select id="fi-frequency" name="frequency" required class="cu-select" onchange="toggleTermSelect()">
                         <option value="MONTHLY">Monthly</option>
                         <option value="TERMLY">Termly</option>
                         <option value="QUARTERLY">Quarterly</option>
@@ -237,27 +229,22 @@
             </div>
 
             <div id="fi-term-group" class="hidden">
-                <label for="fi-applies-to-term" class="block text-sm font-medium text-neutral-700 mb-1">Applies to term</label>
-                <select id="fi-applies-to-term" name="applies_to_term"
-                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                               focus:border-primary-500 focus:ring-0">
+                <label for="fi-applies-to-term" class="block text-sm font-medium text-navy-700 mb-1">Applies to term</label>
+                <select id="fi-applies-to-term" name="applies_to_term" class="cu-select">
                     <option value="">Any term (charge every term)</option>
                     <option value="1">Term 1 only</option>
                     <option value="2">Term 2 only</option>
                     <option value="3">Term 3 only</option>
                     <option value="4">Term 4 only</option>
                 </select>
-                <p class="mt-1 text-xs text-neutral-500">
+                <p class="mt-1 text-xs text-navy-500">
                     The invoice line will auto-label the term + year from the school calendar.
                 </p>
             </div>
 
             <div>
-                <label for="fi-applies-to" class="block text-sm font-medium text-neutral-700 mb-1">Applies To</label>
-                <select id="fi-applies-to" name="applies_to"
-                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                               focus:border-primary-500 focus:ring-0"
-                        onchange="toggleClassSelect()">
+                <label for="fi-applies-to" class="block text-sm font-medium text-navy-700 mb-1">Applies To</label>
+                <select id="fi-applies-to" name="applies_to" class="cu-select" onchange="toggleClassSelect()">
                     <option value="ALL">All Students</option>
                     <option value="CLASS">Specific Class</option>
                     {% if show_residence_scopes %}
@@ -266,17 +253,15 @@
                     {% endif %}
                 </select>
                 {% if show_residence_scopes %}
-                <p class="mt-1 text-xs text-neutral-500">
+                <p class="mt-1 text-xs text-navy-500">
                     Day Scholars / Boarders target students by their effective residence.
                 </p>
                 {% endif %}
             </div>
 
             <div id="fi-class-group" class="hidden">
-                <label for="fi-class-id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
-                <select id="fi-class-id" name="class_id"
-                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                               focus:border-primary-500 focus:ring-0">
+                <label for="fi-class-id" class="block text-sm font-medium text-navy-700 mb-1">Class</label>
+                <select id="fi-class-id" name="class_id" class="cu-select">
                     <option value="">Select a class...</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}">{{ cls.name }}</option>
@@ -287,21 +272,19 @@
             <div>
                 <label class="flex items-center gap-2">
                     <input type="checkbox" id="fi-active" name="is_active" checked
-                           class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="text-sm font-medium text-neutral-700">Active</span>
+                           class="rounded border-navy-300 text-navy-600 focus:ring-navy-500">
+                    <span class="text-sm font-medium text-navy-700">Active</span>
                 </label>
-                <p class="text-xs text-neutral-500 mt-1 ml-6">Inactive fee items will not appear when creating invoices.</p>
+                <p class="text-xs text-navy-500 mt-1 ml-6">Inactive fee items will not appear when creating invoices.</p>
             </div>
 
-            <div id="fi-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
+            <div id="fi-error" class="hidden text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-2xl p-3"></div>
 
             <div class="flex justify-end gap-3 pt-2">
-                <button type="button" onclick="closeModal()"
-                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                <button type="button" onclick="closeModal()" class="cu-btn-soft">
                     Cancel
                 </button>
-                <button type="submit" id="fi-submit-btn"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                <button type="submit" id="fi-submit-btn" class="cu-btn-primary">
                     Save Fee Item
                 </button>
             </div>

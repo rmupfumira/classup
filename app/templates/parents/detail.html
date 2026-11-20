@@ -3,30 +3,29 @@
 {% block title %}{{ parent.first_name }} {{ parent.last_name }} - Parents{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="space-y-6">
 
-    <!-- Header -->
-    <div class="flex items-center gap-3">
-        <a href="/parents" class="text-neutral-500 hover:text-neutral-700">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-        </a>
-        <div class="flex-1">
-            <h1 class="text-xl sm:text-2xl font-bold text-neutral-900">
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative">
+            <a href="/parents" class="inline-flex items-center gap-1 text-white/70 hover:text-white text-xs font-semibold mb-3">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                Back to parents
+            </a>
+            <h1 class="cu-page-title text-white">
                 {{ parent.first_name }} {{ parent.last_name }}
             </h1>
-            <p class="text-sm text-neutral-500">
+            <p class="mt-2 text-sm md:text-base text-white/80">
                 {{ parent.email }}
                 {% if not parent.is_active %}
-                <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-700">Inactive</span>
+                <span class="ml-2 cu-chip-gold">Inactive</span>
                 {% endif %}
             </p>
         </div>
-    </div>
+    </section>
 
     <!-- Profile form -->
-    <form id="profile-form" class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 space-y-4">
+    <form id="profile-form" class="cu-card p-6 space-y-4">
         <h2 class="text-lg font-semibold text-neutral-900">Profile</h2>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -94,7 +93,7 @@
     </form>
 
     <!-- Children -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+    <div class="cu-card p-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-neutral-900">Children linked</h2>
             <button type="button" id="link-child-btn"
@@ -132,7 +131,7 @@
     </div>
 
     <!-- Password + account actions -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 space-y-3">
+    <div class="cu-card p-6 space-y-3">
         <h2 class="text-lg font-semibold text-neutral-900">Password & account</h2>
         <div class="flex flex-col sm:flex-row gap-2">
             <button type="button" id="send-reset-btn"

@@ -5,9 +5,9 @@
 {% set is_staff = user.role in ('SCHOOL_ADMIN', 'TEACHER') %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
+<div class="max-w-3xl mx-auto space-y-6">
     <div>
-        <a href="/events" class="text-sm text-neutral-500 hover:text-neutral-700 inline-flex items-center gap-1">
+        <a href="/events" class="text-sm text-navy-500 hover:text-navy-700 inline-flex items-center gap-1">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
@@ -15,13 +15,13 @@
         </a>
     </div>
 
-    <div id="event-card" class="bg-white rounded-xl border border-neutral-200 p-6">
-        <p class="text-center text-neutral-400 py-8">Loading event…</p>
+    <div id="event-card" class="cu-card p-6">
+        <p class="text-center text-navy-400 py-8">Loading event…</p>
     </div>
 
     {% if is_staff %}
-    <div id="rsvp-list" class="bg-white rounded-xl border border-neutral-200 p-6 hidden">
-        <h2 class="text-sm font-medium text-neutral-500 uppercase tracking-wide mb-3">RSVPs</h2>
+    <div id="rsvp-list" class="cu-card p-6 hidden">
+        <h2 class="text-xs font-bold text-gold-600 uppercase tracking-wider mb-3">RSVPs</h2>
         <div id="rsvp-body" class="text-sm"></div>
     </div>
     {% endif %}

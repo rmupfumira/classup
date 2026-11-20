@@ -3,120 +3,118 @@
 {% block title %}Invoice {{ invoice.invoice_number }} - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6">
+{% set invoice_status_map = {
+    'DRAFT':          ('cu-status-draft',      'Draft'),
+    'SENT':           ('cu-status-scheduled',  'Sent'),
+    'PARTIALLY_PAID': ('cu-status-progress',   'Partially Paid'),
+    'PAID':           ('cu-status-finalized',  'Paid'),
+    'OVERDUE':        ('cu-status-danger',     'Overdue'),
+    'CANCELLED':      ('cu-status-draft',      'Cancelled'),
+} %}
+{% set st_cls, st_label = invoice_status_map.get(invoice.status, ('cu-status-draft', invoice.status)) %}
+{% set back_url = '/billing/invoices' if is_admin else '/billing/statement' %}
 
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex items-center gap-4">
-            {# Back arrow — parents can't access the admin /billing/invoices list,
-               so send them to their statement instead. #}
-            {% set back_url = '/billing/invoices' if is_admin else '/billing/statement' %}
-            <a href="{{ back_url }}" class="text-neutral-500 hover:text-neutral-700 transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <div>
-                <div class="flex items-center gap-3">
-                    <h1 class="text-2xl font-bold text-neutral-800">
-                        Invoice {{ invoice.invoice_number }}
-                    </h1>
-                    {% if invoice.status == 'DRAFT' %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">Draft</span>
-                    {% elif invoice.status == 'SENT' %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info-100 text-info-800">Sent</span>
-                    {% elif invoice.status == 'PARTIALLY_PAID' %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-100 text-warning-800">Partially Paid</span>
-                    {% elif invoice.status == 'PAID' %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">Paid</span>
-                    {% elif invoice.status == 'OVERDUE' %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error-100 text-error-800">Overdue</span>
-                    {% elif invoice.status == 'CANCELLED' %}
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-400 line-through">Cancelled</span>
-                    {% endif %}
+<div class="space-y-6">
+
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="flex items-start gap-4 max-w-3xl">
+                <a href="{{ back_url }}" class="cu-btn-ghost-dark !px-3 shrink-0" aria-label="Back">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+                <div>
+                    <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance · Invoice</span>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h1 class="cu-page-title text-white">{{ invoice.invoice_number }}</h1>
+                        <span class="cu-status {{ st_cls }}">
+                            <span class="cu-status-dot"></span>
+                            {{ st_label }}
+                        </span>
+                    </div>
+                    <p class="mt-2 text-sm text-white/80">
+                        Created {{ invoice.created_at.strftime('%B %d, %Y') }}
+                        {% if invoice.sent_at %}
+                        · Sent {{ invoice.sent_at.strftime('%B %d, %Y') }}
+                        {% endif %}
+                    </p>
                 </div>
-                <p class="text-sm text-neutral-500 mt-0.5">
-                    Created {{ invoice.created_at.strftime('%B %d, %Y') }}
-                    {% if invoice.sent_at %}
-                    &middot; Sent {{ invoice.sent_at.strftime('%B %d, %Y') }}
-                    {% endif %}
-                </p>
             </div>
-        </div>
 
-        {% if is_admin %}
-        <div class="flex items-center gap-2">
-            {% if invoice.status in ('DRAFT', 'SENT') %}
-            <button type="button" onclick="sendInvoice('{{ invoice.id }}')"
-                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                </svg>
-                {{ 'Resend' if invoice.status == 'SENT' else 'Send' }}
-            </button>
+            {% if is_admin %}
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+                {% if invoice.status in ('DRAFT', 'SENT') %}
+                <button type="button" onclick="sendInvoice('{{ invoice.id }}')" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    {{ 'Resend' if invoice.status == 'SENT' else 'Send' }}
+                </button>
+                {% endif %}
+
+                {% if invoice.status not in ('PAID', 'CANCELLED') %}
+                <button type="button" onclick="cancelInvoice('{{ invoice.id }}')" class="cu-btn-ghost-dark">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    Cancel
+                </button>
+                {% endif %}
+            </div>
             {% endif %}
-
-            {% if invoice.status not in ('PAID', 'CANCELLED') %}
-            <button type="button" onclick="cancelInvoice('{{ invoice.id }}')"
-                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-error-600 bg-white border border-neutral-300 rounded-lg hover:bg-error-50 transition-colors">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-                Cancel
-            </button>
-            {% endif %}
         </div>
-        {% endif %}
-    </div>
+    </section>
 
-    <!-- Invoice Info Card -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-        <h2 class="text-lg font-semibold text-neutral-800 mb-4">Invoice Details</h2>
+    {# ------ Invoice info card ------ #}
+    <div class="cu-card p-6">
+        <h2 class="text-lg font-bold text-navy-800 mb-4">Invoice Details</h2>
         <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <div>
-                <dt class="text-neutral-500">Student</dt>
-                <dd class="text-neutral-900 font-medium mt-0.5">
+                <dt class="text-navy-500 font-medium">Student</dt>
+                <dd class="text-navy-800 font-semibold mt-0.5">
                     {% if invoice.student %}
-                    <a href="/students/{{ invoice.student.id }}" class="text-primary-600 hover:underline">
+                    <a href="/students/{{ invoice.student.id }}" class="text-navy-700 hover:text-navy-900 underline-offset-2 hover:underline">
                         {{ invoice.student.first_name }} {{ invoice.student.last_name }}
                     </a>
                     {% else %}
-                    -
+                    —
                     {% endif %}
                 </dd>
             </div>
             <div>
-                <dt class="text-neutral-500">Class</dt>
-                <dd class="text-neutral-900 font-medium mt-0.5">
+                <dt class="text-navy-500 font-medium">Class</dt>
+                <dd class="text-navy-800 font-semibold mt-0.5">
                     {% if invoice.student and invoice.student.school_class %}
                     {{ invoice.student.school_class.name }}
                     {% else %}
-                    -
+                    —
                     {% endif %}
                 </dd>
             </div>
             <div>
-                <dt class="text-neutral-500">Billing Period</dt>
-                <dd class="text-neutral-900 font-medium mt-0.5">
+                <dt class="text-navy-500 font-medium">Billing Period</dt>
+                <dd class="text-navy-800 font-semibold mt-0.5">
                     {% if invoice.billing_period_start and invoice.billing_period_end %}
-                    {{ invoice.billing_period_start.strftime('%b %d, %Y') }} &ndash; {{ invoice.billing_period_end.strftime('%b %d, %Y') }}
+                    {{ invoice.billing_period_start.strftime('%b %d, %Y') }} – {{ invoice.billing_period_end.strftime('%b %d, %Y') }}
                     {% else %}
-                    -
+                    —
                     {% endif %}
                 </dd>
             </div>
             <div>
-                <dt class="text-neutral-500 flex items-center gap-2">
+                <dt class="text-navy-500 font-medium flex items-center gap-2">
                     Due Date
                     {% if is_admin and invoice.status != 'CANCELLED' %}
                     <button type="button" id="due-date-edit-btn"
-                            class="text-xs text-primary-600 hover:text-primary-700 underline"
+                            class="text-xs text-navy-700 hover:text-navy-900 underline font-semibold"
                             title="Change due date">Edit</button>
                     {% endif %}
                 </dt>
                 <dd id="due-date-display"
-                    class="font-medium mt-0.5 {% if invoice.status == 'OVERDUE' %}text-error-600{% else %}text-neutral-900{% endif %}">
+                    class="font-semibold mt-0.5 {% if invoice.status == 'OVERDUE' %}text-rose-700{% else %}text-navy-800{% endif %}">
                     {{ invoice.due_date.strftime('%B %d, %Y') }}
                     {% if invoice.status == 'OVERDUE' %}
                     <span class="text-xs ml-1">(overdue)</span>
@@ -126,136 +124,136 @@
                 <dd id="due-date-editor" class="hidden mt-1 flex items-center gap-2">
                     <input type="date" id="due-date-input"
                            value="{{ invoice.due_date.isoformat() }}"
-                           class="text-sm px-2 py-1 border border-neutral-300 rounded">
-                    <button type="button" id="due-date-save-btn"
-                            class="text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700">Save</button>
-                    <button type="button" id="due-date-cancel-btn"
-                            class="text-xs px-2 py-1 border border-neutral-300 rounded hover:bg-neutral-50">Cancel</button>
+                           class="cu-input !py-1 text-sm max-w-[160px]">
+                    <button type="button" id="due-date-save-btn" class="cu-btn-primary !py-1 !px-3 !text-xs">Save</button>
+                    <button type="button" id="due-date-cancel-btn" class="cu-btn-soft !py-1 !px-3 !text-xs">Cancel</button>
                 </dd>
                 {% endif %}
             </div>
             <div>
-                <dt class="text-neutral-500">Created By</dt>
-                <dd class="text-neutral-900 font-medium mt-0.5">
+                <dt class="text-navy-500 font-medium">Created By</dt>
+                <dd class="text-navy-800 font-semibold mt-0.5">
                     {% if invoice.created_by_user %}
                     {{ invoice.created_by_user.first_name }} {{ invoice.created_by_user.last_name }}
                     {% else %}
-                    -
+                    —
                     {% endif %}
                 </dd>
             </div>
             {% if invoice.notes %}
             <div class="sm:col-span-2 lg:col-span-3">
-                <dt class="text-neutral-500">Notes</dt>
-                <dd class="text-neutral-700 mt-0.5">{{ invoice.notes }}</dd>
+                <dt class="text-navy-500 font-medium">Notes</dt>
+                <dd class="text-navy-700 mt-0.5">{{ invoice.notes }}</dd>
             </div>
             {% endif %}
         </dl>
     </div>
 
-    <!-- Line Items Table -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-neutral-200">
-            <h2 class="text-lg font-semibold text-neutral-800">Line Items</h2>
+    {# ------ Line items table ------ #}
+    <div class="cu-table-wrap">
+        <div class="px-6 py-4 border-b border-navy-100">
+            <h2 class="text-lg font-bold text-navy-800">Line Items</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="cu-table">
                 <thead>
-                    <tr class="bg-neutral-50 border-b border-neutral-200">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Description</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Qty</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Unit Price</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Total</th>
+                    <tr>
+                        <th>Description</th>
+                        <th style="text-align:right">Qty</th>
+                        <th style="text-align:right">Unit Price</th>
+                        <th style="text-align:right">Total</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-100">
+                <tbody>
                     {% for item in invoice.items %}
                     <tr>
-                        <td class="px-6 py-3 text-neutral-800">{{ item.description }}</td>
-                        <td class="px-6 py-3 text-right text-neutral-700">{{ item.quantity }}</td>
-                        <td class="px-6 py-3 text-right text-neutral-700">{{ currency }} {{ "%.2f"|format(item.unit_amount) }}</td>
-                        <td class="px-6 py-3 text-right text-neutral-800 font-medium">{{ currency }} {{ "%.2f"|format(item.total_amount) }}</td>
+                        <td class="text-navy-800">{{ item.description }}</td>
+                        <td style="text-align:right" class="text-navy-700">{{ item.quantity }}</td>
+                        <td style="text-align:right" class="text-navy-700">{{ currency }} {{ "%.2f"|format(item.unit_amount) }}</td>
+                        <td style="text-align:right" class="font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(item.total_amount) }}</td>
                     </tr>
                     {% endfor %}
                     {% if not invoice.items %}
                     <tr>
-                        <td colspan="4" class="px-6 py-8 text-center text-neutral-400">No line items.</td>
+                        <td colspan="4" style="padding: 2rem; text-align:center;" class="text-navy-400">No line items.</td>
                     </tr>
                     {% endif %}
                 </tbody>
-                <tfoot class="border-t border-neutral-200 bg-neutral-50">
+                <tfoot style="background: #f4f7fb;">
                     <tr>
-                        <td colspan="3" class="px-6 py-3 text-right text-sm text-neutral-600 font-medium">Subtotal</td>
-                        <td class="px-6 py-3 text-right text-sm text-neutral-800 font-medium">{{ currency }} {{ "%.2f"|format(invoice.subtotal) }}</td>
+                        <td colspan="3" style="text-align:right; padding: 0.75rem 1rem;" class="font-medium text-navy-600">Subtotal</td>
+                        <td style="text-align:right; padding: 0.75rem 1rem;" class="font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(invoice.subtotal) }}</td>
                     </tr>
-                    <tr class="border-t border-neutral-200">
-                        <td colspan="3" class="px-6 py-3 text-right text-sm text-neutral-800 font-semibold">Total</td>
-                        <td class="px-6 py-3 text-right text-sm text-neutral-900 font-bold">{{ currency }} {{ "%.2f"|format(invoice.total_amount) }}</td>
+                    <tr style="border-top: 1px solid #dce4f0;">
+                        <td colspan="3" style="text-align:right; padding: 0.75rem 1rem;" class="font-bold text-navy-800">Total</td>
+                        <td style="text-align:right; padding: 0.75rem 1rem;" class="font-extrabold text-navy-800">{{ currency }} {{ "%.2f"|format(invoice.total_amount) }}</td>
                     </tr>
                 </tfoot>
             </table>
         </div>
     </div>
 
-    <!-- Payment Summary -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-        <h2 class="text-lg font-semibold text-neutral-800 mb-4">Payment Summary</h2>
+    {# ------ Payment summary ------ #}
+    <div class="cu-card p-6">
+        <h2 class="text-lg font-bold text-navy-800 mb-4">Payment Summary</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="flex items-center justify-between bg-success-50 rounded-lg px-4 py-3 border border-success-200">
-                <span class="text-sm text-success-700 font-medium">Amount Paid</span>
-                <span class="text-lg font-bold text-success-800">{{ currency }} {{ "%.2f"|format(invoice.amount_paid) }}</span>
+            <div class="flex items-center justify-between rounded-2xl px-4 py-3 border border-emerald-200 bg-emerald-50">
+                <span class="text-sm text-emerald-700 font-semibold">Amount Paid</span>
+                <span class="text-lg font-bold text-emerald-800">{{ currency }} {{ "%.2f"|format(invoice.amount_paid) }}</span>
             </div>
-            <div class="flex items-center justify-between rounded-lg px-4 py-3 border
-                        {% if invoice.balance > 0 %}bg-warning-50 border-warning-200{% else %}bg-neutral-50 border-neutral-200{% endif %}">
-                <span class="text-sm font-medium {% if invoice.balance > 0 %}text-warning-700{% else %}text-neutral-600{% endif %}">
+            <div class="flex items-center justify-between rounded-2xl px-4 py-3 border
+                        {% if invoice.balance > 0 %}bg-gold-50 border-gold-200{% else %}bg-navy-50 border-navy-100{% endif %}">
+                <span class="text-sm font-semibold {% if invoice.balance > 0 %}text-gold-800{% else %}text-navy-600{% endif %}">
                     Balance Outstanding
                 </span>
-                <span class="text-lg font-bold {% if invoice.balance > 0 %}text-warning-800{% else %}text-neutral-700{% endif %}">
+                <span class="text-lg font-bold {% if invoice.balance > 0 %}text-gold-800{% else %}text-navy-700{% endif %}">
                     {{ currency }} {{ "%.2f"|format(invoice.balance) }}
                 </span>
             </div>
         </div>
     </div>
 
-    <!-- Payments Table -->
+    {# ------ Payments table ------ #}
     {% set active_payments = invoice.payments | selectattr('deleted_at', 'none') | list %}
     {% if active_payments %}
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-neutral-200">
-            <h2 class="text-lg font-semibold text-neutral-800">Payments</h2>
+    <div class="cu-table-wrap">
+        <div class="px-6 py-4 border-b border-navy-100">
+            <h2 class="text-lg font-bold text-navy-800">Payments</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="cu-table">
                 <thead>
-                    <tr class="bg-neutral-50 border-b border-neutral-200">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Date</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Method</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Reference</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Amount</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Recorded By</th>
+                    <tr>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th style="text-align:right">Amount</th>
+                        <th>Recorded By</th>
                         {% if is_admin %}
-                        <th class="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider"></th>
+                        <th style="text-align:right"></th>
                         {% endif %}
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-100">
+                <tbody>
                     {% for payment in active_payments %}
                     <tr>
-                        <td class="px-6 py-3 text-neutral-800">{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
-                        <td class="px-6 py-3 text-neutral-700">{{ payment.payment_method | replace('_', ' ') | title }}</td>
-                        <td class="px-6 py-3 text-neutral-600">{{ payment.reference_number or '-' }}</td>
-                        <td class="px-6 py-3 text-right text-neutral-800 font-medium">{{ currency }} {{ "%.2f"|format(payment.amount) }}</td>
-                        <td class="px-6 py-3 text-neutral-600">
+                        <td class="text-navy-800">{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <span class="cu-chip-navy">{{ payment.payment_method | replace('_', ' ') | title }}</span>
+                        </td>
+                        <td class="text-navy-600">{{ payment.reference_number or '—' }}</td>
+                        <td style="text-align:right" class="font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(payment.amount) }}</td>
+                        <td class="text-navy-600">
                             {% if payment.recorded_by_user %}
                             {{ payment.recorded_by_user.first_name }} {{ payment.recorded_by_user.last_name }}
                             {% else %}
-                            -
+                            —
                             {% endif %}
                         </td>
                         {% if is_admin %}
-                        <td class="px-6 py-3 text-right">
+                        <td style="text-align:right">
                             <button type="button" onclick="deletePayment('{{ payment.id }}')"
-                                    class="text-error-500 hover:text-error-700 transition-colors text-xs font-medium">
+                                    class="text-xs font-semibold text-rose-600 hover:text-rose-700">
                                 Delete
                             </button>
                         </td>
@@ -268,28 +266,25 @@
     </div>
     {% endif %}
 
-    <!-- Record Payment Form (admin only, not paid/cancelled) -->
+    {# ------ Record payment form (admin only, not paid/cancelled) ------ #}
     {% if is_admin and invoice.status not in ('PAID', 'CANCELLED') %}
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-        <h2 class="text-lg font-semibold text-neutral-800 mb-4">Record Payment</h2>
+    <div class="cu-card p-6">
+        <h2 class="text-lg font-bold text-navy-800 mb-4">Record Payment</h2>
         <form id="record-payment-form" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label for="payment-amount" class="block text-sm font-medium text-neutral-700 mb-1">Amount</label>
+                    <label for="payment-amount" class="block text-sm font-medium text-navy-700 mb-1">Amount</label>
                     <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-neutral-400 text-sm">{{ currency }}</span>
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-navy-400 text-sm z-10">{{ currency }}</span>
                         <input type="number" id="payment-amount" name="amount"
                                step="0.01" min="0.01" max="{{ invoice.balance }}" required
                                value="{{ "%.2f"|format(invoice.balance) }}"
-                               class="block w-full h-9 pl-12 pr-3 text-sm border border-neutral-300 rounded-md bg-white
-                                      focus:border-primary-500 focus:ring-0">
+                               class="cu-input !pl-12">
                     </div>
                 </div>
                 <div>
-                    <label for="payment-method" class="block text-sm font-medium text-neutral-700 mb-1">Payment Method</label>
-                    <select id="payment-method" name="payment_method" required
-                            class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                   focus:border-primary-500 focus:ring-0">
+                    <label for="payment-method" class="block text-sm font-medium text-navy-700 mb-1">Payment Method</label>
+                    <select id="payment-method" name="payment_method" required class="cu-select">
                         <option value="CASH">Cash</option>
                         <option value="BANK_TRANSFER">Bank Transfer</option>
                         <option value="EFT">EFT</option>
@@ -299,34 +294,27 @@
                     </select>
                 </div>
                 <div>
-                    <label for="payment-reference" class="block text-sm font-medium text-neutral-700 mb-1">Reference Number</label>
+                    <label for="payment-reference" class="block text-sm font-medium text-navy-700 mb-1">Reference Number</label>
                     <input type="text" id="payment-reference" name="reference_number" maxlength="100"
-                           placeholder="e.g. receipt or transaction number"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                  focus:border-primary-500 focus:ring-0">
+                           placeholder="e.g. receipt or transaction number" class="cu-input">
                 </div>
                 <div>
-                    <label for="payment-date" class="block text-sm font-medium text-neutral-700 mb-1">Payment Date</label>
-                    <input type="date" id="payment-date" name="payment_date" required
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                  focus:border-primary-500 focus:ring-0">
+                    <label for="payment-date" class="block text-sm font-medium text-navy-700 mb-1">Payment Date</label>
+                    <input type="date" id="payment-date" name="payment_date" required class="cu-input">
                 </div>
             </div>
             <div>
-                <label for="payment-notes" class="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
+                <label for="payment-notes" class="block text-sm font-medium text-navy-700 mb-1">Notes</label>
                 <textarea id="payment-notes" name="notes" rows="2"
-                          placeholder="Optional notes about this payment"
-                          class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded-md bg-white
-                                 focus:border-primary-500 focus:ring-0"></textarea>
+                          placeholder="Optional notes about this payment" class="cu-textarea"></textarea>
             </div>
 
-            <div id="payment-error" class="hidden text-sm text-error-600 bg-error-50 border border-error-200 rounded-md p-3"></div>
+            <div id="payment-error" class="hidden text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-2xl p-3"></div>
 
             <div class="flex justify-end">
-                <button type="submit" id="payment-submit-btn"
-                        class="inline-flex items-center px-5 py-2 text-sm font-medium text-white bg-success-600 rounded-lg hover:bg-success-700 transition-colors">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                <button type="submit" id="payment-submit-btn" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                     Record Payment
                 </button>
@@ -341,7 +329,6 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Default the payment date to today
     const dateInput = document.getElementById('payment-date');
     if (dateInput && !dateInput.value) {
         const today = new Date();
@@ -351,7 +338,6 @@ document.addEventListener('DOMContentLoaded', function() {
         dateInput.value = `${yyyy}-${mm}-${dd}`;
     }
 
-    // Record payment form
     const form = document.getElementById('record-payment-form');
     if (form) {
         form.addEventListener('submit', function(e) {
@@ -360,7 +346,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Due-date inline edit (admin only, wired if the buttons exist)
     const dueEditBtn = document.getElementById('due-date-edit-btn');
     const dueDisplay = document.getElementById('due-date-display');
     const dueEditor = document.getElementById('due-date-editor');
@@ -473,10 +458,6 @@ async function recordPayment() {
             method: 'POST',
             body: data,
         });
-        // Close the payment modal + redirect to the billing home.
-        // Previously reloaded the detail page which left the admin
-        // inside the invoice context — the 2026-11-18 tester wanted
-        // a clean return to billing after a successful record.
         const modal = document.getElementById('record-payment-modal');
         if (modal && typeof modal.close === 'function') {
             try { modal.close(); } catch (_) {}

@@ -3,116 +3,64 @@
 {% block title %}Onboarding - Education Type{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
-        <!-- Progress bar -->
-        <div class="mb-8 px-4">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-medium text-primary-600">Step 2 of 5</span>
-                <span class="text-sm text-neutral-500">Education Type</span>
-            </div>
-            <div class="w-full bg-neutral-200 rounded-full h-2">
-                <div class="bg-primary-600 h-2 rounded-full" style="width: 40%"></div>
-            </div>
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Progress bar -->
+    <div class="px-4 pt-4">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-gold-600">Step 2 of 5</span>
+            <span class="text-sm text-navy-500">Education Type</span>
+        </div>
+        <div class="cu-progress">
+            <div class="cu-progress-fill cu-progress-fill--navy" style="width: 40%"></div>
+        </div>
+    </div>
+
+    <div class="cu-card p-6 sm:p-10">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-navy-900">What type of institution is this?</h1>
+            <p class="mt-2 text-navy-600">This helps us customize features and terminology for your needs.</p>
         </div>
 
-        <div class="bg-white py-8 px-4 shadow-lg sm:rounded-xl sm:px-10">
-            <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-neutral-900">What type of institution is this?</h1>
-                <p class="mt-2 text-neutral-600">This helps us customize features and terminology for your needs.</p>
+        <form method="POST" action="/onboarding/step2" class="space-y-6">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {% set education_types = [
+                    ('DAYCARE',        '👶', 'Daycare',        'Early childhood center, nursery, or creche'),
+                    ('PRIMARY_SCHOOL', '📚', 'Primary School', 'Elementary or junior school'),
+                    ('HIGH_SCHOOL',    '🎓', 'High School',    'Secondary school'),
+                    ('K12',            '🏫', 'K-12',           'Primary through high school'),
+                    ('COMBINED',       '🎯', 'Combined',       'Multiple types or custom setup'),
+                ] %}
+                {% for value, emoji, title, description in education_types %}
+                <label class="relative flex cursor-pointer rounded-2xl bg-white p-4 shadow-soft ring-1 ring-navy-100 hover:ring-navy-300 transition-colors">
+                    <input type="radio" name="education_type" value="{{ value }}" class="sr-only peer" {% if loop.first %}required{% endif %}>
+                    <span class="flex flex-1 flex-col">
+                        <span class="text-3xl mb-2">{{ emoji }}</span>
+                        <span class="block text-lg font-semibold text-navy-900">{{ title }}</span>
+                        <span class="mt-1 text-sm text-navy-500">{{ description }}</span>
+                    </span>
+                    <svg class="h-5 w-5 text-navy-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="pointer-events-none absolute -inset-px rounded-2xl ring-2 ring-transparent peer-checked:ring-navy-600"></span>
+                </label>
+                {% endfor %}
             </div>
 
-            <form method="POST" action="/onboarding/step2" class="space-y-6">
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <!-- Daycare -->
-                    <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm focus:outline-none hover:border-primary-500 transition-colors">
-                        <input type="radio" name="education_type" value="DAYCARE" class="sr-only peer" required>
-                        <span class="flex flex-1 flex-col">
-                            <span class="text-3xl mb-2">👶</span>
-                            <span class="block text-lg font-semibold text-neutral-900">Daycare</span>
-                            <span class="mt-1 text-sm text-neutral-500">Early childhood center, nursery, or creche</span>
-                        </span>
-                        <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
-                    </label>
-
-                    <!-- Primary School -->
-                    <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm focus:outline-none hover:border-primary-500 transition-colors">
-                        <input type="radio" name="education_type" value="PRIMARY_SCHOOL" class="sr-only peer">
-                        <span class="flex flex-1 flex-col">
-                            <span class="text-3xl mb-2">📚</span>
-                            <span class="block text-lg font-semibold text-neutral-900">Primary School</span>
-                            <span class="mt-1 text-sm text-neutral-500">Elementary or junior school</span>
-                        </span>
-                        <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
-                    </label>
-
-                    <!-- High School -->
-                    <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm focus:outline-none hover:border-primary-500 transition-colors">
-                        <input type="radio" name="education_type" value="HIGH_SCHOOL" class="sr-only peer">
-                        <span class="flex flex-1 flex-col">
-                            <span class="text-3xl mb-2">🎓</span>
-                            <span class="block text-lg font-semibold text-neutral-900">High School</span>
-                            <span class="mt-1 text-sm text-neutral-500">Secondary school</span>
-                        </span>
-                        <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
-                    </label>
-
-                    <!-- K-12 -->
-                    <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm focus:outline-none hover:border-primary-500 transition-colors">
-                        <input type="radio" name="education_type" value="K12" class="sr-only peer">
-                        <span class="flex flex-1 flex-col">
-                            <span class="text-3xl mb-2">🏫</span>
-                            <span class="block text-lg font-semibold text-neutral-900">K-12</span>
-                            <span class="mt-1 text-sm text-neutral-500">Primary through high school</span>
-                        </span>
-                        <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
-                    </label>
-
-                    <!-- Combined -->
-                    <label class="relative flex cursor-pointer rounded-xl border bg-white p-4 shadow-sm focus:outline-none hover:border-primary-500 transition-colors">
-                        <input type="radio" name="education_type" value="COMBINED" class="sr-only peer">
-                        <span class="flex flex-1 flex-col">
-                            <span class="text-3xl mb-2">🎯</span>
-                            <span class="block text-lg font-semibold text-neutral-900">Combined</span>
-                            <span class="mt-1 text-sm text-neutral-500">Multiple types or custom setup</span>
-                        </span>
-                        <svg class="h-5 w-5 text-primary-600 hidden peer-checked:block absolute top-4 right-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-primary-600"></span>
-                    </label>
-                </div>
-
-                <div class="flex items-center justify-between pt-4">
-                    <a href="/onboarding/step1"
-                       class="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-700">
-                        <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                        </svg>
-                        Back
-                    </a>
-                    <button type="submit"
-                            class="inline-flex justify-center rounded-lg bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">
-                        Continue
-                        <svg class="ml-2 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </button>
-                </div>
-            </form>
-        </div>
+            <div class="flex items-center justify-between pt-4">
+                <a href="/onboarding/step1" class="cu-btn-soft">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Back
+                </a>
+                <button type="submit" class="cu-btn-primary !px-6 !py-3">
+                    Continue
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

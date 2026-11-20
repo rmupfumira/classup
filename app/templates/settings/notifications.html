@@ -3,20 +3,24 @@
 {% block title %}Notifications - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="mb-8">
-        <h1 class="text-2xl font-bold text-neutral-900">Settings</h1>
-        <p class="mt-1 text-sm text-neutral-500">Notification preferences for this device.</p>
-    </div>
+<div class="space-y-6">
+    <section class="cu-hero">
+        <div>
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Configuration</span>
+            <h1 class="cu-page-title text-white">Settings</h1>
+            <p class="mt-2 text-sm text-white/80">Notification preferences for this device.</p>
+        </div>
+    </section>
+
 
     <!-- Tabs (mirroring settings/features.html) -->
     <div class="border-b border-neutral-200 mb-6">
         <nav class="-mb-px flex space-x-8 overflow-x-auto">
-            <a href="/settings/general"   class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">General</a>
-            <a href="/settings/features"  class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Features</a>
-            <a href="/settings/notifications" class="border-primary-500 text-primary-600 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Notifications</a>
-            <a href="/settings/billing"   class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Billing</a>
-            <a href="/settings/webhooks"  class="border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">Webhooks</a>
+            <a href="/settings/general"   class="border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">General</a>
+            <a href="/settings/features"  class="border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">Features</a>
+            <a href="/settings/notifications" class="border-gold-500 text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">Notifications</a>
+            <a href="/settings/billing"   class="border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">Billing</a>
+            <a href="/settings/webhooks"  class="border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">Webhooks</a>
         </nav>
     </div>
 
@@ -25,7 +29,7 @@
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
                 <h2 class="text-lg font-semibold text-neutral-800">Push notifications on this device</h2>
-                <p class="text-sm text-neutral-500 mt-0.5">Get instant alerts for new messages, attendance updates, and reports — even when {{ app_name }} isn't open.</p>
+                <p class="text-sm text-navy-500 mt-0.5">Get instant alerts for new messages, attendance updates, and reports — even when {{ app_name }} isn't open.</p>
             </div>
             <span id="push-state-badge"
                   class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
@@ -72,7 +76,7 @@
         </div>
 
         <div id="state-ready" class="hidden">
-            <p class="text-sm text-neutral-600 mb-3">
+            <p class="text-sm text-navy-600 mb-3">
                 You'll only get notifications for things meant for you — messages from teachers, attendance alerts for your child, that sort of thing. No marketing, no spam.
             </p>
             <button id="btn-enable" type="button"
@@ -111,10 +115,10 @@
     <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
         <div class="px-6 py-4 border-b border-neutral-100">
             <h3 class="text-sm font-semibold text-neutral-800">Enrolled devices</h3>
-            <p class="text-xs text-neutral-500 mt-0.5">All devices where you've enabled push notifications.</p>
+            <p class="text-xs text-navy-500 mt-0.5">All devices where you've enabled push notifications.</p>
         </div>
         <div id="devices-body" class="divide-y divide-neutral-100">
-            <p class="px-6 py-8 text-center text-sm text-neutral-400">Loading…</p>
+            <p class="px-6 py-8 text-center text-sm text-navy-400">Loading…</p>
         </div>
     </div>
 </div>
@@ -171,19 +175,19 @@ async function renderDevices() {
     const body = document.getElementById('devices-body');
     const subs = await ClassUpPush.listSubscriptions();
     if (!subs.length) {
-        body.innerHTML = '<p class="px-6 py-8 text-center text-sm text-neutral-400">No devices enrolled yet.</p>';
+        body.innerHTML = '<p class="px-6 py-8 text-center text-sm text-navy-400">No devices enrolled yet.</p>';
         return;
     }
     body.innerHTML = subs.map(s => `
         <div class="px-6 py-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
                 <p class="text-sm font-medium text-neutral-800">${ClassUp.escapeHtml(deviceLabel(s.user_agent || ''))}</p>
-                <p class="text-xs text-neutral-500 mt-0.5">
+                <p class="text-xs text-navy-500 mt-0.5">
                     Last seen: ${ClassUp.escapeHtml(formatTimestamp(s.last_seen_at))}
                     ${s.last_failed_at ? '· <span class="text-danger-600">Last failure: ' + ClassUp.escapeHtml(formatTimestamp(s.last_failed_at)) + '</span>' : ''}
                 </p>
                 ${s.last_error ? '<p class="text-xs text-danger-500 mt-0.5">' + ClassUp.escapeHtml(s.last_error) + '</p>' : ''}
-                <p class="text-[10px] text-neutral-400 mt-0.5 font-mono">${ClassUp.escapeHtml(s.endpoint_preview)}</p>
+                <p class="text-[10px] text-navy-400 mt-0.5 font-mono">${ClassUp.escapeHtml(s.endpoint_preview)}</p>
             </div>
         </div>
     `).join('');

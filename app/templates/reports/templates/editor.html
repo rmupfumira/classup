@@ -4,22 +4,25 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex items-center gap-4">
-        <a href="/reports/templates/manage" class="text-neutral-400 hover:text-neutral-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-        </a>
-        <h1 class="text-2xl font-bold text-neutral-900">
-            {{ 'Edit' if template else 'Create' }} Report Template
-        </h1>
-    </div>
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex items-center gap-4">
+            <a href="/reports/templates/manage" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <div>
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-2">Academic</span>
+                <h1 class="cu-page-title text-white">{{ 'Edit' if template else 'Create' }} report template</h1>
+            </div>
+        </div>
+    </section>
 
     <!-- Template Details -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
-            <h2 class="text-md font-medium text-neutral-900">Template Details</h2>
+    <div class="cu-card overflow-hidden">
+        <div class="px-4 py-3 bg-navy-50 border-b border-navy-100">
+            <h2 class="text-sm font-semibold text-navy-800">Template details</h2>
         </div>
         <div class="p-6 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -89,7 +92,7 @@
     </div>
 
     <!-- Sections Builder -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+    <div class="cu-card overflow-hidden">
         <div class="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
             <h2 class="text-md font-medium text-neutral-900">Report Sections</h2>
             <button type="button" onclick="addSection()"
@@ -112,17 +115,12 @@
 
     <!-- Form Actions -->
     <div class="flex items-center justify-end gap-3">
-        <a href="/reports/templates/manage"
-           class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
-            Cancel
-        </a>
-        <button type="button" onclick="saveTemplate()"
-                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M5 13l4 4L19 7"></path>
+        <a href="/reports/templates/manage" class="cu-btn-soft">Cancel</a>
+        <button type="button" onclick="saveTemplate()" class="cu-btn-primary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            Save Template
+            Save template
         </button>
     </div>
 </div>

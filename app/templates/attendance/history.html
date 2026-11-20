@@ -4,26 +4,28 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-neutral-900">Attendance History</h1>
-            <p class="mt-1 text-sm text-neutral-500">
-                {{ total }} record{{ 's' if total != 1 else '' }} found
-            </p>
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Academic</span>
+                <h1 class="cu-page-title text-white">Attendance history</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    {{ total }} record{{ 's' if total != 1 else '' }} found
+                </p>
+            </div>
+            <a href="/attendance" class="cu-btn-gold">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                Take attendance
+            </a>
         </div>
-        <a href="/attendance"
-           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-            </svg>
-            Take Attendance
-        </a>
-    </div>
+    </section>
 
     <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <form method="get" class="flex flex-col sm:flex-row gap-4">
             <!-- Class Filter -->
             <div class="sm:w-48">
@@ -56,10 +58,7 @@
             </div>
 
             <div class="flex items-end">
-                <button type="submit"
-                        class="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors">
-                    Filter
-                </button>
+                <button type="submit" class="cu-btn-primary">Filter</button>
             </div>
         </form>
     </div>
@@ -67,9 +66,9 @@
     <!-- Stats Summary -->
     {% if stats %}
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-            <p class="text-sm text-neutral-500">Students</p>
-            <p class="text-2xl font-bold text-neutral-900">{{ stats.total_students }}</p>
+        <div class="cu-stat-tile">
+            <p class="cu-stat-tile-label">Students</p>
+            <p class="cu-stat-tile-value">{{ stats.total_students }}</p>
         </div>
         <div class="bg-green-50 rounded-lg shadow-sm border border-green-200 p-4">
             <p class="text-sm text-green-600">Present</p>
@@ -92,7 +91,7 @@
 
     <!-- Records List -->
     {% if records %}
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+    <div class="cu-card overflow-hidden">
         <!-- Desktop Table -->
         <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full divide-y divide-neutral-200">
@@ -274,24 +273,20 @@
 
     {% else %}
     <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-neutral-900">No attendance records</h3>
-        <p class="mt-2 text-sm text-neutral-500">
-            {% if date_from or date_to or current_class_id %}
-                No records match your filter criteria.
-            {% else %}
-                Start taking attendance to see records here.
-            {% endif %}
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+        </div>
+        <p class="cu-empty-title">No attendance records</p>
+        <p class="cu-empty-text">
+            {% if date_from or date_to or current_class_id %}No records match your filter criteria.
+            {% else %}Start taking attendance to see records here.{% endif %}
         </p>
-        <div class="mt-6">
-            <a href="/attendance"
-               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                Take Attendance
-            </a>
+        <div class="mt-5">
+            <a href="/attendance" class="cu-btn-gold">Take attendance</a>
         </div>
     </div>
     {% endif %}

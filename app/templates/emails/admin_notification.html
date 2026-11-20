@@ -2,48 +2,58 @@
 
 {% block title %}{{ title }}{% endblock %}
 
-{% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
-    {{ title }}
-</h2>
+{% block preheader %}{{ title }} — a {{ notification_type | replace('_', ' ') | lower }} notification from {{ tenant_name }}.{% endblock %}
 
-<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+{% block content %}
+<div style="font-size: 11px; font-weight: 800; color: #a07420; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    Admin notification
+</div>
+
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    {{ title }}
+</h1>
+
+<p style="margin: 0 0 20px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
     Hi {{ admin_name }},
 </p>
 
-<div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-        <tr>
-            <td style="padding: 0 0 8px 0;">
-                <span style="display: inline-block; padding: 4px 12px; background-color: #E0E7FF; color: #4338CA; font-size: 12px; font-weight: 600; border-radius: 20px; text-transform: uppercase;">
-                    {{ notification_type | replace('_', ' ') }}
-                </span>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding-top: 12px;">
-                <p style="margin: 0; font-size: 15px; color: #374151; line-height: 1.6;">
-                    {{ body }}
-                </p>
-            </td>
-        </tr>
-    </table>
-</div>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+    <tr>
+        <td style="background-color: #f4f7fb; border: 1px solid #e3ebf5; border-radius: 16px; padding: 24px; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding: 0 0 14px 0;">
+                        <span style="display: inline-block; padding: 4px 12px; background-color: #fdf9ec; color: #7f5b1c; border: 1px solid #f4df8e; font-size: 11px; font-weight: 800; border-radius: 9999px; letter-spacing: 0.08em; text-transform: uppercase;">
+                            {{ notification_type | replace('_', ' ') }}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <p style="margin: 0; font-size: 15px; color: #162f57; line-height: 1.65;">
+                            {{ body }}
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
 {% if action_url %}
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
     <tr>
-        <td style="border-radius: 8px; background-color: #C9962A;">
-            <a href="{{ action_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
-                View Details
+        <td class="cta-full" align="center" bgcolor="#C9962A" style="border-radius: 12px; background-color: #C9962A; background-image: linear-gradient(135deg, #dcae31 0%, #C9962A 60%, #a07420 100%); box-shadow: 0 10px 30px -10px rgba(201, 150, 42, 0.45);">
+            <a href="{{ action_url }}" target="_blank" style="display: inline-block; padding: 14px 32px; font-family: 'Inter', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; color: #0e1b34; text-decoration: none; line-height: 1;">
+                View details &rarr;
             </a>
         </td>
     </tr>
 </table>
 {% endif %}
 
-<p style="margin: 24px 0 0 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
-    This notification was sent to you as an administrator of {{ tenant_name }}.
+<p style="margin: 28px 0 0 0; font-size: 14px; color: #3a5f96; line-height: 1.6;">
+    This notification was sent because you're an administrator of <strong style="color: #162f57;">{{ tenant_name }}</strong>.
 </p>
 {% endblock %}
 

@@ -2,13 +2,23 @@
 
 {% block title %}{{ student_name }}'s {{ report_type }} - {{ report_date }}{% endblock %}
 
+{% block preheader %}{{ student_name }}'s {{ report_type }} for {{ report_date }} from {{ tenant_name }}.{% endblock %}
+
 {% block content %}
-<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+<div style="font-size: 11px; font-weight: 800; color: #a07420; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    {{ report_type }}
+</div>
+
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    {{ student_name }}'s report.
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
     Hi {{ parent_name }},
 </p>
 
-<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    Here is <strong>{{ student_name }}</strong>'s <strong>{{ report_type }}</strong> for <strong>{{ report_date }}</strong>.
+<p style="margin: 0 0 32px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    Here is <strong style="color: #0e1b34;">{{ student_name }}</strong>'s <strong style="color: #0e1b34;">{{ report_type }}</strong> for <strong style="color: #0e1b34;">{{ report_date }}</strong>.
 </p>
 
 {% if template_sections %}
@@ -264,11 +274,11 @@
 {% endfor %}
 {% endif %}
 
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto 0 auto;">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 32px auto 0 auto;">
     <tr>
-        <td style="border-radius: 8px; background-color: #C9962A;">
-            <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
-                View Full Report Online
+        <td class="cta-full" align="center" bgcolor="#C9962A" style="border-radius: 12px; background-color: #C9962A; background-image: linear-gradient(135deg, #dcae31 0%, #C9962A 60%, #a07420 100%); box-shadow: 0 10px 30px -10px rgba(201, 150, 42, 0.45);">
+            <a href="{{ view_url }}" target="_blank" style="display: inline-block; padding: 14px 32px; font-family: 'Inter', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; color: #0e1b34; text-decoration: none; line-height: 1;">
+                View full report online &rarr;
             </a>
         </td>
     </tr>

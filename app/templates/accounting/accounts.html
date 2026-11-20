@@ -3,37 +3,48 @@
 {% block title %}Chart of Accounts - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Chart of Accounts</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">Income and expense categories used to classify every transaction.</p>
+<div class="space-y-6">
+
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance · Accounting</span>
+                <h1 class="cu-page-title text-white">Chart of Accounts</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Income and expense categories used to classify every transaction.
+                </p>
+            </div>
+            <div class="flex gap-3 shrink-0">
+                <button onclick="openAccount()" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add account
+                </button>
+            </div>
         </div>
-        <button onclick="openAccount()" class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
-            + Add account
-        </button>
-    </div>
+    </section>
 
     {% include 'accounting/_layout.html' %}
 
     <div id="groups" class="space-y-4">
-        <p class="text-center text-neutral-400 py-8">Loading...</p>
+        <p class="text-center text-navy-400 py-8">Loading...</p>
     </div>
 </div>
 
-<dialog id="acct-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
+<dialog id="acct-modal" class="rounded-3xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
     <form class="p-6" onsubmit="submitAccount(event)">
-        <h3 class="text-lg font-semibold text-neutral-800 mb-4" id="acct-title">Add account</h3>
+        <h3 class="text-lg font-bold text-navy-800 mb-4" id="acct-title">Add account</h3>
         <input type="hidden" id="a-id">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Code</label>
-                <input type="text" id="a-code" required maxlength="20" placeholder="e.g. 5120"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Code</label>
+                <input type="text" id="a-code" required maxlength="20" placeholder="e.g. 5120" class="cu-input">
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Type</label>
-                <select id="a-type" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Type</label>
+                <select id="a-type" required class="cu-select">
                     <option value="INCOME">Income</option>
                     <option value="EXPENSE">Expense</option>
                     <option value="ASSET">Asset</option>
@@ -42,51 +53,49 @@
                 </select>
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Name</label>
-                <input type="text" id="a-name" required maxlength="120"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Name</label>
+                <input type="text" id="a-name" required maxlength="120" class="cu-input">
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Description (optional)</label>
-                <textarea id="a-desc" rows="2" class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded"></textarea>
+                <label class="block text-xs font-medium text-navy-700 mb-1">Description (optional)</label>
+                <textarea id="a-desc" rows="2" class="cu-textarea"></textarea>
             </div>
             <div id="a-invoice-only-wrap" class="sm:col-span-2 hidden">
                 <label class="inline-flex items-start gap-2 text-sm">
                     <input type="checkbox" id="a-invoice-only" class="mt-0.5">
                     <span>
-                        <span class="font-medium text-neutral-800">Invoice-only</span>
-                        <span class="block text-xs text-neutral-500">
+                        <span class="font-semibold text-navy-800">Invoice-only</span>
+                        <span class="block text-xs text-navy-500">
                             Income on this account is only accepted via an invoice payment —
                             the manual "Record income" form switches to invoice mode when it's picked.
                             Use this for fees you bill through the Billing module (tuition, boarding, uniforms&hellip;).
                         </span>
                     </span>
                 </label>
-                <p id="a-invoice-only-locked" class="hidden text-xs text-neutral-500 mt-1">
+                <p id="a-invoice-only-locked" class="hidden text-xs text-navy-500 mt-1">
                     This is the system Tuition account — invoice-only is locked on.
                 </p>
             </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
-            <button type="button" onclick="document.getElementById('acct-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Save</button>
+            <button type="button" onclick="document.getElementById('acct-modal').close()" class="cu-btn-soft">Cancel</button>
+            <button type="submit" class="cu-btn-primary">Save</button>
         </div>
     </form>
 </dialog>
 
 <script>
 const TYPE_META = {
-    INCOME: { label: 'Income', colour: 'text-success-700', bg: 'bg-success-50' },
-    EXPENSE: { label: 'Expense', colour: 'text-warning-700', bg: 'bg-warning-50' },
-    ASSET: { label: 'Asset', colour: 'text-primary-700', bg: 'bg-primary-50' },
-    LIABILITY: { label: 'Liability', colour: 'text-danger-700', bg: 'bg-danger-50' },
-    EQUITY: { label: 'Equity', colour: 'text-accent-700', bg: 'bg-accent-50' },
+    INCOME: { label: 'Income', chipClass: 'cu-chip-emerald' },
+    EXPENSE: { label: 'Expense', chipClass: 'cu-chip-gold' },
+    ASSET: { label: 'Asset', chipClass: 'cu-chip-navy' },
+    LIABILITY: { label: 'Liability', chipClass: 'cu-chip-rose' },
+    EQUITY: { label: 'Equity', chipClass: 'cu-chip-neutral' },
 };
 
 async function load() {
     const wrap = document.getElementById('groups');
-    wrap.innerHTML = '<p class="text-center text-neutral-400 py-8">Loading...</p>';
+    wrap.innerHTML = '<p class="text-center text-navy-400 py-8">Loading...</p>';
     let items;
     try {
         const res = await ClassUp.fetch('/api/v1/accounting/accounts?active_only=false');
@@ -94,18 +103,18 @@ async function load() {
     } catch (err) {
         console.error('Failed to load chart of accounts:', err);
         wrap.innerHTML = `
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6 text-center">
-                <p class="text-sm text-danger-600 mb-1">Couldn't load chart of accounts.</p>
-                <p class="text-xs text-neutral-500 mb-3">${(err && err.message) ? err.message : 'Network or server error.'}</p>
-                <button onclick="load()" class="text-xs text-primary-600 hover:underline">Retry</button>
+            <div class="cu-card p-6 text-center">
+                <p class="text-sm text-rose-700 mb-1">Couldn't load chart of accounts.</p>
+                <p class="text-xs text-navy-500 mb-3">${(err && err.message) ? err.message : 'Network or server error.'}</p>
+                <button onclick="load()" class="cu-btn-soft !py-1.5 !px-3 !text-xs">Retry</button>
             </div>`;
         return;
     }
     if (!items.length) {
         wrap.innerHTML = `
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-8 text-center">
-                <p class="text-sm text-neutral-600 mb-2">No accounts yet.</p>
-                <p class="text-xs text-neutral-500">Click <strong>+ Add account</strong> to create your first income or expense category. A starter chart of accounts is usually seeded automatically when a school is created.</p>
+            <div class="cu-card cu-empty">
+                <p class="cu-empty-title">No accounts yet</p>
+                <p class="cu-empty-text">Click <strong>+ Add account</strong> above to create your first income or expense category. A starter chart of accounts is usually seeded automatically when a school is created.</p>
             </div>`;
         return;
     }
@@ -120,27 +129,29 @@ async function load() {
         if (!arr.length) continue;
         const meta = TYPE_META[type];
         const html = `
-            <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
-                <div class="px-4 py-2 border-b border-neutral-100 flex items-center justify-between ${meta.bg}">
-                    <h2 class="text-sm font-semibold ${meta.colour}">${meta.label}</h2>
-                    <span class="text-xs text-neutral-500">${arr.length} account${arr.length === 1 ? '' : 's'}</span>
+            <div class="cu-table-wrap">
+                <div class="px-5 py-3 border-b border-navy-100 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-base font-bold text-navy-800">${meta.label}</h2>
+                        <span class="${meta.chipClass}">${arr.length} account${arr.length === 1 ? '' : 's'}</span>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <tbody class="divide-y divide-neutral-100">
+                <table class="cu-table">
+                    <tbody>
                         ${arr.map(a => `
-                            <tr class="${a.is_active ? '' : 'opacity-50'}">
-                                <td class="px-3 py-2 whitespace-nowrap font-mono text-neutral-500 w-20">${a.code}</td>
-                                <td class="px-3 py-2 font-medium text-neutral-800">
+                            <tr style="${a.is_active ? '' : 'opacity: 0.5;'}">
+                                <td class="font-mono text-navy-500" style="width: 5rem;">${a.code}</td>
+                                <td class="font-semibold text-navy-800">
                                     ${a.name}
-                                    ${a.is_system ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 ml-1">System</span>' : ''}
-                                    ${a.invoice_only ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 ml-1" title="Credited only via invoice payments">Invoice-only</span>' : ''}
-                                    ${!a.is_active ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-700 ml-1">Inactive</span>' : ''}
+                                    ${a.is_system ? '<span class="ml-1 cu-chip-neutral">System</span>' : ''}
+                                    ${a.invoice_only ? '<span class="ml-1 cu-chip-navy" title="Credited only via invoice payments">Invoice-only</span>' : ''}
+                                    ${!a.is_active ? '<span class="ml-1 cu-chip-neutral">Inactive</span>' : ''}
                                 </td>
-                                <td class="px-3 py-2 text-neutral-500 text-xs">${a.description || ''}</td>
-                                <td class="px-3 py-2 text-right whitespace-nowrap">
-                                    <button onclick='openAccount(${JSON.stringify(a).replace(/'/g, "&#39;")})' class="text-xs text-primary-600 hover:underline mr-2">Edit</button>
-                                    ${!a.is_system ? (a.is_active ? `<button onclick="toggleAccount('${a.id}', false)" class="text-xs text-neutral-600 hover:underline">Deactivate</button>` : `<button onclick="toggleAccount('${a.id}', true)" class="text-xs text-success-600 hover:underline">Activate</button>`) : '<span class="text-xs text-neutral-400">—</span>'}
+                                <td class="text-navy-500 text-xs">${a.description || ''}</td>
+                                <td style="text-align:right">
+                                    <button onclick='openAccount(${JSON.stringify(a).replace(/'/g, "&#39;")})' class="text-xs text-navy-600 hover:text-navy-800 font-semibold mr-3">Edit</button>
+                                    ${!a.is_system ? (a.is_active ? `<button onclick="toggleAccount('${a.id}', false)" class="text-xs text-navy-500 hover:text-navy-700 font-semibold">Deactivate</button>` : `<button onclick="toggleAccount('${a.id}', true)" class="text-xs text-emerald-700 hover:text-emerald-800 font-semibold">Activate</button>`) : '<span class="text-xs text-navy-400">—</span>'}
                                 </td>
                             </tr>
                         `).join('')}
@@ -163,8 +174,6 @@ function openAccount(a) {
     document.getElementById('a-type').disabled = !!isEdit;
     document.getElementById('a-name').value = isEdit ? a.name : '';
     document.getElementById('a-desc').value = isEdit ? (a.description || '') : '';
-    // Invoice-only toggle — only meaningful for INCOME accounts. System
-    // accounts (Tuition) stay locked on.
     const wrap = document.getElementById('a-invoice-only-wrap');
     const cb = document.getElementById('a-invoice-only');
     const locked = document.getElementById('a-invoice-only-locked');

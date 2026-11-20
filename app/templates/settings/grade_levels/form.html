@@ -6,7 +6,7 @@
 <div class="max-w-2xl mx-auto space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="/settings/grade-levels" class="text-neutral-400 hover:text-neutral-600">
+        <a href="/settings/grade-levels" class="text-navy-400 hover:text-navy-600">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
@@ -39,7 +39,7 @@
                        value="{{ grade_level.code if grade_level else '' }}"
                        placeholder="e.g., GRADE_1, KINDERGARTEN"
                        class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500 uppercase">
-                <p class="text-sm text-neutral-500 mt-1">Unique identifier (max 30 characters)</p>
+                <p class="text-sm text-navy-500 mt-1">Unique identifier (max 30 characters)</p>
             </div>
 
             <!-- Display Order -->
@@ -51,7 +51,7 @@
                        value="{{ grade_level.display_order if grade_level else 0 }}"
                        min="0"
                        class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
-                <p class="text-sm text-neutral-500 mt-1">Lower numbers appear first</p>
+                <p class="text-sm text-navy-500 mt-1">Lower numbers appear first</p>
             </div>
 
             <!-- Description -->
@@ -73,7 +73,7 @@
                            class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="text-sm font-medium text-neutral-700">Active</span>
                 </label>
-                <p class="text-sm text-neutral-500 mt-1 ml-7">Inactive grade levels won't appear in selection dropdowns</p>
+                <p class="text-sm text-navy-500 mt-1 ml-7">Inactive grade levels won't appear in selection dropdowns</p>
             </div>
 
             <!-- Subjects taught in this grade. Picker + Save button. -->
@@ -81,20 +81,20 @@
                 <label class="block text-sm font-medium text-neutral-700 mb-1">
                     Subjects taught in {{ grade_level.name }}
                 </label>
-                <p class="text-xs text-neutral-500 mb-3">
+                <p class="text-xs text-navy-500 mb-3">
                     Say which subjects this grade teaches. New classes under {{ grade_level.name }} will
                     automatically get these subjects attached. Removing a subject here also removes it
                     from every existing class in {{ grade_level.name }} (after confirmation).
                 </p>
                 <div id="subject-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto border border-neutral-200 rounded-lg p-3 bg-neutral-50">
-                    <p class="text-xs text-neutral-500 col-span-full">Loading subjects…</p>
+                    <p class="text-xs text-navy-500 col-span-full">Loading subjects…</p>
                 </div>
                 <div class="mt-3 flex items-center gap-3">
                     <button type="button" id="save-subject-links"
                             class="px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors">
                         Save subjects
                     </button>
-                    <span id="subject-links-status" class="text-xs text-neutral-500"></span>
+                    <span id="subject-links-status" class="text-xs text-navy-500"></span>
                 </div>
             </div>
             {% endif %}
@@ -211,7 +211,7 @@ document.getElementById('name').addEventListener('blur', (e) => {
 
     function render() {
         if (!allSubjects.length) {
-            container.innerHTML = '<p class="text-xs text-neutral-500 col-span-full">No subjects configured yet. <a href="/settings/academic/subjects" class="text-primary-600 underline">Set them up first</a>.</p>';
+            container.innerHTML = '<p class="text-xs text-navy-500 col-span-full">No subjects configured yet. <a href="/settings/academic/subjects" class="text-primary-600 underline">Set them up first</a>.</p>';
             saveBtn.disabled = true;
             return;
         }
@@ -227,7 +227,7 @@ document.getElementById('name').addEventListener('blur', (e) => {
             cb.className = 'rounded border-neutral-300 text-primary-600 focus:ring-primary-500';
             label.appendChild(cb);
             const name = document.createElement('span');
-            name.innerHTML = `${s.name} <span class="text-xs text-neutral-400">${s.code || ''}</span>`;
+            name.innerHTML = `${s.name} <span class="text-xs text-navy-400">${s.code || ''}</span>`;
             label.appendChild(name);
             container.appendChild(label);
         });

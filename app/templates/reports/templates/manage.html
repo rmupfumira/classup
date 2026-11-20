@@ -4,34 +4,34 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex items-center gap-4">
-            <a href="/reports" class="text-neutral-400 hover:text-neutral-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-            </a>
-            <div>
-                <h1 class="text-2xl font-bold text-neutral-900">Report Templates</h1>
-                <p class="mt-1 text-sm text-neutral-500">
-                    {{ total }} template{{ 's' if total != 1 else '' }}
-                </p>
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="flex items-center gap-4">
+                <a href="/reports" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <div>
+                    <span class="cu-eyebrow cu-eyebrow-on-dark mb-2">Academic</span>
+                    <h1 class="cu-page-title text-white">Report templates</h1>
+                    <p class="mt-1 text-sm text-white/80">{{ total }} template{{ 's' if total != 1 else '' }}</p>
+                </div>
             </div>
+            <a href="/reports/templates/create" class="cu-btn-gold">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Create template
+            </a>
         </div>
-        <a href="/reports/templates/create"
-           class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Create Template
-        </a>
-    </div>
+    </section>
 
     <!-- Templates List -->
     {% if templates %}
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="divide-y divide-neutral-200">
+    <div class="cu-card overflow-hidden">
+        <div class="divide-y divide-navy-100/60">
             {% for template in templates %}
             <div class="p-4 hover:bg-neutral-50 transition-colors">
                 <div class="flex items-center justify-between">
@@ -130,20 +130,17 @@
 
     {% else %}
     <!-- Empty State -->
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-neutral-900">No templates yet</h3>
-        <p class="mt-2 text-sm text-neutral-500">
-            Create your first report template to start generating reports.
-        </p>
-        <div class="mt-6">
-            <a href="/reports/templates/create"
-               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                Create Template
-            </a>
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+            </svg>
+        </div>
+        <p class="cu-empty-title">No templates yet</p>
+        <p class="cu-empty-text">Create your first report template to start generating reports.</p>
+        <div class="mt-5">
+            <a href="/reports/templates/create" class="cu-btn-gold">Create template</a>
         </div>
     </div>
     {% endif %}

@@ -3,97 +3,103 @@
 {% block title %}Pay by EFT - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-    <!-- Header -->
-    <div>
-        <a href="/subscription" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Back to Subscription</a>
-        <h1 class="mt-2 text-xl font-semibold text-neutral-800">Pay by EFT</h1>
-        <p class="mt-1 text-sm text-neutral-500">
-            Transfer the amount into our bank account and upload your proof of payment below.
-            Super admin will review and confirm — usually within 1 business day.
-        </p>
-    </div>
+<div class="space-y-6">
 
-    <!-- Banking details card -->
-    <div class="bg-white rounded-xl border border-neutral-200 p-6">
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-2xl">
+                <a href="/subscription" class="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white mb-3">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    Back to Subscription
+                </a>
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Billing</span>
+                <h1 class="cu-page-title text-white">Pay by EFT</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Transfer the amount into our bank account and upload your proof of payment below.
+                    Super admin will review and confirm — usually within 1 business day.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    {# ------ Banking details ------ #}
+    <section class="cu-card p-6">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-neutral-800">Banking details</h2>
+            <h2 class="text-lg font-semibold text-navy-800">Banking details</h2>
             <button type="button" onclick="copyBanking()"
-                    class="text-xs text-primary-600 hover:underline hidden" id="copy-btn">
+                    class="cu-btn-soft !py-1.5 !px-3 !text-xs hidden" id="copy-btn">
                 Copy details
             </button>
         </div>
-        <div id="banking-body" class="text-sm text-neutral-600">
-            <p class="text-center text-neutral-400 py-8">Loading banking details...</p>
+        <div id="banking-body" class="text-sm text-navy-600">
+            <p class="text-center text-navy-400 py-8">Loading banking details...</p>
         </div>
-    </div>
+    </section>
 
-    <!-- Upload PoP form -->
-    <div class="bg-white rounded-xl border border-neutral-200 p-6">
-        <h2 class="text-lg font-semibold text-neutral-800 mb-4">Upload Proof of Payment</h2>
+    {# ------ Upload PoP form ------ #}
+    <section class="cu-card p-6">
+        <h2 class="text-lg font-semibold text-navy-800 mb-4">Upload Proof of Payment</h2>
         <form id="pop-form" class="space-y-4" enctype="multipart/form-data">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">
-                        Amount paid ({{ currency_code }}) <span class="text-error-500">*</span>
+                    <label class="block text-sm font-medium text-navy-700 mb-1">
+                        Amount paid ({{ currency_code }}) <span class="text-red-500">*</span>
                     </label>
                     <input type="number" step="0.01" min="0.01" name="amount" id="amount" required
-                           placeholder="999.00"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                           placeholder="999.00" class="cu-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">
-                        Payment reference <span class="text-error-500">*</span>
+                    <label class="block text-sm font-medium text-navy-700 mb-1">
+                        Payment reference <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="reference" id="reference" required
-                           placeholder="e.g. SCHOOL-NAME-APR26"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
-                    <p class="mt-1 text-xs text-neutral-400">The reference you used on the EFT transfer.</p>
+                           placeholder="e.g. SCHOOL-NAME-APR26" class="cu-input">
+                    <p class="mt-1 text-xs text-navy-400">The reference you used on the EFT transfer.</p>
                 </div>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">
-                    Proof of payment <span class="text-error-500">*</span>
+                <label class="block text-sm font-medium text-navy-700 mb-1">
+                    Proof of payment <span class="text-red-500">*</span>
                 </label>
                 <input type="file" name="pop" id="pop" required
                        accept="application/pdf,image/jpeg,image/png,image/webp"
-                       class="block w-full text-sm text-neutral-700 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 file:cursor-pointer">
-                <p class="mt-1 text-xs text-neutral-400">PDF or image. Max 10MB.</p>
+                       class="block w-full text-sm text-navy-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:bg-navy-50 file:text-navy-700 hover:file:bg-navy-100 file:cursor-pointer">
+                <p class="mt-1 text-xs text-navy-400">PDF or image. Max 10MB.</p>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Notes (optional)</label>
+                <label class="block text-sm font-medium text-navy-700 mb-1">Notes (optional)</label>
                 <textarea name="notes" id="notes" rows="2"
                           placeholder="Anything we should know about this payment..."
-                          class="block w-full px-3 py-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0"></textarea>
+                          class="cu-textarea"></textarea>
             </div>
 
             <div class="flex justify-end pt-2">
-                <button type="submit" id="submit-btn"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600 disabled:opacity-60">
+                <button type="submit" id="submit-btn" class="cu-btn-primary">
                     Submit for approval
                 </button>
             </div>
         </form>
-    </div>
+    </section>
 
-    <!-- Submission history -->
-    <div class="bg-white rounded-xl border border-neutral-200">
-        <div class="px-6 py-4 border-b border-neutral-200">
-            <h2 class="text-base font-semibold text-neutral-800">Your EFT submissions</h2>
+    {# ------ Submission history ------ #}
+    <section class="cu-card">
+        <div class="px-6 py-4 border-b border-navy-50">
+            <h2 class="text-base font-semibold text-navy-800">Your EFT submissions</h2>
         </div>
         <div id="history-body" class="p-6 text-sm overflow-x-auto">
-            <p class="text-center text-neutral-400">Loading...</p>
+            <p class="text-center text-navy-400">Loading...</p>
         </div>
-    </div>
+    </section>
 </div>
 
 <script>
 const STATUS_COLOURS = {
-    PENDING: 'bg-amber-100 text-amber-800',
-    APPROVED: 'bg-green-100 text-green-800',
-    REJECTED: 'bg-red-100 text-red-800',
+    PENDING:  'cu-status cu-status-progress',
+    APPROVED: 'cu-status cu-status-finalized',
+    REJECTED: 'cu-status cu-status-danger',
 };
 
 let bankingCache = null;
@@ -123,13 +129,13 @@ async function loadBanking() {
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 ${rows.map(([k, v]) => `
                     <div>
-                        <dt class="text-xs uppercase tracking-wider text-neutral-500">${k}</dt>
-                        <dd class="text-sm font-medium text-neutral-800 mt-0.5 break-all">${v}</dd>
+                        <dt class="text-xs uppercase tracking-wider text-navy-500">${k}</dt>
+                        <dd class="text-sm font-medium text-navy-800 mt-0.5 break-all">${v}</dd>
                     </div>
                 `).join('')}
             </dl>
             ${b.reference_instructions ? `
-                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800">
                     <strong>Reference instructions:</strong> ${b.reference_instructions}
                 </div>` : ''}
         `;
@@ -154,27 +160,28 @@ async function loadHistory() {
         const res = await ClassUp.fetch('/api/v1/subscription/eft-payments');
         const items = res.data || [];
         if (!items.length) {
-            el.innerHTML = `<p class="text-neutral-400 text-center py-4">No EFT submissions yet.</p>`;
+            el.innerHTML = `<p class="text-navy-400 text-center py-4">No EFT submissions yet.</p>`;
             return;
         }
         el.innerHTML = `
-            <table class="min-w-full text-sm">
+            <table class="cu-table">
                 <thead>
-                    <tr class="border-b border-neutral-100">
-                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Submitted</th>
-                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Amount</th>
-                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Reference</th>
-                        <th class="text-left py-2 text-xs font-medium text-neutral-500 uppercase">Status</th>
+                    <tr>
+                        <th>Submitted</th>
+                        <th>Amount</th>
+                        <th>Reference</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-100">
+                <tbody>
                     ${items.map(p => `
                         <tr>
-                            <td class="py-2 text-neutral-600">${new Date(p.submitted_at).toLocaleString()}</td>
-                            <td class="py-2 text-neutral-800">${p.currency} ${p.amount.toFixed(2)}</td>
-                            <td class="py-2 text-neutral-600">${p.reference}</td>
-                            <td class="py-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLOURS[p.status] || 'bg-neutral-100'}">
+                            <td class="text-navy-600">${new Date(p.submitted_at).toLocaleString()}</td>
+                            <td class="text-navy-800 font-medium">${p.currency} ${p.amount.toFixed(2)}</td>
+                            <td class="text-navy-600">${p.reference}</td>
+                            <td>
+                                <span class="${STATUS_COLOURS[p.status] || 'cu-status cu-status-draft'}">
+                                    <span class="cu-status-dot"></span>
                                     ${p.status}
                                 </span>
                                 ${p.rejection_reason ? `<div class="text-xs text-red-600 mt-0.5">${p.rejection_reason}</div>` : ''}

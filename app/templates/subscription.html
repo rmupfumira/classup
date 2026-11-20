@@ -3,122 +3,117 @@
 {% block title %}Subscription - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="space-y-6">
+
     {% if locked_feature %}
-    <!-- Locked-feature banner (redirected from a gated page) -->
-    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-        <svg class="flex-shrink-0 w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="rounded-3xl p-5 flex items-start gap-3 border border-gold-200" style="background: #fdf9ec;">
+        <svg class="flex-shrink-0 w-5 h-5 text-gold-700 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
         </svg>
         <div class="flex-1">
-            <p class="text-sm font-semibold text-amber-900">
+            <p class="text-sm font-bold text-gold-900">
                 {{ locked_feature_label }} is not included in your current plan
             </p>
-            <p class="mt-1 text-sm text-amber-800">
+            <p class="mt-1 text-sm text-gold-800">
                 To unlock {{ locked_feature_label }}, upgrade to a plan that includes it. Pick one from the plans below.
             </p>
         </div>
     </div>
     {% endif %}
 
-    <!-- Header -->
-    <div>
-        <h1 class="text-xl font-semibold text-neutral-800">Your Subscription</h1>
-        <p class="mt-1 text-sm text-neutral-500">Manage your {{ app_name }} subscription and billing</p>
-    </div>
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="max-w-xl">
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
+            <h1 class="cu-page-title text-white">Your Subscription</h1>
+            <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                Manage your {{ app_name }} subscription and billing.
+            </p>
+        </div>
+    </section>
 
-    <!-- Subscription Status Card -->
-    <div class="bg-white rounded-xl border border-neutral-200 p-6" id="sub-card">
+    {# ------ Subscription Status Card ------ #}
+    <div class="cu-card p-6" id="sub-card">
         <div class="flex items-center justify-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-500"></div>
         </div>
     </div>
 
-    <!-- Available Plans -->
-    <div class="bg-white rounded-xl border border-neutral-200">
-        <div class="px-6 py-4 border-b border-neutral-200">
-            <h2 class="text-lg font-semibold text-neutral-800">Available Plans</h2>
-            <p class="text-sm text-neutral-500 mt-1">Choose the plan that fits your school</p>
+    {# ------ Available Plans ------ #}
+    <div class="cu-card">
+        <div class="px-6 py-4 border-b border-navy-100">
+            <h2 class="text-base font-bold text-navy-800">Available Plans</h2>
+            <p class="text-sm text-navy-500 mt-1">Choose the plan that fits your school.</p>
         </div>
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="plans-grid">
-                <div class="text-center text-neutral-400 py-8 col-span-full">Loading plans...</div>
+                <div class="text-center text-navy-400 py-8 col-span-full">Loading plans...</div>
             </div>
         </div>
     </div>
 
-    <!-- Payment methods -->
+    {# ------ Payment methods ------ #}
     <div class="grid md:grid-cols-2 gap-4">
-        {# Card-payment option — only shown when a gateway is enabled on this
-           instance. Filled in by JS once /api/v1/subscription/gateway returns. #}
-        <div id="card-payment-card" class="hidden bg-neutral-50 rounded-xl border border-neutral-200 p-5">
+        <div id="card-payment-card" class="hidden cu-card p-5">
             <div class="flex gap-3">
-                <svg class="w-5 h-5 text-primary-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-navy-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
                 <div>
-                    <p class="text-sm font-semibold text-neutral-800">Pay by card with <span id="gateway-display-name">—</span></p>
-                    <p class="text-xs text-neutral-500 mt-1">
-                        Click the <span class="font-medium">Pay with</span> button in your subscription card above.
+                    <p class="text-sm font-bold text-navy-800">Pay by card with <span id="gateway-display-name">—</span></p>
+                    <p class="text-xs text-navy-500 mt-1">
+                        Click the <span class="font-semibold">Pay with</span> button in your subscription card above.
                         You'll be redirected to complete payment, then brought back here.
                         Subscription activates as soon as the payment confirms.
                     </p>
                 </div>
             </div>
         </div>
-        <a href="/subscription/eft" class="bg-neutral-50 rounded-xl border border-neutral-200 p-5 hover:border-primary-300 hover:bg-white transition-colors group">
+        <a href="/subscription/eft" class="cu-card cu-card-hover p-5">
             <div class="flex gap-3">
-                <svg class="w-5 h-5 text-primary-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-navy-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                 </svg>
                 <div class="flex-1">
-                    <p class="text-sm font-semibold text-neutral-800 group-hover:text-primary-700">Pay by EFT &rarr;</p>
-                    <p class="text-xs text-neutral-500 mt-1">Pay by bank transfer and upload proof of payment. We'll approve within 1 business day.</p>
+                    <p class="text-sm font-bold text-navy-800">Pay by EFT &rarr;</p>
+                    <p class="text-xs text-navy-500 mt-1">Pay by bank transfer and upload proof of payment. We'll approve within 1 business day.</p>
                 </div>
             </div>
         </a>
     </div>
 
-    <!-- Payment History -->
-    <div class="bg-white rounded-xl border border-neutral-200">
-        <div class="px-6 py-4 border-b border-neutral-200">
-            <h2 class="text-lg font-semibold text-neutral-800">Payment History</h2>
+    {# ------ Payment History ------ #}
+    <div class="cu-card">
+        <div class="px-6 py-4 border-b border-navy-100">
+            <h2 class="text-base font-bold text-navy-800">Payment History</h2>
         </div>
         <div id="invoices-section" class="p-6 overflow-x-auto">
-            <p class="text-center text-neutral-400">Loading...</p>
+            <p class="text-center text-navy-400">Loading...</p>
         </div>
     </div>
 </div>
 
 <script>
 const statusMessages = {
-    TRIALING: { icon: '&#9200;', color: 'blue', label: 'Free Trial', desc: 'Your free trial is active.' },
-    ACTIVE: { icon: '&#10003;', color: 'green', label: 'Active', desc: 'Your subscription is active.' },
-    PAST_DUE: { icon: '&#9888;', color: 'yellow', label: 'Past Due', desc: 'Your payment is overdue. Please update your payment method.' },
-    SUSPENDED: { icon: '&#10005;', color: 'red', label: 'Suspended', desc: 'Your subscription is suspended. Please make a payment to restore access.' },
-    CANCELLED: { icon: '&#10005;', color: 'neutral', label: 'Cancelled', desc: 'Your subscription has been cancelled. Select a plan below to reactivate.' },
+    TRIALING: { icon: '&#9200;', chipClass: 'cu-status-scheduled', label: 'Free Trial', desc: 'Your free trial is active.' },
+    ACTIVE:   { icon: '&#10003;', chipClass: 'cu-status-finalized',  label: 'Active', desc: 'Your subscription is active.' },
+    PAST_DUE: { icon: '&#9888;',  chipClass: 'cu-status-progress',   label: 'Past Due', desc: 'Your payment is overdue. Please update your payment method.' },
+    SUSPENDED:{ icon: '&#10005;', chipClass: 'cu-status-danger',     label: 'Suspended', desc: 'Your subscription is suspended. Please make a payment to restore access.' },
+    CANCELLED:{ icon: '&#10005;', chipClass: 'cu-status-draft',      label: 'Cancelled', desc: 'Your subscription has been cancelled. Select a plan below to reactivate.' },
 };
 
 let currentPlanId = null;
 let currentStatus = null;
-// Jurisdiction currency for this tenant — populated by loadSubscription()
-// so the whole page renders "$ 3000.00" (Zim) or "R 3000.00" (SA) etc.
-// instead of a hardcoded "R". Falls back to "R" for backwards compat.
 let currencySymbol = 'R';
 
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-ZA', {year:'numeric',month:'long',day:'numeric'}) : '-'; }
 
 function fmtMoney(n) {
-    // Currency symbol + space + amount. Space thousands separator to match
-    // SA/ZW convention (12 345.67, not 12,345.67).
     if (n === null || n === undefined || isNaN(Number(n))) return `${currencySymbol} -`;
     return `${currencySymbol} ${Number(n).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
 
 function renderChargeBreakdown(sub) {
-    // PER_STUDENT / HYBRID plans show the breakdown so the parent-
-    // tenant knows WHY their bill is what it is. FLAT plans skip —
-    // the Monthly Price cell already tells the whole story.
     const preview = sub && sub.cycle_preview;
     const model = (sub && sub.charge_model) || 'FLAT';
     if (!preview || model === 'FLAT') return '';
@@ -131,16 +126,16 @@ function renderChargeBreakdown(sub) {
     let breakdown;
     if (model === 'PER_STUDENT') {
         breakdown = `${fmtMoney(perStudent)} × ${count} student${count === 1 ? '' : 's'} = <strong>${fmtMoney(total)}${label}</strong>`;
-    } else { // HYBRID
+    } else {
         breakdown = `${fmtMoney(base)} base + ${fmtMoney(perStudent)} × ${count} student${count === 1 ? '' : 's'} = <strong>${fmtMoney(total)}${label}</strong>`;
     }
     return `
-        <div class="mt-4 rounded-lg bg-primary-50 border border-primary-100 px-4 py-3 text-sm">
-            <p class="text-neutral-700">
-                <span class="font-medium text-neutral-800">This cycle:</span>
+        <div class="mt-4 rounded-2xl bg-navy-50 border border-navy-100 px-4 py-3 text-sm">
+            <p class="text-navy-700">
+                <span class="font-semibold text-navy-800">This cycle:</span>
                 ${breakdown}
             </p>
-            <p class="text-xs text-neutral-500 mt-1">
+            <p class="text-xs text-navy-500 mt-1">
                 Based on ${count} active student${count === 1 ? '' : 's'} today.
                 The amount recalculates at each cycle start.
             </p>
@@ -157,67 +152,59 @@ async function loadSubscription() {
             currentPlanId = null;
             currentStatus = null;
             card.innerHTML = `
-                <div class="text-center py-8">
-                    <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="cu-empty">
+                    <div class="cu-empty-icon">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
                     </div>
-                    <h3 class="text-lg font-semibold text-neutral-800 mb-2">No Active Subscription</h3>
-                    <p class="text-neutral-500 mb-4">Choose a plan below to get started with your free trial.</p>
+                    <p class="cu-empty-title">No Active Subscription</p>
+                    <p class="cu-empty-text">Choose a plan below to get started with your free trial.</p>
                 </div>`;
             return;
         }
 
-        // Track current plan for the plan cards
         currentStatus = sub.status;
-        // We need plan_id — get it from the plan name match in plans list later
-        // For now store what we have
-        currentPlanId = sub.id; // subscription ID, will match plan below
-
-        // Adopt the tenant's jurisdiction currency for the whole page.
+        currentPlanId = sub.id;
         if (sub.currency_symbol) currencySymbol = sub.currency_symbol;
-
-        // Seed the frequency chooser from the server-side value.
         _selectedFrequency = sub.billing_frequency || 'MONTHLY';
         _lastSub = sub;
 
         const sm = statusMessages[sub.status] || statusMessages.SUSPENDED;
         const isTrialing = sub.status === 'TRIALING';
-        const needsPayment = ['TRIALING', 'PAST_DUE', 'SUSPENDED'].includes(sub.status);
         const trialDaysLeft = isTrialing && sub.trial_end
             ? Math.max(0, Math.ceil((new Date(sub.trial_end) - new Date()) / 86400000))
             : 0;
 
         card.innerHTML = `
             <div class="flex items-start gap-4">
-                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-${sm.color}-100 flex items-center justify-center text-${sm.color}-600 text-xl">
+                <div class="flex-shrink-0 cu-nav-icon" style="width: 3rem; height: 3rem; font-size: 1.25rem;">
                     ${sm.icon}
                 </div>
                 <div class="flex-1">
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-lg font-semibold text-neutral-800">${sub.plan_name || 'No Plan'}</h3>
-                        <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-${sm.color}-100 text-${sm.color}-800">${sm.label}</span>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h3 class="text-lg font-bold text-navy-800">${sub.plan_name || 'No Plan'}</h3>
+                        <span class="cu-status ${sm.chipClass}"><span class="cu-status-dot"></span>${sm.label}</span>
                     </div>
-                    <p class="mt-1 text-sm text-neutral-500">${sm.desc}</p>
-                    ${isTrialing ? `<p class="mt-2 text-sm font-medium text-blue-600">${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} remaining in your free trial</p>` : ''}
+                    <p class="mt-1 text-sm text-navy-500">${sm.desc}</p>
+                    ${isTrialing ? `<p class="mt-2 text-sm font-semibold text-navy-600">${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} remaining in your free trial</p>` : ''}
 
                     <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                         <div>
-                            <span class="text-neutral-500">Monthly Price</span>
-                            <p class="font-semibold text-neutral-800">${fmtMoney(sub.plan_price)}</p>
+                            <span class="text-navy-500">Monthly Price</span>
+                            <p class="font-semibold text-navy-800">${fmtMoney(sub.plan_price)}</p>
                         </div>
                         <div>
-                            <span class="text-neutral-500">${isTrialing ? 'Trial Ends' : 'Next Billing'}</span>
-                            <p class="font-semibold text-neutral-800">${formatDate(isTrialing ? sub.trial_end : sub.current_period_end)}</p>
+                            <span class="text-navy-500">${isTrialing ? 'Trial Ends' : 'Next Billing'}</span>
+                            <p class="font-semibold text-navy-800">${formatDate(isTrialing ? sub.trial_end : sub.current_period_end)}</p>
                         </div>
                         <div>
-                            <span class="text-neutral-500">Max Students</span>
-                            <p class="font-semibold text-neutral-800">${sub.max_students || 'Unlimited'}</p>
+                            <span class="text-navy-500">Max Students</span>
+                            <p class="font-semibold text-navy-800">${sub.max_students || 'Unlimited'}</p>
                         </div>
                         <div>
-                            <span class="text-neutral-500">Max Staff</span>
-                            <p class="font-semibold text-neutral-800">${sub.max_staff || 'Unlimited'}</p>
+                            <span class="text-navy-500">Max Staff</span>
+                            <p class="font-semibold text-navy-800">${sub.max_staff || 'Unlimited'}</p>
                         </div>
                     </div>
 
@@ -227,7 +214,7 @@ async function loadSubscription() {
                     ${sub.status === 'ACTIVE' ? `
                         <div class="mt-3">
                             <button onclick="cancelSubscription()"
-                                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-md hover:bg-red-50 transition-colors">
+                                    class="inline-flex items-center px-4 py-2 text-sm font-semibold text-rose-600 border border-rose-200 rounded-full hover:bg-rose-50 transition-colors">
                                 Cancel Subscription
                             </button>
                         </div>
@@ -236,14 +223,8 @@ async function loadSubscription() {
             </div>
         `;
 
-        // Store plan name for plan card matching
         card.dataset.planName = sub.plan_name || '';
 
-        // Check if returning from a gateway redirect. The webhook does the
-        // heavy lifting — we just show feedback and clean the URL. If the
-        // webhook hasn't fired yet (rare, few-second lag), the invoice
-        // stays PENDING and the user sees "Pay again" — no lost money,
-        // gateway will keep trying to notify us.
         const params = new URLSearchParams(window.location.search);
         if (params.get('paid') === '1') {
             ClassUp.toast('Payment received &mdash; thanks! Your subscription will update shortly.', 'success');
@@ -252,12 +233,10 @@ async function loadSubscription() {
             ClassUp.toast('Payment cancelled. You can try again any time.', 'info');
             window.history.replaceState({}, '', '/subscription');
         } else if (params.get('payment') === 'complete' && params.get('reference')) {
-            // Legacy Paystack return path — kept for backwards compat while
-            // any old tabs are still open. Safe to remove in a later release.
             verifyPayment(params.get('reference'));
         }
     } catch (e) {
-        card.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load subscription details.</p>';
+        card.innerHTML = '<p class="text-center text-rose-600 py-8">Failed to load subscription details.</p>';
         console.error(e);
     }
 }
@@ -267,7 +246,7 @@ async function loadPlans() {
     try {
         const res = await ClassUp.fetch('/api/v1/plans');
         if (!res.data || !res.data.length) {
-            grid.innerHTML = '<div class="text-center text-neutral-400 py-8 col-span-full">No plans available yet.</div>';
+            grid.innerHTML = '<div class="text-center text-navy-400 py-8 col-span-full">No plans available yet.</div>';
             return;
         }
 
@@ -280,44 +259,43 @@ async function loadPlans() {
                 : [];
 
             return `
-            <div class="border-2 ${isCurrent ? 'border-primary-500 ring-1 ring-primary-200' : 'border-neutral-200'} rounded-xl p-5 flex flex-col relative">
-                ${isCurrent ? '<div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-primary-500 text-white text-xs font-semibold rounded-full">Current Plan</div>' : ''}
-                <h3 class="text-lg font-semibold text-neutral-800">${p.name}</h3>
+            <div class="cu-card cu-card-hover p-5 flex flex-col relative ${isCurrent ? 'ring-2 ring-navy-500' : ''}">
+                ${isCurrent ? '<div class="absolute -top-3 left-1/2 -translate-x-1/2 cu-chip-navy font-semibold" style="padding: 0.25rem 0.75rem;">Current Plan</div>' : ''}
+                <h3 class="text-lg font-bold text-navy-800">${p.name}</h3>
                 <div class="mt-2">
-                    <span class="text-3xl font-bold text-neutral-900">${fmtMoney(p.price_monthly)}</span>
-                    <span class="text-sm text-neutral-500">/month</span>
+                    <span class="text-3xl font-extrabold text-navy-900">${fmtMoney(p.price_monthly)}</span>
+                    <span class="text-sm text-navy-500">/month</span>
                 </div>
-                ${p.price_annually ? `<p class="text-xs text-neutral-500 mt-1">or ${fmtMoney(p.price_annually)}/year</p>` : ''}
-                <p class="text-sm text-neutral-500 mt-3">${p.description || ''}</p>
+                ${p.price_annually ? `<p class="text-xs text-navy-500 mt-1">or ${fmtMoney(p.price_annually)}/year</p>` : ''}
+                <p class="text-sm text-navy-500 mt-3">${p.description || ''}</p>
                 <div class="mt-4 space-y-2 text-sm flex-1">
-                    <div class="flex items-center gap-2 text-neutral-600">
-                        <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <div class="flex items-center gap-2 text-navy-600">
+                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                         ${p.max_students ? p.max_students + ' students' : 'Unlimited students'}
                     </div>
-                    <div class="flex items-center gap-2 text-neutral-600">
-                        <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <div class="flex items-center gap-2 text-navy-600">
+                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                         ${p.max_staff ? p.max_staff + ' staff' : 'Unlimited staff'}
                     </div>
-                    <div class="flex items-center gap-2 text-neutral-600">
-                        <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <div class="flex items-center gap-2 text-navy-600">
+                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                         ${p.trial_days}-day free trial
                     </div>
                     ${enabledFeatures.length ? `
-                    <div class="pt-2 border-t border-neutral-100 mt-3">
-                        <p class="text-xs font-medium text-neutral-500 uppercase mb-2">Includes</p>
+                    <div class="pt-2 border-t border-navy-100 mt-3">
+                        <p class="text-xs font-bold text-navy-500 uppercase mb-2">Includes</p>
                         ${enabledFeatures.slice(0, 6).map(f => `
-                        <div class="flex items-center gap-2 text-neutral-600 py-0.5">
-                            <svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        <div class="flex items-center gap-2 text-navy-600 py-0.5">
+                            <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                             <span class="text-xs">${f}</span>
                         </div>`).join('')}
-                        ${enabledFeatures.length > 6 ? `<p class="text-xs text-neutral-400 mt-1">+${enabledFeatures.length - 6} more features</p>` : ''}
+                        ${enabledFeatures.length > 6 ? `<p class="text-xs text-navy-400 mt-1">+${enabledFeatures.length - 6} more features</p>` : ''}
                     </div>` : ''}
                 </div>
                 <div class="mt-5">
                     ${isCurrent
-                        ? `<button disabled class="w-full px-4 py-2.5 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-lg cursor-default">Current Plan</button>`
-                        : `<button onclick="selectPlan('${p.id}', '${p.name.replace(/'/g, "\\'")}')"
-                                  class="btn btn-gold w-full py-2.5 text-sm">
+                        ? `<button disabled class="w-full px-4 py-2.5 text-sm font-semibold text-navy-700 bg-navy-50 border border-navy-200 rounded-full cursor-default">Current Plan</button>`
+                        : `<button onclick="selectPlan('${p.id}', '${p.name.replace(/'/g, "\\'")}')" class="cu-btn-gold w-full py-2.5">
                               ${currentPlanName ? 'Switch to ' + p.name : 'Start Free Trial'}
                           </button>`
                     }
@@ -325,7 +303,7 @@ async function loadPlans() {
             </div>`;
         }).join('');
     } catch (e) {
-        grid.innerHTML = '<div class="text-center text-red-500 py-8 col-span-full">Failed to load plans.</div>';
+        grid.innerHTML = '<div class="text-center text-rose-600 py-8 col-span-full">Failed to load plans.</div>';
         console.error('Failed to load plans', e);
     }
 }
@@ -343,7 +321,6 @@ async function selectPlan(planId, planName) {
             body: JSON.stringify({ plan_id: planId }),
         });
         ClassUp.toast(`Switched to ${planName} plan!`, 'success');
-        // Reload both sections
         await loadSubscription();
         loadPlans();
     } catch (e) {
@@ -351,8 +328,6 @@ async function selectPlan(planId, planName) {
     }
 }
 
-// Gateway state — used to decide whether to render a Pay button on
-// pending invoices. null = not yet loaded, false = no gateway configured.
 let _gatewayState = null;
 
 async function loadGateway() {
@@ -366,15 +341,9 @@ async function loadGateway() {
     } catch (e) {
         _gatewayState = { configured: false };
     }
-    // Now that both subscription + gateway state are known, render the
-    // primary Pay CTA into the slot the sub card left open. This is the
-    // ONE payment button — no more competing CTAs on the page.
     renderPayCTA();
 }
 
-// Selected billing frequency for the pending pay action. Persisted only
-// in memory — the server-side sub.billing_frequency is authoritative
-// once the tenant clicks Pay.
 let _selectedFrequency = 'MONTHLY';
 let _lastSub = null;
 
@@ -392,35 +361,27 @@ function renderPayCTA(sub) {
         ? _gatewayState.display_name : null;
 
     if (!gatewayName) {
-        // No gateway configured yet — friendly amber card instead of
-        // a broken button. EFT is still available below.
         slot.innerHTML = `
-            <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <p class="text-sm font-medium text-amber-900">Card payments aren't set up on this instance yet.</p>
-                <p class="mt-1 text-xs text-amber-700">
+            <div class="p-4 rounded-2xl border border-gold-200" style="background: #fdf9ec;">
+                <p class="text-sm font-bold text-gold-900">Card payments aren't set up on this instance yet.</p>
+                <p class="mt-1 text-xs text-gold-700">
                     You can pay by EFT (bank transfer) using the "Pay by EFT" panel below &mdash; upload a proof of payment and it's approved within one business day.
                 </p>
             </div>`;
         return;
     }
 
-    // Test-mode banner — appears above the pay button when the super
-    // admin has flagged the gateway as being in test mode on
-    // /admin/payment-gateways. No real money moves in test mode; this
-    // is here so nobody thinks they've been charged.
     const testModeBanner = _gatewayState.is_test_mode ? `
-        <div class="mb-3 p-3 bg-yellow-50 border border-yellow-300 rounded-lg flex items-start gap-2">
-            <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-yellow-700" fill="currentColor" viewBox="0 0 20 20">
+        <div class="mb-3 p-3 rounded-2xl border border-gold-300 flex items-start gap-2" style="background: #faf0c9;">
+            <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-gold-800" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l6.518 11.59c.75 1.334-.213 2.98-1.742 2.98H3.48c-1.53 0-2.492-1.646-1.743-2.98L8.257 3.099zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
             </svg>
-            <div class="text-xs text-yellow-900">
-                <span class="font-semibold">${gatewayName} is in test mode.</span>
+            <div class="text-xs text-gold-900">
+                <span class="font-bold">${gatewayName} is in test mode.</span>
                 No real money will be charged. This is safe to use for verifying the flow end-to-end.
             </div>
         </div>` : '';
 
-    // Seed frequency from what the server already has, unless a user
-    // click has changed it since load.
     if (sub.billing_frequency && !_selectedFrequency) {
         _selectedFrequency = sub.billing_frequency;
     }
@@ -430,7 +391,6 @@ function renderPayCTA(sub) {
     const annual = sub.plan_price_annually;
     const hasAnnual = annual !== null && annual !== undefined;
 
-    // Compare annual-if-paid-monthly vs annual price to compute savings.
     let savingsPct = 0;
     if (hasAnnual && monthly && annual) {
         savingsPct = Math.round(((monthly * 12 - annual) / (monthly * 12)) * 100);
@@ -443,21 +403,21 @@ function renderPayCTA(sub) {
         : `Your subscription is due &mdash; pay now to stay active.`;
 
     slot.innerHTML = `
-        <div class="border border-neutral-200 rounded-lg p-4 bg-white">
+        <div class="rounded-2xl p-4 bg-white border border-navy-100">
             ${testModeBanner}
-            <p class="text-sm text-neutral-600 mb-3">${optIn}</p>
+            <p class="text-sm text-navy-600 mb-3">${optIn}</p>
 
-            <p class="text-xs font-medium text-neutral-500 uppercase mb-2">Billing Frequency</p>
+            <p class="text-xs font-bold text-navy-500 uppercase mb-2">Billing Frequency</p>
             <div class="grid grid-cols-2 gap-2 mb-4">
                 <label class="cursor-pointer">
                     <input type="radio" name="pay-freq" value="MONTHLY"
                            ${_selectedFrequency === 'MONTHLY' ? 'checked' : ''}
                            class="sr-only peer"
                            onchange="_selectedFrequency='MONTHLY'; renderPayCTA();">
-                    <div class="border rounded-md p-3 text-center peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500">
-                        <p class="text-sm font-semibold text-neutral-800">Monthly</p>
-                        <p class="text-lg font-bold text-neutral-900">${fmtMoney(monthly)}</p>
-                        <p class="text-xs text-neutral-500">per month</p>
+                    <div class="border border-navy-100 rounded-2xl p-3 text-center peer-checked:border-navy-500 peer-checked:bg-navy-50 peer-checked:ring-2 peer-checked:ring-navy-500">
+                        <p class="text-sm font-bold text-navy-800">Monthly</p>
+                        <p class="text-lg font-extrabold text-navy-900">${fmtMoney(monthly)}</p>
+                        <p class="text-xs text-navy-500">per month</p>
                     </div>
                 </label>
                 <label class="cursor-pointer ${!hasAnnual ? 'opacity-40 pointer-events-none' : ''}">
@@ -466,23 +426,22 @@ function renderPayCTA(sub) {
                            ${!hasAnnual ? 'disabled' : ''}
                            class="sr-only peer"
                            onchange="_selectedFrequency='ANNUALLY'; renderPayCTA();">
-                    <div class="border rounded-md p-3 text-center relative peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500">
-                        ${savingsPct > 0 ? `<span class="absolute -top-2 right-2 px-2 py-0.5 bg-green-100 text-green-800 text-[10px] font-semibold rounded-full">Save ${savingsPct}%</span>` : ''}
-                        <p class="text-sm font-semibold text-neutral-800">Annual</p>
-                        <p class="text-lg font-bold text-neutral-900">${hasAnnual ? fmtMoney(annual) : '—'}</p>
-                        <p class="text-xs text-neutral-500">per year</p>
+                    <div class="border border-navy-100 rounded-2xl p-3 text-center relative peer-checked:border-navy-500 peer-checked:bg-navy-50 peer-checked:ring-2 peer-checked:ring-navy-500">
+                        ${savingsPct > 0 ? `<span class="absolute -top-2 right-2 cu-chip-emerald">Save ${savingsPct}%</span>` : ''}
+                        <p class="text-sm font-bold text-navy-800">Annual</p>
+                        <p class="text-lg font-extrabold text-navy-900">${hasAnnual ? fmtMoney(annual) : '—'}</p>
+                        <p class="text-xs text-navy-500">per year</p>
                     </div>
                 </label>
             </div>
 
-            <button onclick="startPayment(this)"
-                    class="w-full inline-flex items-center justify-center px-5 py-2.5 bg-primary-500 text-white text-sm font-semibold rounded-md hover:bg-primary-600 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onclick="startPayment(this)" class="cu-btn-gold w-full py-3">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                 </svg>
                 Pay ${fmtMoney(activePrice)} with ${gatewayName}
             </button>
-            <p class="mt-2 text-xs text-neutral-500 text-center">
+            <p class="mt-2 text-xs text-navy-500 text-center">
                 One ${periodLabel} of ${sub.plan_name}. You'll be redirected to ${gatewayName}, then brought back here.
                 ${isTrialing ? '<br>Your trial ends the moment the payment confirms.' : ''}
             </p>
@@ -499,11 +458,10 @@ async function payInvoice(invoiceId, btn) {
         });
         if (res.data && res.data.redirect_url) {
             window.location.href = res.data.redirect_url;
-            return;  // navigation in progress
+            return;
         }
         ClassUp.toast('Gateway did not return a redirect URL', 'error');
     } catch (e) {
-        // error toast already fired
     } finally {
         btn.disabled = false;
         btn.textContent = originalText;
@@ -515,37 +473,36 @@ async function loadInvoices() {
     try {
         const res = await ClassUp.fetch('/api/v1/subscription/invoices');
         if (!res.data || !res.data.length) {
-            section.innerHTML = '<p class="text-center text-neutral-400 py-4">No payment history yet.</p>';
+            section.innerHTML = '<p class="text-center text-navy-400 py-4">No payment history yet.</p>';
             return;
         }
         const showPay = _gatewayState && _gatewayState.configured;
+        const statusChip = (s) =>
+            s === 'PAID'   ? '<span class="cu-status cu-status-finalized"><span class="cu-status-dot"></span>Paid</span>'
+          : s === 'FAILED' ? '<span class="cu-status cu-status-danger"><span class="cu-status-dot"></span>Failed</span>'
+          :                  '<span class="cu-status cu-status-progress"><span class="cu-status-dot"></span>Pending</span>';
         section.innerHTML = `
-            <table class="min-w-full divide-y divide-neutral-200">
+            <table class="cu-table">
                 <thead>
                     <tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Period</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Amount</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                        <th class="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                        <th>Period</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th style="text-align:right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-200">
+                <tbody>
                     ${res.data.map(inv => `
                         <tr>
-                            <td class="px-4 py-3 text-sm">${inv.billing_period_start} - ${inv.billing_period_end}</td>
-                            <td class="px-4 py-3 text-sm font-medium">${fmtMoney(inv.amount)}</td>
-                            <td class="px-4 py-3 text-sm">
-                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full
-                                    ${inv.status === 'PAID' ? 'bg-green-100 text-green-800' : inv.status === 'FAILED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
-                                    ${inv.status}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-sm text-neutral-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
-                            <td class="px-4 py-3 text-sm text-right">
+                            <td>${inv.billing_period_start} - ${inv.billing_period_end}</td>
+                            <td class="font-semibold text-navy-800">${fmtMoney(inv.amount)}</td>
+                            <td>${statusChip(inv.status)}</td>
+                            <td class="text-navy-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}</td>
+                            <td style="text-align:right">
                                 ${(inv.status === 'PENDING' && showPay)
-                                    ? `<button onclick="payInvoice('${inv.id}', this)" class="px-3 py-1 bg-primary-500 text-white text-xs font-medium rounded-md hover:bg-primary-600">Pay by card</button>`
-                                    : '<span class="text-xs text-neutral-400">—</span>'}
+                                    ? `<button onclick="payInvoice('${inv.id}', this)" class="cu-btn-primary !py-1 !px-3 !text-xs">Pay by card</button>`
+                                    : '<span class="text-xs text-navy-400">—</span>'}
                             </td>
                         </tr>
                     `).join('')}
@@ -553,7 +510,7 @@ async function loadInvoices() {
             </table>
         `;
     } catch (e) {
-        section.innerHTML = '<p class="text-center text-red-500">Failed to load payment history.</p>';
+        section.innerHTML = '<p class="text-center text-rose-600">Failed to load payment history.</p>';
     }
 }
 
@@ -569,25 +526,16 @@ async function startPayment(btn) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 callback_url: window.location.origin + '/subscription?paid=1',
-                // Send the chosen frequency so the server sizes the
-                // invoice (monthly vs annual amount, 30 vs 365 days)
-                // and persists the choice on the subscription for
-                // future renewals.
                 billing_frequency: _selectedFrequency || 'MONTHLY',
             }),
         });
-        // The server returns redirect_url (new field). authorization_url
-        // is kept as a legacy alias for older clients — read redirect_url
-        // first so we honour whichever the server preferred.
         const url = res.data && (res.data.redirect_url || res.data.authorization_url);
         if (url) {
             window.location.href = url;
-            return;  // navigation in progress
+            return;
         }
         ClassUp.toast('Gateway did not return a redirect URL.', 'error');
     } catch (e) {
-        // ClassUp.fetch surfaces a toast with the API error detail
-        // already; this is a belt-and-braces fallback for network fails.
         console.error('startPayment failed', e);
     } finally {
         if (btn && originalHTML) {
@@ -626,7 +574,6 @@ async function cancelSubscription() {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSubscription();
     loadPlans();
-    // Gateway must resolve before invoices so the Pay buttons render correctly
     await loadGateway();
     loadInvoices();
 });

@@ -3,34 +3,39 @@
 {% block title %}My Profile - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-    <div>
-        <h1 class="text-xl font-semibold text-neutral-800">My Profile</h1>
-        <p class="mt-0.5 text-sm text-neutral-500">Update your personal details and password.</p>
-    </div>
+<div class="space-y-6">
+
+    <!-- Hero -->
+    <section class="cu-hero">
+        <div class="relative">
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Account</span>
+            <h1 class="cu-page-title text-white">My Profile</h1>
+            <p class="mt-2 text-sm text-white/80">Update your personal details and password.</p>
+        </div>
+    </section>
 
     <!-- Profile details -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
-        <h2 class="text-base font-semibold text-neutral-800 mb-4">Personal Details</h2>
+    <div class="cu-card p-6">
+        <h2 class="text-base font-semibold text-navy-800 mb-4">Personal Details</h2>
 
         <form id="profile-form" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">First Name</label>
                     <input type="text" id="first_name" value="{{ user.first_name or '' }}" required
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">Last Name</label>
                     <input type="text" id="last_name" value="{{ user.last_name or '' }}" required
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                 </div>
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Email</label>
                 <input type="email" value="{{ user.email }}" disabled
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-neutral-50 text-neutral-500">
+                       class="cu-input !bg-navy-50 !text-navy-500">
                 <p class="mt-1 text-xs text-neutral-400">Contact your school administrator to change your email.</p>
             </div>
 
@@ -38,12 +43,12 @@
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
                     <input type="tel" id="phone" value="{{ user.phone or '' }}"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">Language</label>
                     <select id="language"
-                            class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                            class="cu-input">
                         <option value="en" {% if user.language == 'en' %}selected{% endif %}>English</option>
                         <option value="af" {% if user.language == 'af' %}selected{% endif %}>Afrikaans</option>
                     </select>
@@ -54,7 +59,7 @@
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">WhatsApp Number</label>
                     <input type="tel" id="whatsapp_phone" value="{{ user.whatsapp_phone or '' }}" placeholder="+27..."
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                     {# If the parent already gave us a phone but no WhatsApp
                        number, offer a one-click copy — nine times out of ten
                        it's the same number. Silences when they've saved a
@@ -156,8 +161,7 @@
             {% endif %}
 
             <div class="flex justify-end pt-2">
-                <button type="submit"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">
+                <button type="submit" class="cu-btn-primary">
                     Save Changes
                 </button>
             </div>
@@ -165,11 +169,11 @@
     </div>
 
     <!-- Two-factor authentication entry -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
+    <div class="cu-card p-6">
         <div class="flex items-start justify-between gap-4">
             <div>
-                <h2 class="text-base font-semibold text-neutral-800">Two-factor authentication</h2>
-                <p class="mt-1 text-sm text-neutral-500">
+                <h2 class="text-base font-semibold text-navy-800">Two-factor authentication</h2>
+                <p class="mt-1 text-sm text-navy-500">
                     {% if user.totp_enabled %}
                     On — you'll be asked for a 6-digit code at sign-in.
                     {% else %}
@@ -177,39 +181,37 @@
                     {% endif %}
                 </p>
             </div>
-            <a href="/settings/two-factor"
-               class="px-3 py-1.5 text-sm {% if user.totp_enabled %}text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50{% else %}text-white bg-primary-500 hover:bg-primary-600{% endif %} rounded-md">
+            <a href="/settings/two-factor" class="{% if user.totp_enabled %}cu-btn-soft{% else %}cu-btn-primary{% endif %}">
                 {% if user.totp_enabled %}Manage{% else %}Set up{% endif %}
             </a>
         </div>
     </div>
 
     <!-- Change password -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
-        <h2 class="text-base font-semibold text-neutral-800 mb-4">Change Password</h2>
+    <div class="cu-card p-6">
+        <h2 class="text-base font-semibold text-navy-800 mb-4">Change Password</h2>
 
         <form id="password-form" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Current Password</label>
                 <input type="password" id="current_password" required autocomplete="current-password"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                       class="cu-input">
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">New Password</label>
                     <input type="password" id="new_password" required minlength="8" autocomplete="new-password"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                     <p class="mt-1 text-xs text-neutral-400">Minimum 8 characters</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">Confirm New Password</label>
                     <input type="password" id="confirm_password" required minlength="8" autocomplete="new-password"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                 </div>
             </div>
             <div class="flex justify-end pt-2">
-                <button type="submit"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">
+                <button type="submit" class="cu-btn-primary">
                     Update Password
                 </button>
             </div>

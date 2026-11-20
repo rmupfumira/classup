@@ -2,24 +2,30 @@
 
 {% block title %}New Child Linked to Your Account{% endblock %}
 
-{% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
-    Hello {{ parent_name }},
-</h2>
+{% block preheader %}{{ student_name }} has been linked to your {{ app_name }} account at {{ tenant_name }}.{% endblock %}
 
-<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    Great news! <strong>{{ student_name }}</strong> has been linked to your {{ app_name }} account at <strong>{{ tenant_name }}</strong>.
+{% block content %}
+<div style="font-size: 11px; font-weight: 800; color: #a07420; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    Account Update
+</div>
+
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    Hello {{ parent_name }},
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    Great news — <strong style="color: #0e1b34;">{{ student_name }}</strong> has been linked to your {{ app_name }} account at <strong style="color: #0e1b34;">{{ tenant_name }}</strong>.
 </p>
 
-<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    You can now view their activity reports, photos, attendance, and communicate with their teachers — all from your existing account.
+<p style="margin: 0 0 32px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    You can now view their activity reports, photos and attendance, and chat with their teachers — all from your existing account.
 </p>
 
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
     <tr>
-        <td style="border-radius: 8px; background-color: #C9962A;">
-            <a href="{{ login_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
-                Log In to Your Account
+        <td class="cta-full" align="center" bgcolor="#C9962A" style="border-radius: 12px; background-color: #C9962A; background-image: linear-gradient(135deg, #dcae31 0%, #C9962A 60%, #a07420 100%); box-shadow: 0 10px 30px -10px rgba(201, 150, 42, 0.45);">
+            <a href="{{ login_url }}" target="_blank" style="display: inline-block; padding: 14px 32px; font-family: 'Inter', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; color: #0e1b34; text-decoration: none; line-height: 1;">
+                Log in &rarr;
             </a>
         </td>
     </tr>

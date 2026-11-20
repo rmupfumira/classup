@@ -2,54 +2,69 @@
 
 {% block title %}Attendance Alert for {{ student_name }}{% endblock %}
 
-{% block header_color %}{% if status == 'ABSENT' %}#EF4444{% elif status == 'LATE' %}#F59E0B{% else %}#10B981{% endif %}{% endblock %}
+{% block preheader %}{{ student_name }} was marked {{ status }} today at {{ tenant_name }}.{% endblock %}
+
+{# ===== Status colour token — brand-aligned swatches ===== #}
+{% set status_color      = '#9f1239' if status == 'ABSENT' else '#7f5b1c' if status == 'LATE' else '#047857' %}
+{% set status_bg         = '#fff1f2' if status == 'ABSENT' else '#fdf9ec' if status == 'LATE' else '#ecfdf5' %}
+{% set status_border     = '#fecdd3' if status == 'ABSENT' else '#f4df8e' if status == 'LATE' else '#a7f3d0' %}
+{% set status_eyebrow    = 'Absence alert' if status == 'ABSENT' else 'Late arrival' if status == 'LATE' else 'Attendance update' %}
 
 {% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
-    Attendance Update
-</h2>
+<div style="font-size: 11px; font-weight: 800; color: {{ status_color }}; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    {{ status_eyebrow }}
+</div>
 
-<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    Attendance update.
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
     Hi {{ parent_name }},
 </p>
 
-<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    This is to inform you that <strong>{{ student_name }}</strong> was marked as <strong>{{ status }}</strong> today.
+<p style="margin: 0 0 24px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    <strong style="color: #0e1b34;">{{ student_name }}</strong> was marked as <strong style="color: {{ status_color }};">{{ status }}</strong> today.
 </p>
 
-<div style="background-color: {% if status == 'ABSENT' %}#FEF2F2{% elif status == 'LATE' %}#FFFBEB{% else %}#F0FDF4{% endif %}; border-left: 4px solid {% if status == 'ABSENT' %}#EF4444{% elif status == 'LATE' %}#F59E0B{% else %}#10B981{% endif %}; border-radius: 4px; padding: 16px; margin: 0 0 24px 0;">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-        <tr>
-            <td style="padding: 0 0 8px 0;">
-                <strong style="font-size: 14px; color: #6B7280;">Student:</strong>
-                <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ student_name }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 0 0 8px 0;">
-                <strong style="font-size: 14px; color: #6B7280;">Date:</strong>
-                <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ date }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <strong style="font-size: 14px; color: #6B7280;">Status:</strong>
-                <span style="font-size: 14px; color: {% if status == 'ABSENT' %}#EF4444{% elif status == 'LATE' %}#F59E0B{% else %}#10B981{% endif %}; font-weight: 600; margin-left: 8px;">{{ status }}</span>
-            </td>
-        </tr>
-        {% if notes %}
-        <tr>
-            <td style="padding-top: 12px;">
-                <strong style="font-size: 14px; color: #6B7280;">Notes:</strong><br>
-                <span style="font-size: 14px; color: #374151;">{{ notes }}</span>
-            </td>
-        </tr>
-        {% endif %}
-    </table>
-</div>
+{# ===== Status card ===== #}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+    <tr>
+        <td style="background-color: {{ status_bg }}; border: 1px solid {{ status_border }}; border-radius: 16px; padding: 20px; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                    <td style="padding: 0 0 10px 0;">
+                        <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Student</strong><br>
+                        <span style="font-size: 15px; color: #0e1b34; font-weight: 600;">{{ student_name }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 0 0 10px 0;">
+                        <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Date</strong><br>
+                        <span style="font-size: 15px; color: #0e1b34; font-weight: 600;">{{ date }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Status</strong><br>
+                        <span style="font-size: 15px; color: {{ status_color }}; font-weight: 700;">{{ status }}</span>
+                    </td>
+                </tr>
+                {% if notes %}
+                <tr>
+                    <td style="padding-top: 14px;">
+                        <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Notes</strong><br>
+                        <span style="font-size: 14px; color: #162f57; line-height: 1.55;">{{ notes }}</span>
+                    </td>
+                </tr>
+                {% endif %}
+            </table>
+        </td>
+    </tr>
+</table>
 
-<p style="margin: 0 0 16px 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
-    If you have any questions or concerns, please contact {{ tenant_name }} directly.
+<p style="margin: 0; font-size: 14px; color: #3a5f96; line-height: 1.6;">
+    If you have any questions or concerns, please contact <strong style="color: #162f57;">{{ tenant_name }}</strong> directly.
 </p>
 {% endblock %}
 

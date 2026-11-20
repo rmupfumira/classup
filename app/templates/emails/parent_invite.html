@@ -2,46 +2,58 @@
 
 {% block title %}You're Invited to Join {{ tenant_name }}{% endblock %}
 
+{% block preheader %}{{ tenant_name }} invited you to join {{ app_name }} and stay connected with {{ student_name }}.{% endblock %}
+
 {% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
-    You're Invited!
-</h2>
+<div style="font-size: 11px; font-weight: 800; color: #a07420; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    You're invited
+</div>
 
-<p style="margin: 0 0 16px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    <strong>{{ tenant_name }}</strong> has invited you to join {{ app_name }} to stay connected with <strong>{{ student_name }}</strong>'s school activities.
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 28px; font-weight: 800; color: #0e1b34; line-height: 1.2; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    Join {{ tenant_name }} on {{ app_name }}.
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    <strong style="color: #0e1b34;">{{ tenant_name }}</strong> has invited you to join {{ app_name }} so you can stay connected with <strong style="color: #0e1b34;">{{ student_name }}</strong>'s school activities.
 </p>
 
-<p style="margin: 0 0 24px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    With {{ app_name }}, you'll be able to:
+<p style="margin: 0 0 12px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    Once you're in, you'll be able to:
 </p>
 
-<ul style="margin: 0 0 24px 0; padding-left: 20px; font-size: 15px; color: #374151; line-height: 1.8;">
+<ul style="margin: 0 0 28px 0; padding-left: 20px; font-size: 16px; color: #162f57; line-height: 1.85;">
     <li>Receive daily activity reports</li>
     <li>View photos and documents</li>
     <li>Communicate with teachers</li>
     <li>Track attendance</li>
 </ul>
 
-<div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 0 0 24px 0; text-align: center;">
-    <p style="margin: 0 0 8px 0; font-size: 14px; color: #6B7280;">
-        Your Invitation Code:
-    </p>
-    <p style="margin: 0; font-size: 28px; font-weight: 700; color: #1B3A6B; letter-spacing: 4px;">
-        {{ invitation_code }}
-    </p>
-</div>
+{# ===== Invitation-code panel ===== #}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 28px 0;">
+    <tr>
+        <td style="background-color: #fdf9ec; border: 1px solid #f4df8e; border-radius: 16px; padding: 24px; text-align: center;">
+            <p style="margin: 0 0 8px 0; font-family: 'Inter', Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; color: #7f5b1c; letter-spacing: 0.08em; text-transform: uppercase;">
+                Your Invitation Code
+            </p>
+            <p style="margin: 0; font-family: 'Inter', Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 800; color: #1B3A6B; letter-spacing: 6px;">
+                {{ invitation_code }}
+            </p>
+        </td>
+    </tr>
+</table>
 
+{# ===== Primary CTA ===== #}
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
     <tr>
-        <td style="border-radius: 8px; background-color: #C9962A;">
-            <a href="{{ register_url }}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
-                Create Your Account
+        <td class="cta-full" align="center" bgcolor="#C9962A" style="border-radius: 12px; background-color: #C9962A; background-image: linear-gradient(135deg, #dcae31 0%, #C9962A 60%, #a07420 100%); box-shadow: 0 10px 30px -10px rgba(201, 150, 42, 0.45);">
+            <a href="{{ register_url }}" target="_blank" style="display: inline-block; padding: 14px 32px; font-family: 'Inter', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; color: #0e1b34; text-decoration: none; line-height: 1;">
+                Create your account &rarr;
             </a>
         </td>
     </tr>
 </table>
 
-<p style="margin: 24px 0 0 0; font-size: 13px; color: #9CA3AF; line-height: 1.6; text-align: center;">
+<p style="margin: 28px 0 0 0; font-size: 13px; color: #5a7eb3; line-height: 1.6; text-align: center;">
     This invitation expires in {{ expires_in_days }} days.
 </p>
 {% endblock %}

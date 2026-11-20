@@ -3,107 +3,108 @@
 {% block title %}Parents - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-4">
+<div class="space-y-6">
 
-    <!-- Header -->
-    <div class="flex items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-neutral-900">Parents</h1>
-            <p class="text-sm text-neutral-500">
-                Manage parent accounts on your school.
-                Edit contacts, reset passwords, toggle WhatsApp opt-in, or link children.
-            </p>
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">People</span>
+                <h1 class="cu-page-title text-white">Parents</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Manage parent accounts, edit contacts, reset passwords, toggle WhatsApp
+                    opt-in or link children.
+                </p>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <!-- Filters -->
-    <form method="get" class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-        <input type="text" name="search" value="{{ search }}"
-               placeholder="Search name / email / phone / WhatsApp number…"
-               class="flex-1 h-10 px-3 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-        <label class="inline-flex items-center gap-2 text-sm text-neutral-700">
+    {# ------ Filter row ------ #}
+    <form method="get" class="cu-card p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div class="cu-search flex-1">
+            <svg class="cu-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" name="search" value="{{ search }}"
+                   placeholder="Search name / email / phone / WhatsApp…" class="cu-input">
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm text-navy-700">
             <input type="checkbox" name="opted_in_only" value="1" {% if opted_in_only %}checked{% endif %}
-                   class="rounded border-neutral-300 text-primary-600">
+                   class="rounded border-navy-200 text-navy-600">
             WhatsApp opted-in
         </label>
-        <label class="inline-flex items-center gap-2 text-sm text-neutral-700">
+        <label class="inline-flex items-center gap-2 text-sm text-navy-700">
             <input type="checkbox" name="include_inactive" value="1" {% if include_inactive %}checked{% endif %}
-                   class="rounded border-neutral-300 text-primary-600">
+                   class="rounded border-navy-200 text-navy-600">
             Include inactive
         </label>
-        <button type="submit"
-                class="inline-flex items-center justify-center h-10 px-4 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
-            Filter
-        </button>
+        <button type="submit" class="cu-btn-primary">Filter</button>
     </form>
 
-    <!-- Count -->
-    <p class="text-xs text-neutral-500">
+    <p class="text-xs text-navy-500">
         Showing {{ parents|length }} of {{ total }} parent{{ '' if total == 1 else 's' }}.
     </p>
 
     {% if parents %}
-    <!-- Desktop table -->
-    <div class="hidden md:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead class="bg-neutral-50 border-b border-neutral-200">
+    {# ------ Desktop table ------ #}
+    <div class="hidden md:block cu-table-wrap">
+        <table class="cu-table">
+            <thead>
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Name</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Email</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Phone</th>
-                    <th class="px-4 py-3 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider">WhatsApp</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Children</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Last Login</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider"></th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th style="text-align:center">WhatsApp</th>
+                    <th>Children</th>
+                    <th>Last Login</th>
+                    <th style="text-align:right"></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-100">
+            <tbody>
                 {% for parent in parents %}
-                <tr class="{% if not parent.is_active %}bg-neutral-50 opacity-70{% endif %}">
-                    <td class="px-4 py-3">
-                        <a href="/parents/{{ parent.id }}" class="font-medium text-neutral-900 hover:text-primary-700">
+                <tr class="{% if not parent.is_active %}opacity-70{% endif %}">
+                    <td>
+                        <a href="/parents/{{ parent.id }}" class="font-semibold text-navy-800 hover:text-navy-600">
                             {{ parent.first_name }} {{ parent.last_name }}
                         </a>
                         {% if not parent.is_active %}
-                        <span class="ml-2 text-xs px-1.5 py-0.5 bg-neutral-200 text-neutral-700 rounded">Inactive</span>
+                        <span class="ml-2 cu-chip-neutral">Inactive</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 text-neutral-700">{{ parent.email }}</td>
-                    <td class="px-4 py-3 text-neutral-600">{{ parent.phone or '—' }}</td>
-                    <td class="px-4 py-3 text-center">
+                    <td class="text-navy-700">{{ parent.email }}</td>
+                    <td class="text-navy-600">{{ parent.phone or '—' }}</td>
+                    <td style="text-align:center">
                         {% if parent.whatsapp_opted_in and parent.whatsapp_phone %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700" title="{{ parent.whatsapp_phone }}">
-                            Opted in
+                        <span class="cu-status cu-status-finalized" title="{{ parent.whatsapp_phone }}">
+                            <span class="cu-status-dot"></span>Opted in
                         </span>
                         {% elif parent.whatsapp_phone %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
-                            Phone only
-                        </span>
+                        <span class="cu-chip-neutral">Phone only</span>
                         {% else %}
-                        <span class="text-xs text-neutral-400">—</span>
+                        <span class="text-xs text-navy-400">—</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                         {% set active_children = parent.parent_students|selectattr('student')|selectattr('student.deleted_at', 'none')|list %}
                         {% if active_children %}
-                        <span class="text-xs text-neutral-700">
+                        <span class="text-xs text-navy-700">
                             {% for ps in active_children[:3] %}
                             {{ ps.student.first_name }} {{ ps.student.last_name }}{% if not loop.last %},{% endif %}
                             {% endfor %}
                             {% if active_children|length > 3 %}
-                            <span class="text-neutral-500"> +{{ active_children|length - 3 }} more</span>
+                            <span class="text-navy-500"> +{{ active_children|length - 3 }} more</span>
                             {% endif %}
                         </span>
                         {% else %}
-                        <span class="text-xs text-neutral-400">No children linked</span>
+                        <span class="text-xs text-navy-400">No children linked</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 text-neutral-500 text-xs">
+                    <td class="text-navy-500 text-xs">
                         {{ parent.last_login_at.strftime('%d %b %Y') if parent.last_login_at else 'Never' }}
                     </td>
-                    <td class="px-4 py-3 text-right">
-                        <a href="/parents/{{ parent.id }}"
-                           class="text-primary-600 hover:text-primary-700 text-xs font-medium">Manage →</a>
+                    <td style="text-align:right">
+                        <a href="/parents/{{ parent.id }}" class="cu-btn-soft !py-1.5 !px-3 !text-xs">
+                            Manage
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -111,24 +112,26 @@
         </table>
     </div>
 
-    <!-- Mobile card list -->
+    {# ------ Mobile card list ------ #}
     <div class="md:hidden space-y-3">
         {% for parent in parents %}
         <a href="/parents/{{ parent.id }}"
-           class="block bg-white rounded-lg shadow-sm border border-neutral-200 p-4 {% if not parent.is_active %}opacity-70{% endif %}">
+           class="block cu-card p-4 {% if not parent.is_active %}opacity-70{% endif %}">
             <div class="flex items-center justify-between mb-1">
-                <p class="font-medium text-neutral-900">
+                <p class="font-semibold text-navy-800">
                     {{ parent.first_name }} {{ parent.last_name }}
                 </p>
                 {% if parent.whatsapp_opted_in and parent.whatsapp_phone %}
-                <span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700">WhatsApp</span>
+                <span class="cu-status cu-status-finalized">
+                    <span class="cu-status-dot"></span>WhatsApp
+                </span>
                 {% endif %}
             </div>
-            <p class="text-xs text-neutral-600">{{ parent.email }}</p>
-            <p class="text-xs text-neutral-500">{{ parent.phone or 'No phone' }}</p>
+            <p class="text-xs text-navy-600">{{ parent.email }}</p>
+            <p class="text-xs text-navy-500">{{ parent.phone or 'No phone' }}</p>
             {% set active_children = parent.parent_students|selectattr('student')|selectattr('student.deleted_at', 'none')|list %}
             {% if active_children %}
-            <p class="text-xs text-neutral-500 mt-1">
+            <p class="text-xs text-navy-500 mt-1">
                 {{ active_children|length }} child{{ '' if active_children|length == 1 else 'ren' }}
             </p>
             {% endif %}
@@ -136,34 +139,36 @@
         {% endfor %}
     </div>
 
-    <!-- Pagination -->
+    {# ------ Pagination ------ #}
     {% if total_pages > 1 %}
-    <div class="flex items-center justify-between text-sm">
+    <div class="flex items-center justify-between cu-card px-4 py-3">
         {% set qs_base = 'search=' ~ search ~ ('&opted_in_only=1' if opted_in_only else '') ~ ('&include_inactive=1' if include_inactive else '') %}
         <div>
             {% if page > 1 %}
-            <a href="?{{ qs_base }}&page={{ page - 1 }}"
-               class="px-3 py-1.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50">← Previous</a>
+            <a href="?{{ qs_base }}&page={{ page - 1 }}" class="cu-btn-soft !py-1.5 !px-3 !text-xs">← Previous</a>
             {% endif %}
         </div>
-        <p class="text-xs text-neutral-500">Page {{ page }} of {{ total_pages }}</p>
+        <p class="text-xs text-navy-500">Page {{ page }} of {{ total_pages }}</p>
         <div>
             {% if page < total_pages %}
-            <a href="?{{ qs_base }}&page={{ page + 1 }}"
-               class="px-3 py-1.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50">Next →</a>
+            <a href="?{{ qs_base }}&page={{ page + 1 }}" class="cu-btn-soft !py-1.5 !px-3 !text-xs">Next →</a>
             {% endif %}
         </div>
     </div>
     {% endif %}
 
     {% else %}
-    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-        <p class="text-neutral-500">
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <p class="cu-empty-title">No parents found</p>
+        <p class="cu-empty-text">
             {% if search or opted_in_only or include_inactive %}
             No parents match those filters.
             {% else %}
-            No parents on your tenant yet.
-            Invite parents from the <a href="/students" class="text-primary-600 underline">student page</a>.
+            No parents on your tenant yet. Invite parents from the
+            <a href="/students" class="text-navy-700 underline">student page</a>.
             {% endif %}
         </p>
     </div>

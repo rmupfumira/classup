@@ -2,29 +2,41 @@
 
 {% block title %}New Document: {{ title }}{% endblock %}
 
-{% block header_color %}#1B3A6B{% endblock %}
+{% block preheader %}{{ sharer_name }} shared "{{ title }}" with you at {{ tenant_name }}.{% endblock %}
 
 {% block content %}
-<p style="margin: 0 0 8px 0; font-size: 15px; color: #374151; line-height: 1.6;">
-    {{ sharer_name }} shared a document{% if scope == 'CLASS' and class_name %} with <strong>{{ class_name }}</strong>{% elif scope == 'STUDENT' and tagged_students %}, for <strong>{{ tagged_students|join(', ') }}</strong>{% elif scope == 'SCHOOL' %} (school-wide){% endif %}:
-</p>
-
-<div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; margin: 0 0 16px 0;">
-    <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #111827;">
-        {{ title }}
-    </p>
-    {% if description %}
-    <p style="margin: 0 0 8px 0; font-size: 14px; color: #6B7280; line-height: 1.5;">
-        {{ description }}
-    </p>
-    {% endif %}
-    <p style="margin: 0; font-size: 13px; color: #9CA3AF;">
-        {{ file_count }} file{{ 's' if file_count != 1 else '' }}
-    </p>
+<div style="font-size: 11px; font-weight: 800; color: #a07420; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    New document
 </div>
 
-<p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
-    Log in to {{ tenant_name }} to view and download the document.
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    {{ title }}
+</h1>
+
+<p style="margin: 0 0 20px 0; font-size: 16px; color: #162f57; line-height: 1.6;">
+    <strong style="color: #0e1b34;">{{ sharer_name }}</strong> shared a document{% if scope == 'CLASS' and class_name %} with <strong style="color: #0e1b34;">{{ class_name }}</strong>{% elif scope == 'STUDENT' and tagged_students %}, for <strong style="color: #0e1b34;">{{ tagged_students|join(', ') }}</strong>{% elif scope == 'SCHOOL' %} (school-wide){% endif %}.
+</p>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+    <tr>
+        <td style="background-color: #f4f7fb; border: 1px solid #e3ebf5; border-radius: 16px; padding: 20px; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+            <p style="margin: 0 0 6px 0; font-size: 17px; font-weight: 700; color: #0e1b34;">
+                {{ title }}
+            </p>
+            {% if description %}
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #162f57; line-height: 1.55;">
+                {{ description }}
+            </p>
+            {% endif %}
+            <p style="margin: 0; font-size: 12px; font-weight: 600; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">
+                {{ file_count }} file{{ 's' if file_count != 1 else '' }}
+            </p>
+        </td>
+    </tr>
+</table>
+
+<p style="margin: 0; font-size: 14px; color: #3a5f96; line-height: 1.6;">
+    Log in to <strong style="color: #162f57;">{{ tenant_name }}</strong> to view and download.
 </p>
 {% endblock %}
 

@@ -1,59 +1,66 @@
 {% extends "base_email.html" %}
 
 {#
-    Severity theme map — 4 levels matched to the schema (INFO, IMPORTANT,
+    Severity theme map — 4 levels matched to the schema (INFO, WARNING,
     URGENT, EMERGENCY). Previously the template only branched EMERGENCY vs
     "else" and always labelled "else" as "Urgent" — so a routine INFO note
     arrived in the parent's inbox as burnt-orange "Urgent Announcement".
-    2026-11-18 audit fix.
+    2026-11-18 audit fix. Colours updated 2026-11-20 for brand palette.
 #}
 {% set theme = {
-    'INFO':      {'label': 'Notice',    'accent': '#2563EB', 'accent_dark': '#1D4ED8', 'bg': '#EFF6FF'},
-    'WARNING':   {'label': 'Warning',   'accent': '#CA8A04', 'accent_dark': '#A16207', 'bg': '#FEFCE8'},
-    'URGENT':    {'label': 'Urgent',    'accent': '#F97316', 'accent_dark': '#EA580C', 'bg': '#FFF7ED'},
-    'EMERGENCY': {'label': 'Emergency', 'accent': '#EF4444', 'accent_dark': '#DC2626', 'bg': '#FEF2F2'},
-}.get(severity, {'label': 'Notice', 'accent': '#2563EB', 'accent_dark': '#1D4ED8', 'bg': '#EFF6FF'}) %}
+    'INFO':      {'label': 'Notice',    'accent': '#1B3A6B', 'accent_dark': '#0e1b34', 'bg': '#f4f7fb', 'border': '#c2d2e7', 'eyebrow': '#1B3A6B'},
+    'WARNING':   {'label': 'Warning',   'accent': '#C9962A', 'accent_dark': '#7f5b1c', 'bg': '#fdf9ec', 'border': '#f4df8e', 'eyebrow': '#a07420'},
+    'URGENT':    {'label': 'Urgent',    'accent': '#C9962A', 'accent_dark': '#7f5b1c', 'bg': '#fdf9ec', 'border': '#f4df8e', 'eyebrow': '#a07420'},
+    'EMERGENCY': {'label': 'Emergency', 'accent': '#e11d48', 'accent_dark': '#9f1239', 'bg': '#fff1f2', 'border': '#fecdd3', 'eyebrow': '#9f1239'},
+}.get(severity, {'label': 'Notice', 'accent': '#1B3A6B', 'accent_dark': '#0e1b34', 'bg': '#f4f7fb', 'border': '#c2d2e7', 'eyebrow': '#1B3A6B'}) %}
 
 {% block title %}{{ theme.label }}: {{ title }}{% endblock %}
 
-{% block header_color %}{{ theme.accent }}{% endblock %}
+{% block preheader %}{{ theme.label }} from {{ tenant_name }}: {{ title }}{% endblock %}
 
 {% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; color: #111827;">
+<div style="font-size: 11px; font-weight: 800; color: {{ theme.eyebrow }}; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
     {{ theme.label }} announcement
-</h2>
-
-<div style="background-color: {{ theme.bg }}; border-left: 4px solid {{ theme.accent }}; border-radius: 4px; padding: 16px; margin: 0 0 24px 0;">
-    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: {{ theme.accent_dark }};">
-        {{ severity }}
-    </p>
-    <h3 style="margin: 0 0 12px 0; font-size: 18px; color: #111827; font-weight: 700;">
-        {{ title }}
-    </h3>
-    <p style="margin: 0; font-size: 15px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{{ body }}</p>
 </div>
 
+<h1 class="h1-mobile" style="margin: 0 0 24px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    {{ title }}
+</h1>
+
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+    <tr>
+        <td style="background-color: {{ theme.bg }}; border: 1px solid {{ theme.border }}; border-left: 4px solid {{ theme.accent }}; border-radius: 12px; padding: 20px; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+            <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: {{ theme.accent_dark }};">
+                {{ severity }}
+            </p>
+            <p style="margin: 0; font-size: 15px; color: #162f57; line-height: 1.65; white-space: pre-wrap;">{{ body }}</p>
+        </td>
+    </tr>
+</table>
+
+{% if creator_name or class_name %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
     {% if creator_name %}
     <tr>
         <td style="padding: 0 0 8px 0;">
-            <strong style="font-size: 14px; color: #6B7280;">Posted by:</strong>
-            <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ creator_name }}</span>
+            <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Posted by</strong>
+            <span style="font-size: 15px; color: #0e1b34; margin-left: 10px; font-weight: 600;">{{ creator_name }}</span>
         </td>
     </tr>
     {% endif %}
     {% if class_name %}
     <tr>
-        <td style="padding: 0 0 8px 0;">
-            <strong style="font-size: 14px; color: #6B7280;">Class:</strong>
-            <span style="font-size: 14px; color: #111827; margin-left: 8px;">{{ class_name }}</span>
+        <td>
+            <strong style="font-size: 12px; color: #3a5f96; letter-spacing: 0.04em; text-transform: uppercase;">Class</strong>
+            <span style="font-size: 15px; color: #0e1b34; margin-left: 10px; font-weight: 600;">{{ class_name }}</span>
         </td>
     </tr>
     {% endif %}
 </table>
+{% endif %}
 
-<p style="margin: 0 0 16px 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
-    Please log in to {{ tenant_name }} for more details or to view all announcements.
+<p style="margin: 0; font-size: 14px; color: #3a5f96; line-height: 1.6;">
+    Log in to <strong style="color: #162f57;">{{ tenant_name }}</strong> for more details or to see all announcements.
 </p>
 {% endblock %}
 

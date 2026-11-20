@@ -3,48 +3,49 @@
 {% block title %}Features Settings - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="mb-8">
-        <h1 class="text-2xl font-bold text-neutral-900">Settings</h1>
-        <p class="mt-1 text-sm text-neutral-500">Enable or disable features for your school.</p>
-    </div>
+<div class="space-y-6">
+    <section class="cu-hero">
+        <div>
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Configuration</span>
+            <h1 class="cu-page-title text-white">Settings</h1>
+            <p class="mt-2 text-sm text-white/80">Enable or disable features for your school.</p>
+        </div>
+    </section>
 
     {% if request.query_params.get('saved') %}
-    <div class="mb-6 rounded-lg bg-green-50 p-4">
-        <div class="flex">
-            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-            </svg>
-            <p class="ml-3 text-sm text-green-700">Settings saved successfully.</p>
-        </div>
+    <div class="rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 p-4 flex items-center gap-3">
+        <svg class="h-5 w-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <p class="text-sm text-emerald-700 font-medium">Settings saved successfully.</p>
     </div>
     {% endif %}
 
     <!-- Tabs -->
-    <div class="border-b border-neutral-200 mb-6">
-        <nav class="-mb-px flex space-x-8 overflow-x-auto">
+    <div class="border-b border-navy-100">
+        <nav class="-mb-px flex space-x-6 overflow-x-auto">
             <a href="/settings/general"
-               class="{% if active_tab == 'general' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'general' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 General
             </a>
             <a href="/settings/features"
-               class="{% if active_tab == 'features' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'features' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Features
             </a>
             <a href="/settings/grade-levels"
-               class="{% if active_tab == 'grade_levels' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'grade_levels' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Grade Levels
             </a>
             <a href="/settings/terminology"
-               class="{% if active_tab == 'terminology' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'terminology' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Terminology
             </a>
             <a href="/settings/billing"
-               class="{% if active_tab == 'billing' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'billing' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Billing
             </a>
             <a href="/settings/webhooks"
-               class="{% if active_tab == 'webhooks' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'webhooks' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Webhooks
             </a>
         </nav>
@@ -113,7 +114,7 @@
     <!-- Form -->
     <form method="POST" action="/settings/features" class="space-y-6">
         <!-- Core Features -->
-        <div class="bg-white shadow-sm rounded-lg p-6">
+        <div class="cu-card p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Core Features</h3>
             <div class="space-y-4">
                 {{ feature_toggle('attendance_tracking', 'Attendance Tracking', 'Track daily student attendance with check-in/check-out', True) }}
@@ -124,7 +125,7 @@
         </div>
 
         <!-- Daycare Features -->
-        <div class="bg-white shadow-sm rounded-lg p-6">
+        <div class="cu-card p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Daycare Features</h3>
             <div class="space-y-4">
                 {{ feature_toggle('daily_reports', 'Daily Reports', 'Create and send daily activity reports to parents') }}
@@ -135,7 +136,7 @@
         </div>
 
         <!-- School Features -->
-        <div class="bg-white shadow-sm rounded-lg p-6">
+        <div class="cu-card p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">School Features</h3>
             <div class="space-y-4">
                 {{ feature_toggle('homework_tracking', 'Homework Tracking', 'Track homework assignments') }}
@@ -145,7 +146,7 @@
         </div>
 
         <!-- Administration -->
-        <div class="bg-white shadow-sm rounded-lg p-6">
+        <div class="cu-card p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Administration</h3>
             <div class="space-y-4">
                 {{ feature_toggle('billing', 'Billing & Invoicing', 'Manage fee items, generate invoices, record payments, and send statements to parents') }}
@@ -154,7 +155,7 @@
         </div>
 
         <!-- Integrations -->
-        <div class="bg-white shadow-sm rounded-lg p-6">
+        <div class="cu-card p-6">
             <h3 class="text-lg font-medium text-neutral-900 mb-4">Integrations</h3>
             <div class="space-y-4">
                 {{ optin_toggle('whatsapp_enabled', 'WhatsApp Integration', 'Send notifications and let parents chat with a menu-driven bot on WhatsApp. Requires Meta Cloud API setup.') }}
@@ -163,8 +164,7 @@
         </div>
 
         <div class="flex justify-end">
-            <button type="submit"
-                    class="inline-flex justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+            <button type="submit" class="cu-btn-primary">
                 Save Changes
             </button>
         </div>

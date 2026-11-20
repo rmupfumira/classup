@@ -3,25 +3,28 @@
 {% block title %}Accounting Reports - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <div class="flex items-start justify-between flex-wrap gap-2">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Reports</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">
-                High-level totals live on the <a href="/accounting" class="text-primary-600 hover:underline">accounting dashboard</a>;
+<div class="space-y-6">
+
+    {# ------ Hero ------ #}
+    <section class="cu-hero">
+        <div class="max-w-2xl">
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance · Accounting</span>
+            <h1 class="cu-page-title text-white">Reports</h1>
+            <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                High-level totals live on the <a href="/accounting" class="underline underline-offset-2 hover:text-gold-300">accounting dashboard</a>;
                 this page is the itemised view — pick one report at a time.
             </p>
         </div>
-    </div>
+    </section>
 
     {% include 'accounting/_layout.html' %}
 
-    <!-- Report selector + date range + actions -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-4">
+    {# ------ Report selector + date range + actions ------ #}
+    <div class="cu-card p-4">
         <div class="flex flex-wrap items-end gap-3">
             <div class="min-w-[220px]">
-                <label class="block text-xs font-medium text-neutral-700 mb-1">Report</label>
-                <select id="report-select" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">Report</label>
+                <select id="report-select" class="cu-select">
                     <option value="pl">Profit &amp; Loss</option>
                     <option value="cat">Expenses by category</option>
                     <option value="cash">Cash position</option>
@@ -30,45 +33,45 @@
             </div>
 
             <div data-range>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">From</label>
-                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">From</label>
+                <input type="date" id="from-date" class="cu-input">
             </div>
             <div data-range>
-                <label class="block text-xs font-medium text-neutral-700 mb-1">To</label>
-                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-neutral-300 rounded">
+                <label class="block text-xs font-medium text-navy-700 mb-1">To</label>
+                <input type="date" id="to-date" class="cu-input">
             </div>
-            <div data-range class="flex items-center gap-1">
-                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">This month</button>
-                <button onclick="setRange('quarter')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">Quarter</button>
-                <button onclick="setRange('year')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">Year</button>
-                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200">YTD</button>
+            <div data-range class="flex items-center gap-1 flex-wrap">
+                <button onclick="setRange('month')" class="cu-pill">This month</button>
+                <button onclick="setRange('quarter')" class="cu-pill">Quarter</button>
+                <button onclick="setRange('year')" class="cu-pill">Year</button>
+                <button onclick="setRange('ytd')" class="cu-pill">YTD</button>
             </div>
 
-            <button onclick="loadCurrent()" class="ml-auto inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
-                Run report
-            </button>
-            <button onclick="downloadCsv()" title="Download CSV"
-                    class="inline-flex items-center gap-1 px-3 py-1.5 bg-neutral-100 text-neutral-700 text-sm rounded hover:bg-neutral-200">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-7.5-9L12 3m0 0L8.25 7.5M12 3v13.5"/>
-                </svg>
-                CSV
-            </button>
-            <button onclick="window.print()" title="Print"
-                    class="inline-flex items-center gap-1 px-3 py-1.5 bg-neutral-100 text-neutral-700 text-sm rounded hover:bg-neutral-200">
-                Print
-            </button>
+            <div class="ml-auto flex items-center gap-2">
+                <button onclick="loadCurrent()" class="cu-btn-primary">
+                    Run report
+                </button>
+                <button onclick="downloadCsv()" title="Download CSV" class="cu-btn-soft">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-7.5-9L12 3m0 0L8.25 7.5M12 3v13.5"/>
+                    </svg>
+                    CSV
+                </button>
+                <button onclick="window.print()" title="Print" class="cu-btn-soft">
+                    Print
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- The single report card — contents swap by selection -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-neutral-100">
-            <h2 id="report-title" class="text-sm font-semibold text-neutral-800">Profit &amp; Loss</h2>
-            <p id="report-subtitle" class="text-xs text-neutral-500">—</p>
+    {# ------ The report card — contents swap by selection ------ #}
+    <div class="cu-card">
+        <div class="px-5 py-4 border-b border-navy-100">
+            <h2 id="report-title" class="text-base font-bold text-navy-800">Profit &amp; Loss</h2>
+            <p id="report-subtitle" class="text-xs text-navy-500">—</p>
         </div>
-        <div id="report-body" class="p-4 overflow-x-auto">
-            <p class="text-center text-neutral-400 py-6 text-sm">Pick a report and click "Run report".</p>
+        <div id="report-body" class="p-5 overflow-x-auto">
+            <p class="text-center text-navy-400 py-6 text-sm">Pick a report and click "Run report".</p>
         </div>
     </div>
 </div>
@@ -77,8 +80,7 @@
 @media print {
     nav, aside, header, .no-print, button { display: none !important; }
     body { background: white; }
-    .shadow-card { box-shadow: none !important; }
-    .border { border-color: #e5e7eb !important; }
+    .cu-card, .cu-table-wrap { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
 }
 </style>
 
@@ -124,8 +126,6 @@ function getRange() {
     };
 }
 
-// Hides the date-range controls for reports that don't take a date range
-// (just cash position today — it's a point-in-time snapshot).
 function syncRangeVisibility() {
     const needsRange = REPORT_META[getCurrent()].needsRange;
     document.querySelectorAll('[data-range]').forEach(el => el.classList.toggle('hidden', !needsRange));
@@ -136,45 +136,45 @@ async function loadPL(from, to) {
     const res = await ClassUp.fetch(`/api/v1/accounting/reports/profit-loss?from_date=${from}&to_date=${to}`);
     const d = res.data;
     const rowHtml = (r) => `
-        <tr class="border-t border-neutral-100">
-            <td class="px-3 py-2 font-mono text-xs text-neutral-500 w-20">${r.code}</td>
-            <td class="px-3 py-2 text-neutral-800">${r.name}</td>
-            <td class="px-3 py-2 text-right font-medium">${fmt(r.total)}</td>
+        <tr style="border-top: 1px solid #f4f7fb;">
+            <td style="padding: 0.75rem; font-family: ui-monospace, monospace; font-size: 0.75rem; color: #3a5f96; width: 5rem;">${r.code}</td>
+            <td style="padding: 0.75rem;" class="text-navy-800">${r.name}</td>
+            <td style="padding: 0.75rem; text-align: right;" class="font-semibold text-navy-800">${fmt(r.total)}</td>
         </tr>`;
     const incRows = d.income.length ? d.income.map(rowHtml).join('') :
-        '<tr><td colspan="3" class="px-3 py-3 text-center text-neutral-400 text-sm">No income in range.</td></tr>';
+        '<tr><td colspan="3" style="padding: 1rem; text-align: center;" class="text-navy-400 text-sm">No income in range.</td></tr>';
     const expRows = d.expense.length ? d.expense.map(rowHtml).join('') :
-        '<tr><td colspan="3" class="px-3 py-3 text-center text-neutral-400 text-sm">No expenses in range.</td></tr>';
+        '<tr><td colspan="3" style="padding: 1rem; text-align: center;" class="text-navy-400 text-sm">No expenses in range.</td></tr>';
     return `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
-                <h3 class="text-xs font-semibold text-success-700 uppercase tracking-wider mb-2">Income</h3>
-                <div class="overflow-x-auto"><table class="min-w-full text-sm">
+                <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">Income</h3>
+                <div class="overflow-x-auto"><table class="cu-table">
                     <tbody>${incRows}</tbody>
                     <tfoot>
-                        <tr class="border-t-2 border-neutral-300 bg-success-50">
-                            <td colspan="2" class="px-3 py-2 font-semibold text-neutral-800">Total income</td>
-                            <td class="px-3 py-2 text-right font-semibold text-success-700">${fmt(d.income_total)}</td>
+                        <tr style="border-top: 2px solid #c2d2e7; background: #ecfdf5;">
+                            <td colspan="2" style="padding: 0.75rem;" class="font-bold text-navy-800">Total income</td>
+                            <td style="padding: 0.75rem; text-align: right;" class="font-bold text-emerald-700">${fmt(d.income_total)}</td>
                         </tr>
                     </tfoot>
                 </table></div>
             </div>
             <div>
-                <h3 class="text-xs font-semibold text-warning-700 uppercase tracking-wider mb-2">Expenses</h3>
-                <div class="overflow-x-auto"><table class="min-w-full text-sm">
+                <h3 class="text-xs font-bold text-gold-700 uppercase tracking-wider mb-2">Expenses</h3>
+                <div class="overflow-x-auto"><table class="cu-table">
                     <tbody>${expRows}</tbody>
                     <tfoot>
-                        <tr class="border-t-2 border-neutral-300 bg-warning-50">
-                            <td colspan="2" class="px-3 py-2 font-semibold text-neutral-800">Total expenses</td>
-                            <td class="px-3 py-2 text-right font-semibold text-warning-700">${fmt(d.expense_total)}</td>
+                        <tr style="border-top: 2px solid #c2d2e7; background: #fdf9ec;">
+                            <td colspan="2" style="padding: 0.75rem;" class="font-bold text-navy-800">Total expenses</td>
+                            <td style="padding: 0.75rem; text-align: right;" class="font-bold text-gold-700">${fmt(d.expense_total)}</td>
                         </tr>
                     </tfoot>
                 </table></div>
             </div>
         </div>
-        <div class="mt-4 pt-4 border-t border-neutral-200 flex items-center justify-between">
-            <p class="text-sm font-semibold text-neutral-800">Net profit / (loss)</p>
-            <p class="text-lg font-semibold ${d.net_profit >= 0 ? 'text-success-700' : 'text-danger-700'}">${fmt(d.net_profit)}</p>
+        <div class="mt-4 pt-4 border-t border-navy-100 flex items-center justify-between">
+            <p class="text-sm font-bold text-navy-800">Net profit / (loss)</p>
+            <p class="text-xl font-extrabold ${d.net_profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${fmt(d.net_profit)}</p>
         </div>
     `;
 }
@@ -183,34 +183,32 @@ async function loadCategories(from, to) {
     document.getElementById('report-subtitle').textContent = `${from} to ${to}`;
     const res = await ClassUp.fetch(`/api/v1/accounting/reports/expenses-by-category?from_date=${from}&to_date=${to}`);
     const rows = res.data || [];
-    if (!rows.length) return '<p class="text-center text-neutral-400 py-6 text-sm">No expenses in range.</p>';
+    if (!rows.length) return '<p class="text-center text-navy-400 py-6 text-sm">No expenses in range.</p>';
     const grand = rows.reduce((s, r) => s + Number(r.total || 0), 0);
     return `
-        <div class="overflow-x-auto"><table class="min-w-full text-sm">
-            <thead class="bg-neutral-50">
+        <div class="overflow-x-auto"><table class="cu-table">
+            <thead>
                 <tr>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Code</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Category</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Entries</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Total</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Share</th>
+                    <th>Code</th>
+                    <th>Category</th>
+                    <th style="text-align:right">Entries</th>
+                    <th style="text-align:right">Total</th>
+                    <th style="text-align:right">Share</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-100">
+            <tbody>
                 ${rows.map(r => {
                     const pct = grand > 0 ? (Number(r.total) / grand * 100) : 0;
                     return `
                         <tr>
-                            <td class="px-3 py-2 font-mono text-xs text-neutral-500 w-20">${r.code}</td>
-                            <td class="px-3 py-2 text-neutral-800">${r.name}</td>
-                            <td class="px-3 py-2 text-right text-neutral-600">${r.count}</td>
-                            <td class="px-3 py-2 text-right font-medium">${fmt(r.total)}</td>
-                            <td class="px-3 py-2 text-right">
+                            <td class="font-mono text-xs text-navy-500" style="width: 5rem;">${r.code}</td>
+                            <td class="text-navy-800">${r.name}</td>
+                            <td style="text-align:right" class="text-navy-600">${r.count}</td>
+                            <td style="text-align:right" class="font-semibold text-navy-800">${fmt(r.total)}</td>
+                            <td style="text-align:right">
                                 <div class="inline-flex items-center gap-2">
-                                    <div class="w-16 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
-                                        <div class="bg-warning-500 h-full" style="width: ${pct}%"></div>
-                                    </div>
-                                    <span class="text-xs text-neutral-500 w-10 text-right">${pct.toFixed(1)}%</span>
+                                    <div class="w-16 cu-progress"><div class="cu-progress-fill" style="width: ${pct}%"></div></div>
+                                    <span class="text-xs text-navy-500 w-10 text-right">${pct.toFixed(1)}%</span>
                                 </div>
                             </td>
                         </tr>
@@ -218,9 +216,9 @@ async function loadCategories(from, to) {
                 }).join('')}
             </tbody>
             <tfoot>
-                <tr class="border-t-2 border-neutral-300 bg-neutral-50">
-                    <td colspan="3" class="px-3 py-2 font-semibold text-neutral-800">Total</td>
-                    <td class="px-3 py-2 text-right font-semibold">${fmt(grand)}</td>
+                <tr style="border-top: 2px solid #c2d2e7; background: #f4f7fb;">
+                    <td colspan="3" style="padding: 0.75rem 1rem;" class="font-bold text-navy-800">Total</td>
+                    <td style="padding: 0.75rem 1rem; text-align: right;" class="font-bold text-navy-800">${fmt(grand)}</td>
                     <td></td>
                 </tr>
             </tfoot>
@@ -232,35 +230,35 @@ async function loadCash() {
     const res = await ClassUp.fetch('/api/v1/accounting/reports/cash-position');
     const d = res.data;
     document.getElementById('report-subtitle').textContent = `As of ${d.as_of}`;
-    if (!d.banks.length) return '<p class="text-center text-neutral-400 py-6 text-sm">No bank accounts yet.</p>';
+    if (!d.banks.length) return '<p class="text-center text-navy-400 py-6 text-sm">No bank accounts yet.</p>';
     return `
-        <div class="overflow-x-auto"><table class="min-w-full text-sm">
-            <thead class="bg-neutral-50">
+        <div class="overflow-x-auto"><table class="cu-table">
+            <thead>
                 <tr>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Account</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bank</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Type</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
+                    <th>Account</th>
+                    <th>Bank</th>
+                    <th>Type</th>
+                    <th style="text-align:right">Balance</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-100">
+            <tbody>
                 ${d.banks.map(b => `
-                    <tr class="${b.is_active ? '' : 'opacity-50'}">
-                        <td class="px-3 py-2 font-medium text-neutral-800">
+                    <tr style="${b.is_active ? '' : 'opacity: 0.5;'}">
+                        <td class="font-semibold text-navy-800">
                             ${b.name}
-                            ${b.is_default ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-primary-100 text-primary-700 ml-1">Default</span>' : ''}
-                            ${!b.is_active ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-700 ml-1">Inactive</span>' : ''}
+                            ${b.is_default ? '<span class="ml-1 cu-chip-gold">Default</span>' : ''}
+                            ${!b.is_active ? '<span class="ml-1 cu-chip-neutral">Inactive</span>' : ''}
                         </td>
-                        <td class="px-3 py-2 text-neutral-600">${b.bank_name || '—'}</td>
-                        <td class="px-3 py-2 text-neutral-600">${b.account_type}</td>
-                        <td class="px-3 py-2 text-right font-medium ${Number(b.balance) >= 0 ? 'text-neutral-800' : 'text-danger-700'}">${fmt(b.balance)}</td>
+                        <td class="text-navy-600">${b.bank_name || '—'}</td>
+                        <td><span class="cu-chip-navy">${b.account_type}</span></td>
+                        <td style="text-align:right" class="font-bold ${Number(b.balance) >= 0 ? 'text-navy-800' : 'text-rose-700'}">${fmt(b.balance)}</td>
                     </tr>
                 `).join('')}
             </tbody>
             <tfoot>
-                <tr class="border-t-2 border-neutral-300 bg-primary-50">
-                    <td colspan="3" class="px-3 py-2 font-semibold text-neutral-800">Total cash on hand</td>
-                    <td class="px-3 py-2 text-right font-semibold text-primary-700">${fmt(d.total)}</td>
+                <tr style="border-top: 2px solid #c2d2e7; background: #f4f7fb;">
+                    <td colspan="3" style="padding: 0.75rem 1rem;" class="font-bold text-navy-800">Total cash on hand</td>
+                    <td style="padding: 0.75rem 1rem; text-align: right;" class="font-extrabold text-navy-800">${fmt(d.total)}</td>
                 </tr>
             </tfoot>
         </table></div>
@@ -273,38 +271,38 @@ async function loadTx(from, to) {
         `/api/v1/accounting/transactions?from_date=${from}&to_date=${to}&page_size=500`
     );
     const rows = res.data || [];
-    if (!rows.length) return '<p class="text-center text-neutral-400 py-6 text-sm">No transactions in range.</p>';
+    if (!rows.length) return '<p class="text-center text-navy-400 py-6 text-sm">No transactions in range.</p>';
     const badge = (t) => t === 'INCOME'
-        ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-success-100 text-success-700">Income</span>'
+        ? '<span class="cu-chip-emerald">Income</span>'
         : t === 'EXPENSE'
-        ? '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-warning-100 text-warning-700">Expense</span>'
-        : '<span class="text-[10px] inline-flex items-center px-1.5 py-0.5 rounded bg-primary-100 text-primary-700">Transfer</span>';
+        ? '<span class="cu-chip-gold">Expense</span>'
+        : '<span class="cu-chip-navy">Transfer</span>';
     return `
-        <div class="overflow-x-auto"><table class="min-w-full text-sm">
-            <thead class="bg-neutral-50">
+        <div class="overflow-x-auto"><table class="cu-table">
+            <thead>
                 <tr>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Type</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Account</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Description</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bank</th>
-                    <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Amount</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Account</th>
+                    <th>Description</th>
+                    <th>Bank</th>
+                    <th style="text-align:right">Amount</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-100">
+            <tbody>
                 ${rows.map(t => `
                     <tr>
-                        <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${t.date}</td>
-                        <td class="px-3 py-2 whitespace-nowrap">${badge(t.type)}</td>
-                        <td class="px-3 py-2 text-neutral-800">${t.account_name || (t.type === 'TRANSFER' ? 'Transfer' : '—')}</td>
-                        <td class="px-3 py-2 text-neutral-600">${t.description || ''}${t.reference ? `<div class="text-xs text-neutral-400">Ref: ${t.reference}</div>` : ''}</td>
-                        <td class="px-3 py-2 text-neutral-600">${t.bank_account_name || '—'}${t.transfer_to_bank_account_name ? ` → ${t.transfer_to_bank_account_name}` : ''}</td>
-                        <td class="px-3 py-2 text-right font-medium ${t.type === 'INCOME' ? 'text-success-700' : (t.type === 'EXPENSE' ? 'text-warning-700' : 'text-neutral-700')}">${fmt(t.amount)}</td>
+                        <td class="text-navy-600">${t.date}</td>
+                        <td>${badge(t.type)}</td>
+                        <td class="text-navy-800">${t.account_name || (t.type === 'TRANSFER' ? 'Transfer' : '—')}</td>
+                        <td class="text-navy-600">${t.description || ''}${t.reference ? `<div class="text-xs text-navy-400">Ref: ${t.reference}</div>` : ''}</td>
+                        <td class="text-navy-600">${t.bank_account_name || '—'}${t.transfer_to_bank_account_name ? ` → ${t.transfer_to_bank_account_name}` : ''}</td>
+                        <td style="text-align:right" class="font-bold ${t.type === 'INCOME' ? 'text-emerald-700' : (t.type === 'EXPENSE' ? 'text-gold-800' : 'text-navy-700')}">${fmt(t.amount)}</td>
                     </tr>
                 `).join('')}
             </tbody>
         </table></div>
-        ${rows.length === 500 ? '<p class="text-xs text-neutral-500 mt-2">Showing 500 rows — use the CSV export for the full list.</p>' : ''}
+        ${rows.length === 500 ? '<p class="text-xs text-navy-500 mt-2">Showing 500 rows — use the CSV export for the full list.</p>' : ''}
     `;
 }
 
@@ -312,11 +310,11 @@ async function loadCurrent() {
     const which = getCurrent();
     document.getElementById('report-title').textContent = REPORT_META[which].title;
     const body = document.getElementById('report-body');
-    body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">Loading…</p>';
+    body.innerHTML = '<p class="text-center text-navy-400 py-6 text-sm">Loading…</p>';
 
     const { from, to } = getRange();
     if (REPORT_META[which].needsRange) {
-        if (!from || !to) { body.innerHTML = '<p class="text-center text-neutral-400 py-6 text-sm">Pick a date range.</p>'; return; }
+        if (!from || !to) { body.innerHTML = '<p class="text-center text-navy-400 py-6 text-sm">Pick a date range.</p>'; return; }
         if (from > to) { ClassUp.toast('"From" date must be before or equal to "To" date', 'error'); return; }
     }
 
@@ -328,7 +326,7 @@ async function loadCurrent() {
         else if (which === 'tx')   html = await loadTx(from, to);
         body.innerHTML = html;
     } catch (err) {
-        body.innerHTML = `<p class="text-center text-danger-600 text-sm py-6">${err.message || 'Failed to load report'}</p>`;
+        body.innerHTML = `<p class="text-center text-rose-700 text-sm py-6">${err.message || 'Failed to load report'}</p>`;
     }
 }
 
@@ -345,8 +343,6 @@ function downloadCsv() {
     else if (which === 'cat') url = `/api/v1/accounting/reports/expenses-by-category.csv?from_date=${from}&to_date=${to}`;
     else if (which === 'cash') url = '/api/v1/accounting/reports/cash-position.csv';
     else if (which === 'tx')  url = `/api/v1/accounting/transactions.csv?from_date=${from}&to_date=${to}`;
-    // A plain <a download> triggers the browser's save-as dialog without
-    // leaving the page — cleaner than window.open which flashes a blank tab.
     const a = document.createElement('a');
     a.href = url;
     a.download = '';
@@ -361,6 +357,6 @@ document.getElementById('report-select').addEventListener('change', () => {
 });
 
 syncRangeVisibility();
-setRange('month');  // auto-loads P&L for this month
+setRange('month');
 </script>
 {% endblock %}

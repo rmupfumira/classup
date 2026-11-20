@@ -3,48 +3,49 @@
 {% block title %}Settings - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="mb-8">
-        <h1 class="text-2xl font-bold text-neutral-900">Settings</h1>
-        <p class="mt-1 text-sm text-neutral-500">Manage your school settings and preferences.</p>
-    </div>
+<div class="space-y-6">
+    <section class="cu-hero">
+        <div>
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Configuration</span>
+            <h1 class="cu-page-title text-white">Settings</h1>
+            <p class="mt-2 text-sm text-white/80">Manage your school settings and preferences.</p>
+        </div>
+    </section>
 
     {% if request.query_params.get('saved') %}
-    <div class="mb-6 rounded-lg bg-green-50 p-4">
-        <div class="flex">
-            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-            </svg>
-            <p class="ml-3 text-sm text-green-700">Settings saved successfully.</p>
-        </div>
+    <div class="rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 p-4 flex items-center gap-3">
+        <svg class="h-5 w-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <p class="text-sm text-emerald-700 font-medium">Settings saved successfully.</p>
     </div>
     {% endif %}
 
     <!-- Tabs -->
-    <div class="border-b border-neutral-200 mb-6">
-        <nav class="-mb-px flex space-x-8 overflow-x-auto">
+    <div class="border-b border-navy-100">
+        <nav class="-mb-px flex space-x-6 overflow-x-auto">
             <a href="/settings/general"
-               class="{% if active_tab == 'general' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'general' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 General
             </a>
             <a href="/settings/features"
-               class="{% if active_tab == 'features' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'features' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Features
             </a>
             <a href="/settings/grade-levels"
-               class="{% if active_tab == 'grade_levels' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'grade_levels' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Grade Levels
             </a>
             <a href="/settings/terminology"
-               class="{% if active_tab == 'terminology' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'terminology' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Terminology
             </a>
             <a href="/settings/billing"
-               class="{% if active_tab == 'billing' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'billing' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Billing
             </a>
             <a href="/settings/webhooks"
-               class="{% if active_tab == 'webhooks' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+               class="{% if active_tab == 'webhooks' %}border-gold-500 text-navy-700{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">
                 Webhooks
             </a>
         </nav>
@@ -52,47 +53,47 @@
 
     <!-- Form -->
     <form method="POST" action="/settings/general" class="space-y-6">
-        <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-neutral-900 mb-4">School Information</h3>
+        <div class="cu-card p-6">
+            <h3 class="text-lg font-medium text-navy-900 mb-4">School Information</h3>
 
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div class="sm:col-span-2">
                     <label for="name" class="block text-sm font-medium text-neutral-700">School Name</label>
                     <input type="text" name="name" id="name" required
                            value="{{ tenant.name }}"
-                           class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                           class="cu-input mt-1">
                 </div>
 
                 <div>
                     <label for="email" class="block text-sm font-medium text-neutral-700">Email</label>
                     <input type="email" name="email" id="email"
                            value="{{ tenant.email or '' }}"
-                           class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                           class="cu-input mt-1">
                 </div>
 
                 <div>
                     <label for="phone" class="block text-sm font-medium text-neutral-700">Phone</label>
                     <input type="tel" name="phone" id="phone"
                            value="{{ tenant.phone or '' }}"
-                           class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                           class="cu-input mt-1">
                 </div>
 
                 <div class="sm:col-span-2">
                     <label for="address" class="block text-sm font-medium text-neutral-700">Address</label>
                     <textarea name="address" id="address" rows="3"
-                              class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">{{ tenant.address or '' }}</textarea>
+                              class="cu-input mt-1">{{ tenant.address or '' }}</textarea>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-neutral-900 mb-4">Regional Settings</h3>
+        <div class="cu-card p-6">
+            <h3 class="text-lg font-medium text-navy-900 mb-4">Regional Settings</h3>
 
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                     <label for="timezone" class="block text-sm font-medium text-neutral-700">Timezone</label>
                     <select name="timezone" id="timezone"
-                            class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            class="cu-input mt-1">
                         {% set current_tz = (tenant.settings or {}).get('timezone', 'Africa/Johannesburg') %}
                         <option value="Africa/Johannesburg" {% if current_tz == 'Africa/Johannesburg' %}selected{% endif %}>Africa/Johannesburg (SAST)</option>
                         <option value="Africa/Cairo" {% if current_tz == 'Africa/Cairo' %}selected{% endif %}>Africa/Cairo (EET)</option>
@@ -105,7 +106,7 @@
                 <div>
                     <label for="language" class="block text-sm font-medium text-neutral-700">Language</label>
                     <select name="language" id="language"
-                            class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            class="cu-input mt-1">
                         {% set current_lang = (tenant.settings or {}).get('language', 'en') %}
                         <option value="en" {% if current_lang == 'en' %}selected{% endif %}>English</option>
                         <option value="af" {% if current_lang == 'af' %}selected{% endif %}>Afrikaans</option>
@@ -119,15 +120,15 @@
            DAY schools behave like pre-feature; the three boarding-aware
            options light up those code paths. Subject-teacher mode is
            independent and defaults off (primary schools don't need it). #}
-        <div class="bg-white shadow-sm rounded-lg p-6">
-            <h3 class="text-lg font-medium text-neutral-900 mb-4">School Operations</h3>
+        <div class="cu-card p-6">
+            <h3 class="text-lg font-medium text-navy-900 mb-4">School Operations</h3>
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                     <label for="school_type" class="block text-sm font-medium text-neutral-700">
                         School type
                     </label>
                     <select name="school_type" id="school_type"
-                            class="mt-1 block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500">
+                            class="cu-input mt-1">
                         {% set current_st = (tenant.settings or {}).get('school_type', 'DAY') %}
                         <option value="DAY" {% if current_st == 'DAY' %}selected{% endif %}>Day school — attendance Mon-Fri only</option>
                         <option value="BOARDING" {% if current_st == 'BOARDING' %}selected{% endif %}>Full boarding — attendance 7 days a week, EXEAT permitted</option>
@@ -162,8 +163,7 @@
         </div>
 
         <div class="flex justify-end">
-            <button type="submit"
-                    class="inline-flex justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+            <button type="submit" class="cu-btn-primary">
                 Save Changes
             </button>
         </div>

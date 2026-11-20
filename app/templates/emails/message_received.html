@@ -2,22 +2,36 @@
 
 {% block title %}New message about {{ student_name }}{% endblock %}
 
-{% block content %}
-<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1F2937;">
-    New message about {{ student_name }}
-</h2>
+{% block preheader %}{{ sender_name }} sent a message about {{ student_name }} at {{ tenant_name }}.{% endblock %}
 
-<p style="margin: 0 0 8px 0; font-size: 14px; color: #6B7280;">
-    From <strong style="color: #1F2937;">{{ sender_name }}</strong>
+{% block content %}
+<div style="font-size: 11px; font-weight: 800; color: #a07420; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    New message
+</div>
+
+<h1 class="h1-mobile" style="margin: 0 0 16px 0; font-size: 26px; font-weight: 800; color: #0e1b34; line-height: 1.25; letter-spacing: -0.02em; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    About {{ student_name }}.
+</h1>
+
+<p style="margin: 0 0 20px 0; font-size: 14px; color: #3a5f96; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+    From <strong style="color: #0e1b34;">{{ sender_name }}</strong>
 </p>
 
-<div style="background-color: #F3F4F6; border-radius: 8px; padding: 16px; margin: 16px 0;">
-    <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{{ message_body }}</p>
-</div>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 28px 0;">
+    <tr>
+        <td style="background-color: #f4f7fb; border: 1px solid #e3ebf5; border-radius: 16px; padding: 20px; font-family: 'Inter', Arial, Helvetica, sans-serif;">
+            <p style="margin: 0; font-size: 15px; color: #162f57; line-height: 1.65; white-space: pre-wrap;">{{ message_body }}</p>
+        </td>
+    </tr>
+</table>
 
-<div style="text-align: center; margin: 24px 0;">
-    <a href="{{ base_url }}/messages" class="button" style="background-color: #C9962A; border-radius: 8px; color: #ffffff !important; display: inline-block; font-size: 16px; font-weight: 600; padding: 12px 24px; text-decoration: none;">
-        View &amp; Reply
-    </a>
-</div>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+    <tr>
+        <td class="cta-full" align="center" bgcolor="#C9962A" style="border-radius: 12px; background-color: #C9962A; background-image: linear-gradient(135deg, #dcae31 0%, #C9962A 60%, #a07420 100%); box-shadow: 0 10px 30px -10px rgba(201, 150, 42, 0.45);">
+            <a href="{{ base_url }}/messages" target="_blank" style="display: inline-block; padding: 14px 32px; font-family: 'Inter', Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; color: #0e1b34; text-decoration: none; line-height: 1;">
+                View &amp; reply &rarr;
+            </a>
+        </td>
+    </tr>
+</table>
 {% endblock %}

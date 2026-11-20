@@ -18,50 +18,53 @@
 
 {% block content %}
 {% set pd = parent_dashboard %}
-<div class="space-y-6 max-w-4xl mx-auto">
+<div class="space-y-6">
     {% include "components/_announcement_banners.html" %}
     {% include "components/_push_soft_prompt.html" %}
 
-    <!-- Welcome -->
-    <div class="text-center sm:text-left">
-        <h1 class="text-2xl sm:text-3xl font-bold text-neutral-800">
-            {{ t('dashboard.welcome', current_language, name=user.first_name) }}
-        </h1>
-        <p class="mt-1 text-neutral-500">{{ today.strftime('%A, %B %d, %Y') }}</p>
-    </div>
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative">
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">{{ today.strftime('%A, %B %d, %Y') }}</span>
+            <h1 class="cu-page-title text-white">
+                {{ t('dashboard.welcome', current_language, name=user.first_name) }}
+            </h1>
+            <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                Your children's attendance, reports and school news — all in one place.
+            </p>
+        </div>
+    </section>
 
     {% if not pd.children %}
-    <!-- No children linked -->
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-8 text-center">
-        <div class="w-16 h-16 mx-auto bg-primary-100 rounded-full flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+    {# ------ No children linked ------ #}
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
             </svg>
         </div>
-        <h3 class="text-lg font-semibold text-neutral-800 mb-2">No children linked yet</h3>
-        <p class="text-neutral-500 max-w-sm mx-auto">
+        <p class="cu-empty-title">No children linked yet</p>
+        <p class="cu-empty-text">
             Your children will appear here once they are linked to your account by the school.
         </p>
     </div>
     {% else %}
 
-    <!-- 1. Multi-child selector -->
+    {# ------ Multi-child selector ------ #}
     <div class="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         {% for child in pd.children %}
         {% set is_selected = pd.selected_child and pd.selected_child.id == child.id %}
         <a href="?child_id={{ child.id }}"
-           class="flex-shrink-0 inline-flex items-center gap-3 px-4 py-3 rounded-xl border transition-all
-                  {% if is_selected %}bg-primary-50 border-primary-300 shadow-sm{% else %}bg-white border-neutral-200 hover:border-neutral-300{% endif %}">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm font-bold text-white">
-                    {{ child.first_name[0] }}{{ child.last_name[0] }}
-                </span>
+           class="flex-shrink-0 inline-flex items-center gap-3 px-4 py-3 rounded-2xl transition-all
+                  {% if is_selected %}bg-navy-50 shadow-soft-md ring-2 ring-navy-600{% else %}bg-white shadow-soft hover:shadow-soft-md{% endif %}">
+            <div class="cu-avatar-sm">
+                {{ child.first_name[0] }}{{ child.last_name[0] }}
             </div>
             <div class="min-w-0 text-left">
-                <p class="text-sm font-semibold {% if is_selected %}text-primary-900{% else %}text-neutral-800{% endif %} truncate">
+                <p class="text-sm font-semibold {% if is_selected %}text-navy-900{% else %}text-navy-800{% endif %} truncate">
                     {{ child.first_name }}
                 </p>
-                <p class="text-xs text-neutral-500 truncate">
+                <p class="text-xs text-navy-500 truncate">
                     {{ child.class_name or 'No class' }}
                 </p>
             </div>
