@@ -746,11 +746,18 @@ class ExamService:
                 # dragged it down, right there on the report card.
                 # Lightweight dict so the existing report viewer (which
                 # reads only marks_obtained) stays unaffected.
+                sorted_papers = sorted(papers, key=lambda x: x.display_order)
+                # When a subject has 2+ papers but the admin never named
+                # the first one (auto-seeded from ClassSubject), fall back
+                # to "Paper N" so the breakdown reads 1/2/3, not "Paper"
+                # next to "Paper 2 - Comprehension".
+                multi = len(sorted_papers) > 1
                 paper_rows: list[dict] = []
-                for p in sorted(papers, key=lambda x: x.display_order):
+                for idx, p in enumerate(sorted_papers, start=1):
                     r = results_by_pair.get((student.id, p.id))
+                    name = p.paper_name or (f"Paper {idx}" if multi else "Paper")
                     row = {
-                        "paper_name": p.paper_name or "Paper",
+                        "paper_name": name,
                         "total_marks": p.total_marks,
                         "weight_percent": p.weight_percent,
                         "duration_minutes": p.duration_minutes,

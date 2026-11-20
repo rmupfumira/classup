@@ -165,9 +165,10 @@
                            Shown directly under the subject row so parents and teachers
                            can see which paper lifted or dragged the subject total.
                            Silently hides for subjects that were marked manually and
-                           never had an exam behind them. #}
+                           never had an exam behind them, and for single-paper subjects
+                           where the sub-row would just duplicate the subject row. #}
                         {% set paper_rows = subject_data.get('papers') if subject_data else none %}
-                        {% if paper_rows %}
+                        {% if paper_rows and paper_rows|length > 1 %}
                         <tr class="{% if loop.index is odd %}bg-white{% else %}bg-neutral-50{% endif %}">
                             <td class="border border-neutral-300 border-t-0 px-4 pt-0 pb-2 text-xs text-neutral-400"></td>
                             <td class="border border-neutral-300 border-t-0 px-4 pt-0 pb-2" colspan="5">
