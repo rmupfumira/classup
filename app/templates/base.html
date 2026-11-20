@@ -230,7 +230,7 @@
            itself has padding-top:env(safe-area-inset-top), so it covers
            the area; this <html> color is the fallback if a viewport
            rubber-bands above the top. */
-        html.has-navbar { background-color: #1B3A6B; }
+        html.has-navbar { background-color: #f4f7fb; }
         html:not(.has-navbar) { background-color: #f8fafc; }
         body {
             /* Momentum scrolling on iOS */
@@ -289,7 +289,7 @@
         button:active, a:active { transform: scale(0.98); transition: transform 0.05s; }
     </style>
 
-    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=4">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=7">
 
     {# Load app.js in <head> as a blocking script so window.ClassUp is
        always defined BEFORE any inline <script> inside {% block content %}
@@ -313,40 +313,21 @@
         <!-- Authenticated Layout -->
         {% include 'components/_navbar.html' %}
 
-        <div class="flex min-h-[calc(100vh-56px)]">
-            <!-- Sidebar (desktop only) -->
+        {# Toast Container — on mobile toasts land under the floating
+           header as a single centered column; on sm+ top-right. #}
+        <div id="toast-container"
+             class="fixed left-4 right-4 top-20 z-[100] space-y-3 pointer-events-none
+                    sm:left-auto sm:right-4 sm:top-4 sm:w-96 sm:max-w-sm"></div>
+
+        {# Floating shell: the pill header (above) and this row share one
+           centred container so their edges line up. The sidebar is a set
+           of in-flow floating cards, not a fixed rail. pb-24 keeps content
+           clear of the mobile bottom nav. #}
+        <div class="cu-shell flex gap-6 xl:gap-8 pt-6 pb-24 md:pb-10">
             {% include 'components/_sidebar.html' %}
 
-            <!-- Main Content -->
-            {# No overflow-y-auto — <main> flows naturally and the whole
-               page scrolls with the browser's native scroll bar. That's
-               what makes mouse-wheel scrolling work anywhere on the page.
-               md:ml-56 leaves room for the fixed sidebar on desktop.
-               pb-24 + md:pb-0 keeps content above the mobile bottom nav.
-               pb-safe handles the iPhone home-indicator. max-w-[1600px]
-               keeps content from stretching edge-to-edge on ultra-wide
-               monitors. #}
-            <main class="flex-1 pb-24 md:pb-0 min-w-0 md:ml-[var(--cu-sidebar-w)]"
-                  style="transition: margin-left 0.18s ease;">
-                {# md:ml-[var(--cu-sidebar-w)] follows the sidebar's own width —
-                   when the user collapses the sidebar to a 56px rail, this
-                   margin shrinks to match so the main column grows into the
-                   gap. See _sidebar.html. #}
-                {# Full-width shell with responsive side padding. Was
-                   capped at 1600px which left dead space on 1723+ monitors
-                   per the approved design-04 brief. No max-width now;
-                   wider viewports breathe naturally. #}
-                <div class="px-4 md:px-8 lg:px-10 xl:px-14 2xl:px-20 py-6 pb-safe md:pb-8 w-full">
-                    {# Toast Container — on mobile toasts land under the
-                       sticky navbar as a single centered column so they
-                       don't collide with the user avatar or wrap into the
-                       header area; on sm+ they float back to top-right. #}
-                    <div id="toast-container"
-                         class="fixed left-4 right-4 top-20 z-[100] space-y-3 pointer-events-none
-                                sm:left-auto sm:right-4 sm:top-4 sm:w-96 sm:max-w-sm"></div>
-
-                    {% block content %}{% endblock %}
-                </div>
+            <main class="flex-1 min-w-0 pb-safe">
+                {% block content %}{% endblock %}
             </main>
         </div>
 

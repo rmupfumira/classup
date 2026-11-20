@@ -30,22 +30,22 @@
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">{{ t('billing.total_invoiced', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(summary.total_invoiced) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money"><span class="cu-stat-unit">{{ currency }}</span>{{ "{:,.2f}".format(summary.total_invoiced) }}</div>
             <div class="cu-stat-tile-hint">{{ summary.invoice_count }} invoice{{ 's' if summary.invoice_count != 1 else '' }}</div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">{{ t('billing.total_collected', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(summary.total_collected) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money"><span class="cu-stat-unit">{{ currency }}</span>{{ "{:,.2f}".format(summary.total_collected) }}</div>
             <div class="cu-stat-tile-hint">{{ summary.payment_count }} payment{{ 's' if summary.payment_count != 1 else '' }}</div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">{{ t('billing.outstanding', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(summary.total_outstanding) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money"><span class="cu-stat-unit">{{ currency }}</span>{{ "{:,.2f}".format(summary.total_outstanding) }}</div>
             <div class="cu-stat-tile-hint">Awaiting payment</div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">{{ t('billing.overdue', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(summary.total_overdue) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money"><span class="cu-stat-unit">{{ currency }}</span>{{ "{:,.2f}".format(summary.total_overdue) }}</div>
             <div class="cu-stat-tile-hint">{{ summary.overdue_count }} overdue</div>
         </div>
     </section>

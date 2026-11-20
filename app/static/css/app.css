@@ -460,6 +460,15 @@ mark.search-hit {
 
 /* ---------- App shell ---------- */
 
+/* Shared horizontal frame for the floating header and the sidebar +
+   content row, so both sit on the same left/right edges. Full width
+   with responsive side padding. */
+.cu-shell { width: 100%; padding-left: 1rem; padding-right: 1rem; }
+@media (min-width: 768px)  { .cu-shell { padding-left: 2rem;   padding-right: 2rem; } }
+@media (min-width: 1024px) { .cu-shell { padding-left: 2.5rem; padding-right: 2.5rem; } }
+@media (min-width: 1280px) { .cu-shell { padding-left: 3.5rem; padding-right: 3.5rem; } }
+@media (min-width: 1536px) { .cu-shell { padding-left: 5rem;   padding-right: 5rem; } }
+
 /* Soft radial wash the entire authenticated app paints on top of.
    Painted on <body>. Faint gold spotlight top-right + navy bottom-
    left on a navy-50 base. */
@@ -624,7 +633,20 @@ mark.search-hit {
     font-weight: 800;
     color: #112546; /* navy-800 */
     letter-spacing: -0.025em;
+    line-height: 1.15;
     margin-top: 0.75rem;
+}
+/* Currency totals: scale with the viewport and never wrap mid-number. */
+.cu-stat-tile-value--money {
+    font-size: clamp(1.25rem, 1.55vw, 1.875rem);
+    white-space: nowrap;
+}
+.cu-stat-tile-value .cu-stat-unit {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #3a5f96;
+    margin-right: 0.25rem;
+    letter-spacing: 0;
 }
 .cu-stat-tile-hint {
     font-size: 0.75rem;

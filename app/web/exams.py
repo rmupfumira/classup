@@ -6,13 +6,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.exceptions import ForbiddenException
 from app.models import SchoolClass, Student
-from app.models.exam import Exam, ExamSubject
+from app.models.exam import Exam, ExamResult, ExamSubject
 from app.models.report import ReportTemplate
 from app.services.auth_service import get_auth_service
 from app.services.exam_service import get_exam_service
@@ -91,6 +91,38 @@ async def exams_list(request: Request, db: AsyncSession = Depends(get_db)):
         )
     )).scalars().all()
 
+    # Marking progress per exam: captured results vs papers x class size.
+    tenant_id = get_tenant_id()
+    marked_rows = (await db.execute(
+        select(ExamSubject.exam_id, func.count(ExamResult.id))
+        .join(ExamResult, ExamResult.exam_subject_id == ExamSubject.id)
+        .where(
+            ExamSubject.tenant_id == tenant_id,
+            or_(ExamResult.marks_obtained.is_not(None), ExamResult.is_absent.is_(True)),
+        )
+        .group_by(ExamSubject.exam_id)
+    )).all()
+    marked_by_exam = {exam_id: n for exam_id, n in marked_rows}
+    student_rows = (await db.execute(
+        select(Student.class_id, func.count(Student.id))
+        .where(
+            Student.tenant_id == tenant_id,
+            Student.deleted_at.is_(None),
+            Student.is_active.is_(True),
+        )
+        .group_by(Student.class_id)
+    )).all()
+    students_by_class = {class_id: n for class_id, n in student_rows}
+    progress = {}
+    for e in exams:
+        students = students_by_class.get(e.class_id, 0)
+        expected = len(e.exam_subjects) * students
+        marked = marked_by_exam.get(e.id, 0)
+        progress[e.id] = {
+            "students": students,
+            "pct": min(100, round(marked * 100 / expected)) if expected else 0,
+        }
+
     return templates.TemplateResponse(
         "exams/list.html",
         {
@@ -98,6 +130,7 @@ async def exams_list(request: Request, db: AsyncSession = Depends(get_db)):
             "user": user,
             "tenant": tenant,
             "exams": exams,
+            "progress": progress,
             "classes": classes,
             "templates_list": templates_list,
             "permissions": PermissionChecker(user.role),

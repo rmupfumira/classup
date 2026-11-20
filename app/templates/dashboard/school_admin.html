@@ -10,7 +10,7 @@
     {% if subscription %}
     <!-- Subscription Status Banner -->
     {% if subscription.status == 'TRIALING' %}
-    <div class="bg-primary-50 border border-primary-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="cu-card !overflow-visible p-4 md:px-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,7 +48,7 @@
         </div>
     </div>
     {% elif subscription.status == 'PAST_DUE' %}
-    <div class="bg-warning-50 border border-warning-300 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="bg-gold-50 ring-1 ring-gold-200 rounded-3xl p-4 md:px-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-warning-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@
         </a>
     </div>
     {% elif subscription.status == 'ACTIVE' %}
-    <div class="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center justify-between">
+    <div class="bg-emerald-50 ring-1 ring-emerald-200 rounded-3xl p-3 md:px-5 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -82,7 +82,7 @@
         <a href="/subscription" class="text-xs text-green-700 hover:text-green-900 font-medium">Manage</a>
     </div>
     {% elif subscription.status == 'SUSPENDED' %}
-    <div class="bg-red-50 border border-red-300 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="bg-rose-50 ring-1 ring-rose-200 rounded-3xl p-4 md:px-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +104,7 @@
 
     {% if setup_status and not setup_status.is_complete %}
     <!-- Setup Progress Card -->
-    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-accent-500">
+    <div class="cu-card !overflow-visible p-6">
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div class="flex-1">
                 <div class="flex items-center gap-3 mb-3">
@@ -165,7 +165,7 @@
     </div>
     {% elif setup_status and setup_status.is_complete %}
     <!-- Setup Complete Banner (dismissable) -->
-    <div id="setup-complete-banner" class="bg-success-50 border border-success-200 rounded-xl p-4 flex items-center justify-between">
+    <div id="setup-complete-banner" class="bg-emerald-50 ring-1 ring-emerald-200 rounded-3xl p-4 md:px-5 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div class="w-8 h-8 bg-success-100 rounded-full flex items-center justify-center">
                 <svg class="w-5 h-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,23 +214,23 @@
     {# ------ Stat tiles ------ #}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="cu-stat-tile">
-            <div class="cu-stat-tile-label">{{ t('dashboard.total_students', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ stats.total_students }}</div>
+            <div class="flex items-start justify-between gap-2"><div class="cu-stat-tile-label">{{ t('dashboard.total_students', current_language) }}</div><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-navy-50 text-navy-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg></div></div>
+            <div class="cu-stat-tile-value !mt-2">{{ stats.total_students }}</div>
             <div class="cu-stat-tile-hint">Enrolled</div>
         </div>
         <div class="cu-stat-tile">
-            <div class="cu-stat-tile-label">{{ t('dashboard.present_today', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ stats.present_today }}</div>
+            <div class="flex items-start justify-between gap-2"><div class="cu-stat-tile-label">{{ t('dashboard.present_today', current_language) }}</div><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-emerald-50 text-emerald-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div></div>
+            <div class="cu-stat-tile-value !mt-2">{{ stats.present_today }}</div>
             <div class="cu-stat-tile-hint">Checked in today</div>
         </div>
         <div class="cu-stat-tile">
-            <div class="cu-stat-tile-label">{{ t('dashboard.absent_today', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ stats.absent_today }}</div>
+            <div class="flex items-start justify-between gap-2"><div class="cu-stat-tile-label">{{ t('dashboard.absent_today', current_language) }}</div><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-rose-50 text-rose-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div></div>
+            <div class="cu-stat-tile-value !mt-2">{{ stats.absent_today }}</div>
             <div class="cu-stat-tile-hint">Marked absent</div>
         </div>
         <div class="cu-stat-tile">
-            <div class="cu-stat-tile-label">{{ t('dashboard.pending_reports', current_language) }}</div>
-            <div class="cu-stat-tile-value">{{ stats.pending_reports }}</div>
+            <div class="flex items-start justify-between gap-2"><div class="cu-stat-tile-label">{{ t('dashboard.pending_reports', current_language) }}</div><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-gold-50 text-gold-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div></div>
+            <div class="cu-stat-tile-value !mt-2">{{ stats.pending_reports }}</div>
             <div class="cu-stat-tile-hint">Awaiting finalise</div>
         </div>
     </div>
@@ -245,57 +245,57 @@
             <div class="p-6">
                 <div class="grid grid-cols-2 gap-3">
                     <a href="/attendance"
-                       class="flex flex-col items-center p-4 rounded-xl border border-neutral-200 bg-neutral-50
+                       class="flex flex-col items-center p-4 rounded-2xl ring-1 ring-navy-100 bg-navy-50/50
                               hover:border-primary-200 hover:bg-primary-50 transition-all group">
-                        <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2 group-hover:shadow">
-                            <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-soft mb-2">
+                            <svg class="h-5 w-5 text-navy-500 group-hover:text-navy-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                             </svg>
                         </div>
-                        <span class="text-sm text-neutral-600 group-hover:text-primary-600 transition-colors">
+                        <span class="text-sm font-medium text-navy-700 transition-colors">
                             {{ t('attendance.daily_attendance', current_language) }}
                         </span>
                     </a>
 
                     <a href="/reports/create"
-                       class="flex flex-col items-center p-4 rounded-xl border border-neutral-200 bg-neutral-50
+                       class="flex flex-col items-center p-4 rounded-2xl ring-1 ring-navy-100 bg-navy-50/50
                               hover:border-primary-200 hover:bg-primary-50 transition-all group">
-                        <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2 group-hover:shadow">
-                            <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-soft mb-2">
+                            <svg class="h-5 w-5 text-navy-500 group-hover:text-navy-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
-                        <span class="text-sm text-neutral-600 group-hover:text-primary-600 transition-colors">
+                        <span class="text-sm font-medium text-navy-700 transition-colors">
                             {{ t('reports.create_report', current_language) }}
                         </span>
                     </a>
 
                     <a href="/photos/upload"
-                       class="flex flex-col items-center p-4 rounded-xl border border-neutral-200 bg-neutral-50
+                       class="flex flex-col items-center p-4 rounded-2xl ring-1 ring-navy-100 bg-navy-50/50
                               hover:border-primary-200 hover:bg-primary-50 transition-all group">
-                        <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2 group-hover:shadow">
-                            <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-soft mb-2">
+                            <svg class="h-5 w-5 text-navy-500 group-hover:text-navy-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                         </div>
-                        <span class="text-sm text-neutral-600 group-hover:text-primary-600 transition-colors">
+                        <span class="text-sm font-medium text-navy-700 transition-colors">
                             Share Photos
                         </span>
                     </a>
 
                     <a href="/students/new"
-                       class="flex flex-col items-center p-4 rounded-xl border border-neutral-200 bg-neutral-50
+                       class="flex flex-col items-center p-4 rounded-2xl ring-1 ring-navy-100 bg-navy-50/50
                               hover:border-primary-200 hover:bg-primary-50 transition-all group">
-                        <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2 group-hover:shadow">
-                            <svg class="h-5 w-5 text-neutral-500 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-soft mb-2">
+                            <svg class="h-5 w-5 text-navy-500 group-hover:text-navy-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                             </svg>
                         </div>
-                        <span class="text-sm text-neutral-600 group-hover:text-primary-600 transition-colors">
+                        <span class="text-sm font-medium text-navy-700 transition-colors">
                             Add Student
                         </span>
                     </a>
@@ -304,7 +304,7 @@
         </div>
 
         <!-- Recent Activity -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="cu-card">
             <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-neutral-800">{{ t('dashboard.recent_activity', current_language) }}</h3>
                 <a href="/activity" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">View all</a>
