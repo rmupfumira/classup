@@ -26,13 +26,24 @@ GOLD = "#C9A92A"
 WHITE = "#FFFFFF"
 
 
-def _draw_logo(size: int, *, pad_ratio: float = 0.0) -> Image.Image:
+def _draw_logo(
+    size: int,
+    *,
+    pad_ratio: float = 0.0,
+    square_fill: bool = False,
+) -> Image.Image:
     """Return a size x size RGBA image of the brand mark.
 
     ``pad_ratio`` reserves a transparent margin around the logo — used
     for the Android maskable icon, which expects the safe zone (where
     the mark must stay fully visible after the OS applies a round mask)
     to sit at ~80% of the canvas.
+
+    ``square_fill=True`` fills the entire canvas with the navy fill
+    (no rounded corners) — used for the WhatsApp Business profile
+    picture, which WhatsApp crops to a circle. A rounded square would
+    show clipped corners inside the circle; a full square gives a
+    clean navy ring edge-to-edge and leaves the mark centred.
     """
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -46,12 +57,16 @@ def _draw_logo(size: int, *, pad_ratio: float = 0.0) -> Image.Image:
     def pt(x: float, y: float) -> tuple[float, float]:
         return (offset + x * s, offset + y * s)
 
-    # Rounded square background
-    draw.rounded_rectangle(
-        [pt(0, 0), pt(40, 40)],
-        radius=10 * s,
-        fill=NAVY,
-    )
+    # Background: rounded square for icons; full square for a
+    # circle-crop target (WhatsApp profile).
+    if square_fill:
+        draw.rectangle([pt(0, 0), pt(40, 40)], fill=NAVY)
+    else:
+        draw.rounded_rectangle(
+            [pt(0, 0), pt(40, 40)],
+            radius=10 * s,
+            fill=NAVY,
+        )
 
     # Gold arc — approximates the SVG path "M25 11 a 11 11 0 1 0 0 18"
     # (from (25, 11) counter-clockwise the LONG way to (25, 29) with
@@ -110,6 +125,21 @@ def main() -> None:
         sizes=[(16, 16), (32, 32), (48, 48), (64, 64)],
     )
     print("wrote favicon.ico")
+
+    # WhatsApp Business profile picture — uploaded to Meta Business
+    # Manager / WhatsApp Manager. Meta accepts up to 5MB; 1080 is the
+    # recommended square size that stays crisp on every device. Square
+    # fill (not rounded) so WhatsApp's circle crop paints navy edge-
+    # to-edge instead of showing clipped corners. Flattened to RGB
+    # (no alpha) because WhatsApp refuses PNGs with alpha on some
+    # upload paths. JPEG at quality 95 keeps the file small.
+    wa_dir = ICONS_DIR.parent / "whatsapp"
+    wa_dir.mkdir(parents=True, exist_ok=True)
+    wa = _draw_logo(1080, square_fill=True).convert("RGB")
+    wa.save(wa_dir / "profile-1080.png", optimize=True)
+    wa.save(wa_dir / "profile-1080.jpg", quality=95, optimize=True)
+    print("wrote whatsapp/profile-1080.png")
+    print("wrote whatsapp/profile-1080.jpg")
 
 
 if __name__ == "__main__":
