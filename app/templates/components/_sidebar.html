@@ -13,13 +13,19 @@
     doesn't render its header, so the sidebar stays tight across role mixes.
 #}
 
-{# ---------- nav_link macro ---------- #}
+{# ---------- nav_link macro ----------
+   Active state: navy tint + text, with a 3px gold left-border bar and
+   a gold icon so the active row carries both brand colours at once.
+   Idle state: neutral text, navy hover tint (not gray) so hovering
+   feels like a brand interaction.
+#}
 {% macro nav_link(href, label, is_active, icon_svg, trailing_html='') -%}
 <a href="{{ href }}"
    title="{{ label }}"
-   class="nav-link group flex items-center px-3 py-2.5 text-sm rounded-md
-          {% if is_active %}bg-primary-50 text-primary-600 font-medium{% else %}text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900{% endif %}">
-  <svg class="nav-icon h-4 w-4 flex-shrink-0 {% if is_active %}text-primary-500{% else %}text-neutral-400 group-hover:text-neutral-600{% endif %}"
+   class="nav-link group flex items-center px-3 py-2.5 text-sm rounded-md border-l-[3px]
+          {% if is_active %}bg-primary-50 text-primary-700 font-medium border-accent-500
+          {% else %}text-neutral-700 hover:bg-primary-50/60 hover:text-primary-700 border-transparent{% endif %}">
+  <svg class="nav-icon h-4 w-4 flex-shrink-0 {% if is_active %}text-accent-500{% else %}text-neutral-400 group-hover:text-primary-500{% endif %}"
        fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
     {{ icon_svg|safe }}
   </svg>
@@ -333,15 +339,17 @@
     transition: width 0.18s ease;
   }
 
-  /* Section header */
+  /* Section header — styled as a gold brand eyebrow so the ACADEMIC /
+     PEOPLE / FINANCE group labels carry the brand through the sidebar
+     without competing with the active menu row. */
   .nav-section-header {
     display: flex;
     align-items: center;
     width: 100%;
     padding: 0.5rem 0.75rem 0.25rem;
-    color: #94a3b8;          /* neutral-400 */
+    color: #A67A22;          /* accent-600 */
     font-size: 0.68rem;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     background: transparent;
@@ -349,7 +357,7 @@
     cursor: pointer;
     user-select: none;
   }
-  .nav-section-header:hover { color: #475569; }  /* neutral-600 */
+  .nav-section-header:hover { color: #83611B; }  /* accent-700 */
   .nav-section-label { flex: 1; text-align: left; }
   .nav-chevron {
     width: 0.9rem; height: 0.9rem;
