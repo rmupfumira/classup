@@ -28,7 +28,11 @@
 {# PWA manifest #}
 <link rel="manifest" href="/manifest.webmanifest">
 
-{# Standard favicons #}
+{# Standard favicons. Modern browsers prefer the SVG — it stays
+   crisp at any size and matches the brand mark pixel-for-pixel.
+   The PNG + .ico fallbacks are rendered from the same geometry by
+   scripts/regen_favicons.py so every size reads as one icon. #}
+<link rel="icon" type="image/svg+xml" href="/static/img/icons/logo.svg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/static/img/icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/static/img/icons/favicon-16.png">
