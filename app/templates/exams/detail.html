@@ -457,16 +457,21 @@ async function applyCurriculum() {
 let _addPaperSubjectId = null;
 function addPaper(opts) {
     _addPaperSubjectId = opts.subject_id;
-    // Count the subject's existing papers so we can pre-fill the
-    // next number ("Paper 3" if there are two already). The admin
-    // can still override before submit — the field is editable.
+    // Count the subject's existing papers so we can pre-fill both:
+    //  - name:    "Paper N" where N follows the current last paper
+    //  - weight:  the "equal share" (100 / N+1), e.g. 33 for a 3rd
+    //             paper, so the default already sums to 100 after
+    //             the server rescales the rest proportionally.
+    // Admin can override either before submit.
     const existing = document.querySelectorAll(
         `[data-subject-id="${opts.subject_id}"] [data-paper-weight-input]`
     ).length;
+    const next = existing + 1;
+    const fairShare = Math.round(100 / next);
     document.getElementById('ap-subj').textContent = `Subject: ${opts.subject_name}`;
-    document.getElementById('ap-name').value = `Paper ${existing + 1}`;
+    document.getElementById('ap-name').value = `Paper ${next}`;
     document.getElementById('ap-total').value = '100';
-    document.getElementById('ap-weight').value = '50';
+    document.getElementById('ap-weight').value = String(fairShare);
     document.getElementById('ap-duration').value = '';
     document.getElementById('add-paper-modal').showModal();
 }

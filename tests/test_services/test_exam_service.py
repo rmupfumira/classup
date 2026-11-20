@@ -418,6 +418,76 @@ class TestMultiPaper:
         # Weight invariant held
         assert sum(p.weight_percent for p in eng_papers) == 100
 
+    async def test_add_paper_rebalances_existing_weights_to_100(
+        self, db: AsyncSession, test_class: SchoolClass, exam_seed,
+    ):
+        """When a paper is added, the subject's other papers scale
+        proportionally so the whole subject still sums to exactly
+        100%. Keeps admins from ending up at 150% the second they
+        split a subject."""
+        svc = get_exam_service()
+        exam = await svc.create_exam(
+            db, name="T1", class_id=test_class.id,
+            academic_year="2026", term=1,
+        )
+        await db.commit()
+        # English is auto-seeded at weight 100. Adding a second paper
+        # at 40% should scale Paper 1 to 60 (not leave it at 100,
+        # which would blow the subject out to 140%).
+        await svc.add_paper(
+            db, exam_id=exam.id, subject_id=exam_seed["eng"].id,
+            paper_name="Paper 2", total_marks=50, weight_percent=40,
+        )
+        await db.commit()
+        eng_papers = sorted(
+            (es for es in (await svc.get_exam(db, exam.id)).exam_subjects
+             if es.subject_id == exam_seed["eng"].id),
+            key=lambda e: e.display_order,
+        )
+        assert sum(p.weight_percent for p in eng_papers) == 100
+        # Paper 1 was 100; the new paper claims 40; so Paper 1 is 60.
+        assert eng_papers[0].weight_percent == 60
+        assert eng_papers[1].weight_percent == 40
+
+    async def test_add_third_paper_scales_all_existing(
+        self, db: AsyncSession, test_class: SchoolClass, exam_seed,
+    ):
+        """With TWO existing papers (60/40 → sum 100) and a third
+        added at 30%, both existing papers are scaled into the
+        remaining 70 proportionally (so 60 becomes 42, 40 becomes
+        28, new paper 30 → total 100)."""
+        svc = get_exam_service()
+        exam = await svc.create_exam(
+            db, name="T1", class_id=test_class.id,
+            academic_year="2026", term=1,
+        )
+        await db.commit()
+        # Set up the 60/40 starting point.
+        es_eng1 = next(
+            es for es in exam.exam_subjects
+            if es.subject_id == exam_seed["eng"].id
+        )
+        await svc.update_exam_subject(db, es_eng1.id, weight_percent=60)
+        await svc.add_paper(
+            db, exam_id=exam.id, subject_id=exam_seed["eng"].id,
+            paper_name="Paper 2", total_marks=100, weight_percent=40,
+        )
+        await db.commit()
+        # Now add Paper 3 at 30. Existing are 60 and 40, sum 100,
+        # budget 70 → 60*0.7=42, 40*0.7=28.
+        await svc.add_paper(
+            db, exam_id=exam.id, subject_id=exam_seed["eng"].id,
+            paper_name="Paper 3", total_marks=100, weight_percent=30,
+        )
+        await db.commit()
+        eng_papers = sorted(
+            (es for es in (await svc.get_exam(db, exam.id)).exam_subjects
+             if es.subject_id == exam_seed["eng"].id),
+            key=lambda e: e.display_order,
+        )
+        assert len(eng_papers) == 3
+        assert sum(p.weight_percent for p in eng_papers) == 100
+
     async def test_apply_curriculum_refuses_when_results_exist(
         self, db: AsyncSession, test_class: SchoolClass, exam_seed,
     ):

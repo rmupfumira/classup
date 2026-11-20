@@ -375,6 +375,39 @@ class ExamService:
         # the exam see the new paper without a refresh.
         es.exam = exam
         db.add(es)
+
+        # Rebalance the subject's existing papers so the subject sums
+        # to exactly 100%. The new paper keeps the weight the admin
+        # chose; the others scale proportionally into the remaining
+        # budget. If they summed to zero (never set), split evenly.
+        # Rounding error is absorbed by the last existing paper so the
+        # row always comes out an integer 100.
+        budget = 100 - weight_percent
+        existing_sum = sum(
+            e.weight_percent for e in existing_for_subject
+        )
+        if budget < 0:
+            # Admin picked a weight > 100% for the new paper; zero out
+            # the others and let the UI's own balance check flag the
+            # overflow. (The weight_percent validator above already
+            # rejects > 100, so in practice this branch is dead.)
+            new_vals = [0] * len(existing_for_subject)
+        elif existing_sum > 0:
+            new_vals = [
+                round(e.weight_percent * budget / existing_sum)
+                for e in existing_for_subject
+            ]
+        elif existing_for_subject:
+            each = budget // len(existing_for_subject)
+            new_vals = [each] * len(existing_for_subject)
+        else:
+            new_vals = []
+        if new_vals:
+            drift = budget - sum(new_vals)
+            new_vals[-1] += drift
+            for e, v in zip(existing_for_subject, new_vals):
+                e.weight_percent = max(0, min(100, v))
+
         await db.flush()
         await db.refresh(es)
         return es
