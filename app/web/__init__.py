@@ -24,6 +24,7 @@ from app.web import (
     parents,
     photos,
     reports,
+    search,
     settings,
     students,
     subscription,
@@ -56,6 +57,7 @@ web_router.include_router(super_admin.router)
 web_router.include_router(help_web.router)
 web_router.include_router(events.router)  # School events + parent RSVPs — always available
 web_router.include_router(unsubscribe.router)  # Public List-Unsubscribe handler (no auth)
+web_router.include_router(search.router)  # Global search results page — role-scoped
 
 # Plan-gated pages — redirect to /subscription?locked=X when feature is off
 web_router.include_router(

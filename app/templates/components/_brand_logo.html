@@ -1,0 +1,18 @@
+{#
+  ClassUp brand logo (navy rounded square + gold arc + white up-arrow).
+  Sourced from the marketing site at C:\Dev\website\classup\img\logo.svg so the
+  app and the site share the same mark pixel-for-pixel.
+
+  Usage:
+    {% include 'components/_brand_logo.html' %}            → default 36x36
+    {% with logo_size='h-8 w-8' %}{% include 'components/_brand_logo.html' %}{% endwith %}
+    {% with logo_size='h-14 w-14' %}{% include 'components/_brand_logo.html' %}{% endwith %}
+
+  The SVG is inline (not <img src>) so it inherits sizing from Tailwind classes
+  and can't flash as a broken image when the server is restarting mid-request.
+#}
+<svg class="{{ logo_size | default('h-9 w-9') }}" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect width="40" height="40" rx="10" fill="#1B3A6B"/>
+    <path d="M25 11a11 11 0 1 0 0 18" stroke="#C9A92A" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <path d="M25 25V15m0 0l-4 4m4-4l4 4" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -317,7 +317,7 @@ async function loadPlans() {
                     ${isCurrent
                         ? `<button disabled class="w-full px-4 py-2.5 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-lg cursor-default">Current Plan</button>`
                         : `<button onclick="selectPlan('${p.id}', '${p.name.replace(/'/g, "\\'")}')"
-                                  class="w-full px-4 py-2.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition-colors">
+                                  class="btn btn-gold w-full py-2.5 text-sm">
                               ${currentPlanName ? 'Switch to ' + p.name : 'Start Free Trial'}
                           </button>`
                     }

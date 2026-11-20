@@ -135,8 +135,50 @@ dialog[open]::backdrop { animation: backdrop-enter 0.2s ease-out; }
 
 /* =============================================================
    DESIGN SYSTEM COMPONENT CLASSES
-   Matching AfriSend visual style: Navy + Gold + rounded-xl
+   Brand: Navy (#1B3A6B) + Gold (#C9962A), Inter typography.
+   Source of truth = the marketing site at C:\Dev\website\classup.
+   Keep token names in sync with base.html's Tailwind config.
    ============================================================= */
+
+/* ---------- Brand primitives ---------- */
+
+/* Navy → deeper navy → almost-black. Used on hero panels, the dark
+   side of the login split, and any marketing-adjacent surface. */
+.hero-gradient {
+    background: linear-gradient(135deg, #1B3A6B 0%, #0f2544 60%, #0a1a33 100%);
+}
+
+/* Small uppercase label the marketing site uses above every section
+   heading. Keeps section intros feeling consistent when a page
+   inside the app wants a marketing-flavour header. */
+.eyebrow {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #a67a22; /* gold-600 */
+}
+
+/* Navy-tinted card shadow used throughout the marketing site. */
+.shadow-brand       { box-shadow: 0 4px 14px rgba(27, 58, 107, 0.08); }
+.shadow-brand-md    { box-shadow: 0 8px 24px rgba(27, 58, 107, 0.12); }
+.shadow-brand-lg    { box-shadow: 0 12px 32px rgba(27, 58, 107, 0.18); }
+.shadow-brand-gold  { box-shadow: 0 4px 14px rgba(201, 150, 42, 0.40); }
+
+/* Featured card variant for landing/empty-state/marketing cards.
+   Keeps the compact .card class untouched — reach for .card-feature
+   when you want the softer, roomier marketing feel. */
+.card-feature {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 2rem;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card-feature:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(27, 58, 107, 0.12);
+}
 
 /* Cards */
 .card {
@@ -195,6 +237,25 @@ dialog[open]::backdrop { animation: backdrop-enter 0.2s ease-out; }
     background-color: #E8B84B;
     border-color: #E8B84B;
 }
+
+/* The brand's signature CTA — gold gradient with NAVY text and a
+   lifting hover. This is the one marketing-site users see on every
+   page; using the same treatment inside the app ties the two halves
+   of the product together. Use on hero CTAs, upgrade prompts and
+   "Start trial" / "Finalise" / "Mark attendance" headline actions.
+   For in-list or low-emphasis actions, use .btn-primary. */
+.btn-gold {
+    background: linear-gradient(135deg, #C9962A 0%, #e0ad3a 100%);
+    color: #1B3A6B;
+    border-color: transparent;
+    font-weight: 700;
+}
+.btn-gold:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b8872a 0%, #C9962A 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(201, 150, 42, 0.40);
+}
+.btn-gold:active:not(:disabled) { transform: translateY(0); }
 .btn-danger {
     background-color: #DC2626;
     color: #ffffff;
