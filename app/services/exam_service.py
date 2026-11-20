@@ -164,12 +164,16 @@ class ExamService:
         )).scalars().all()
         for idx, cs in enumerate(class_subjects):
             total = cs.effective_total_marks
+            # Every paper gets a default name so the UI and report
+            # cards never have to synthesise "Paper 1" from the
+            # display_order. Admin can override via update_exam_subject.
             db.add(ExamSubject(
                 id=uuid.uuid4(),
                 tenant_id=tenant_id,
                 exam_id=exam.id,
                 subject_id=cs.subject_id,
                 class_subject_id=cs.id,
+                paper_name="Paper 1",
                 total_marks=total,
                 display_order=idx,
             ))
@@ -343,17 +347,28 @@ class ExamService:
         if not existing_for_subject:
             raise NotFoundException("Subject not on this exam")
         max_order = max(es.display_order for es in existing_for_subject)
+        new_order = max_order + 1
+
+        # Default the paper's name to "Paper N" where N follows the
+        # subject's existing papers. The admin can still override at
+        # the UI (or later via update_exam_subject). Storing a real
+        # name — rather than leaving it NULL and letting the viewer
+        # synthesise one — means report cards, mark sheets and the
+        # mobile bot all see the same label without duplicated logic.
+        resolved_name = (paper_name or "").strip()
+        if not resolved_name:
+            resolved_name = f"Paper {new_order}"
 
         es = ExamSubject(
             id=uuid.uuid4(),
             tenant_id=tenant_id,
             subject_id=subject_id,
             class_subject_id=existing_for_subject[0].class_subject_id,
-            paper_name=paper_name.strip() if paper_name else None,
+            paper_name=resolved_name,
             total_marks=total_marks,
             weight_percent=weight_percent,
             duration_minutes=duration_minutes,
-            display_order=max_order + 1,
+            display_order=new_order,
         )
         # Setting the relationship (not just the FK) keeps the loaded
         # exam.exam_subjects collection in sync so callers that pre-load

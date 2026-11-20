@@ -1,17 +1,20 @@
 /*
  * Global search dropdown — navbar autocomplete.
  *
- * Wire-up:
- *  - a text input whose id is the value of SEARCH_INPUT_ID
- *  - an empty div whose id is the value of SEARCH_RESULTS_ID,
- *    positioned relative to the input by its parent
- *
- * Behaviour:
- *  - debounce 200ms, min 2 chars before firing
- *  - up/down/Enter navigate the suggestions
- *  - Enter without a highlighted row submits /search?q=<q>
- *  - Esc or outside-click closes the dropdown
- *  - focus-out closes after a 120ms grace so a result click still lands
+ * Modern touches, by section below:
+ *  - 200ms debounced live dropdown as you type (min 2 chars)
+ *  - Cmd/Ctrl+K from anywhere on the page focuses the field. "/" also
+ *    focuses when the user isn't already typing in a form field —
+ *    matches the single-key convention GitHub, Bluesky, Vercel use.
+ *  - Match highlighting — the typed substring is wrapped in a soft
+ *    gold background inside each result row so the hit is obvious.
+ *  - Recents — when the field is focused and empty, show the last 5
+ *    distinct queries from localStorage; clicking one re-runs it.
+ *    Saved when the user actually navigates to a result or submits.
+ *  - Keyboard nav: ↑/↓/Enter navigate; Esc closes + blurs; Enter on
+ *    an empty-highlight submits the full query to /search?q=…
+ *  - Stale-response dropper so a slow keystroke's result never
+ *    overwrites a fresher one.
  */
 (function () {
     'use strict';
@@ -20,10 +23,20 @@
     const SEARCH_RESULTS_ID = 'global-search-results';
     const DEBOUNCE_MS = 200;
     const MIN_CHARS = 2;
+    const RECENTS_KEY = 'cu.search.recents';
+    const RECENTS_LIMIT = 5;
 
     const input = document.getElementById(SEARCH_INPUT_ID);
     const panel = document.getElementById(SEARCH_RESULTS_ID);
     if (!input || !panel) return;
+
+    // Swap the Cmd/Ctrl hint for the platform's modifier symbol.
+    // Done in JS so the server doesn't need to sniff user agents.
+    const kbdHint = document.getElementById('global-search-kbd-hint');
+    if (kbdHint) {
+        const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || '');
+        kbdHint.textContent = isMac ? '⌘ K' : 'Ctrl K';
+    }
 
     let debounceTimer = null;
     let currentItems = [];  // flat, in display order, for keyboard nav
@@ -57,12 +70,82 @@
         return d.innerHTML;
     }
 
-    function render(groups) {
+    // Wrap case-insensitive substring matches with <mark>, HTML-safe.
+    // esc() the text first, then do substring replace on the escaped
+    // output — the typed query may contain `<` or `&` and must be
+    // escaped before being used in the regex too.
+    function highlight(text, query) {
+        const safe = esc(text);
+        const q = (query || '').trim();
+        if (!q) return safe;
+        const safeQ = esc(q);
+        // Escape regex metacharacters in the query after HTML-escaping.
+        const re = new RegExp(
+            safeQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+            'gi',
+        );
+        return safe.replace(re, (m) => `<mark>${m}</mark>`);
+    }
+
+    // ---- recents (localStorage) ----
+    // Wrapped in try/catch so a quota-blocked or private-mode browser
+    // doesn't break the search.
+    function loadRecents() {
+        try {
+            const raw = localStorage.getItem(RECENTS_KEY);
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            return Array.isArray(arr) ? arr.filter(q => typeof q === 'string').slice(0, RECENTS_LIMIT) : [];
+        } catch (e) { return []; }
+    }
+    function saveRecent(q) {
+        q = (q || '').trim();
+        if (q.length < MIN_CHARS) return;
+        try {
+            const prev = loadRecents().filter(r => r.toLowerCase() !== q.toLowerCase());
+            const next = [q, ...prev].slice(0, RECENTS_LIMIT);
+            localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+        } catch (e) { /* ignore */ }
+    }
+
+    function renderRecents() {
+        const recents = loadRecents();
+        currentItems = [];
+        if (!recents.length) {
+            panel.innerHTML = `
+                <div class="px-4 py-6 text-center text-sm text-neutral-500">
+                    Type to search
+                    <p class="text-xs text-neutral-400 mt-1">Students, classes, teachers, invoices…</p>
+                </div>`;
+            return;
+        }
+        const parts = [`
+            <div class="px-3 pt-2 pb-1 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                Recent
+            </div>`];
+        recents.forEach((r, i) => {
+            parts.push(`
+                <button type="button"
+                        data-recent-index="${i}"
+                        class="w-full flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 transition-colors text-left">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-md bg-neutral-100 text-neutral-400 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <span class="flex-1 min-w-0 text-sm text-neutral-700 truncate">${esc(r)}</span>
+                </button>`);
+        });
+        panel.innerHTML = parts.join('');
+    }
+
+    function render(groups, query) {
         currentItems = [];
         if (!groups || !groups.length) {
             panel.innerHTML = `
                 <div class="px-4 py-6 text-center text-sm text-neutral-500">
-                    No matches
+                    No matches for <span class="font-medium text-neutral-700">"${esc(query)}"</span>
                 </div>`;
             return;
         }
@@ -82,8 +165,8 @@
                             ${iconFor(item.icon)}
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-neutral-900 truncate">${esc(item.title)}</p>
-                            ${item.subtitle ? `<p class="text-xs text-neutral-500 truncate">${esc(item.subtitle)}</p>` : ''}
+                            <p class="text-sm font-medium text-neutral-900 truncate">${highlight(item.title, query)}</p>
+                            ${item.subtitle ? `<p class="text-xs text-neutral-500 truncate">${highlight(item.subtitle, query)}</p>` : ''}
                         </div>
                     </a>`);
                 currentItems.push(item);
@@ -92,9 +175,10 @@
         }
         // "See all N results" footer link — takes the user to /search
         // where more per-category items are listed.
-        const q = encodeURIComponent(input.value.trim());
+        const q = encodeURIComponent(query);
         parts.push(`
             <a href="/search?q=${q}"
+               data-search-see-all
                class="block px-3 py-2 text-center text-xs font-medium text-primary-600 border-t border-neutral-100 hover:bg-neutral-50">
                 See all results →
             </a>`);
@@ -125,7 +209,7 @@
             // have come back first.
             if (requestId !== latestRequestId) return;
             if (!res || !res.data) return;
-            render(res.data.groups);
+            render(res.data.groups, q);
             openPanel();
         } catch (err) {
             // Network error — fail silently; the field keeps working
@@ -136,7 +220,12 @@
     input.addEventListener('input', () => {
         const q = input.value.trim();
         clearTimeout(debounceTimer);
-        if (q.length < MIN_CHARS) { closePanel(); return; }
+        if (q.length < MIN_CHARS) {
+            // Still open the panel, but with recents instead of a dead state.
+            renderRecents();
+            openPanel();
+            return;
+        }
         debounceTimer = setTimeout(() => runQuery(q), DEBOUNCE_MS);
     });
 
@@ -153,17 +242,36 @@
             updateActiveHighlight();
         } else if (ev.key === 'Enter') {
             ev.preventDefault();
+            const q = input.value.trim();
             if (activeIndex >= 0 && currentItems[activeIndex]) {
+                saveRecent(q);
                 window.location.href = currentItems[activeIndex].url;
-            } else {
-                const q = input.value.trim();
-                if (q.length >= MIN_CHARS) {
-                    window.location.href = '/search?q=' + encodeURIComponent(q);
-                }
+            } else if (q.length >= MIN_CHARS) {
+                saveRecent(q);
+                window.location.href = '/search?q=' + encodeURIComponent(q);
             }
         } else if (ev.key === 'Escape') {
             closePanel();
             input.blur();
+        }
+    });
+
+    // Delegated click handler — covers both result rows (save recent,
+    // then let the browser navigate) and recent-chip buttons (re-run).
+    panel.addEventListener('click', (ev) => {
+        const row = ev.target.closest('a[data-search-index], a[data-search-see-all]');
+        if (row) {
+            saveRecent(input.value.trim());
+            return;  // let the <a> navigate
+        }
+        const chip = ev.target.closest('button[data-recent-index]');
+        if (chip) {
+            const i = Number(chip.getAttribute('data-recent-index'));
+            const q = loadRecents()[i];
+            if (q) {
+                input.value = q;
+                runQuery(q);
+            }
         }
     });
 
@@ -174,9 +282,32 @@
         }
     });
 
-    // Re-open on focus if there's a usable query already there.
+    // On focus, show recents (if empty) or re-run the current query.
     input.addEventListener('focus', () => {
         const q = input.value.trim();
-        if (q.length >= MIN_CHARS) runQuery(q);
+        if (q.length >= MIN_CHARS) {
+            runQuery(q);
+        } else {
+            renderRecents();
+            openPanel();
+        }
+    });
+
+    // Global keyboard shortcut: Cmd/Ctrl+K anywhere focuses the field.
+    // Also "/" when the user isn't already typing — matches the single-
+    // key convention of GitHub, Bluesky, and most modern web apps.
+    document.addEventListener('keydown', (ev) => {
+        const isCmdK = (ev.key === 'k' || ev.key === 'K') && (ev.metaKey || ev.ctrlKey);
+        const isSlash = ev.key === '/' && !ev.metaKey && !ev.ctrlKey && !ev.altKey;
+        if (!isCmdK && !isSlash) return;
+        const target = ev.target;
+        const tag = target && target.tagName;
+        // Don't steal "/" from someone already typing in a form field.
+        if (isSlash && (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable)) {
+            return;
+        }
+        ev.preventDefault();
+        input.focus();
+        input.select();
     });
 })();

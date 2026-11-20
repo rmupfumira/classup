@@ -429,6 +429,17 @@ dialog[open]::backdrop { animation: backdrop-enter 0.2s ease-out; }
     background-color: rgba(248, 250, 252, 0.5);
 }
 
+/* Autocomplete match highlighting — the typed query is wrapped in
+   <mark> inside each row by static/js/search.js. Soft gold wash
+   from the brand palette so the hit stands out without shouting. */
+#global-search-results mark,
+mark.search-hit {
+    background-color: #FBF1DD; /* accent-100 */
+    color: inherit;
+    padding: 0 1px;
+    border-radius: 2px;
+}
+
 /* Toast overrides */
 .toast-success { background-color: #F0FDF4; border-left: 4px solid #16A34A; color: #166534; }
 .toast-error   { background-color: #FEF2F2; border-left: 4px solid #DC2626; color: #991B1B; }

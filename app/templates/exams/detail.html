@@ -195,11 +195,10 @@
                             · {{ papers | length }} paper{% if (papers | length) != 1 %}s{% endif %}
                         </span>
                     </h3>
-                    <p class="text-xs mt-0.5
+                    <p class="weight-summary text-xs mt-0.5
                               {% if weight_total == 100 %}text-neutral-500
                               {% else %}text-warning-700 font-medium{% endif %}">
-                        Weights sum to <strong>{{ weight_total }}%</strong>
-                        {% if weight_total != 100 %} — not balanced{% endif %}
+                        Weights sum to <strong class="weight-total">{{ weight_total }}%</strong><span class="weight-balanced-suffix">{% if weight_total != 100 %} — not balanced{% endif %}</span>
                     </p>
                 </div>
                 {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
@@ -224,7 +223,10 @@
                     {% for es in papers %}
                     <tr data-exam-subject-id="{{ es.id }}" class="hover:bg-neutral-50">
                         <td class="px-3 py-2 text-neutral-800">
-                            {{ es.paper_name or 'Paper 1' }}
+                            {# Fall back to "Paper N" by position so legacy rows
+                               written before the service started defaulting the
+                               name still render cleanly. #}
+                            {{ es.paper_name or ('Paper ' ~ loop.index) }}
                             {% if es.duration_minutes %}
                             <span class="text-xs text-neutral-400">· {{ es.duration_minutes }} min</span>
                             {% endif %}
@@ -455,8 +457,14 @@ async function applyCurriculum() {
 let _addPaperSubjectId = null;
 function addPaper(opts) {
     _addPaperSubjectId = opts.subject_id;
+    // Count the subject's existing papers so we can pre-fill the
+    // next number ("Paper 3" if there are two already). The admin
+    // can still override before submit — the field is editable.
+    const existing = document.querySelectorAll(
+        `[data-subject-id="${opts.subject_id}"] [data-paper-weight-input]`
+    ).length;
     document.getElementById('ap-subj').textContent = `Subject: ${opts.subject_name}`;
-    document.getElementById('ap-name').value = '';
+    document.getElementById('ap-name').value = `Paper ${existing + 1}`;
     document.getElementById('ap-total').value = '100';
     document.getElementById('ap-weight').value = '50';
     document.getElementById('ap-duration').value = '';
@@ -508,22 +516,123 @@ async function deletePaper(id, subjectName) {
 }
 
 async function savePaperWeight(id) {
+    // Explicit Save button — kept for the case where a user types a
+    // weight and never blurs out of the field. Our change-listener
+    // handles the common path (blur / Enter on the number input).
     const input = document.querySelector(`[data-paper-weight-input="${id}"]`);
     if (!input) return;
-    const w = parseInt(input.value, 10);
-    if (Number.isNaN(w) || w < 0 || w > 100) {
-        ClassUp.toast('Weight must be 0..100', 'error');
-        return;
-    }
+    rebalanceAndSave(input);
+}
+
+/* Auto-rebalance weights to 100% whenever the user edits one.
+ * Rule: the edited paper keeps the value the user chose; the OTHER
+ * papers in the same subject group get scaled proportionally so the
+ * total is exactly 100. Edge cases:
+ *   - User sets the only paper → force to 100 (nothing else to adjust).
+ *   - Current others-sum is 0 (zero-weighted) → split the budget evenly.
+ *   - Rounding error → absorbed by the last other paper so the row
+ *     always sums to an integer 100.
+ * All affected rows auto-save to the server; we never leave the UI
+ * showing a value the server doesn't have. */
+let _rebalancing = false;
+
+async function rebalanceAndSave(editedInput) {
+    if (_rebalancing || !editedInput) return;
+    _rebalancing = true;
     try {
-        await ClassUp.fetch(`/api/v1/exams/subjects/${id}`, {
-            method: 'PUT', body: JSON.stringify({weight_percent: w}),
+        let edited = parseInt(editedInput.value, 10);
+        if (Number.isNaN(edited)) edited = 0;
+        edited = Math.max(0, Math.min(100, edited));
+        editedInput.value = edited;
+
+        const subjectBox = editedInput.closest('[data-subject-id]');
+        if (!subjectBox) return;
+        const others = Array.from(
+            subjectBox.querySelectorAll('[data-paper-weight-input]')
+        ).filter(el => el !== editedInput);
+
+        let allInputs;
+        if (others.length === 0) {
+            editedInput.value = 100;
+            allInputs = [editedInput];
+        } else {
+            const budget = 100 - edited;
+            const oldSum = others.reduce(
+                (s, el) => s + (parseInt(el.value, 10) || 0), 0,
+            );
+            let alloc;
+            if (budget <= 0) {
+                alloc = others.map(() => 0);
+            } else if (oldSum > 0) {
+                alloc = others.map(el => {
+                    const v = parseInt(el.value, 10) || 0;
+                    return Math.round(v * budget / oldSum);
+                });
+            } else {
+                const each = Math.floor(budget / others.length);
+                alloc = others.map(() => each);
+            }
+            // Absorb rounding error in the last entry so the row
+            // sums to exactly 100.
+            const allocSum = alloc.reduce((a, b) => a + b, 0);
+            alloc[alloc.length - 1] += budget - allocSum;
+            // Final clamp — a negative could sneak in if the user
+            // typed a weight that leaves a tiny budget to split
+            // across many papers whose old values rounded down.
+            alloc = alloc.map(a => Math.max(0, Math.min(100, a)));
+            others.forEach((el, i) => el.value = alloc[i]);
+            allInputs = [editedInput, ...others];
+        }
+
+        updateWeightSummary(subjectBox);
+
+        // Save every changed row in parallel. If any fails, say so
+        // and let the user refresh — we don't try to roll back the
+        // UI, which would be more confusing than instructive.
+        const saves = allInputs.map(el => {
+            const id = el.getAttribute('data-paper-weight-input');
+            const w = parseInt(el.value, 10);
+            return ClassUp.fetch(`/api/v1/exams/subjects/${id}`, {
+                method: 'PUT', body: JSON.stringify({weight_percent: w}),
+            });
         });
-        ClassUp.toast('Weight saved', 'success');
-        setTimeout(() => window.location.reload(), 400);
-    } catch (err) {
-        ClassUp.toast(err.message || 'Save failed', 'error');
+        try {
+            await Promise.all(saves);
+            ClassUp.toast('Weights balanced to 100%', 'success');
+        } catch (err) {
+            ClassUp.toast('Save failed — refresh to see current values', 'error');
+        }
+    } finally {
+        _rebalancing = false;
     }
 }
+
+function updateWeightSummary(subjectBox) {
+    const inputs = subjectBox.querySelectorAll('[data-paper-weight-input]');
+    const total = Array.from(inputs).reduce(
+        (s, el) => s + (parseInt(el.value, 10) || 0), 0,
+    );
+    const summary = subjectBox.querySelector('.weight-summary');
+    const totalEl = subjectBox.querySelector('.weight-total');
+    const suffix = subjectBox.querySelector('.weight-balanced-suffix');
+    if (totalEl) totalEl.textContent = `${total}%`;
+    if (suffix) suffix.textContent = total === 100 ? '' : ' — not balanced';
+    if (summary) {
+        if (total === 100) {
+            summary.classList.remove('text-warning-700', 'font-medium');
+            summary.classList.add('text-neutral-500');
+        } else {
+            summary.classList.remove('text-neutral-500');
+            summary.classList.add('text-warning-700', 'font-medium');
+        }
+    }
+}
+
+// Wire every weight input to rebalance on commit (blur / Enter).
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-paper-weight-input]').forEach(el => {
+        el.addEventListener('change', () => rebalanceAndSave(el));
+    });
+});
 </script>
 {% endblock %}

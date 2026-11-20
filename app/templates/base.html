@@ -279,7 +279,7 @@
         button:active, a:active { transform: scale(0.98); transition: transform 0.05s; }
     </style>
 
-    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=2">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=3">
 
     {# Load app.js in <head> as a blocking script so window.ClassUp is
        always defined BEFORE any inline <script> inside {% block content %}
@@ -367,7 +367,7 @@
     {# Global navbar search — depends on ClassUp.fetch, which the head-
        loaded app.js has already defined. Safe to defer-load. #}
     {% if user %}
-    <script src="{{ url_for('static', path='js/search.js') }}?v=1" defer></script>
+    <script src="{{ url_for('static', path='js/search.js') }}?v=2" defer></script>
     {% endif %}
     <script>
     // Last-resort fallback if app.js failed to load (e.g. network failure

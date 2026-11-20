@@ -131,6 +131,50 @@
 </dialog>
 
 <script>
+/* Auto-fill the Name field from the class + term picks, but stop
+ * the moment the admin types something of their own. Rule: if the
+ * field is empty OR still holds the last suggestion we wrote, we
+ * keep it in sync as they change the other dropdowns; the second
+ * they override it, we back off and let them keep what they typed.
+ * Clearing the field re-enables the sync — so nothing is permanent
+ * if they change their mind. */
+(function () {
+    const nameEl = document.getElementById('e-name');
+    const classEl = document.getElementById('e-class');
+    const yearEl = document.getElementById('e-year');
+    const termEl = document.getElementById('e-term');
+    if (!nameEl || !classEl || !yearEl || !termEl) return;
+
+    let lastAutoFill = '';
+
+    function buildDefault() {
+        const className = classEl.options[classEl.selectedIndex]?.text?.trim() || '';
+        const term = termEl.value;
+        if (!classEl.value || !className || className.startsWith('Pick ')) return '';
+        return `${className} — Term ${term} Exam`;
+    }
+
+    function sync() {
+        const suggestion = buildDefault();
+        if (!suggestion) return;
+        const current = nameEl.value.trim();
+        // Only overwrite when the user hasn't typed anything
+        // divergent from the last suggestion.
+        if (current === '' || current === lastAutoFill) {
+            nameEl.value = suggestion;
+            lastAutoFill = suggestion;
+        }
+    }
+
+    classEl.addEventListener('change', sync);
+    termEl.addEventListener('change', sync);
+    yearEl.addEventListener('input', sync);
+    // Re-enable sync if the user clears the field.
+    nameEl.addEventListener('input', () => {
+        if (nameEl.value.trim() === '') lastAutoFill = '';
+    });
+})();
+
 async function createExam(ev) {
     ev.preventDefault();
     const body = {

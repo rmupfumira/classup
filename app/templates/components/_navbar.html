@@ -82,13 +82,21 @@
                            aria-label="{{ t('common.search', current_language) }}"
                            aria-autocomplete="list"
                            aria-controls="global-search-results"
-                           class="w-full h-9 pl-9 pr-3 text-sm border border-white/20 rounded-lg bg-white/10
+                           class="w-full h-9 pl-9 pr-12 text-sm border border-white/20 rounded-lg bg-white/10
                                   text-white focus:bg-white/20 focus:border-white/40 focus:ring-0
                                   placeholder-white/50 transition-colors">
                     <svg class="absolute left-2.5 top-2.5 h-4 w-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
+                    {# Cmd/Ctrl+K hint badge — hidden on small screens
+                       where modifier shortcuts are rare and we need
+                       the pixels. static/js/search.js listens for the
+                       shortcut, focuses the field, and swaps the Mac
+                       symbol in once the platform is known. #}
+                    <kbd id="global-search-kbd-hint"
+                         class="hidden lg:flex absolute right-2 top-1.5 items-center h-6 px-1.5 text-[10px]
+                                font-medium text-white/60 bg-white/10 border border-white/20 rounded">Ctrl K</kbd>
                     <!-- Dropdown panel. Hidden by default; the script
                          populates it on debounce and toggles .hidden. -->
                     <div id="global-search-results"
