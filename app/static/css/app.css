@@ -445,3 +445,466 @@ mark.search-hit {
 .toast-error   { background-color: #FEF2F2; border-left: 4px solid #DC2626; color: #991B1B; }
 .toast-warning { background-color: #FFFBEB; border-left: 4px solid #D97706; color: #92400E; }
 .toast-info    { background-color: #EFF6FF; border-left: 4px solid #1B3A6B; color: #1E40AF; }
+
+/* =============================================================
+   SOFT MODERN COMPONENT LIBRARY (prefix: .cu-)
+   Approved production design system. Every page should use these
+   classes — not raw Tailwind — for shell, cards, chips, pills and
+   CTAs, so the look stays consistent and future-mods land in one
+   place.
+
+   Tokens come from the Tailwind config in base.html (shadow-soft*,
+   rounded-3xl/4xl, primary + accent scales). This stylesheet is
+   just the compound classes that pin the Design-04 look.
+   ============================================================= */
+
+/* ---------- App shell ---------- */
+
+/* Soft radial wash the entire authenticated app paints on top of.
+   Painted on <body>. Faint gold spotlight top-right + navy bottom-
+   left on a navy-50 base. */
+.cu-app-bg {
+    background:
+        radial-gradient(1200px 500px at 85% -5%, rgba(201, 150, 42, 0.07), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(27, 58, 107, 0.05), transparent 60%),
+        #f4f7fb;
+    min-height: 100vh;
+}
+
+/* Hero banner — large rounded navy card with a soft gold spotlight.
+   Used at the top of major pages ("Exams", "Billing", dashboards). */
+.cu-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 2rem; /* 4xl */
+    padding: 1.5rem;
+    color: #ffffff;
+    background:
+        radial-gradient(90% 120% at 80% 10%, rgba(201, 150, 42, 0.25), transparent 55%),
+        linear-gradient(135deg, #1B3A6B 0%, #162f57 55%, #0e1b34 100%);
+    box-shadow: 0 20px 40px -12px rgba(27, 58, 107, 0.18), 0 6px 12px -6px rgba(27, 58, 107, 0.08);
+}
+@media (min-width: 768px) {
+    .cu-hero { padding: 2rem; }
+}
+
+/* Gold CTA on dark (used inside .cu-hero and anywhere the brand
+   headline action belongs). Gradient gold with navy text. */
+.cu-btn-gold {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 1rem; /* 2xl */
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #0e1b34;
+    background: linear-gradient(135deg, #dcae31 0%, #C9962A 60%, #a07420 100%);
+    box-shadow: 0 10px 30px -10px rgba(201, 150, 42, 0.45);
+    border: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.cu-btn-gold:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ecc74f 0%, #dcae31 60%, #C9962A 100%);
+    transform: translateY(-1px);
+}
+.cu-btn-gold:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Ghost button on dark — the "Import" style next to the gold CTA
+   inside a hero. */
+.cu-btn-ghost-dark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.cu-btn-ghost-dark:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); }
+
+/* Primary button — navy-filled rounded pill. Everyday "Save",
+   "Create", "Confirm" action across the app. */
+.cu-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: #1B3A6B;
+    border: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+.cu-btn-primary:hover:not(:disabled) { background: #162f57; }
+.cu-btn-primary:active { transform: scale(0.98); }
+.cu-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Soft button — white on navy-50 ring. Low-emphasis action. */
+.cu-btn-soft {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1B3A6B;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px #e3ebf5; /* navy-100 ring */
+    border: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.cu-btn-soft:hover:not(:disabled) {
+    background: #f4f7fb; /* navy-50 */
+    box-shadow: inset 0 0 0 1px #c2d2e7; /* navy-200 ring */
+}
+
+/* ---------- Cards ---------- */
+
+/* The universal content card. Rounded, soft shadow, hairline ring. */
+.cu-card {
+    background: #ffffff;
+    border-radius: 1.5rem; /* 3xl */
+    box-shadow: 0 2px 8px -2px rgba(27, 58, 107, 0.08), 0 1px 3px -1px rgba(27, 58, 107, 0.05);
+    box-shadow:
+        0 2px 8px -2px rgba(27, 58, 107, 0.08),
+        0 1px 3px -1px rgba(27, 58, 107, 0.05),
+        inset 0 0 0 1px rgba(27, 58, 107, 0.06);
+    overflow: hidden;
+}
+
+/* Card hover — subtle lift. Add to clickable or navigable cards. */
+.cu-card-hover {
+    transition: transform 0.3s cubic-bezier(.2, .9, .3, 1),
+                box-shadow 0.3s cubic-bezier(.2, .9, .3, 1);
+}
+.cu-card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow:
+        0 20px 40px -12px rgba(27, 58, 107, 0.18),
+        0 6px 12px -6px rgba(27, 58, 107, 0.08),
+        inset 0 0 0 1px rgba(27, 58, 107, 0.06);
+}
+
+/* Stat tile — compact metric card used in rows of 2/3/4. */
+.cu-stat-tile {
+    background: #ffffff;
+    border-radius: 1.5rem;
+    padding: 1.25rem;
+    box-shadow:
+        0 2px 8px -2px rgba(27, 58, 107, 0.08),
+        0 1px 3px -1px rgba(27, 58, 107, 0.05),
+        inset 0 0 0 1px rgba(27, 58, 107, 0.06);
+}
+.cu-stat-tile-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #3a5f96; /* navy-500 */
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.cu-stat-tile-value {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: #112546; /* navy-800 */
+    letter-spacing: -0.025em;
+    margin-top: 0.75rem;
+}
+.cu-stat-tile-hint {
+    font-size: 0.75rem;
+    color: #3a5f96;
+    margin-top: 0.25rem;
+}
+
+/* ---------- Pills, chips, status ---------- */
+
+/* Filter / segmented pill chip. Active = navy fill white text. */
+.cu-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1B3A6B;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px #e3ebf5;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    border: 0;
+    white-space: nowrap;
+}
+.cu-pill:hover { background: #f4f7fb; box-shadow: inset 0 0 0 1px #95b0d2; }
+.cu-pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #3a5f96;
+    background: #f4f7fb;
+    border-radius: 9999px;
+}
+.cu-pill-active {
+    background: #1B3A6B;
+    color: #ffffff;
+    box-shadow:
+        0 8px 24px -8px rgba(27, 58, 107, 0.12),
+        0 2px 6px -2px rgba(27, 58, 107, 0.06);
+}
+.cu-pill-active:hover { background: #162f57; box-shadow: 0 8px 24px -8px rgba(27, 58, 107, 0.18); }
+.cu-pill-active .cu-pill-count { background: rgba(255, 255, 255, 0.2); color: #ffffff; }
+
+/* Metadata chips — small, read-only, tinted. */
+.cu-chip-navy, .cu-chip-gold, .cu-chip-emerald, .cu-chip-rose, .cu-chip-neutral {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.6875rem; /* 11px */
+    font-weight: 500;
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+.cu-chip-navy    { background: #f4f7fb; color: #162f57; } /* navy-50 / navy-700 */
+.cu-chip-gold    { background: #fdf9ec; color: #7f5b1c; } /* gold-50 / gold-700 */
+.cu-chip-emerald { background: #ecfdf5; color: #047857; }
+.cu-chip-rose    { background: #fff1f2; color: #9f1239; }
+.cu-chip-neutral { background: #f8fafc; color: #475569; }
+
+/* Status pills — more prominent than chips. For exam / invoice /
+   attendance status badges. */
+.cu-status { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600; border-radius: 9999px; }
+.cu-status-dot { width: 0.375rem; height: 0.375rem; border-radius: 9999px; }
+.cu-status-finalized  { background: #ecfdf5; color: #047857; box-shadow: inset 0 0 0 1px #a7f3d0; }
+.cu-status-progress   { background: #fdf9ec; color: #7f5b1c; box-shadow: inset 0 0 0 1px #f4df8e; }
+.cu-status-scheduled  { background: #f4f7fb; color: #162f57; box-shadow: inset 0 0 0 1px #c2d2e7; }
+.cu-status-draft      { background: #f8fafc; color: #475569; box-shadow: inset 0 0 0 1px #e2e8f0; }
+.cu-status-danger     { background: #fff1f2; color: #9f1239; box-shadow: inset 0 0 0 1px #fecdd3; }
+.cu-status-finalized  .cu-status-dot { background: #10b981; }
+.cu-status-progress   .cu-status-dot { background: #C9962A; }
+.cu-status-scheduled  .cu-status-dot { background: #3a5f96; }
+.cu-status-draft      .cu-status-dot { background: #64748b; }
+.cu-status-danger     .cu-status-dot { background: #e11d48; }
+
+/* ---------- Progress bars ---------- */
+
+.cu-progress {
+    width: 100%;
+    height: 0.5rem;
+    background: #f4f7fb;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+.cu-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #C9962A, #dcae31);
+    border-radius: 9999px;
+    transition: width 0.4s cubic-bezier(.2, .9, .3, 1);
+}
+.cu-progress-fill--navy { background: linear-gradient(90deg, #1B3A6B, #3a5f96); }
+.cu-progress-fill--emerald { background: linear-gradient(90deg, #10b981, #34d399); }
+
+/* ---------- Avatar / initials ---------- */
+
+/* Rounded navy avatar used for class/subject initials ("F3", "G5A"). */
+.cu-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, #dce4f0 0%, #b9c9e1 100%);
+    color: #162f57;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                inset 0 0 0 1px rgba(27, 58, 107, 0.1);
+}
+.cu-avatar-sm { width: 2.5rem; height: 2.5rem; font-size: 0.8125rem; }
+.cu-avatar    { width: 3.5rem; height: 3.5rem; font-size: 1.125rem; }
+.cu-avatar-lg { width: 4rem;   height: 4rem;   font-size: 1.25rem; }
+
+/* ---------- Sidebar / nav patterns ---------- */
+
+/* Gold section eyebrow inside the sidebar ("ACADEMIC", "FINANCE"). */
+.cu-nav-group-label {
+    font-size: 0.6875rem; /* 11px */
+    font-weight: 800;
+    color: #a07420; /* gold-600 */
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.5rem 0.75rem 0.25rem;
+}
+
+/* Sidebar nav item — rounded pill row. Active = navy fill white text. */
+.cu-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1B3A6B;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+.cu-nav-item:hover { background: #f4f7fb; }
+.cu-nav-item-active {
+    background: #1B3A6B;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 8px 24px -8px rgba(27, 58, 107, 0.12);
+}
+.cu-nav-item-active:hover { background: #162f57; }
+
+/* Little icon chip inside the sidebar item. */
+.cu-nav-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.75rem;
+    background: #f4f7fb;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.18s ease;
+}
+.cu-nav-item-active .cu-nav-icon { background: rgba(255, 255, 255, 0.15); }
+
+/* ---------- Eyebrow / headings ---------- */
+
+/* Gold eyebrow used above section headings — ties pages back to
+   the marketing site. */
+.cu-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.625rem; /* 10px */
+    font-weight: 800;
+    color: #a07420; /* gold-600 */
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    background: #fdf9ec;
+    border-radius: 9999px;
+}
+.cu-eyebrow-on-dark {
+    color: #ecc74f; /* gold-300 */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Page title — bold, tracked down, used after .cu-eyebrow. */
+.cu-page-title { font-size: 1.875rem; font-weight: 800; letter-spacing: -0.025em; color: #0e1b34; }
+@media (min-width: 768px) { .cu-page-title { font-size: 2.25rem; } }
+
+/* ---------- Form fields ---------- */
+
+.cu-input, .cu-select, .cu-textarea {
+    display: block;
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    color: #0e1b34;
+    background: #ffffff;
+    border-radius: 9999px;
+    border: 0;
+    box-shadow: inset 0 0 0 1px #e3ebf5;
+    transition: box-shadow 0.15s ease;
+}
+.cu-textarea { border-radius: 1rem; resize: vertical; }
+.cu-input:focus, .cu-select:focus, .cu-textarea:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px #1B3A6B;
+}
+.cu-input::placeholder, .cu-textarea::placeholder { color: #95b0d2; }
+
+/* Search field — input with left-aligned icon. Wrap in
+   <div class="cu-search">…<input class="cu-input"></div> and the
+   icon goes inside the wrapper. */
+.cu-search { position: relative; }
+.cu-search .cu-input { padding-left: 2.5rem; }
+.cu-search-icon {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: #5a7eb3;
+    pointer-events: none;
+}
+
+/* ---------- Table wrap ---------- */
+
+/* When you keep a real table (dense data, sortable), drop it inside
+   .cu-table-wrap so the outer surface matches other cards. */
+.cu-table-wrap {
+    background: #ffffff;
+    border-radius: 1.5rem;
+    box-shadow:
+        0 2px 8px -2px rgba(27, 58, 107, 0.08),
+        0 1px 3px -1px rgba(27, 58, 107, 0.05),
+        inset 0 0 0 1px rgba(27, 58, 107, 0.06);
+    overflow: hidden;
+}
+.cu-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.cu-table thead th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #3a5f96;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #f4f7fb;
+    border-bottom: 1px solid #e3ebf5;
+}
+.cu-table tbody td {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    color: #0e1b34;
+    border-bottom: 1px solid #f4f7fb;
+}
+.cu-table tbody tr:last-child td { border-bottom: 0; }
+.cu-table tbody tr:hover td { background: #f8fafc; }
+
+/* ---------- Empty state ---------- */
+
+.cu-empty {
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+.cu-empty-icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+    border-radius: 9999px;
+    background: #f4f7fb;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #5a7eb3;
+}
+.cu-empty-title { font-size: 1rem; font-weight: 700; color: #0e1b34; margin-bottom: 0.25rem; }
+.cu-empty-text  { font-size: 0.875rem; color: #3a5f96; max-width: 28rem; margin: 0 auto; }

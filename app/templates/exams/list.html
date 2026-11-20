@@ -3,71 +3,136 @@
 {% block title %}Exams - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
-    <div class="flex items-start justify-between flex-wrap gap-2">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Exams</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">
-                Set exams per class and term. Each exam auto-seeds one paper per subject
-                using the class's grading scale. Finalising an exam pushes the marks into
-                the end-of-term report card.
-            </p>
-        </div>
-        {% if permissions.can_manage_classes() %}
-        <button type="button" onclick="document.getElementById('new-exam-modal').showModal()"
-                class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
-            + New exam
-        </button>
-        {% endif %}
-    </div>
+{# ------ Status counts for the stat row and filter pills ------ #}
+{% set finalized_count = exams | selectattr('status', 'equalto', 'FINALIZED') | list | length %}
+{% set in_progress_count = exams | selectattr('status', 'equalto', 'IN_PROGRESS') | list | length %}
+{% set scheduled_count = exams | selectattr('status', 'equalto', 'SCHEDULED') | list | length %}
+{% set draft_count = exams | selectattr('status', 'equalto', 'DRAFT') | list | length %}
 
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Exam</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Class</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Year / Term</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Grading</th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Papers</th>
-                        <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-neutral-100">
-                    {% if exams %}
-                        {% for e in exams %}
-                        <tr class="hover:bg-neutral-50">
-                            <td class="px-3 py-2 text-neutral-800 font-medium">
-                                <a href="/exams/{{ e.id }}" class="text-primary-700 hover:underline">{{ e.name }}</a>
-                            </td>
-                            <td class="px-3 py-2 text-neutral-600">{{ e.school_class.name if e.school_class else '—' }}</td>
-                            <td class="px-3 py-2 text-neutral-600">{{ e.academic_year }} · Term {{ e.term }}</td>
-                            <td class="px-3 py-2 text-neutral-500 text-xs">{{ e.grading_system.name if e.grading_system else '—' }}</td>
-                            <td class="px-3 py-2">
-                                {% set st_cls = {
-                                    'DRAFT': 'bg-neutral-100 text-neutral-600',
-                                    'SCHEDULED': 'bg-info-100 text-info-600',
-                                    'IN_PROGRESS': 'bg-warning-100 text-warning-700',
-                                    'COMPLETED': 'bg-success-100 text-success-700',
-                                    'FINALIZED': 'bg-primary-100 text-primary-700',
-                                }.get(e.status, 'bg-neutral-100 text-neutral-600') %}
-                                <span class="text-xs font-medium px-2 py-0.5 rounded {{ st_cls }}">{{ e.status }}</span>
-                            </td>
-                            <td class="px-3 py-2 text-right text-neutral-600">{{ e.exam_subjects | length }}</td>
-                            <td class="px-3 py-2 text-right">
-                                <a href="/exams/{{ e.id }}" class="text-xs text-primary-600 hover:underline">Open</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr><td colspan="7" class="text-center text-neutral-400 py-8 text-sm">No exams yet. Click <strong>+ New exam</strong> to create one.</td></tr>
-                    {% endif %}
-                </tbody>
-            </table>
+<div class="space-y-6">
+
+    {# ------ Hero banner ------ #}
+    <section class="cu-hero">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Academic</span>
+                <h1 class="cu-page-title text-white">Exams</h1>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    Set exams per class and term. Each exam auto-seeds one paper per subject
+                    and finalising pushes marks straight into end-of-term report cards.
+                </p>
+            </div>
+            {% if permissions.can_manage_classes() %}
+            <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                <button type="button" onclick="document.getElementById('new-exam-modal').showModal()"
+                        class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    New exam
+                </button>
+            </div>
+            {% endif %}
         </div>
+    </section>
+
+    {# ------ Stat row ------ #}
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Total exams</div>
+            <div class="cu-stat-tile-value">{{ exams | length }}</div>
+            <div class="cu-stat-tile-hint">Across all classes</div>
+        </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Finalised</div>
+            <div class="cu-stat-tile-value">{{ finalized_count }}</div>
+            <div class="cu-stat-tile-hint">Marks in report cards</div>
+        </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">In progress</div>
+            <div class="cu-stat-tile-value">{{ in_progress_count }}</div>
+            <div class="cu-stat-tile-hint">Marks being captured</div>
+        </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Scheduled</div>
+            <div class="cu-stat-tile-value">{{ scheduled_count }}</div>
+            <div class="cu-stat-tile-hint">Upcoming</div>
+        </div>
+    </section>
+
+    {# ------ Filter row ------ #}
+    <section class="flex flex-col md:flex-row md:items-center gap-3">
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 -mb-1 flex-1">
+            <button type="button" class="cu-pill cu-pill-active">All <span class="cu-pill-count">{{ exams | length }}</span></button>
+            <button type="button" class="cu-pill">Scheduled <span class="cu-pill-count">{{ scheduled_count }}</span></button>
+            <button type="button" class="cu-pill">In progress <span class="cu-pill-count">{{ in_progress_count }}</span></button>
+            <button type="button" class="cu-pill">Finalised <span class="cu-pill-count">{{ finalized_count }}</span></button>
+            <button type="button" class="cu-pill">Draft <span class="cu-pill-count">{{ draft_count }}</span></button>
+        </div>
+        <div class="cu-search md:w-72">
+            <svg class="cu-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" placeholder="Search exams…" class="cu-input">
+        </div>
+    </section>
+
+    {# ------ Exams list (table inside a soft card) ------ #}
+    {% if exams %}
+    <div class="cu-table-wrap">
+        <table class="cu-table">
+            <thead>
+                <tr>
+                    <th>Exam</th>
+                    <th>Class</th>
+                    <th>Year / Term</th>
+                    <th>Grading</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Papers</th>
+                    <th style="text-align:right"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set status_map = {
+                    'FINALIZED':   ('cu-status-finalized',  'Finalised'),
+                    'IN_PROGRESS': ('cu-status-progress',   'In progress'),
+                    'SCHEDULED':   ('cu-status-scheduled',  'Scheduled'),
+                    'COMPLETED':   ('cu-status-finalized',  'Completed'),
+                    'DRAFT':       ('cu-status-draft',      'Draft'),
+                } %}
+                {% for e in exams %}
+                {% set cls, label = status_map.get(e.status, ('cu-status-draft', e.status)) %}
+                <tr>
+                    <td>
+                        <a href="/exams/{{ e.id }}" class="font-semibold text-navy-800 hover:text-navy-600">{{ e.name }}</a>
+                    </td>
+                    <td class="text-navy-600">{{ e.school_class.name if e.school_class else '—' }}</td>
+                    <td class="text-navy-600">{{ e.academic_year }} · Term {{ e.term }}</td>
+                    <td class="text-navy-500 text-xs">{{ e.grading_system.name if e.grading_system else '—' }}</td>
+                    <td>
+                        <span class="cu-status {{ cls }}">
+                            <span class="cu-status-dot"></span>
+                            {{ label }}
+                        </span>
+                    </td>
+                    <td style="text-align:right" class="text-navy-700 font-medium">{{ e.exam_subjects | length }}</td>
+                    <td style="text-align:right">
+                        <a href="/exams/{{ e.id }}" class="cu-btn-soft !py-1.5 !px-3 !text-xs">
+                            Open
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+    {% else %}
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        </div>
+        <p class="cu-empty-title">No exams yet</p>
+        <p class="cu-empty-text">Click <strong>+ New exam</strong> above to set one up. Every exam auto-seeds a paper per subject.</p>
+    </div>
+    {% endif %}
+
 </div>
 
 {% if permissions.can_manage_classes() %}
