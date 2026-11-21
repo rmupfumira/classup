@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -80,13 +80,13 @@ class AnnouncementService:
         """Get a single announcement by ID."""
         tenant_id = get_tenant_id()
 
-        result = await db.execute(
-            select(Announcement).where(
-                Announcement.id == announcement_id,
-                Announcement.tenant_id == tenant_id,
-                Announcement.deleted_at.is_(None),
-            )
+        query = select(Announcement).where(
+            Announcement.id == announcement_id,
+            Announcement.tenant_id == tenant_id,
+            Announcement.deleted_at.is_(None),
         )
+        query = await self._scope_to_viewer(db, query)
+        result = await db.execute(query)
         announcement = result.scalar_one_or_none()
 
         if not announcement:
@@ -107,33 +107,12 @@ class AnnouncementService:
     ) -> tuple[list[Announcement], int]:
         """Get paginated announcements with optional filters, scoped by role."""
         tenant_id = get_tenant_id()
-        role = get_current_user_role()
-        user_id = get_current_user_id()
 
         query = select(Announcement).where(
             Announcement.tenant_id == tenant_id,
             Announcement.deleted_at.is_(None),
         )
-
-        # Role-based scoping
-        if role == "TEACHER":
-            # Teachers see SCHOOL-level + their assigned classes
-            teacher_class_ids = await self._get_teacher_class_ids(db, user_id)
-            query = query.where(
-                or_(
-                    Announcement.level == "SCHOOL",
-                    Announcement.class_id.in_(teacher_class_ids) if teacher_class_ids else False,
-                )
-            )
-        elif role == "PARENT":
-            # Parents see SCHOOL-level + their children's classes
-            parent_class_ids = await self._get_parent_class_ids(db, user_id)
-            query = query.where(
-                or_(
-                    Announcement.level == "SCHOOL",
-                    Announcement.class_id.in_(parent_class_ids) if parent_class_ids else False,
-                )
-            )
+        query = await self._scope_to_viewer(db, query)
 
         # Apply filters
         if level:
@@ -165,6 +144,23 @@ class AnnouncementService:
         announcements = list(result.scalars().all())
 
         return announcements, total
+
+    async def _scope_to_viewer(self, db: AsyncSession, query):
+        """Teachers: SCHOOL-level + their classes. Parents: SCHOOL-level +
+        their children's classes. Admins: unrestricted."""
+        role = get_current_user_role()
+        if role == "TEACHER":
+            class_ids = await self._get_teacher_class_ids(db, get_current_user_id())
+        elif role == "PARENT":
+            class_ids = await self._get_parent_class_ids(db, get_current_user_id())
+        else:
+            return query
+        return query.where(
+            or_(
+                Announcement.level == "SCHOOL",
+                Announcement.class_id.in_(class_ids) if class_ids else false(),
+            )
+        )
 
     async def get_active_announcements(
         self,

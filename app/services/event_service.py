@@ -67,7 +67,9 @@ async def resolve_audience(
             .join(Student, Student.id == ParentStudent.student_id)
             .where(
                 Student.class_id == event.class_id,
+                Student.tenant_id == event.tenant_id,
                 Student.deleted_at.is_(None),
+                User.tenant_id == event.tenant_id,
                 User.is_active.is_(True),
                 User.deleted_at.is_(None),
                 User.role == "PARENT",
@@ -80,6 +82,7 @@ async def resolve_audience(
             .join(ParentStudent, ParentStudent.parent_id == User.id)
             .where(
                 ParentStudent.student_id == event.student_id,
+                User.tenant_id == event.tenant_id,
                 User.is_active.is_(True),
                 User.deleted_at.is_(None),
                 User.role == "PARENT",
@@ -255,11 +258,14 @@ async def list_events(
     upcoming_only: bool = False,
     limit: int = 100,
     offset: int = 0,
+    teacher_id: uuid.UUID | None = None,
 ) -> list[SchoolEvent]:
     stmt = select(SchoolEvent).where(
         SchoolEvent.tenant_id == tenant_id,
         SchoolEvent.deleted_at.is_(None),
     )
+    if teacher_id is not None:
+        stmt = stmt.where(_teacher_visible_condition(teacher_id))
     if upcoming_only:
         stmt = stmt.where(
             or_(
@@ -343,6 +349,62 @@ async def get_event(
         SchoolEvent.deleted_at.is_(None),
     )
     return (await db.execute(stmt)).scalars().unique().first()
+
+
+def _teacher_visible_condition(teacher_id: uuid.UUID):
+    """SCHOOL events, CLASS / STUDENT events for the teacher's own classes
+    (general class teacher only), and anything the teacher created."""
+    from app.utils.access_scope import teacher_class_ids
+
+    own_classes = teacher_class_ids(teacher_id)
+    return or_(
+        SchoolEvent.scope == EventScope.SCHOOL.value,
+        SchoolEvent.created_by == teacher_id,
+        and_(
+            SchoolEvent.scope == EventScope.CLASS.value,
+            SchoolEvent.class_id.in_(own_classes),
+        ),
+        and_(
+            SchoolEvent.scope == EventScope.STUDENT.value,
+            SchoolEvent.student_id.in_(
+                select(Student.id).where(Student.class_id.in_(own_classes))
+            ),
+        ),
+    )
+
+
+async def teacher_can_see_event(
+    db: AsyncSession, event: SchoolEvent, teacher_id: uuid.UUID,
+) -> bool:
+    """Single-event form of the teacher visibility rule."""
+    hit = await db.execute(
+        select(SchoolEvent.id).where(
+            SchoolEvent.id == event.id, _teacher_visible_condition(teacher_id),
+        )
+    )
+    return hit.first() is not None
+
+
+async def parent_can_see_event(
+    db: AsyncSession, event: SchoolEvent, parent_id: uuid.UUID,
+) -> bool:
+    """Same audience rule as ``list_events_for_parent`` for one event."""
+    if event.scope == EventScope.SCHOOL.value:
+        return True
+    rows = (await db.execute(
+        select(Student.id, Student.class_id)
+        .join(ParentStudent, ParentStudent.student_id == Student.id)
+        .where(
+            ParentStudent.parent_id == parent_id,
+            Student.tenant_id == event.tenant_id,
+            Student.deleted_at.is_(None),
+        )
+    )).all()
+    if event.scope == EventScope.CLASS.value:
+        return event.class_id is not None and any(r[1] == event.class_id for r in rows)
+    if event.scope == EventScope.STUDENT.value:
+        return event.student_id is not None and any(r[0] == event.student_id for r in rows)
+    return False
 
 
 async def cancel_event(

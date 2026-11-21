@@ -15,6 +15,7 @@ from app.schemas.school_class import (
     SchoolClassCreate,
     SchoolClassUpdate,
 )
+from app.utils.access_scope import teacher_class_ids
 from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 
@@ -128,6 +129,8 @@ class ClassService:
                 selectinload(SchoolClass.grade_level_rel),
             )
         )
+        if get_current_user_role() == Role.TEACHER.value:
+            query = query.where(SchoolClass.id.in_(teacher_class_ids(get_current_user_id())))
 
         result = await db.execute(query)
         school_class = result.scalar_one_or_none()

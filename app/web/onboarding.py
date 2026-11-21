@@ -5,12 +5,26 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.exceptions import ForbiddenException
 from app.services.auth_service import get_auth_service
 from app.services.onboarding_service import get_onboarding_service
 from app.templates_config import templates
 from app.utils.tenant_context import get_current_user_id_or_none, get_current_user_role
 
-router = APIRouter(prefix="/onboarding", tags=["onboarding"])
+
+
+def _require_school_admin() -> None:
+    """The wizard edits tenant-wide settings: school admins only.
+    Unauthenticated requests fall through so each route can redirect to login."""
+    role = get_current_user_role()
+    if role is not None and role not in ("SCHOOL_ADMIN", "SUPER_ADMIN"):
+        raise ForbiddenException("Only school admins can run onboarding")
+
+
+router = APIRouter(
+    prefix="/onboarding", tags=["onboarding"],
+    dependencies=[Depends(_require_school_admin)],
+)
 
 
 @router.get("", response_class=HTMLResponse)

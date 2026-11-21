@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import ParentInvitation, Student, Tenant, User
+from app.utils.access_scope import scope_to_viewer
 from app.utils.tenant_context import get_current_user_id, get_tenant_id
 
 logger = logging.getLogger(__name__)
@@ -48,15 +49,16 @@ class InvitationService:
         tenant_id = get_tenant_id()
         user_id = get_current_user_id()
 
-        # Verify student exists and belongs to tenant (tenant-scoped query)
-        result = await db.execute(
+        # Verify student exists, belongs to tenant and (for teachers) is in their class
+        result = await db.execute(scope_to_viewer(
             select(Student).where(
                 and_(
                     Student.id == student_id,
                     Student.tenant_id == tenant_id,
                 )
-            )
-        )
+            ),
+            student_col=Student.id, class_col=Student.class_id,
+        ))
         student = result.scalar_one_or_none()
         if not student:
             raise ValueError("Student not found")
@@ -118,14 +120,15 @@ class InvitationService:
         """Get an invitation by ID."""
         tenant_id = get_tenant_id()
 
-        result = await db.execute(
+        result = await db.execute(scope_to_viewer(
             select(ParentInvitation).where(
                 and_(
                     ParentInvitation.id == invitation_id,
                     ParentInvitation.tenant_id == tenant_id,
                 )
-            )
-        )
+            ),
+            student_col=ParentInvitation.student_id,
+        ))
         return result.scalar_one_or_none()
 
     async def get_invitation_by_code(
@@ -263,7 +266,10 @@ class InvitationService:
         """List invitations with optional filters."""
         tenant_id = get_tenant_id()
 
-        query = select(ParentInvitation).where(ParentInvitation.tenant_id == tenant_id)
+        query = scope_to_viewer(
+            select(ParentInvitation).where(ParentInvitation.tenant_id == tenant_id),
+            student_col=ParentInvitation.student_id,
+        )
 
         if status:
             query = query.where(ParentInvitation.status == status)

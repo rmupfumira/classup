@@ -90,8 +90,13 @@ async def create_invitation(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new parent invitation."""
+    from app.services.student_service import get_student_service
+
     service = get_invitation_service()
     email_service = get_email_service()
+
+    # Student must be on this tenant (and, for teachers, in their class)
+    await get_student_service().get_student(db, data.student_id)
 
     try:
         # Check if a parent with this email already exists in the tenant

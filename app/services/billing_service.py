@@ -17,7 +17,7 @@ from app.models.billing import (
     InvoiceStatus,
 )
 from app.models.student import ParentStudent, Student
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.billing import (
     BillingSummary,
     ChildBalance,
@@ -30,9 +30,33 @@ from app.schemas.billing import (
     StatementEntry,
     StudentStatement,
 )
-from app.utils.tenant_context import get_current_user_id, get_tenant_id
+from app.utils.access_scope import parent_student_ids
+from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 logger = logging.getLogger(__name__)
+
+
+def _parent_viewer_id() -> uuid.UUID | None:
+    """Return the parent's user id when a PARENT is the viewer; raise
+    not-found for teachers (billing is admin + own-children only)."""
+    role = get_current_user_role()
+    if role == Role.TEACHER.value:
+        raise NotFoundException("Not found")
+    return get_current_user_id() if role == Role.PARENT.value else None
+
+
+async def _ensure_parent_owns_student(db: AsyncSession, student_id: uuid.UUID) -> bool:
+    """For a PARENT viewer, 404 unless the student is their child.
+    Returns True when the viewer is a parent (so drafts must be hidden)."""
+    parent_id = _parent_viewer_id()
+    if parent_id is None:
+        return False
+    linked = (await db.execute(
+        parent_student_ids(parent_id).where(ParentStudent.student_id == student_id)
+    )).first()
+    if linked is None:
+        raise NotFoundException("Student not found")
+    return True
 
 
 class BillingService:
@@ -210,6 +234,12 @@ class BillingService:
             BillingInvoice.tenant_id == tenant_id,
             BillingInvoice.deleted_at.is_(None),
         )
+        parent_id = _parent_viewer_id()
+        if parent_id is not None:
+            query = query.where(
+                BillingInvoice.student_id.in_(parent_student_ids(parent_id)),
+                BillingInvoice.status != InvoiceStatus.DRAFT.value,
+            )
         result = await db.execute(query)
         invoice = result.scalar_one_or_none()
         if not invoice:
@@ -865,6 +895,7 @@ class BillingService:
     ) -> StudentStatement:
         """Build a chronological statement for a student."""
         tenant_id = get_tenant_id()
+        hide_drafts = await _ensure_parent_owns_student(db, student_id)
 
         # Get student
         student = (
@@ -886,6 +917,8 @@ class BillingService:
             BillingInvoice.deleted_at.is_(None),
             BillingInvoice.status != InvoiceStatus.CANCELLED.value,
         )
+        if hide_drafts:
+            invoices_q = invoices_q.where(BillingInvoice.status != InvoiceStatus.DRAFT.value)
         invoices = list((await db.execute(invoices_q)).scalars().unique().all())
 
         # Get all payments
@@ -956,6 +989,7 @@ class BillingService:
     ) -> dict:
         """Get current balance for a student."""
         tenant_id = get_tenant_id()
+        hide_drafts = await _ensure_parent_owns_student(db, student_id)
 
         total_q = select(func.coalesce(func.sum(BillingInvoice.total_amount), 0)).where(
             BillingInvoice.tenant_id == tenant_id,
@@ -963,6 +997,8 @@ class BillingService:
             BillingInvoice.deleted_at.is_(None),
             BillingInvoice.status != InvoiceStatus.CANCELLED.value,
         )
+        if hide_drafts:
+            total_q = total_q.where(BillingInvoice.status != InvoiceStatus.DRAFT.value)
         total_invoiced = Decimal(str((await db.execute(total_q)).scalar() or 0))
 
         paid_q = select(func.coalesce(func.sum(BillingPayment.amount), 0)).where(
@@ -1382,8 +1418,10 @@ class BillingService:
         parent_id: uuid.UUID,
         page: int = 1,
         page_size: int = 20,
+        student_id: uuid.UUID | None = None,
     ) -> tuple[list[BillingInvoice], int]:
-        """Get invoices for a parent's children (non-draft only)."""
+        """Get invoices for a parent's children (non-draft only), optionally
+        narrowed to one child — a non-child student_id yields nothing."""
         tenant_id = get_tenant_id()
 
         query = (
@@ -1396,6 +1434,8 @@ class BillingService:
                 BillingInvoice.status != InvoiceStatus.DRAFT.value,
             )
         )
+        if student_id:
+            query = query.where(BillingInvoice.student_id == student_id)
 
         count_query = select(func.count()).select_from(query.subquery())
         total = (await db.execute(count_query)).scalar() or 0
@@ -1505,6 +1545,8 @@ class BillingService:
                 tenant_email=tenant.email,
                 banking_details=banking_details,
                 payment_instructions=payment_instructions,
+                amount_paid=invoice.amount_paid,
+                balance_due=invoice.balance,
             )
             attachments = [
                 {

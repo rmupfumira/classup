@@ -25,7 +25,8 @@ from app.config import settings
 from app.exceptions import ForbiddenException, NotFoundException, ValidationException
 from app.models import FileEntity, User
 from app.models.file_entity import FileCategory
-from app.utils.tenant_context import get_current_user_id, get_tenant_id
+from app.models.user import Role
+from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 logger = logging.getLogger(__name__)
 
@@ -286,10 +287,54 @@ class FileService:
         result = await db.execute(query)
         file_entity = result.scalar_one_or_none()
 
-        if not file_entity:
+        if not file_entity or not await self._can_view_file(db, file_entity):
             raise NotFoundException("File")
 
         return file_entity
+
+    async def _can_view_file(self, db: AsyncSession, file_entity: FileEntity) -> bool:
+        """Teachers / parents may only reach a file through something they
+        can already see: their own upload, a visible photo or document
+        share, or a message thread they take part in."""
+        role = get_current_user_role()
+        if role not in (Role.TEACHER.value, Role.PARENT.value):
+            return True
+        user_id = get_current_user_id()
+        if file_entity.uploaded_by == user_id:
+            return True
+
+        from app.models.document_share import DocumentShareFile
+        from app.models.message import Message, MessageAttachment
+        from app.models.photo_share import PhotoShareFile
+        from app.services.document_service import get_document_service
+        from app.services.message_service import get_message_service
+        from app.services.photo_service import get_photo_service
+
+        fid = file_entity.id
+        checks = (
+            (select(PhotoShareFile.photo_share_id).where(PhotoShareFile.file_entity_id == fid),
+             get_photo_service().get_photo_share),
+            (select(DocumentShareFile.document_share_id).where(DocumentShareFile.file_entity_id == fid),
+             get_document_service().get_document_share),
+        )
+        for share_ids_q, get_share in checks:
+            for share_id in (await db.execute(share_ids_q)).scalars().all():
+                try:
+                    await get_share(db, share_id)
+                    return True
+                except (ForbiddenException, NotFoundException):
+                    continue
+
+        thread_ids = (await db.execute(
+            select(func.coalesce(Message.parent_message_id, Message.id))
+            .join(MessageAttachment, MessageAttachment.message_id == Message.id)
+            .where(MessageAttachment.file_entity_id == fid)
+        )).scalars().all()
+        message_service = get_message_service()
+        for thread_id in thread_ids:
+            if await message_service._is_thread_participant(db, thread_id, user_id):
+                return True
+        return False
 
     async def get_files(
         self,
@@ -309,6 +354,9 @@ class FileService:
             )
             .options(selectinload(FileEntity.uploader))
         )
+
+        if get_current_user_role() == Role.TEACHER.value:
+            query = query.where(FileEntity.uploaded_by == get_current_user_id())
 
         if category:
             query = query.where(FileEntity.file_category == category.value)
@@ -443,13 +491,51 @@ class FileService:
 
         file_entity = await self.get_file(db, file_id)
 
-        # Check permissions (only uploader or admin can delete)
+        # Uploaders may delete their own files; school admins may delete
+        # anyone's in their tenant, and every such delete is audited.
+        role = get_current_user_role()
         if file_entity.uploaded_by != user_id:
-            # TODO: Check if user is admin
-            raise ForbiddenException("You can only delete files you uploaded")
+            if role not in (Role.SCHOOL_ADMIN.value, Role.SUPER_ADMIN.value):
+                raise ForbiddenException("You can only delete files you uploaded")
+            await self._audit_admin_delete(db, file_entity, user_id, role, tenant_id)
 
         file_entity.deleted_at = datetime.utcnow()
         return True
+
+    async def _audit_admin_delete(
+        self,
+        db: AsyncSession,
+        file_entity: FileEntity,
+        actor_id: uuid.UUID,
+        actor_role: str | None,
+        tenant_id: uuid.UUID,
+    ) -> None:
+        """Explicit audit row for an admin deleting someone else's file."""
+        from app.models import Tenant
+        from app.services.audit_service import get_audit_service
+
+        actor = await db.get(User, actor_id)
+        tenant = await db.get(Tenant, tenant_id)
+        await get_audit_service().log_event(
+            db,
+            action="files.delete_others",
+            user_id=actor_id,
+            user_email=actor.email if actor else None,
+            user_name=f"{actor.first_name} {actor.last_name}".strip() if actor else None,
+            user_role=actor_role,
+            tenant_id=tenant_id,
+            tenant_name=tenant.name if tenant else None,
+            resource_type="file",
+            resource_id=str(file_entity.id),
+            method="DELETE",
+            details={
+                "file_id": str(file_entity.id),
+                "original_name": file_entity.original_name,
+                "uploaded_by": str(file_entity.uploaded_by),
+                "deleted_by": str(actor_id),
+                "tenant_id": str(tenant_id),
+            },
+        )
 
     async def _validate_file(
         self,

@@ -22,6 +22,7 @@ from app.schemas.attendance import (
     BulkAttendanceResponse,
     StudentAttendanceSummary,
 )
+from app.utils.access_scope import scope_to_viewer, teacher_class_ids
 from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 logger = logging.getLogger(__name__)
@@ -43,8 +44,6 @@ class AttendanceService:
     ) -> tuple[list[AttendanceRecord], int]:
         """Get attendance records with optional filters."""
         tenant_id = get_tenant_id()
-        role = get_current_user_role()
-        user_id = get_current_user_id()
 
         query = (
             select(AttendanceRecord)
@@ -56,10 +55,10 @@ class AttendanceService:
             )
         )
 
-        # Teachers only see attendance for their assigned classes
-        if role == Role.TEACHER.value:
-            subquery = select(TeacherClass.class_id).where(TeacherClass.teacher_id == user_id)
-            query = query.where(AttendanceRecord.class_id.in_(subquery))
+        # Teachers: own classes. Parents: own children.
+        query = scope_to_viewer(
+            query, student_col=AttendanceRecord.student_id, class_col=AttendanceRecord.class_id,
+        )
 
         # Apply filters
         if class_id:
@@ -105,6 +104,9 @@ class AttendanceService:
                 selectinload(AttendanceRecord.school_class),
                 selectinload(AttendanceRecord.recorded_by_user),
             )
+        )
+        query = scope_to_viewer(
+            query, student_col=AttendanceRecord.student_id, class_col=AttendanceRecord.class_id,
         )
 
         result = await db.execute(query)
@@ -270,12 +272,14 @@ class AttendanceService:
         student_ids = [r.student_id for r in data.records]
         students_by_id: dict = {}
         if student_ids:
-            rows = (await db.execute(
+            rows = (await db.execute(scope_to_viewer(
                 select(Student).where(
                     Student.id.in_(student_ids),
                     Student.tenant_id == tenant_id,
-                )
-            )).scalars().all()
+                    Student.deleted_at.is_(None),
+                ),
+                student_col=Student.id, class_col=Student.class_id,
+            ))).scalars().all()
             students_by_id = {s.id: s for s in rows}
 
         success_count = 0
@@ -287,9 +291,9 @@ class AttendanceService:
             try:
                 # Per-student weekend check.
                 student = students_by_id.get(record_data.student_id)
-                residence = (
-                    student.effective_residence(school_type) if student else "DAY"
-                )
+                if student is None:
+                    raise NotFoundException("Student")
+                residence = student.effective_residence(school_type)
                 self._validate_attendance_date(data.date, residence=residence)
 
                 # Check for existing record
@@ -538,6 +542,9 @@ class AttendanceService:
             AttendanceRecord.tenant_id == tenant_id,
             AttendanceRecord.date >= date_from,
             AttendanceRecord.date <= date_to,
+        )
+        query = scope_to_viewer(
+            query, student_col=AttendanceRecord.student_id, class_col=AttendanceRecord.class_id,
         )
 
         if class_id:
@@ -864,6 +871,7 @@ class AttendanceService:
             Student.tenant_id == tenant_id,
             Student.deleted_at.is_(None),
         )
+        query = scope_to_viewer(query, student_col=Student.id, class_col=Student.class_id)
         result = await db.execute(query)
         student = result.scalar_one_or_none()
 
@@ -881,6 +889,8 @@ class AttendanceService:
             SchoolClass.tenant_id == tenant_id,
             SchoolClass.deleted_at.is_(None),
         )
+        if get_current_user_role() == Role.TEACHER.value:
+            query = query.where(SchoolClass.id.in_(teacher_class_ids(get_current_user_id())))
         result = await db.execute(query)
         school_class = result.scalar_one_or_none()
 

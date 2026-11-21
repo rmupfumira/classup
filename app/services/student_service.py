@@ -21,6 +21,7 @@ from app.schemas.student import (
     StudentCreate,
     StudentUpdate,
 )
+from app.utils.access_scope import scope_to_viewer, teacher_class_ids
 from app.utils.tenant_context import get_current_user_id, get_current_user_role, get_tenant_id
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,7 @@ class StudentService:
                 selectinload(Student.parent_students).selectinload(ParentStudent.parent),
             )
         )
+        query = scope_to_viewer(query, student_col=Student.id, class_col=Student.class_id)
 
         result = await db.execute(query)
         student = result.scalar_one_or_none()
@@ -142,6 +144,7 @@ class StudentService:
         # Validate class belongs to tenant if provided
         if data.class_id:
             await self._validate_class(db, data.class_id)
+        await self._ensure_teacher_may_place(db, data.class_id)
 
         student = Student(
             tenant_id=tenant_id,
@@ -502,8 +505,6 @@ class StudentService:
         403, not a 404 (leaking "this student exists elsewhere" would
         be worse).
         """
-        student = await self.get_student(db, student_id)
-
         # Verify the parent has permission to touch this child.
         link_stmt = select(ParentStudent).where(
             ParentStudent.parent_id == parent_user_id,
@@ -514,6 +515,8 @@ class StudentService:
             raise ForbiddenException(
                 "You can only update medical info for children linked to your account."
             )
+
+        student = await self.get_student(db, student_id)
 
         update_data = data.model_dump(exclude_unset=True)
         if "emergency_contacts" in update_data and update_data["emergency_contacts"]:
@@ -541,6 +544,8 @@ class StudentService:
         # Validate class belongs to tenant if provided
         if data.class_id:
             await self._validate_class(db, data.class_id)
+        if "class_id" in data.model_fields_set:
+            await self._ensure_teacher_may_place(db, data.class_id)
 
         # Update fields
         update_data = data.model_dump(exclude_unset=True)
@@ -1157,6 +1162,21 @@ class StudentService:
 
         result = await db.execute(query)
         return list(result.scalars().all())
+
+    async def _ensure_teacher_may_place(
+        self, db: AsyncSession, class_id: uuid.UUID | None,
+    ) -> None:
+        """Teachers may only place students in (or move them between)
+        classes they teach; admins are unrestricted."""
+        if get_current_user_role() != Role.TEACHER.value:
+            return
+        if class_id is not None:
+            owned = (await db.execute(
+                teacher_class_ids(get_current_user_id()).where(TeacherClass.class_id == class_id)
+            )).first()
+            if owned is not None:
+                return
+        raise ForbiddenException("Teachers can only place students in their own classes")
 
     async def _validate_class(
         self,

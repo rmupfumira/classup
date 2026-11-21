@@ -136,6 +136,9 @@ async def world(db: AsyncSession):
     }
 
     from sqlalchemy import text as _text
+    # Release the test session's uncommitted row locks first, otherwise
+    # the cascade delete on a separate connection waits on them forever.
+    await db.rollback()
     async with db.bind.connect() as conn:
         await conn.execute(_text("DELETE FROM tenants WHERE id = :id"), {"id": tid})
         await conn.commit()

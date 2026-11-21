@@ -338,6 +338,10 @@ class ImportService:
             if school_class:
                 class_id = school_class.id
 
+        # Teachers (enrollment upload) may only place students in their own classes
+        from app.services.student_service import get_student_service
+        await get_student_service()._ensure_teacher_may_place(db, class_id)
+
         # Build emergency contacts
         emergency_contacts = []
         ec_name = get_val("emergency_contact_name")

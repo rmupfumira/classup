@@ -32,6 +32,29 @@ async def _tenant_name(db: AsyncSession) -> str:
     return t.name if t else "School"
 
 
+async def _ensure_teacher_class_scope(
+    db: AsyncSession, class_id: uuid.UUID | None, scope: str = "CLASS",
+) -> None:
+    """Teachers only get MIS data for one of their own classes; school-
+    or grade-wide views (and calls without a class) are admin-only."""
+    from app.exceptions import ForbiddenException
+    from app.services.class_service import get_class_service
+    from app.utils.tenant_context import get_current_user_role
+
+    if get_current_user_role() != Role.TEACHER.value:
+        return
+    if class_id is None or scope != "CLASS":
+        raise ForbiddenException("Teachers can only view analytics for one of their own classes")
+    await get_class_service().get_class(db, class_id)
+
+
+async def _ensure_student_visible(db: AsyncSession, student_id: uuid.UUID) -> None:
+    """404 unless the student is on this tenant (and, for teachers, in their class)."""
+    from app.services.student_service import get_student_service
+
+    await get_student_service().get_student(db, student_id)
+
+
 def _xlsx_response(data: bytes, filename: str) -> StreamingResponse:
     return StreamingResponse(
         iter([data]),
@@ -56,6 +79,7 @@ async def kpi_summary(
     Thresholds are per-call parameters so Phase 5's rules engine can
     override them without an API change.
     """
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().kpi_summary(
         db, from_date=from_date, to_date=to_date, class_id=class_id,
         at_risk_avg_threshold=avg_threshold,
@@ -78,6 +102,7 @@ async def subject_performance(
     grading scale. Powers the Subject Performance page in Phase 2 and
     the grade distribution histogram in Phase 3.
     """
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().subject_performance(
         db, from_date=from_date, to_date=to_date, class_id=class_id,
     )
@@ -96,6 +121,7 @@ async def grade_distribution(
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse:
     """Histogram + bell-curve parameters for marks in the window."""
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().grade_distribution(
         db, from_date=from_date, to_date=to_date,
         class_id=class_id, subject_id=subject_id, bin_size=bin_size,
@@ -116,6 +142,7 @@ async def merit_list(
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse:
     """Ranked student list — competition-style ties (1,1,3)."""
+    await _ensure_teacher_class_scope(db, class_id, scope)
     data = await get_mis_service().merit_list(
         db, from_date=from_date, to_date=to_date, scope=scope,
         class_id=class_id, grade_level_id=grade_level_id, top_n=top_n,
@@ -135,6 +162,7 @@ async def student_longitudinal(
     """Full term-by-term trend for one student — aggregate % per term,
     per-subject movement, class rank + rank delta, strengths and
     weaknesses."""
+    await _ensure_student_visible(db, student_id)
     data = await get_mis_service().student_longitudinal(
         db, student_id=student_id,
         from_date=from_date, to_date=to_date,
@@ -153,6 +181,7 @@ async def student_progress(
 ) -> APIResponse:
     """Current-vs-previous-term summary + attendance for one student.
     Shorter than the longitudinal view — same data condensed."""
+    await _ensure_student_visible(db, student_id)
     data = await get_mis_service().student_progress(
         db, student_id=student_id,
         from_date=from_date, to_date=to_date,
@@ -218,6 +247,7 @@ async def scan_early_warning(
 ) -> APIResponse:
     """Run the scanner and return every student the rules flagged,
     worst-level first, with their triggered-rule breakdown."""
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().scan_at_risk_students(
         db, from_date=from_date, to_date=to_date, class_id=class_id,
     )
@@ -239,6 +269,7 @@ async def export_kpis_xlsx(
     _feat: None = Depends(require_feature("mis")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().kpi_summary(
         db, from_date=from_date, to_date=to_date, class_id=class_id,
     )
@@ -255,6 +286,7 @@ async def export_subject_perf_xlsx(
     _feat: None = Depends(require_feature("mis")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().subject_performance(
         db, from_date=from_date, to_date=to_date, class_id=class_id,
     )
@@ -273,6 +305,7 @@ async def export_distribution_xlsx(
     _feat: None = Depends(require_feature("mis")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().grade_distribution(
         db, from_date=from_date, to_date=to_date,
         class_id=class_id, subject_id=subject_id, bin_size=bin_size,
@@ -293,6 +326,7 @@ async def export_merit_xlsx(
     _feat: None = Depends(require_feature("mis")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _ensure_teacher_class_scope(db, class_id, scope)
     data = await get_mis_service().merit_list(
         db, from_date=from_date, to_date=to_date, scope=scope,
         class_id=class_id, grade_level_id=grade_level_id, top_n=top_n,
@@ -310,6 +344,7 @@ async def export_longitudinal_xlsx(
     _feat: None = Depends(require_feature("mis")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _ensure_student_visible(db, student_id)
     data = await get_mis_service().student_longitudinal(
         db, student_id=student_id,
         from_date=from_date, to_date=to_date,
@@ -328,6 +363,7 @@ async def export_early_warning_xlsx(
     _feat: None = Depends(require_feature("mis")),
     db: AsyncSession = Depends(get_db),
 ):
+    await _ensure_teacher_class_scope(db, class_id)
     data = await get_mis_service().scan_at_risk_students(
         db, from_date=from_date, to_date=to_date, class_id=class_id,
     )

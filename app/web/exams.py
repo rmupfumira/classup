@@ -149,7 +149,9 @@ async def exam_detail(
     if redirect:
         return redirect
     user, tenant = ctx
-    exam = await get_exam_service().get_exam(db, exam_id)
+    svc = get_exam_service()
+    exam = await svc.get_exam(db, exam_id)
+    markable = {str(pid) for pid in await svc.markable_paper_ids(db, exam)}
 
     return templates.TemplateResponse(
         "exams/detail.html",
@@ -158,6 +160,7 @@ async def exam_detail(
             "user": user,
             "tenant": tenant,
             "exam": exam,
+            "markable_paper_ids": markable,
             "permissions": PermissionChecker(user.role),
             "current_language": get_current_language(),
         },
@@ -183,6 +186,8 @@ async def mark_paper(
     )
     if exam_subject is None:
         raise ForbiddenException("Paper not in this exam.")
+    # Subject teachers only mark their own subject's papers.
+    await get_exam_service()._get_visible_exam_subject(db, exam_subject_id)
 
     students = (await db.execute(
         select(Student).where(

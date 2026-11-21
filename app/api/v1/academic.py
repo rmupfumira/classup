@@ -14,6 +14,13 @@ from app.utils.permissions import require_role
 router = APIRouter()
 
 
+async def _ensure_class_visible(db: AsyncSession, class_id: uuid.UUID) -> None:
+    """404 unless the class is on this tenant (and, for teachers, theirs)."""
+    from app.services.class_service import get_class_service
+
+    await get_class_service().get_class(db, class_id)
+
+
 # ==================== SCHEMAS ====================
 
 
@@ -441,6 +448,7 @@ async def list_class_subjects(
     db: AsyncSession = Depends(get_db),
 ):
     """List all subjects assigned to a class."""
+    await _ensure_class_visible(db, class_id)
     service = get_academic_service()
     class_subjects = await service.get_class_subjects(db, class_id)
 
@@ -471,7 +479,9 @@ async def assign_subject_to_class(
     db: AsyncSession = Depends(get_db),
 ):
     """Assign a subject to a class."""
+    await _ensure_class_visible(db, class_id)
     service = get_academic_service()
+    await service._ensure_subject_on_tenant(db, data.subject_id)
     try:
         class_subject = await service.assign_subject_to_class(
             db,
@@ -506,6 +516,7 @@ async def update_class_subject(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a class-subject assignment."""
+    await _ensure_class_visible(db, class_id)
     service = get_academic_service()
 
     # Find the class_subject by class_id and subject_id
@@ -541,6 +552,7 @@ async def remove_subject_from_class(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a subject from a class."""
+    await _ensure_class_visible(db, class_id)
     service = get_academic_service()
     success = await service.remove_subject_from_class(db, class_id, subject_id)
     if not success:
@@ -560,7 +572,10 @@ async def bulk_assign_subjects(
     db: AsyncSession = Depends(get_db),
 ):
     """Assign multiple subjects to a class at once."""
+    await _ensure_class_visible(db, class_id)
     service = get_academic_service()
+    for subject_id in subject_ids:
+        await service._ensure_subject_on_tenant(db, subject_id)
     created = await service.bulk_assign_subjects_to_class(db, class_id, subject_ids)
 
     return {
@@ -594,6 +609,7 @@ async def list_subject_teachers(
     db: AsyncSession = Depends(get_db),
 ):
     """Teachers currently assigned to this subject in this class."""
+    await _ensure_class_visible(db, class_id)
     service = get_academic_service()
     teachers = await service.get_teachers_for_class_subject(db, class_id, subject_id)
     return {
@@ -1001,8 +1017,10 @@ async def preview_term_summary(
     endpoint shows them what will auto-fill before they save.
     """
     from app.services import academic_terms as _terms
+    from app.services.student_service import get_student_service
     from app.utils.tenant_context import get_tenant_id
 
+    await get_student_service().get_student(db, student_id)
     summary = await _terms.term_report_context(
         db, get_tenant_id(), student_id, term_id,
     )
@@ -1143,6 +1161,7 @@ async def get_class_grading_system(
     Includes a flag so the UI knows whether the admin pinned it."""
     from app.models.school_class import SchoolClass
 
+    await _ensure_class_visible(db, class_id)
     svc = get_academic_service()
     klass = await db.get(SchoolClass, class_id)
     pinned = bool(klass and klass.grading_system_id)

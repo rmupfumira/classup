@@ -414,6 +414,7 @@ class MisService:
         from_date: date,
         to_date: date,
         threshold_pct: float = 80.0,
+        class_id: uuid.UUID | None = None,
     ) -> list[dict]:
         """Students whose attendance rate is below ``threshold_pct``.
 
@@ -448,6 +449,8 @@ class MisService:
                 SchoolClass.name,
             )
         )
+        if class_id:
+            stmt = stmt.where(AttendanceRecord.class_id == class_id)
         rows = (await db.execute(stmt)).all()
         out: list[dict] = []
         for sid, fn, ln, cname, total, attended in rows:
@@ -552,6 +555,7 @@ class MisService:
         attendance = await self.attendance_stats(db, from_date, to_date, class_id)
         chronic = await self.chronic_absenteeism(
             db, from_date, to_date, threshold_pct=at_risk_attendance_threshold,
+            class_id=class_id,
         )
 
         # At-risk = low average OR chronic absenteeism (union, not AND).

@@ -97,6 +97,10 @@ class MessageService:
         root = root_msg.scalar_one_or_none()
         if not root:
             raise ValueError("Thread not found")
+        if role not in ("SUPER_ADMIN", "SCHOOL_ADMIN") and not await self._is_thread_participant(
+            db, thread_id, sender_id,
+        ):
+            raise ValueError("Thread not found")
 
         # Determine the other user (whoever isn't the current sender)
         if root.sender_id == sender_id:
@@ -324,6 +328,7 @@ class MessageService:
         Also marks unread messages as read for the current user.
         """
         tenant_id = get_tenant_id()
+        await self._get_visible_thread_root(db, thread_id)
 
         # All messages in this thread (root + replies)
         query = (
@@ -616,6 +621,49 @@ class MessageService:
         return result
 
     # ============== Private Helpers ==============
+
+    async def _is_thread_participant(
+        self,
+        db: AsyncSession,
+        thread_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> bool:
+        """True if the user sent or received any message in the thread."""
+        in_thread = or_(Message.id == thread_id, Message.parent_message_id == thread_id)
+        hit = await db.execute(
+            select(Message.id)
+            .outerjoin(MessageRecipient, MessageRecipient.message_id == Message.id)
+            .where(
+                in_thread,
+                or_(Message.sender_id == user_id, MessageRecipient.user_id == user_id),
+            )
+            .limit(1)
+        )
+        return hit.first() is not None
+
+    async def _get_visible_thread_root(
+        self,
+        db: AsyncSession,
+        thread_id: uuid.UUID,
+    ) -> Message:
+        """Load a thread's root message, 404ing unless it's on this
+        tenant and (for non-admins) the current user is a participant."""
+        from app.exceptions import NotFoundException
+
+        root = (await db.execute(
+            select(Message).where(
+                Message.id == thread_id,
+                Message.tenant_id == get_tenant_id(),
+                Message.deleted_at.is_(None),
+                Message.parent_message_id.is_(None),
+            )
+        )).scalar_one_or_none()
+        if root is None:
+            raise NotFoundException("Thread")
+        if get_current_user_role() not in ("SUPER_ADMIN", "SCHOOL_ADMIN"):
+            if not await self._is_thread_participant(db, thread_id, get_current_user_id()):
+                raise NotFoundException("Thread")
+        return root
 
     async def _get_student(
         self,

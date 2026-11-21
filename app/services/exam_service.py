@@ -22,7 +22,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -33,12 +33,45 @@ from app.models.report import DailyReport, ReportTemplate
 from app.models.school_class import SchoolClass
 from app.models.student import Student
 from app.services.mis_service import classify_percentage
+from app.models.user import Role
+from app.utils.access_scope import subject_teacher_pairs, teacher_class_ids
 from app.utils.tenant_context import (
+    get_current_user_id,
     get_current_user_id_or_none,
+    get_current_user_role,
     get_tenant_id,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _scope_exams_to_teacher(stmt):
+    """Teachers reach exams for classes they teach, or where they mark a
+    subject as a subject teacher (paper-level access is checked separately)."""
+    if get_current_user_role() == Role.TEACHER.value:
+        uid = get_current_user_id()
+        subject_classes = select(subject_teacher_pairs(uid).subquery().c.class_id)
+        stmt = stmt.where(or_(
+            Exam.class_id.in_(teacher_class_ids(uid)),
+            Exam.class_id.in_(subject_classes),
+        ))
+    return stmt
+
+
+def _scope_papers_to_teacher(stmt):
+    """Teachers mark every paper of their own classes, but only their
+    assigned subject's papers in classes they teach as a subject teacher."""
+    if get_current_user_role() == Role.TEACHER.value:
+        uid = get_current_user_id()
+        pairs = subject_teacher_pairs(uid).subquery()
+        stmt = stmt.where(or_(
+            Exam.class_id.in_(teacher_class_ids(uid)),
+            exists().where(
+                pairs.c.class_id == Exam.class_id,
+                pairs.c.subject_id == ExamSubject.subject_id,
+            ),
+        ))
+    return stmt
 
 
 class ExamService:
@@ -55,10 +88,10 @@ class ExamService:
         term: int | None = None,
     ) -> list[Exam]:
         tenant_id = get_tenant_id()
-        stmt = select(Exam).where(
+        stmt = _scope_exams_to_teacher(select(Exam).where(
             Exam.tenant_id == tenant_id,
             Exam.deleted_at.is_(None),
-        )
+        ))
         if class_id:
             stmt = stmt.where(Exam.class_id == class_id)
         if academic_year:
@@ -73,16 +106,43 @@ class ExamService:
 
     async def get_exam(self, db: AsyncSession, exam_id: uuid.UUID) -> Exam:
         tenant_id = get_tenant_id()
-        row = (await db.execute(
+        row = (await db.execute(_scope_exams_to_teacher(
             select(Exam).where(
                 Exam.id == exam_id,
                 Exam.tenant_id == tenant_id,
                 Exam.deleted_at.is_(None),
             )
-        )).scalar_one_or_none()
+        ))).scalar_one_or_none()
         if not row:
             raise NotFoundException("Exam")
         return row
+
+    async def _get_visible_exam_subject(
+        self, db: AsyncSession, exam_subject_id: uuid.UUID,
+    ) -> ExamSubject:
+        """Exam paper on this tenant whose exam the viewer can reach."""
+        es = (await db.execute(_scope_papers_to_teacher(
+            select(ExamSubject)
+            .join(Exam, Exam.id == ExamSubject.exam_id)
+            .where(
+                ExamSubject.id == exam_subject_id,
+                ExamSubject.tenant_id == get_tenant_id(),
+                Exam.deleted_at.is_(None),
+            )
+        ))).scalar_one_or_none()
+        if not es:
+            raise NotFoundException("Exam subject")
+        return es
+
+    async def markable_paper_ids(self, db: AsyncSession, exam: Exam) -> set[uuid.UUID]:
+        """Papers of ``exam`` the viewer may mark (all of them for admins
+        and class teachers; only their subject for subject teachers)."""
+        rows = (await db.execute(_scope_papers_to_teacher(
+            select(ExamSubject.id)
+            .join(Exam, Exam.id == ExamSubject.exam_id)
+            .where(ExamSubject.exam_id == exam.id, ExamSubject.tenant_id == get_tenant_id())
+        ))).scalars().all()
+        return set(rows)
 
     async def create_exam(
         self,
@@ -518,14 +578,7 @@ class ExamService:
         have to recompute.
         """
         tenant_id = get_tenant_id()
-        es = (await db.execute(
-            select(ExamSubject).where(
-                ExamSubject.id == exam_subject_id,
-                ExamSubject.tenant_id == tenant_id,
-            )
-        )).scalar_one_or_none()
-        if not es:
-            raise NotFoundException("Exam subject")
+        es = await self._get_visible_exam_subject(db, exam_subject_id)
 
         exam = es.exam
         if exam.status == ExamStatus.FINALIZED:
@@ -552,12 +605,25 @@ class ExamService:
             )
         )).scalars().all()
         existing = {r.student_id: r for r in existing_rows}
+        requested_ids = []
+        for row in rows:
+            try:
+                requested_ids.append(uuid.UUID(str(row.get("student_id"))))
+            except (TypeError, ValueError):
+                pass
+        tenant_student_ids = set((await db.execute(
+            select(Student.id).where(
+                Student.tenant_id == tenant_id, Student.id.in_(requested_ids),
+            )
+        )).scalars().all())
 
         out: list[ExamResult] = []
         for row in rows:
             try:
                 sid = uuid.UUID(str(row.get("student_id")))
             except (TypeError, ValueError):
+                continue
+            if sid not in tenant_student_ids:
                 continue
 
             marks_raw = row.get("marks_obtained")
@@ -618,6 +684,7 @@ class ExamService:
         exam_subject_id: uuid.UUID,
     ) -> list[ExamResult]:
         tenant_id = get_tenant_id()
+        await self._get_visible_exam_subject(db, exam_subject_id)
         rows = (await db.execute(
             select(ExamResult).where(
                 ExamResult.exam_subject_id == exam_subject_id,

@@ -58,6 +58,24 @@ async def _mis_guard(request: Request, db: AsyncSession):
     return None, (user, tenant)
 
 
+async def _mis_class_context(request: Request, db: AsyncSession) -> dict:
+    """Teachers only get analytics for classes they're class teacher of,
+    so their pages render that list (default: the selected class) instead
+    of the school-wide picker. Admins get nothing extra."""
+    if get_current_user_role() != "TEACHER":
+        return {"mis_teacher": False, "mis_classes": [], "mis_default_class_id": None}
+    from app.web.helpers import get_teacher_class_context
+
+    ctx = await get_teacher_class_context(request, db)
+    general = ctx.get("general_class_ids") or set()
+    classes = [c for c in ctx.get("teacher_classes") or [] if c.id in general]
+    selected = ctx.get("selected_class")
+    default = selected.id if selected is not None and selected.id in general else (
+        classes[0].id if classes else None
+    )
+    return {"mis_teacher": True, "mis_classes": classes, "mis_default_class_id": default}
+
+
 @router.get("", response_class=HTMLResponse)
 async def mis_dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     """Executive Dashboard — the landing page of the MIS module."""
@@ -72,6 +90,7 @@ async def mis_dashboard(request: Request, db: AsyncSession = Depends(get_db)):
             "user": user,
             "tenant": tenant,
             "current_language": get_current_language(),
+            **(await _mis_class_context(request, db)),
         },
     )
 
@@ -90,6 +109,7 @@ async def mis_subjects(request: Request, db: AsyncSession = Depends(get_db)):
             "user": user,
             "tenant": tenant,
             "current_language": get_current_language(),
+            **(await _mis_class_context(request, db)),
         },
     )
 
@@ -108,6 +128,7 @@ async def mis_distribution(request: Request, db: AsyncSession = Depends(get_db))
             "user": user,
             "tenant": tenant,
             "current_language": get_current_language(),
+            **(await _mis_class_context(request, db)),
         },
     )
 
@@ -126,6 +147,7 @@ async def mis_merit_lists(request: Request, db: AsyncSession = Depends(get_db)):
             "user": user,
             "tenant": tenant,
             "current_language": get_current_language(),
+            **(await _mis_class_context(request, db)),
         },
     )
 
@@ -144,6 +166,7 @@ async def mis_longitudinal(request: Request, db: AsyncSession = Depends(get_db))
             "user": user,
             "tenant": tenant,
             "current_language": get_current_language(),
+            **(await _mis_class_context(request, db)),
         },
     )
 
@@ -162,5 +185,6 @@ async def mis_early_warning(request: Request, db: AsyncSession = Depends(get_db)
             "user": user,
             "tenant": tenant,
             "current_language": get_current_language(),
+            **(await _mis_class_context(request, db)),
         },
     )

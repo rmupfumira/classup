@@ -24,7 +24,12 @@ from app.models import EventScope, EventType, RsvpResponse, SchoolEvent, User
 from app.schemas.common import APIResponse
 from app.services import event_service
 from app.utils.permissions import require_role
-from app.utils.tenant_context import get_current_user_id, get_tenant_id
+from app.utils.tenant_context import (
+    get_current_user_id,
+    get_current_user_id_or_none,
+    get_current_user_role,
+    get_tenant_id,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Events"])
@@ -99,6 +104,14 @@ class RsvpRequest(BaseModel):
 # ─────────────────── Serialisation ───────────────────
 
 
+def _can_edit_event(event: SchoolEvent) -> bool:
+    """Admins edit any event; teachers only events they created; parents none."""
+    role = get_current_user_role()
+    if role in ("SCHOOL_ADMIN", "SUPER_ADMIN"):
+        return True
+    return role == "TEACHER" and event.created_by == get_current_user_id_or_none()
+
+
 def _event_to_dict(
     event: SchoolEvent, *, include_rsvps: bool = False,
 ) -> dict[str, Any]:
@@ -125,6 +138,7 @@ def _event_to_dict(
         "rsvp_deadline": event.rsvp_deadline.isoformat() if event.rsvp_deadline else None,
         "cancelled_at": event.cancelled_at.isoformat() if event.cancelled_at else None,
         "when_display": event_service.format_event_when(event),
+        "can_edit": _can_edit_event(event),
     }
     if include_rsvps:
         out["rsvp_summary"] = {
@@ -306,11 +320,13 @@ async def list_events(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """Staff view: every event on this tenant, most recent first."""
+    """Staff view: every event on this tenant (admins) or the events a
+    teacher may see (school-wide, their classes, their own)."""
     tenant_id = get_tenant_id()
     events = await event_service.list_events(
         db, tenant_id=tenant_id, upcoming_only=upcoming_only,
         limit=limit, offset=offset,
+        teacher_id=get_current_user_id() if get_current_user_role() == "TEACHER" else None,
     )
     return APIResponse(
         status="success",
@@ -356,6 +372,11 @@ async def create_event(
         raise HTTPException(status_code=400, detail="class_id is required for CLASS scope")
     if body.scope == EventScope.STUDENT.value and not body.student_id:
         raise HTTPException(status_code=400, detail="student_id is required for STUDENT scope")
+    await _validate_event_target(
+        db,
+        body.class_id if body.scope == EventScope.CLASS.value else None,
+        body.student_id if body.scope == EventScope.STUDENT.value else None,
+    )
 
     event = await event_service.create_event(
         db,
@@ -391,15 +412,50 @@ async def create_event(
     )
 
 
+async def _get_visible_event(db: AsyncSession, event_id: uuid.UUID) -> SchoolEvent:
+    """Load an event on this tenant; parents only reach events they're
+    invited to, teachers only events the teacher visibility rule allows."""
+    event = await event_service.get_event(db, event_id, get_tenant_id())
+    role = get_current_user_role()
+    if event is not None and role == "PARENT":
+        if not await event_service.parent_can_see_event(db, event, get_current_user_id()):
+            event = None
+    elif event is not None and role == "TEACHER":
+        if not await event_service.teacher_can_see_event(db, event, get_current_user_id()):
+            event = None
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+
+
+async def _get_editable_event(db: AsyncSession, event_id: uuid.UUID) -> SchoolEvent:
+    """Admins edit any event; teachers only events they created."""
+    event = await _get_visible_event(db, event_id)
+    if get_current_user_role() == "TEACHER" and event.created_by != get_current_user_id():
+        raise HTTPException(status_code=403, detail="You can only change events you created")
+    return event
+
+
+async def _validate_event_target(
+    db: AsyncSession, class_id: uuid.UUID | None, student_id: uuid.UUID | None,
+) -> None:
+    """The class / student an event targets must be on this tenant and,
+    for teachers, in one of their classes (service getters enforce both)."""
+    from app.services.class_service import get_class_service
+    from app.services.student_service import get_student_service
+
+    if class_id:
+        await get_class_service().get_class(db, class_id)
+    if student_id:
+        await get_student_service().get_student(db, student_id)
+
+
 @router.get("/events/{event_id}")
 @require_role("SCHOOL_ADMIN", "TEACHER", "PARENT")
 async def get_event(
     event_id: uuid.UUID, db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = get_tenant_id()
-    event = await event_service.get_event(db, event_id, tenant_id)
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+    event = await _get_visible_event(db, event_id)
     return APIResponse(status="success", data=_event_to_dict(event, include_rsvps=True))
 
 
@@ -410,10 +466,7 @@ async def update_event(
     body: EventUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = get_tenant_id()
-    event = await event_service.get_event(db, event_id, tenant_id)
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+    event = await _get_editable_event(db, event_id)
 
     updates = body.model_dump(exclude_unset=True)
     for key, value in updates.items():
@@ -440,10 +493,7 @@ async def cancel_event(
     event_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = get_tenant_id()
-    event = await event_service.get_event(db, event_id, tenant_id)
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+    event = await _get_editable_event(db, event_id)
     await event_service.cancel_event(db, event)
     await db.commit()
     await db.refresh(event)
@@ -485,9 +535,7 @@ async def rsvp_event(
     """Record a parent's RSVP. Idempotent — the latest response wins."""
     tenant_id = get_tenant_id()
     user_id = get_current_user_id()
-    event = await event_service.get_event(db, event_id, tenant_id)
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+    event = await _get_visible_event(db, event_id)
     if event.is_cancelled:
         raise HTTPException(status_code=400, detail="Event is cancelled.")
 

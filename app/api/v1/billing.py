@@ -239,7 +239,7 @@ async def list_invoices(
     if role == Role.PARENT.value:
         parent_id = get_current_user_id()
         invoices, total = await service.get_parent_invoices(
-            db, parent_id, page=page, page_size=page_size
+            db, parent_id, page=page, page_size=page_size, student_id=student_id,
         )
     else:
         invoices, total = await service.get_invoices(

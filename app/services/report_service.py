@@ -639,6 +639,49 @@ class ReportService:
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
+    async def _validate_report_target(
+        self, db: AsyncSession, tenant_id: uuid.UUID, data: ReportCreate,
+    ) -> None:
+        """Reject a report whose student, class or template is outside the
+        tenant, or (for teachers) outside the teacher's own classes."""
+        student = (await db.execute(
+            select(Student).where(
+                Student.id == data.student_id,
+                Student.tenant_id == tenant_id,
+                Student.deleted_at.is_(None),
+            )
+        )).scalar_one_or_none()
+        if not student:
+            raise ValidationException("Student not found")
+
+        school_class = (await db.execute(
+            select(SchoolClass.id).where(
+                SchoolClass.id == data.class_id,
+                SchoolClass.tenant_id == tenant_id,
+            )
+        )).scalar_one_or_none()
+        if not school_class:
+            raise ValidationException("Class not found")
+
+        template = (await db.execute(
+            select(ReportTemplate.id).where(
+                ReportTemplate.id == data.template_id,
+                ReportTemplate.tenant_id == tenant_id,
+            )
+        )).scalar_one_or_none()
+        if not template:
+            raise ValidationException("Report template not found")
+
+        if get_current_user_role() == Role.TEACHER.value:
+            teaches = (await db.execute(
+                select(TeacherClass.class_id).where(
+                    TeacherClass.teacher_id == get_current_user_id(),
+                    TeacherClass.class_id == data.class_id,
+                )
+            )).scalar_one_or_none()
+            if not teaches or student.class_id != data.class_id:
+                raise ValidationException("You can only create reports for students in your own classes")
+
     async def create_report(
         self,
         db: AsyncSession,
@@ -663,6 +706,8 @@ class ReportService:
             raise ValidationException("Cannot create a report for a future date")
         if data.report_date.weekday() >= 5:
             raise ValidationException("Cannot create a report on weekends")
+
+        await self._validate_report_target(db, tenant_id, data)
 
         report_data = dict(data.report_data or {})
         if data.term_id:
