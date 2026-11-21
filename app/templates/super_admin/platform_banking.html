@@ -3,67 +3,61 @@
 {% block title %}Platform Banking - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-    <div>
-        <a href="/admin" class="text-sm text-navy-500 hover:text-navy-700">&larr; Admin</a>
-        <h1 class="mt-2 text-xl font-semibold text-navy-800">Platform Banking Details</h1>
-        <p class="mt-1 text-sm text-navy-500">
-            These details are shown to tenants when they choose to pay by EFT.
-            Keep them accurate — tenants transfer money directly into this account.
-        </p>
-    </div>
+{% from "super_admin/_hero.html" import platform_hero %}
+<div class="space-y-6 [&>*:not(.cu-hero)]:max-w-5xl">
+    {{ platform_hero('Platform Banking Details', 'Shown to tenants when they choose to pay by EFT. Keep them accurate — tenants transfer money directly into this account.', eyebrow='Platform billing') }}
 
     <div class="cu-card p-6">
         <form id="banking-form" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Bank name</label>
-                    <input type="text" id="bank_name" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0">
+                    <input type="text" id="bank_name" class="cu-input">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Account holder</label>
-                    <input type="text" id="account_holder" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0">
+                    <input type="text" id="account_holder" class="cu-input">
                 </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Account number</label>
-                    <input type="text" id="account_number" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0">
+                    <input type="text" id="account_number" class="cu-input">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Branch code</label>
-                    <input type="text" id="branch_code" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0">
+                    <input type="text" id="branch_code" class="cu-input">
                 </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Account type</label>
-                    <input type="text" id="account_type" placeholder="Cheque / Current" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0">
+                    <input type="text" id="account_type" placeholder="Cheque / Current" class="cu-input">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">SWIFT / BIC</label>
-                    <input type="text" id="swift_code" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0">
+                    <input type="text" id="swift_code" class="cu-input">
                 </div>
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-navy-700 mb-1">Reference instructions</label>
                 <textarea id="reference_instructions" rows="2" placeholder="e.g. Use your school name followed by INV-YYYY-NN"
-                          class="block w-full px-3 py-2 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0"></textarea>
+                          class="cu-textarea"></textarea>
                 <p class="mt-1 text-xs text-navy-400">Shown to tenants on the EFT payment page to help them use the right reference.</p>
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-navy-700 mb-1">Notification email (optional)</label>
                 <input type="email" id="notify_email" placeholder="finance@classup.co.za"
-                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded focus:border-navy-500 focus:ring-0">
+                       class="cu-input">
                 <p class="mt-1 text-xs text-navy-400">Future: email this address when a tenant submits proof of payment.</p>
             </div>
 
             <div class="flex justify-end pt-2">
-                <button type="submit" class="px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">
+                <button type="submit" class="cu-btn-primary">
                     Save banking details
                 </button>
             </div>

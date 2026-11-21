@@ -289,7 +289,7 @@
         button:active, a:active { transform: scale(0.98); transition: transform 0.05s; }
     </style>
 
-    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=7">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=12">
 
     {# Load app.js in <head> as a blocking script so window.ClassUp is
        always defined BEFORE any inline <script> inside {% block content %}
@@ -298,7 +298,7 @@
        any page that calls ClassUp.fetch() during parse-time (e.g. the
        accounting pages auto-loading on mount). app.js is ~5KB so the
        parse-blocking cost is negligible. #}
-    <script src="{{ url_for('static', path='js/app.js') }}?v=4"></script>
+    <script src="{{ url_for('static', path='js/app.js') }}?v=5"></script>
 
     {% block head %}{% endblock %}
 </head>

@@ -3,56 +3,75 @@
 {% block title %}{{ exam.name }} - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 pt-6 pb-24 space-y-5">
+<style>
+    /* Phones: paper row actions become real 44px tap targets. */
+    @media (max-width: 639px) {
+        .paper-actions > a, .paper-actions > button {
+            display: inline-flex; align-items: center; min-height: 2.75rem;
+            padding: 0 0.75rem; margin: 0 !important; font-size: 0.875rem; font-weight: 600;
+        }
+        .paper-actions { gap: 0.25rem; flex-wrap: wrap; }
+    }
+</style>
+<div class="space-y-5 pb-24 md:pb-8">
+    <nav class="flex items-center gap-1.5 text-xs text-navy-500" aria-label="Breadcrumb">
+        <a href="/exams" class="hover:text-navy-700">Exams</a>
+        <span aria-hidden="true">›</span>
+        <span class="font-semibold text-navy-700">{{ exam.name }}</span>
+    </nav>
+
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div class="flex items-center gap-3">
-            <a href="/exams" class="p-1.5 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
-                </svg>
-            </a>
-            <div>
-                <h1 class="text-xl font-semibold text-navy-800">{{ exam.name }}</h1>
-                <p class="text-sm text-navy-500">
-                    {{ exam.school_class.name if exam.school_class else '—' }} ·
-                    {{ exam.academic_year }} · Term {{ exam.term }} ·
-                    {% set st_cls = {
-                        'DRAFT': 'text-navy-600',
-                        'SCHEDULED': 'text-info-600',
-                        'IN_PROGRESS': 'text-warning-700',
-                        'COMPLETED': 'text-success-700',
-                        'FINALIZED': 'text-navy-700',
-                    }.get(exam.status, 'text-navy-600') %}
-                    <span class="font-medium {{ st_cls }}">{{ exam.status }}</span>
-                </p>
+    {% set status_map = {
+        'FINALIZED':   ('cu-status-finalized', 'Finalised'),
+        'COMPLETED':   ('cu-status-finalized', 'Completed'),
+        'IN_PROGRESS': ('cu-status-progress',  'In progress'),
+        'SCHEDULED':   ('cu-status-scheduled', 'Scheduled'),
+        'DRAFT':       ('cu-status-draft',     'Draft'),
+    } %}
+    {% set st_cls, st_label = status_map.get(exam.status, ('cu-status-draft', exam.status)) %}
+    <section class="cu-hero !py-5 md:!py-6">
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <a href="/exams" class="cu-btn-ghost-dark !p-2 !rounded-xl shrink-0" aria-label="Back to exams">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="cu-eyebrow cu-eyebrow-on-dark">Academic</span>
+                        <span class="cu-status {{ st_cls }}"><span class="cu-status-dot"></span>{{ st_label }}</span>
+                    </div>
+                    <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white truncate">{{ exam.name }}</h1>
+                    <p class="text-sm text-white/75 mt-0.5">
+                        {{ exam.school_class.name if exam.school_class else '—' }} ·
+                        {{ exam.academic_year }} · Term {{ exam.term }}
+                    </p>
+                </div>
             </div>
-        </div>
-        {% if permissions.can_manage_classes() %}
-        <div class="flex flex-wrap gap-2">
-            {% if exam.status != 'FINALIZED' %}
-            <button type="button" onclick="applyCurriculum()"
-                    class="inline-flex items-center px-3 py-1.5 border border-navy-200 text-sm text-navy-700 bg-white rounded hover:bg-navy-50"
-                    title="Replace the paper list with the curriculum-pack template (ZIMSEC / Cambridge) — clears if any paper has results.">
-                Apply curriculum structure
-            </button>
-            <button type="button" onclick="finalizeExam()"
-                    class="inline-flex items-center px-3 py-1.5 cu-btn-primary">
-                Finalise + push to reports
-            </button>
-            {% else %}
-            <button type="button" onclick="reopenExam()"
-                    class="inline-flex items-center px-3 py-1.5 border border-navy-200 text-sm text-navy-700 bg-white rounded hover:bg-navy-50">
-                Reopen
-            </button>
+            {% if permissions.can_manage_classes() %}
+            <div class="flex flex-wrap gap-2 shrink-0">
+                {% if exam.status != 'FINALIZED' %}
+                <button type="button" onclick="applyCurriculum()" class="cu-btn-ghost-dark"
+                        title="Replace the paper list with the curriculum-pack template (ZIMSEC / Cambridge) — clears if any paper has results.">
+                    Apply curriculum structure
+                </button>
+                <button type="button" onclick="finalizeExam()" class="cu-btn-gold">
+                    Finalise + push to reports
+                </button>
+                {% else %}
+                <button type="button" onclick="reopenExam()" class="cu-btn-ghost-dark">
+                    Reopen
+                </button>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
-        {% endif %}
-    </div>
+    </section>
 
     <!-- Tabs -->
     <div class="border-b border-navy-100">
-        <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto">
+        <nav class="-mb-px flex gap-x-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {% set _tabs = [('overview','Overview'), ('timetable','Timetable'), ('papers','Papers')] %}
             {% for slug, label in _tabs %}
             <button type="button" data-tab="{{ slug }}"
@@ -94,14 +113,18 @@
                 <h3 class="text-sm font-semibold text-navy-800 mb-3">Papers at a glance</h3>
                 <ul class="divide-y divide-navy-50">
                     {% for es in exam.exam_subjects %}
-                    <li class="py-2 flex items-center justify-between">
-                        <div>
+                    <li class="py-2 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
                             <p class="text-sm font-medium text-navy-800">{{ es.subject.name if es.subject else '—' }}</p>
                             <p class="text-xs text-navy-500">
                                 Out of {{ es.total_marks }}{% if es.scheduled_at %} · {{ es.scheduled_at.strftime('%a %b %d, %H:%M') }}{% endif %}{% if es.room %} · {{ es.room }}{% endif %}
                             </p>
                         </div>
-                        <a href="/exams/{{ exam.id }}/papers/{{ es.id }}/mark" class="text-xs text-navy-600 hover:underline">Mark →</a>
+                        {% if (es.id|string) in markable_paper_ids %}
+                        <a href="/exams/{{ exam.id }}/papers/{{ es.id }}/mark" class="shrink-0 inline-flex items-center min-h-[2.75rem] px-3 -mr-3 text-sm font-semibold text-navy-600 hover:underline">Mark →</a>
+                        {% else %}
+                        <span class="shrink-0 text-xs text-navy-400" title="Marked by this subject's teacher">Not your subject</span>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>
@@ -117,12 +140,12 @@
 
     <!-- TIMETABLE -->
     <div data-tab-panel="timetable" class="hidden cu-card overflow-hidden">
-        <div class="p-4 border-b border-navy-50 flex items-center justify-between">
+        <div class="p-4 border-b border-navy-50 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <h3 class="text-sm font-semibold text-navy-800">Exam timetable</h3>
             <p class="text-xs text-navy-500">Click any row to schedule the paper.</p>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="min-w-full text-sm cu-table--stack">
                 <thead class="bg-navy-50 border-b border-navy-100">
                     <tr>
                         <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Subject</th>
@@ -137,19 +160,19 @@
                 <tbody class="divide-y divide-navy-50">
                     {% for es in exam.exam_subjects %}
                     <tr data-exam-subject-id="{{ es.id }}" class="hover:bg-navy-50">
-                        <td class="px-3 py-2 text-navy-800 font-medium">{{ es.subject.name if es.subject else '—' }}</td>
-                        <td class="px-3 py-2 text-navy-600" data-field="date">
+                        <td class="px-3 py-2 text-navy-800 font-medium cu-stack-primary">{{ es.subject.name if es.subject else '—' }}</td>
+                        <td class="px-3 py-2 text-navy-600" data-field="date" data-label="Date">
                             {{ es.scheduled_at.strftime('%Y-%m-%d') if es.scheduled_at else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-navy-600" data-field="time">
+                        <td class="px-3 py-2 text-navy-600" data-field="time" data-label="Time">
                             {{ es.scheduled_at.strftime('%H:%M') if es.scheduled_at else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-navy-600" data-field="duration">
+                        <td class="px-3 py-2 text-navy-600" data-field="duration" data-label="Duration">
                             {{ es.duration_minutes ~ ' min' if es.duration_minutes else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-navy-600" data-field="room">{{ es.room or '—' }}</td>
-                        <td class="px-3 py-2 text-right text-navy-800">{{ es.total_marks }}</td>
-                        <td class="px-3 py-2 text-right">
+                        <td class="px-3 py-2 text-navy-600" data-field="room" data-label="Room">{{ es.room or '—' }}</td>
+                        <td class="px-3 py-2 text-right text-navy-800" data-label="Total marks">{{ es.total_marks }}</td>
+                        <td class="px-3 py-2 text-right cu-stack-actions">
                             {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                             <button type="button" onclick='openScheduleModal({{ {
                                 "id": es.id|string,
@@ -159,7 +182,7 @@
                                 "room": es.room or "",
                                 "total_marks": es.total_marks,
                                 "pass_mark": es.pass_mark or 0
-                            } | tojson }})' class="text-xs text-navy-600 hover:underline">Edit</button>
+                            } | tojson }})' class="inline-flex items-center min-h-[2.75rem] sm:min-h-0 px-3 sm:px-0 text-sm sm:text-xs font-semibold sm:font-normal text-navy-600 hover:underline">Edit</button>
                             {% endif %}
                         </td>
                     </tr>
@@ -204,10 +227,10 @@
                 {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                 <button type="button"
                         onclick='addPaper({{ {"subject_id": sid, "subject_name": subj.name if subj else ""} | tojson }})'
-                        class="text-xs text-navy-600 hover:underline">+ Add paper</button>
+                        class="shrink-0 inline-flex items-center min-h-[2.75rem] px-3 -mr-3 text-sm sm:text-xs font-semibold sm:font-normal text-navy-600 hover:underline">+ Add paper</button>
                 {% endif %}
             </div>
-            <table class="min-w-full text-sm">
+            <table class="min-w-full text-sm cu-table--stack">
                 <thead class="bg-navy-50 border-b border-navy-100">
                     <tr>
                         <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Paper</th>
@@ -222,7 +245,7 @@
                 <tbody class="divide-y divide-navy-50">
                     {% for es in papers %}
                     <tr data-exam-subject-id="{{ es.id }}" class="hover:bg-navy-50">
-                        <td class="px-3 py-2 text-navy-800">
+                        <td class="px-3 py-2 text-navy-800 font-medium sm:font-normal cu-stack-primary">
                             {# Fall back to "Paper N" by position so legacy rows
                                written before the service started defaulting the
                                name still render cleanly. #}
@@ -231,26 +254,31 @@
                             <span class="text-xs text-navy-400">· {{ es.duration_minutes }} min</span>
                             {% endif %}
                         </td>
-                        <td class="px-3 py-2 text-right text-navy-700">{{ es.total_marks }}</td>
-                        <td class="px-3 py-2 text-right">
+                        <td class="px-3 py-2 text-right text-navy-700" data-label="Total marks">{{ es.total_marks }}</td>
+                        <td class="px-3 py-2 text-right" data-label="Weight %">
                             {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                             <input type="number" min="0" max="100" value="{{ es.weight_percent }}"
-                                   data-paper-weight-input="{{ es.id }}"
-                                   class="w-16 h-8 px-2 text-sm text-right border border-navy-200 rounded">
+                                   data-paper-weight-input="{{ es.id }}" inputmode="numeric"
+                                   aria-label="Weight % for {{ es.paper_name or ('Paper ' ~ loop.index) }}"
+                                   class="w-20 sm:w-16 h-11 sm:h-8 px-2 text-sm text-right border border-navy-200 rounded">
                             {% else %}
                             {{ es.weight_percent }}%
                             {% endif %}
                         </td>
-                        <td class="px-3 py-2 text-navy-600">
+                        <td class="px-3 py-2 text-navy-600" data-label="Scheduled">
                             {{ es.scheduled_at.strftime('%b %d, %H:%M') if es.scheduled_at else '—' }}
                         </td>
-                        <td class="px-3 py-2 text-navy-600">{{ es.room or '—' }}</td>
-                        <td class="px-3 py-2 text-right">
+                        <td class="px-3 py-2 text-navy-600" data-label="Room">{{ es.room or '—' }}</td>
+                        <td class="px-3 py-2 text-right" data-label="Progress">
                             <span id="paper-progress-{{ es.id }}" class="text-xs text-navy-500">—</span>
                         </td>
-                        <td class="px-3 py-2 text-right whitespace-nowrap">
+                        <td class="px-3 py-2 text-right whitespace-nowrap cu-stack-actions paper-actions">
+                            {% if (es.id|string) in markable_paper_ids %}
                             <a href="/exams/{{ exam.id }}/papers/{{ es.id }}/mark"
                                class="text-xs text-navy-600 hover:underline mr-3">Mark</a>
+                            {% else %}
+                            <span class="text-xs text-navy-400 mr-3" title="Marked by this subject's teacher">Not your subject</span>
+                            {% endif %}
                             {% if permissions.can_manage_classes() and exam.status != 'FINALIZED' %}
                             <button type="button" onclick="savePaperWeight('{{ es.id }}')"
                                     class="text-xs text-navy-500 hover:text-navy-600 mr-2">Save weight</button>
@@ -269,7 +297,7 @@
 
 <!-- Add-paper modal -->
 <dialog id="add-paper-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
-    <form class="p-6" onsubmit="submitAddPaper(event)">
+    <form class="p-5 sm:p-6" onsubmit="submitAddPaper(event)">
         <h3 class="text-lg font-semibold text-navy-800 mb-1">Add paper</h3>
         <p id="ap-subj" class="text-sm text-navy-500 mb-4">—</p>
         <div class="grid grid-cols-2 gap-3">
@@ -277,22 +305,22 @@
                 <label class="block text-xs font-medium text-navy-700 mb-1">Paper name</label>
                 <input type="text" id="ap-name" maxlength="100"
                        placeholder="e.g. Paper 3 - Practical"
-                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                       class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
                 <label class="block text-xs font-medium text-navy-700 mb-1">Total marks</label>
                 <input type="number" id="ap-total" min="1" value="100"
-                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                       class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
                 <label class="block text-xs font-medium text-navy-700 mb-1">Weight %</label>
                 <input type="number" id="ap-weight" min="0" max="100" value="50"
-                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                       class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div class="col-span-2">
                 <label class="block text-xs font-medium text-navy-700 mb-1">Duration (min, optional)</label>
                 <input type="number" id="ap-duration" min="0" step="15"
-                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                       class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
         </div>
         <p class="text-xs text-navy-500 mt-3">
@@ -301,43 +329,43 @@
         </p>
         <div class="flex justify-end gap-2 mt-5">
             <button type="button" onclick="document.getElementById('add-paper-modal').close()"
-                    class="px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">Add paper</button>
+                    class="min-h-[2.75rem] sm:min-h-0 px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="min-h-[2.75rem] sm:min-h-0 px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">Add paper</button>
         </div>
     </form>
 </dialog>
 
 <!-- Schedule modal -->
 <dialog id="schedule-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
-    <form class="p-6" onsubmit="saveSchedule(event)">
+    <form class="p-5 sm:p-6" onsubmit="saveSchedule(event)">
         <h3 class="text-lg font-semibold text-navy-800 mb-4">Schedule paper</h3>
         <p id="sch-subj" class="text-sm text-navy-600 mb-4">—</p>
         <div class="grid grid-cols-2 gap-3">
             <div class="col-span-2">
                 <label class="block text-xs font-medium text-navy-700 mb-1">Date &amp; time</label>
-                <input type="datetime-local" id="sch-when" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <input type="datetime-local" id="sch-when" class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
                 <label class="block text-xs font-medium text-navy-700 mb-1">Duration (min)</label>
-                <input type="number" id="sch-duration" min="0" step="15" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <input type="number" id="sch-duration" min="0" step="15" class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
                 <label class="block text-xs font-medium text-navy-700 mb-1">Room</label>
-                <input type="text" id="sch-room" maxlength="100" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <input type="text" id="sch-room" maxlength="100" class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
                 <label class="block text-xs font-medium text-navy-700 mb-1">Total marks</label>
-                <input type="number" id="sch-total" min="1" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <input type="number" id="sch-total" min="1" class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
             <div>
                 <label class="block text-xs font-medium text-navy-700 mb-1">Pass mark</label>
-                <input type="number" id="sch-pass" min="0" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded">
+                <input type="number" id="sch-pass" min="0" class="block w-full h-11 sm:h-9 px-3 text-sm border border-navy-200 rounded">
             </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
             <button type="button" onclick="document.getElementById('schedule-modal').close()"
-                    class="px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">Save</button>
+                    class="min-h-[2.75rem] sm:min-h-0 px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="min-h-[2.75rem] sm:min-h-0 px-4 py-2 text-sm text-white bg-navy-500 rounded hover:bg-primary-600">Save</button>
         </div>
     </form>
 </dialog>
@@ -371,7 +399,8 @@ const EXAM_STATUS = {{ exam.status | tojson }};
 // Per-paper progress (async)
 (async function(){
     // Fetch results per paper to show "X / N marked"
-    const papers = {{ (exam.exam_subjects | map(attribute='id') | map('string') | list) | tojson }};
+    // Only papers this user can mark — others would 404 for subject teachers.
+    const papers = {{ (exam.exam_subjects | map(attribute='id') | map('string') | select('in', markable_paper_ids) | list) | tojson }};
     for (const pid of papers) {
         try {
             const r = await ClassUp.fetch(`/api/v1/exams/subjects/${pid}/results`);
@@ -383,7 +412,7 @@ const EXAM_STATUS = {{ exam.status | tojson }};
     }
     const overview = document.getElementById('overview-progress');
     if (overview) {
-        overview.innerHTML = `<p class="text-xs text-navy-500">${papers.length} papers · ${EXAM_STATUS}</p>`;
+        overview.innerHTML = `<p class="text-xs text-navy-500">{{ exam.exam_subjects|length }} papers · ${EXAM_STATUS}</p>`;
     }
 })();
 

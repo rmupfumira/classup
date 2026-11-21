@@ -3,66 +3,88 @@
 {% block title %}Timetables - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Timetables</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">
-                Manage class schedules and period plans
-            </p>
+{% set active_count = timetables | selectattr('is_active') | list | length %}
+
+<nav class="flex items-center gap-1.5 text-xs text-navy-500 mb-2 md:mb-4" aria-label="Breadcrumb">
+    <a href="/dashboard" class="inline-flex items-center min-h-[44px] md:min-h-0 hover:text-navy-700">Home</a>
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <span>Academic</span>
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <span class="font-semibold text-navy-700">Timetables</span>
+</nav>
+
+<div class="space-y-6">
+    <section class="cu-hero">
+        <div class="absolute -top-20 -right-20 w-72 h-72 bg-gold-400/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-2xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-4">Academic</span>
+                <h1 class="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.05] text-white mb-3">Timetables</h1>
+                <p class="text-navy-100 text-base md:text-lg leading-relaxed">
+                    Manage class schedules and period plans.
+                </p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                <a href="/timetable/new" class="cu-btn-gold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    New timetable
+                </a>
+                <a href="/timetable/config" class="cu-btn-ghost-dark">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Day config
+                </a>
+            </div>
         </div>
-        <div class="flex items-center gap-2">
-            <a href="/timetable/config"
-               class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50 transition-colors">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                Day Config
-            </a>
-            <a href="/timetable/new"
-               class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
-                </svg>
-                New Timetable
-            </a>
-        </div>
-    </div>
+    </section>
 
     {% if timetables %}
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-x-auto">
-        <table class="min-w-full">
+    <section class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Timetables</div>
+            <div class="cu-stat-tile-value !mt-2">{{ timetables | length }}</div>
+            <div class="cu-stat-tile-hint">Across all classes</div>
+        </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Active</div>
+            <div class="cu-stat-tile-value !mt-2">{{ active_count }}</div>
+            <div class="cu-stat-tile-hint">In use this term</div>
+        </div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Inactive</div>
+            <div class="cu-stat-tile-value !mt-2">{{ (timetables | length) - active_count }}</div>
+            <div class="cu-stat-tile-hint">Drafts or retired</div>
+        </div>
+    </section>
+
+    <div class="cu-table-wrap overflow-x-auto">
+        <table class="cu-table cu-table--stack">
             <thead>
-                <tr class="bg-neutral-50 border-b border-neutral-200">
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Name</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Class</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Slots Filled</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th>
+                <tr>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Slots filled</th>
+                    <th>Status</th>
+                    <th style="text-align:right"></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-100">
+            <tbody>
                 {% for t in timetables %}
-                <tr class="hover:bg-neutral-50 transition-colors">
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <a href="/timetable/{{ t.id }}" class="text-sm font-medium text-neutral-800 hover:text-primary-600">{{ t.name }}</a>
-                    </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
-                        {{ t.school_class.name if t.school_class else '-' }}
-                    </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">{{ t.entries|length }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                <tr>
+                    <td class="cu-stack-primary"><a href="/timetable/{{ t.id }}" class="font-semibold text-navy-800 hover:text-navy-600">{{ t.name }}</a></td>
+                    <td data-label="Class" class="text-navy-600">{{ t.school_class.name if t.school_class else '-' }}</td>
+                    <td data-label="Slots filled" class="text-navy-600">{{ t.entries|length }}</td>
+                    <td data-label="Status">
                         {% if t.is_active %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">Active</span>
+                        <span class="cu-status cu-status-finalized"><span class="cu-status-dot"></span>Active</span>
                         {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">Inactive</span>
+                        <span class="cu-status cu-status-draft"><span class="cu-status-dot"></span>Inactive</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
-                        <a href="/timetable/{{ t.id }}" class="text-primary-500 hover:text-primary-600 mr-3">Open</a>
+                    <td class="cu-stack-actions" style="text-align:right">
+                        <a href="/timetable/{{ t.id }}" class="cu-btn-soft !py-1.5 !px-3 !text-xs">
+                            Open
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -70,23 +92,16 @@
         </table>
     </div>
     {% else %}
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
-        <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         </div>
-        <h3 class="text-base font-semibold text-neutral-800">No timetables yet</h3>
-        <p class="mt-1 text-sm text-neutral-500">Create your first class timetable to get started.</p>
-        <div class="mt-5">
-            <a href="/timetable/new" class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
-                </svg>
-                Create Timetable
-            </a>
-        </div>
+        <p class="cu-empty-title">No timetables yet</p>
+        <p class="cu-empty-text">Create your first class timetable to get started.</p>
+        <a href="/timetable/new" class="cu-btn-primary mt-5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Create timetable
+        </a>
     </div>
     {% endif %}
 </div>

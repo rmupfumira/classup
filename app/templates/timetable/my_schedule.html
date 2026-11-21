@@ -2,62 +2,102 @@
 
 {% block title %}My Timetable - {{ app_name }}{% endblock %}
 
-{% block extra_head %}
+{% block head %}
 <style>
 @media print {
     nav, .sidebar, .bottom-nav, button, .no-print { display: none !important; }
-    .shadow-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    .cu-hero { background: none !important; color: #0e1b34 !important; box-shadow: none !important; padding: 0 !important; }
+    .cu-table-wrap { box-shadow: none !important; border: 1px solid #ddd !important; }
     body { font-size: 11px; }
 }
-.tt-break { background-color: #f3f4f6; color: #9ca3af; }
+.tt-break { background-color: #f4f7fb; color: #8aa5cc; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="space-y-4">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-            <h1 class="text-xl font-semibold text-neutral-800">My Timetable</h1>
-            <p class="mt-0.5 text-sm text-neutral-500">Your teaching schedule across classes</p>
+<div class="space-y-6">
+    <section class="cu-hero !py-5 md:!py-6">
+        <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Academic</span>
+                <h1 class="cu-page-title text-white">My Timetable</h1>
+                <p class="mt-1 text-sm text-white/80">Your teaching schedule across classes.</p>
+            </div>
+            <button onclick="window.print()" class="cu-btn-ghost-dark no-print shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                Print
+            </button>
         </div>
-        <button onclick="window.print()"
-                class="inline-flex items-center px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50 no-print">
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-            </svg>
-            Print
-        </button>
-    </div>
+    </section>
 
     {% if grid %}
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-x-auto">
-        <table class="min-w-full border-collapse">
+    {# Phones: one day at a time (pill picker + period list) instead of a
+       5-column grid. The full grid below takes over from md up and for print. #}
+    <div class="md:hidden space-y-3 no-print" id="tt-mobile">
+        <div class="cu-filter-row cu-filter-row--scroll" role="tablist" aria-label="Day">
+            {% for day in config.days %}
+            <button type="button" role="tab" data-tt-day="{{ day }}"
+                    aria-selected="{{ 'true' if loop.first else 'false' }}"
+                    class="cu-pill min-h-[2.75rem] {% if loop.first %}cu-pill-active{% endif %}">{{ day }}</button>
+            {% endfor %}
+        </div>
+        {% for day in config.days %}
+        <div data-tt-panel="{{ day }}" class="cu-card divide-y divide-navy-50 {% if not loop.first %}hidden{% endif %}">
+            {% for period in config.periods %}
+            {% set cell = grid.get((day, period.index)) %}
+            <div class="flex items-center gap-3 px-4 py-3 {% if period.is_break %}tt-break{% endif %}">
+                <div class="w-20 shrink-0">
+                    <div class="text-xs font-bold text-navy-700">{{ period.label }}</div>
+                    <div class="text-xs text-navy-400 tabular-nums">{{ period.start_time }}–{{ period.end_time }}</div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    {% if period.is_break %}
+                    <span class="text-xs">Break</span>
+                    {% elif cell %}
+                    <div class="text-sm font-semibold text-navy-800 truncate">{{ cell.subject_name }}</div>
+                    <div class="text-xs text-navy-500 truncate">{{ cell.class_name }}</div>
+                    {% else %}
+                    <span class="text-xs text-navy-300">Free</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="cu-table-wrap hidden md:block print:block"><div class="cu-table-scroll">
+        <table class="cu-table">
             <thead>
-                <tr class="bg-neutral-50 border-b border-neutral-200">
-                    <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider w-32">Period</th>
+                <tr>
+                    <th class="w-32 cu-sticky-col">Period</th>
                     {% for day in config.days %}
-                    <th class="px-3 py-2 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider">{{ day }}</th>
+                    <th style="text-align:center">{{ day }}</th>
                     {% endfor %}
                 </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-100">
+            <tbody>
                 {% for period in config.periods %}
                 <tr>
-                    <td class="px-3 py-2 align-top border-r border-neutral-100 bg-neutral-50">
-                        <div class="text-xs font-semibold text-neutral-700">{{ period.label }}</div>
-                        <div class="text-xs text-neutral-400">{{ period.start_time }} - {{ period.end_time }}</div>
+                    <td class="align-top cu-sticky-col">
+                        <div class="text-xs font-bold text-navy-700">{{ period.label }}</div>
+                        <div class="text-xs text-navy-400">{{ period.start_time }} - {{ period.end_time }}</div>
                     </td>
                     {% for day in config.days %}
                     {% set cell = grid.get((day, period.index)) %}
                     {% if period.is_break %}
-                    <td class="tt-break text-center text-xs border-l border-neutral-100">—</td>
+                    <td class="tt-break text-center text-xs">—</td>
                     {% else %}
-                    <td class="p-2 border-l border-neutral-100">
+                    <td class="!p-2">
                         {% if cell %}
-                        <div class="text-xs font-medium text-neutral-800">{{ cell.subject_name }}</div>
-                        <div class="text-xs text-neutral-500">{{ cell.class_name }}</div>
+                        <div class="rounded-xl bg-navy-50 px-2.5 py-2">
+                            <div class="text-xs font-semibold text-navy-800">{{ cell.subject_name }}</div>
+                            <div class="text-xs text-navy-500">{{ cell.class_name }}</div>
+                        </div>
                         {% else %}
-                        <div class="text-xs text-neutral-300 text-center">Free</div>
+                        <div class="text-xs text-navy-300 text-center">Free</div>
                         {% endif %}
                     </td>
                     {% endif %}
@@ -66,17 +106,38 @@
                 {% endfor %}
             </tbody>
         </table>
-    </div>
+    </div></div>
     {% else %}
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
-        <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
         </div>
-        <h3 class="text-base font-semibold text-neutral-800">No scheduled lessons</h3>
-        <p class="mt-1 text-sm text-neutral-500">You haven't been assigned to any timetable slots yet. Check with your school admin.</p>
+        <p class="cu-empty-title">No scheduled lessons</p>
+        <p class="cu-empty-text">You haven't been assigned to any timetable slots yet. Check with your school admin.</p>
     </div>
     {% endif %}
 </div>
+<script>
+(function () {
+    const root = document.getElementById('tt-mobile');
+    if (!root) return;
+    const tabs = [...root.querySelectorAll('[data-tt-day]')];
+    const panels = [...root.querySelectorAll('[data-tt-panel]')];
+    function show(day) {
+        tabs.forEach(t => {
+            const on = t.dataset.ttDay === day;
+            t.classList.toggle('cu-pill-active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        panels.forEach(p => p.classList.toggle('hidden', p.dataset.ttPanel !== day));
+    }
+    tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.ttDay)));
+    // Open on today when today is a school day.
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const match = tabs.find(t => today.startsWith(t.dataset.ttDay.toLowerCase().slice(0, 3)));
+    if (match) show(match.dataset.ttDay);
+})();
+</script>
 {% endblock %}

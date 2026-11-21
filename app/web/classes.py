@@ -206,10 +206,28 @@ async def class_detail(
             for sid in subject_ids:
                 pending_subject_teachers_by_subject.setdefault(str(sid), []).append(inv)
 
+    # The class's timetable id (active one first) so the Timetable tab can
+    # load it directly; the timetable list API is admin-only.
+    from sqlalchemy import select as _select
+
+    from app.models.timetable import Timetable
+
+    class_timetable_id = (await db.execute(
+        _select(Timetable.id)
+        .where(
+            Timetable.tenant_id == get_tenant_id(),
+            Timetable.class_id == school_class.id,
+            Timetable.deleted_at.is_(None),
+        )
+        .order_by(Timetable.is_active.desc(), Timetable.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+
     context = {
         "request": request,
         "user": user,
         "school_class": school_class,
+        "class_timetable_id": str(class_timetable_id) if class_timetable_id else "",
         "students": students,
         "teachers": [(u, tc) for u, tc in teachers_data],
         "tenant": tenant,

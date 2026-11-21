@@ -10,7 +10,7 @@
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div class="max-w-xl">
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">People</span>
-                <h1 class="cu-page-title text-white">Parents</h1>
+                <h1 class="cu-page-title leading-tight text-white">Parents</h1>
                 <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                     Manage parent accounts, edit contacts, reset passwords, toggle WhatsApp
                     opt-in or link children.
@@ -26,12 +26,12 @@
             <input type="text" name="search" value="{{ search }}"
                    placeholder="Search name / email / phone / WhatsApp…" class="cu-input">
         </div>
-        <label class="inline-flex items-center gap-2 text-sm text-navy-700">
+        <label class="inline-flex items-center gap-2 min-h-[44px] text-sm text-navy-700">
             <input type="checkbox" name="opted_in_only" value="1" {% if opted_in_only %}checked{% endif %}
                    class="rounded border-navy-200 text-navy-600">
             WhatsApp opted-in
         </label>
-        <label class="inline-flex items-center gap-2 text-sm text-navy-700">
+        <label class="inline-flex items-center gap-2 min-h-[44px] text-sm text-navy-700">
             <input type="checkbox" name="include_inactive" value="1" {% if include_inactive %}checked{% endif %}
                    class="rounded border-navy-200 text-navy-600">
             Include inactive
@@ -117,8 +117,8 @@
         {% for parent in parents %}
         <a href="/parents/{{ parent.id }}"
            class="block cu-card p-4 {% if not parent.is_active %}opacity-70{% endif %}">
-            <div class="flex items-center justify-between mb-1">
-                <p class="font-semibold text-navy-800">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <p class="font-semibold text-navy-800 min-w-0">
                     {{ parent.first_name }} {{ parent.last_name }}
                 </p>
                 {% if parent.whatsapp_opted_in and parent.whatsapp_phone %}
@@ -127,7 +127,7 @@
                 </span>
                 {% endif %}
             </div>
-            <p class="text-xs text-navy-600">{{ parent.email }}</p>
+            <p class="text-xs text-navy-600 [overflow-wrap:anywhere]">{{ parent.email }}</p>
             <p class="text-xs text-navy-500">{{ parent.phone or 'No phone' }}</p>
             {% set active_children = parent.parent_students|selectattr('student')|selectattr('student.deleted_at', 'none')|list %}
             {% if active_children %}

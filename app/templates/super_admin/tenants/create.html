@@ -3,19 +3,11 @@
 {% block title %}Create Tenant - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-    <div class="flex items-center gap-4">
-        <a href="/admin/tenants" class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-50 rounded-2xl transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/></svg>
-        </a>
-        <div>
-            <span class="cu-eyebrow">Platform</span>
-            <h1 class="cu-page-title mt-1">Create New Tenant</h1>
-            <p class="mt-1 text-sm text-navy-500">Add a new school or organization to the platform.</p>
-        </div>
-    </div>
+{% from "super_admin/_hero.html" import platform_hero %}
+<div class="space-y-6 [&>*:not(.cu-hero)]:max-w-5xl">
+    {{ platform_hero('Create New Tenant', 'Add a new school or organisation to the platform. The school admin receives a welcome email to finish setup.', eyebrow='Tenants', back_href='/admin/tenants', back_label='All tenants') }}
 
-    <section class="cu-card p-6">
+    <section class="cu-card p-4 sm:p-6">
         <form id="create-tenant-form" class="space-y-6">
             <div>
                 <h3 class="text-sm font-semibold text-navy-800 mb-4">Basic Information</h3>
@@ -34,7 +26,7 @@
                                 {{ settings.app_base_url.replace('http://', '').replace('https://', '').rstrip('/') }}/
                             </span>
                             <input type="text" id="slug" name="slug" placeholder="sunshine-daycare" pattern="^[a-z0-9-]+$"
-                                   class="flex-1 px-4 py-2.5 text-sm bg-white placeholder-navy-400 rounded-r-full focus:outline-none"
+                                   class="flex-1 min-w-0 min-h-[2.75rem] px-4 py-2.5 text-sm bg-white placeholder-navy-400 rounded-r-full focus:outline-none"
                                    style="box-shadow: inset 0 0 0 1px #e3ebf5;">
                         </div>
                         <p class="mt-1 text-xs text-navy-500">Parents use this URL to reach your school's login page. Leave blank to auto-generate from name. Lowercase letters, numbers, and hyphens only.</p>
@@ -110,7 +102,7 @@
 
             <div class="border-t border-navy-50"></div>
 
-            <div class="flex items-center justify-end gap-3">
+            <div class="flex flex-wrap items-center justify-end gap-3">
                 <a href="/admin/tenants" class="cu-btn-soft">Cancel</a>
                 <button type="submit" id="submit-btn" class="cu-btn-primary">
                     <svg class="w-4 h-4 hidden animate-spin" id="submit-spinner" fill="none" viewBox="0 0 24 24">

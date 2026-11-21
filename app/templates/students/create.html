@@ -6,7 +6,7 @@
 <div class="max-w-3xl mx-auto space-y-6">
     {# ------ Header ------ #}
     <div>
-        <a href="/students" class="inline-flex items-center gap-1 text-navy-500 hover:text-navy-700 text-xs font-semibold mb-2">
+        <a href="/students" class="inline-flex items-center gap-1 min-h-[44px] text-navy-500 hover:text-navy-700 text-xs font-semibold -mt-3 mb-0">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             Back to students
         </a>
@@ -19,7 +19,7 @@
         <!-- Sibling of existing student (optional) -->
         <div class="bg-primary-50 rounded-lg border border-primary-200 p-6">
             <label class="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" id="is-sibling" class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                <input type="checkbox" id="is-sibling" class="mt-1 h-4 w-4 rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                 <span>
                     <span class="block text-sm font-semibold text-neutral-900">
                         This student is a sibling of an existing student
@@ -35,7 +35,7 @@
                 <div class="relative">
                     <input type="text" id="sibling-search" autocomplete="off"
                            placeholder="Search existing students by name…"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                     <div id="sibling-suggestions"
                          class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-md shadow-lg max-h-56 overflow-y-auto">
                     </div>
@@ -57,15 +57,15 @@
                     </p>
                     <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <label class="flex items-center gap-2">
-                            <input type="checkbox" id="inherit-parents" checked class="rounded border-neutral-300 text-primary-600">
+                            <input type="checkbox" id="inherit-parents" checked class="rounded border-navy-200 text-navy-600">
                             Parents (auto-link)
                         </label>
                         <label class="flex items-center gap-2">
-                            <input type="checkbox" id="inherit-emergency" class="rounded border-neutral-300 text-primary-600">
+                            <input type="checkbox" id="inherit-emergency" class="rounded border-navy-200 text-navy-600">
                             Emergency contacts
                         </label>
                         <label class="flex items-center gap-2">
-                            <input type="checkbox" id="inherit-class" class="rounded border-neutral-300 text-primary-600">
+                            <input type="checkbox" id="inherit-class" class="rounded border-navy-200 text-navy-600">
                             Same class
                         </label>
                     </div>
@@ -74,7 +74,7 @@
         </div>
 
         <!-- Basic Information -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Basic Information</h2>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -83,28 +83,28 @@
                         First Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" id="first_name" name="first_name" required
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="last_name" class="block text-sm font-medium text-neutral-700 mb-1">
                         Last Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" id="last_name" name="last_name" required
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="date_of_birth" class="block text-sm font-medium text-neutral-700 mb-1">
                         Date of Birth
                     </label>
                     <input type="date" id="date_of_birth" name="date_of_birth"
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="gender" class="block text-sm font-medium text-neutral-700 mb-1">
                         Gender
                     </label>
                     <select id="gender" name="gender"
-                            class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                            class="cu-select">
                         <option value="">Select...</option>
                         <option value="MALE">Male</option>
                         <option value="FEMALE">Female</option>
@@ -117,7 +117,7 @@
                     </label>
                     <input type="text" id="national_id" name="national_id" maxlength="50"
                            placeholder="e.g. 58213343X23 — leave blank if unknown"
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="cu-input">
                     <p class="text-xs text-neutral-500 mt-1">
                         Any national / government ID. Used only as a hint when
                         checking for duplicate students — format not validated.
@@ -134,7 +134,7 @@
                         Residence <span class="text-red-500">*</span>
                     </label>
                     <select id="residence" name="residence" required
-                            class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                            class="cu-select">
                         <option value="">Select...</option>
                         <option value="DAY">Day scholar</option>
                         <option value="FULL_BOARDER">Full boarder (lives on-site)</option>
@@ -150,11 +150,11 @@
         </div>
 
         <!-- Parent / Guardian -->
-        <div class="cu-card p-6" id="parents-section">
-            <div class="flex items-center justify-between mb-2">
+        <div class="cu-card p-4 sm:p-6" id="parents-section">
+            <div class="flex flex-wrap items-center justify-between gap-x-3 mb-2">
                 <h2 class="text-lg font-semibold text-neutral-900">Parent / Guardian</h2>
                 <button type="button" id="add-parent-btn"
-                        class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                        class="cu-tap shrink-0 text-sm text-primary-600 hover:text-primary-700 font-semibold">
                     + Add another parent
                 </button>
             </div>
@@ -172,7 +172,7 @@
         </div>
 
         <!-- Class Assignment -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Class Assignment</h2>
 
             <div>
@@ -180,8 +180,8 @@
                     Class
                 </label>
                 <select id="class_id" name="class_id"
-                        class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">No class assigned</option>
+                        class="cu-select"{% if user.role == 'TEACHER' %} required{% endif %}>
+                    {% if user.role != 'TEACHER' %}<option value="">No class assigned</option>{% endif %}
                     {% for cls in classes %}
                     <option value="{{ cls.id }}">
                         {{ cls.name }}{% if cls.grade_level_rel %} ({{ cls.grade_level_rel.name }}){% endif %}
@@ -195,7 +195,7 @@
         </div>
 
         <!-- Medical Information -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Medical Information</h2>
 
             <div class="space-y-4">
@@ -205,7 +205,7 @@
                     </label>
                     <textarea id="allergies" name="allergies" rows="2"
                               placeholder="List any allergies..."
-                              class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"></textarea>
+                              class="cu-textarea"></textarea>
                 </div>
                 <div>
                     <label for="medical_info" class="block text-sm font-medium text-neutral-700 mb-1">
@@ -213,13 +213,13 @@
                     </label>
                     <textarea id="medical_info" name="medical_info" rows="3"
                               placeholder="Any medical conditions, medications, or special needs..."
-                              class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"></textarea>
+                              class="cu-textarea"></textarea>
                 </div>
                 <!-- Medical Aid / Insurance -->
                 <div class="border-t border-neutral-200 pt-4">
-                    <label class="flex items-start gap-2 cursor-pointer">
+                    <label class="flex items-start gap-2 py-2 cursor-pointer">
                         <input type="checkbox" id="has_medical_aid"
-                               class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                               class="mt-1 h-4 w-4 rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                         <span class="text-sm text-neutral-700">
                             Student has medical aid / health insurance
                         </span>
@@ -229,23 +229,23 @@
                             <label for="medical_aid_name" class="block text-xs font-medium text-neutral-600 mb-1">Name of medical aid</label>
                             <input type="text" id="medical_aid_name" maxlength="100"
                                    placeholder="e.g. CIMAS, Discovery, Momentum"
-                                   class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                                   class="cu-input">
                         </div>
                         <div>
                             <label for="medical_aid_number" class="block text-xs font-medium text-neutral-600 mb-1">Member / policy number</label>
                             <input type="text" id="medical_aid_number" maxlength="50"
-                                   class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                                   class="cu-input">
                         </div>
                         <div>
                             <label for="medical_aid_package" class="block text-xs font-medium text-neutral-600 mb-1">Package</label>
                             <input type="text" id="medical_aid_package" maxlength="100"
                                    placeholder="e.g. Private Hospital Plan"
-                                   class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                                   class="cu-input">
                         </div>
                         <div>
                             <label for="medical_aid_currency" class="block text-xs font-medium text-neutral-600 mb-1">Currency</label>
                             <select id="medical_aid_currency"
-                                    class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                                    class="cu-select">
                                 <option value="USD">USD</option>
                                 <option value="ZAR">ZAR</option>
                                 <option value="EUR">EUR</option>
@@ -261,11 +261,11 @@
         </div>
 
         <!-- Emergency Contacts -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-semibold text-neutral-900">Emergency Contacts</h2>
                 <button type="button" id="add-contact-btn"
-                        class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                        class="cu-tap shrink-0 text-sm text-primary-600 hover:text-primary-700 font-semibold">
                     + Add Contact
                 </button>
             </div>
@@ -276,16 +276,16 @@
         </div>
 
         <!-- Notes -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Additional Notes</h2>
 
             <textarea id="notes" name="notes" rows="3"
                       placeholder="Any additional notes about the student..."
-                      class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"></textarea>
+                      class="cu-textarea"></textarea>
         </div>
 
         <!-- Actions -->
-        <div class="flex items-center justify-end gap-3">
+        <div class="sticky cu-above-tabbar z-20 rounded-2xl bg-white/95 backdrop-blur shadow-lg p-3 md:static md:z-auto md:rounded-none md:bg-transparent md:backdrop-blur-none md:shadow-none md:p-0 flex items-center justify-end gap-3">
             <a href="/students" class="cu-btn-soft">Cancel</a>
             <button type="submit" id="student-submit-btn" class="cu-btn-primary">
                 Create Student
@@ -296,8 +296,8 @@
 
 <!-- Parent Template -->
 <template id="parent-template">
-    <div class="parent-item border border-neutral-200 rounded-lg p-4 relative">
-        <button type="button" class="remove-parent absolute top-2 right-2 text-neutral-400 hover:text-red-500" title="Remove parent">
+    <div class="parent-item border border-neutral-200 rounded-lg p-4 pt-12 relative">
+        <button type="button" class="remove-parent cu-icon-btn absolute top-1 right-1 !text-neutral-400 hover:!text-red-500" title="Remove parent" aria-label="Remove parent">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -305,15 +305,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">First Name <span class="text-red-500">*</span></label>
-                <input type="text" name="parents[][first_name]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <input type="text" name="parents[][first_name]" class="cu-input">
             </div>
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Last Name <span class="text-red-500">*</span></label>
-                <input type="text" name="parents[][last_name]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <input type="text" name="parents[][last_name]" class="cu-input">
             </div>
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Email <span class="text-red-500">*</span></label>
-                <input type="email" name="parents[][email]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <input type="email" name="parents[][email]" autocomplete="off" class="cu-input">
             </div>
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">
@@ -322,14 +322,15 @@
                     <span class="parent-phone-optional text-neutral-400 font-normal">(optional)</span>
                 </label>
                 <input type="tel" name="parents[][phone]" placeholder="+263 77 123 4567"
-                       class="parent-phone w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       inputmode="tel" autocomplete="tel"
+                       class="parent-phone cu-input">
                 <p class="parent-phone-hint text-xs text-neutral-400 mt-1 hidden">
                     Required to send a WhatsApp signup link. International format with + and country code.
                 </p>
             </div>
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Relationship</label>
-                <select name="parents[][relationship_type]" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <select name="parents[][relationship_type]" class="cu-select">
                     <option value="PARENT">Parent</option>
                     <option value="GUARDIAN">Guardian</option>
                     <option value="GRANDPARENT">Grandparent</option>
@@ -337,15 +338,15 @@
                 </select>
             </div>
             <div class="flex items-end">
-                <label class="flex items-center gap-2 text-xs text-neutral-700 pb-2">
-                    <input type="checkbox" name="parents[][is_primary]" checked class="parent-primary rounded border-neutral-300 text-primary-600">
+                <label class="flex items-center gap-2 min-h-[44px] text-xs text-neutral-700">
+                    <input type="checkbox" name="parents[][is_primary]" checked class="parent-primary rounded border-navy-200 text-navy-600">
                     Primary contact
                 </label>
             </div>
         </div>
         <div class="mt-3">
-            <label class="flex items-center gap-2 text-xs text-neutral-700">
-                <input type="checkbox" name="parents[][send_whatsapp_invite]" checked class="parent-whatsapp rounded border-neutral-300 text-primary-600">
+            <label class="flex items-center gap-2 min-h-[44px] text-xs text-neutral-700">
+                <input type="checkbox" name="parents[][send_whatsapp_invite]" checked class="parent-whatsapp rounded border-navy-200 text-navy-600">
                 Suggest WhatsApp opt-in to this parent
             </label>
             <p class="text-xs text-neutral-500 mt-1 pl-6">
@@ -359,8 +360,8 @@
 
 <!-- Contact Template -->
 <template id="contact-template">
-    <div class="contact-item border border-neutral-200 rounded-lg p-4 relative">
-        <button type="button" class="remove-contact absolute top-2 right-2 text-neutral-400 hover:text-red-500">
+    <div class="contact-item border border-neutral-200 rounded-lg p-4 pt-12 relative">
+        <button type="button" class="remove-contact cu-icon-btn absolute top-1 right-1 !text-neutral-400 hover:!text-red-500" title="Remove contact" aria-label="Remove contact">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -369,17 +370,17 @@
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Name</label>
                 <input type="text" name="emergency_contacts[][name]" required
-                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       class="cu-input">
             </div>
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
                 <input type="tel" name="emergency_contacts[][phone]" required
-                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       inputmode="tel" autocomplete="off" class="cu-input">
             </div>
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Relationship</label>
                 <input type="text" name="emergency_contacts[][relationship]" value="Parent"
-                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       class="cu-input">
             </div>
         </div>
     </div>

@@ -135,26 +135,23 @@ const ClassUp = {
         }
 
         const toast = document.createElement('div');
-        toast.className = `flex items-center p-4 rounded-lg shadow-md ${colors[type]}
-                          transform transition-all duration-300 translate-x-full toast-enter
+        toast.className = `flex items-center w-full max-w-full p-4 rounded-lg shadow-md ${colors[type]}
+                          transform transition-all duration-300 toast-enter
                           pointer-events-auto`;
         toast.dataset.toastMessage = message;
         toast.innerHTML = `
             <span class="flex-shrink-0 mr-3">${icons[type]}</span>
-            <span class="flex-1 text-sm font-medium">${this.escapeHtml(message)}</span>
-            <button class="ml-4 flex-shrink-0 text-neutral-400 hover:text-neutral-600" onclick="this.parentElement.remove()">
+            <span class="flex-1 min-w-0 text-sm font-medium break-words">${this.escapeHtml(message)}</span>
+            <button class="ml-3 flex-shrink-0 text-neutral-400 hover:text-neutral-600" aria-label="Dismiss" onclick="this.parentElement.remove()">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                 </svg>
             </button>
         `;
 
+        // The slide-in is the .toast-enter CSS animation, so the toast is
+        // never left off-screen if animation frames are throttled.
         container.appendChild(toast);
-
-        // Animate in
-        requestAnimationFrame(() => {
-            toast.classList.remove('translate-x-full');
-        });
 
         // Auto-remove after duration
         setTimeout(() => {

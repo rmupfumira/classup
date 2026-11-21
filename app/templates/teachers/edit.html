@@ -6,13 +6,13 @@
 <div class="max-w-2xl mx-auto space-y-5">
     <!-- Page Header -->
     <div class="flex items-center gap-3">
-        <a href="/teachers" class="text-neutral-400 hover:text-neutral-600 transition-colors">
+        <a href="/teachers" class="cu-icon-btn -ml-2 text-neutral-400 hover:text-neutral-600 transition-colors" aria-label="Back to teachers">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path>
             </svg>
         </a>
         <div>
-            <h1 class="text-xl font-semibold text-neutral-800">Edit Teacher</h1>
+            <h1 class="cu-page-title leading-tight">Edit Teacher</h1>
             <p class="mt-0.5 text-sm text-neutral-500">
                 {{ teacher.first_name }} {{ teacher.last_name }}
             </p>
@@ -20,7 +20,7 @@
     </div>
 
     <!-- Edit Form -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200">
+    <div class="cu-card">
         <div class="p-6">
             <form id="edit-teacher-form" class="space-y-5">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -28,30 +28,26 @@
                         <label for="first_name" class="block text-sm font-medium text-neutral-700 mb-1">First Name</label>
                         <input type="text" id="first_name" name="first_name" required
                                value="{{ teacher.first_name }}"
-                               class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                      focus:border-primary-500 focus:ring-0">
+                               class="cu-input">
                     </div>
                     <div>
                         <label for="last_name" class="block text-sm font-medium text-neutral-700 mb-1">Last Name</label>
                         <input type="text" id="last_name" name="last_name"
                                value="{{ teacher.last_name }}"
-                               class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                      focus:border-primary-500 focus:ring-0">
+                               class="cu-input">
                     </div>
                 </div>
                 <div>
                     <label for="email" class="block text-sm font-medium text-neutral-700 mb-1">Email Address</label>
                     <input type="email" id="email" name="email" required
                            value="{{ teacher.email }}"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                  focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="phone" class="block text-sm font-medium text-neutral-700 mb-1">Phone Number</label>
                     <input type="tel" id="phone" name="phone"
                            value="{{ teacher.phone or '' }}"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                  focus:border-primary-500 focus:ring-0"
+                           class="cu-input"
                            placeholder="Optional">
                 </div>
 
@@ -90,12 +86,12 @@
                 <div id="form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
                 <div id="form-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
 
-                <div class="flex items-center justify-between pt-2 border-t border-neutral-100">
-                    <a href="/teachers" class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                <div class="flex items-center justify-between pt-2 border-t border-navy-50">
+                    <a href="/teachers" class="cu-btn-soft">
                         Cancel
                     </a>
                     <button type="submit" id="submit-btn"
-                            class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                            class="cu-btn-primary">
                         Save Changes
                     </button>
                 </div>
@@ -104,7 +100,7 @@
     </div>
 
     <!-- Password & Account Actions -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200">
+    <div class="cu-card">
         <div class="px-6 py-4 border-b border-neutral-100">
             <h2 class="text-sm font-semibold text-neutral-800">Account Actions</h2>
         </div>
@@ -115,22 +111,22 @@
                     <p class="text-xs text-neutral-500">Directly set a new password for this teacher.</p>
                 </div>
                 <button type="button" onclick="openSetPasswordDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                        class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
+                        class="cu-btn-soft !py-1.5 !px-3">
                     Set Password
                 </button>
             </div>
-            <div class="border-t border-neutral-100"></div>
+            <div class="border-t border-navy-50"></div>
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-neutral-700">Send Password Reset Email</p>
                     <p class="text-xs text-neutral-500">Send an email with a link to reset their password.</p>
                 </div>
                 <button type="button" onclick="sendResetEmail('{{ teacher.id }}', '{{ teacher.email }}')"
-                        class="px-3 py-1.5 text-sm text-neutral-700 bg-white border border-neutral-300 rounded hover:bg-neutral-50">
+                        class="cu-btn-soft !py-1.5 !px-3">
                     Send Reset Email
                 </button>
             </div>
-            <div class="border-t border-neutral-100"></div>
+            <div class="border-t border-navy-50"></div>
             <div class="flex items-center justify-between">
                 <div>
                     {% if teacher.is_active %}
@@ -143,12 +139,12 @@
                 </div>
                 {% if teacher.is_active %}
                 <button type="button" onclick="deactivateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                        class="px-3 py-1.5 text-sm text-red-600 bg-white border border-red-300 rounded hover:bg-red-50">
+                        class="shrink-0 inline-flex items-center min-h-[44px] px-4 text-sm text-red-600 bg-white border border-red-300 rounded-full hover:bg-red-50">
                     Deactivate
                 </button>
                 {% else %}
                 <button type="button" onclick="activateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                        class="px-3 py-1.5 text-sm text-green-600 bg-white border border-green-300 rounded hover:bg-green-50">
+                        class="shrink-0 inline-flex items-center min-h-[44px] px-4 text-sm text-green-600 bg-white border border-green-300 rounded-full hover:bg-green-50">
                     Activate
                 </button>
                 {% endif %}
@@ -177,26 +173,24 @@
             <div>
                 <label for="sp-password" class="block text-sm font-medium text-neutral-700 mb-1">New Password</label>
                 <input type="password" id="sp-password" name="password" required minlength="8"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                              focus:border-primary-500 focus:ring-0"
+                       class="cu-input"
                        placeholder="Minimum 8 characters">
             </div>
             <div>
                 <label for="sp-confirm" class="block text-sm font-medium text-neutral-700 mb-1">Confirm Password</label>
                 <input type="password" id="sp-confirm" name="confirm_password" required minlength="8"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                              focus:border-primary-500 focus:ring-0"
+                       class="cu-input"
                        placeholder="Confirm new password">
             </div>
             <div id="sp-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
             <div id="sp-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('set-password-dialog').close()"
-                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                        class="cu-btn-soft">
                     Cancel
                 </button>
                 <button type="submit" id="sp-submit-btn"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                        class="cu-btn-primary">
                     Set Password
                 </button>
             </div>

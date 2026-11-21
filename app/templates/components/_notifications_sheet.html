@@ -75,8 +75,8 @@
         {# ───────── server-not-configured — grey ───────── #}
         <div id="ns-state-server-not-configured" class="hidden p-4 rounded-lg bg-neutral-50 border border-neutral-200">
             <p class="text-sm text-neutral-700">
-                Notifications haven't been switched on by an admin yet. Please ask an admin to configure VAPID
-                in the platform settings.
+                Phone notifications aren't available for your school yet. You'll still see updates here
+                and by email.
             </p>
         </div>
 
@@ -312,7 +312,7 @@
             } else {
                 const friendly = ({
                     'denied': 'Notifications were blocked. Re-enable in your browser settings.',
-                    'server-not-configured': "Push hasn't been set up by an admin yet — VAPID keys are missing.",
+                    'server-not-configured': "Phone notifications aren't available yet. You'll still see updates here and by email.",
                     'unsupported': "This browser doesn't support push notifications.",
                     'failed': 'The browser rejected the subscription request.',
                     'server-error': 'The server refused to record the subscription.',

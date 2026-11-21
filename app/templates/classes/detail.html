@@ -38,7 +38,7 @@
 
     {# ------ Tab bar ------ #}
     <div class="border-b border-navy-100">
-        <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto" aria-label="Class sections">
+        <nav class="-mb-px flex gap-x-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Class sections">
             {% set _tabs = [
                 ('overview', 'Overview'),
                 ('students', 'Students'),
@@ -68,8 +68,8 @@
                                   d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                         </svg>
                     </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
                             <h2 class="text-lg font-semibold text-neutral-800">{{ school_class.name }}</h2>
                             {% if school_class.is_active %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">Active</span>
@@ -145,9 +145,9 @@
                             {{ ns.primary_user.first_name[0] }}{{ ns.primary_user.last_name[0] }}
                         </span>
                     </div>
-                    <div>
+                    <div class="min-w-0">
                         <p class="text-sm font-medium text-neutral-800">{{ ns.primary_user.first_name }} {{ ns.primary_user.last_name }}</p>
-                        <p class="text-xs text-neutral-500">{{ ns.primary_user.email }}</p>
+                        <p class="text-xs text-neutral-500 break-all">{{ ns.primary_user.email }}</p>
                     </div>
                 </div>
                 {% else %}
@@ -159,12 +159,12 @@
                 <h3 class="text-sm font-semibold text-neutral-800 mb-3">Quick actions</h3>
                 <div class="space-y-2">
                     <a href="/attendance?class_id={{ school_class.id }}"
-                       class="block w-full px-3 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Mark attendance</a>
+                       class="block w-full px-3 py-2.5 sm:py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Mark attendance</a>
                     <a href="/reports/create?class_id={{ school_class.id }}"
-                       class="block w-full px-3 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Create report</a>
+                       class="block w-full px-3 py-2.5 sm:py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Create report</a>
                     {% if permissions.can_manage_classes() %}
                     <a href="/classes/{{ school_class.id }}/subjects"
-                       class="block w-full px-3 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Manage subjects</a>
+                       class="block w-full px-3 py-2.5 sm:py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Manage subjects</a>
                     {% endif %}
                 </div>
             </div>
@@ -176,12 +176,12 @@
         <div class="p-4 border-b border-neutral-100 flex flex-wrap items-center gap-3">
             <div class="flex-1 min-w-[200px]">
                 <input type="text" id="student-search" placeholder="Search by name…"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md">
+                       class="block w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded-md">
             </div>
             <span id="student-count" class="text-xs text-neutral-500">—</span>
             {% if permissions.can_manage_students() %}
             <a href="/students/create?class_id={{ school_class.id }}"
-               class="px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">+ Add student</a>
+               class="inline-flex items-center min-h-[2.75rem] sm:min-h-0 px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">+ Add student</a>
             {% endif %}
         </div>
         <div id="students-list" class="divide-y divide-neutral-100">
@@ -231,9 +231,9 @@
                             <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700">Primary</span>
                             {% endif %}
                         </p>
-                        <p class="text-xs text-neutral-500">{{ tuser.email or '—' }}</p>
+                        <p class="text-xs text-neutral-500 truncate">{{ tuser.email or '—' }}</p>
                     </div>
-                    <span id="teacher-subjects-{{ tuser.id }}" class="text-xs text-neutral-500">—</span>
+                    <span id="teacher-subjects-{{ tuser.id }}" class="text-xs text-neutral-500 text-right max-w-[40%]">—</span>
                 </li>
                 {% endif %}
                 {% endfor %}
@@ -245,9 +245,9 @@
 
     <!-- ============== TIMETABLE tab ============== -->
     <div data-tab-panel="timetable" class="hidden cu-card">
-        <div class="p-4 border-b border-neutral-100 flex items-center justify-between">
+        <div class="p-4 border-b border-neutral-100 flex flex-wrap items-center justify-between gap-x-3">
             <h3 class="text-sm font-semibold text-neutral-800">Weekly timetable</h3>
-            <a href="/timetable" class="text-xs text-primary-600 hover:underline">Open timetable editor →</a>
+            <a href="/timetable" class="shrink-0 inline-flex items-center min-h-[2.75rem] sm:min-h-0 text-xs text-primary-600 hover:underline">Open timetable editor →</a>
         </div>
         <div id="timetable-grid" class="p-4 text-sm text-neutral-500">Loading…</div>
     </div>
@@ -365,7 +365,7 @@
             return;
         }
         el.innerHTML = list.map(s => `
-            <a href="/students/${s.id}" class="flex items-center gap-3 p-3 hover:bg-neutral-50">
+            <a href="/students/${s.id}" class="flex items-center gap-3 p-3 min-h-[3.5rem] hover:bg-neutral-50">
                 <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
                     <span class="text-primary-700 font-medium text-sm">${(s.first_name[0] || '?')}${(s.last_name[0] || '')}</span>
                 </div>
@@ -475,17 +475,14 @@
     async function loadTimetable() {
         const el = document.getElementById('timetable-grid');
         try {
-            // Fetch the full list and filter by class_id client-side —
-            // the API doesn't take a class_id filter today.
-            const r = await ClassUp.fetch('/api/v1/timetable/timetables?page_size=100');
-            const tts = (r.data || []).filter(t => t.class_id === CLASS_ID);
-            if (!tts.length) {
+            // The server picks the class's timetable (active first); the
+            // list endpoint is admin-only, the single-item one isn't.
+            const ttId = {{ class_timetable_id | tojson }};
+            if (!ttId) {
                 el.innerHTML = '<p class="text-neutral-500 text-sm py-6 text-center">No timetable created for this class yet.</p>';
                 return;
             }
-            // Pick the active one, else first
-            const tt = tts.find(t => t.is_active) || tts[0];
-            const full = await ClassUp.fetch(`/api/v1/timetable/timetables/${tt.id}`);
+            const full = await ClassUp.fetch(`/api/v1/timetable/timetables/${ttId}`);
             const entries = full.data.entries || [];
             if (!entries.length) {
                 el.innerHTML = '<p class="text-neutral-500 text-sm py-6 text-center">Timetable exists but has no entries yet.</p>';
@@ -503,11 +500,12 @@
                 (idx[e.day_of_week] = idx[e.day_of_week] || {})[key] = e;
             });
             el.innerHTML = `
-                <div class="overflow-x-auto">
+                <p class="cu-scroll-hint">Swipe sideways for the whole week</p>
+                <div class="cu-table-scroll">
                     <table class="min-w-full text-sm border border-neutral-200">
                         <thead class="bg-neutral-50">
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs text-neutral-500 uppercase border border-neutral-200">Time</th>
+                                <th class="cu-sticky-col px-3 py-2 text-left text-xs text-neutral-500 uppercase border border-neutral-200">Time</th>
                                 ${days.map(d => `<th class="px-3 py-2 text-left text-xs text-neutral-500 uppercase border border-neutral-200">${dayLabels[d]}</th>`).join('')}
                             </tr>
                         </thead>
@@ -515,11 +513,11 @@
                             ${slots.map(slot => {
                                 const [s, e] = slot.split('|');
                                 return `<tr>
-                                    <td class="px-3 py-2 whitespace-nowrap text-xs text-neutral-500 border border-neutral-200 bg-neutral-50">${s} - ${e}</td>
+                                    <td class="cu-sticky-col px-3 py-2 whitespace-nowrap text-xs text-neutral-500 border border-neutral-200">${s} - ${e}</td>
                                     ${days.map(d => {
                                         const entry = (idx[d] || {})[slot];
                                         if (!entry) return '<td class="border border-neutral-200 bg-neutral-50/40"></td>';
-                                        return `<td class="px-3 py-2 border border-neutral-200 align-top">
+                                        return `<td class="px-3 py-2 border border-neutral-200 align-top min-w-[7rem] cu-wrap">
                                             <p class="text-xs font-medium text-neutral-800">${entry.subject_name || '—'}</p>
                                             ${entry.teacher_name ? `<p class="text-xs text-neutral-500">${entry.teacher_name}</p>` : ''}
                                             ${entry.room ? `<p class="text-xs text-neutral-400">${entry.room}</p>` : ''}

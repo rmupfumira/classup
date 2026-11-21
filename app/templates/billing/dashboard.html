@@ -10,7 +10,7 @@
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div class="max-w-xl">
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
-                <h1 class="cu-page-title text-white">{{ t('billing.title', current_language) }}</h1>
+                <h1 class="cu-page-title leading-tight text-white">{{ t('billing.title', current_language) }}</h1>
                 <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                     {{ t('billing.dashboard_subtitle', current_language) }}
                 </p>
@@ -134,13 +134,13 @@
     </section>
 
     {# ------ Recent invoices + recent payments ------ #}
-    <section class="grid lg:grid-cols-3 gap-6">
+    <section class="grid 2xl:grid-cols-3 gap-6">
 
         {# Recent invoices (2/3 width) #}
-        <div class="lg:col-span-2 cu-card">
-            <div class="px-6 py-4 flex items-center justify-between">
+        <div class="2xl:col-span-2 cu-card">
+            <div class="px-4 sm:px-6 py-2 sm:py-4 flex items-center justify-between gap-3">
                 <h3 class="text-base font-semibold text-navy-800">{{ t('billing.recent_invoices', current_language) }}</h3>
-                <a href="/billing/invoices" class="text-sm font-medium text-navy-600 hover:text-navy-800">{{ t('billing.view_all', current_language) }} →</a>
+                <a href="/billing/invoices" class="inline-flex items-center min-h-[44px] shrink-0 text-sm font-medium text-navy-600 hover:text-navy-800">{{ t('billing.view_all', current_language) }} →</a>
             </div>
 
             {% if recent_invoices %}
@@ -164,7 +164,7 @@
                             <th>Status</th>
                             <th style="text-align:right">Amount</th>
                             <th style="text-align:right">Balance</th>
-                            <th>Due Date</th>
+                            <th class="whitespace-nowrap">Due date</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -172,7 +172,7 @@
                         {% set st_cls, st_label = invoice_status_map.get(invoice.status, ('cu-status-draft', invoice.status)) %}
                         <tr>
                             <td>
-                                <a href="/billing/invoices/{{ invoice.id }}" class="font-semibold text-navy-800 hover:text-navy-600">
+                                <a href="/billing/invoices/{{ invoice.id }}" class="font-semibold text-navy-800 hover:text-navy-600 whitespace-nowrap">
                                     {{ invoice.invoice_number }}
                                 </a>
                             </td>
@@ -181,7 +181,7 @@
                                     <div class="cu-avatar cu-avatar-sm">
                                         {{ invoice.student.first_name[0] }}{{ invoice.student.last_name[0] }}
                                     </div>
-                                    <span class="text-sm text-navy-700">{{ invoice.student.first_name }} {{ invoice.student.last_name }}</span>
+                                    <span class="text-sm text-navy-700 whitespace-nowrap">{{ invoice.student.first_name }} {{ invoice.student.last_name }}</span>
                                 </div>
                             </td>
                             <td>
@@ -190,14 +190,14 @@
                                     {{ st_label }}
                                 </span>
                             </td>
-                            <td style="text-align:right" class="font-medium text-navy-800">
-                                {{ currency }} {{ "%.2f"|format(invoice.total_amount) }}
+                            <td style="text-align:right" class="whitespace-nowrap font-medium text-navy-800">
+                                {{ currency }} {{ "{:,.2f}".format(invoice.total_amount) }}
                             </td>
-                            <td style="text-align:right"
-                                class="{% if invoice.balance > 0 %}text-gold-700 font-semibold{% else %}text-navy-400{% endif %}">
-                                {{ currency }} {{ "%.2f"|format(invoice.balance) }}
+                            <td style="text-align:right" 
+                                class="whitespace-nowrap {% if invoice.balance > 0 %}text-gold-700 font-semibold{% else %}text-navy-400{% endif %}">
+                                {{ currency }} {{ "{:,.2f}".format(invoice.balance) }}
                             </td>
-                            <td class="text-navy-500">
+                            <td class="text-navy-500 whitespace-nowrap">
                                 {{ invoice.due_date.strftime('%b %d, %Y') }}
                             </td>
                         </tr>
@@ -211,8 +211,8 @@
                 {% for invoice in recent_invoices %}
                 {% set st_cls, st_label = invoice_status_map.get(invoice.status, ('cu-status-draft', invoice.status)) %}
                 <a href="/billing/invoices/{{ invoice.id }}" class="block p-4 border-b border-navy-50 hover:bg-navy-50 transition-colors">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-2">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <div class="flex items-center gap-2 min-w-0">
                             <div class="cu-avatar cu-avatar-sm">
                                 {{ invoice.student.first_name[0] }}{{ invoice.student.last_name[0] }}
                             </div>
@@ -228,11 +228,11 @@
                     </div>
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-navy-500">Due {{ invoice.due_date.strftime('%b %d, %Y') }}</span>
-                        <span class="font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(invoice.total_amount) }}</span>
+                        <span class="font-semibold text-navy-800 whitespace-nowrap">{{ currency }} {{ "{:,.2f}".format(invoice.total_amount) }}</span>
                     </div>
                     {% if invoice.balance > 0 %}
                     <div class="text-right mt-1">
-                        <span class="text-xs text-gold-700 font-medium">Balance: {{ currency }} {{ "%.2f"|format(invoice.balance) }}</span>
+                        <span class="text-xs text-gold-700 font-medium">Balance: {{ currency }} {{ "{:,.2f}".format(invoice.balance) }}</span>
                     </div>
                     {% endif %}
                 </a>
@@ -262,9 +262,9 @@
 
         {# Recent payments (1/3 width) #}
         <div class="cu-card">
-            <div class="px-6 py-4 flex items-center justify-between">
+            <div class="px-4 sm:px-6 py-2 sm:py-4 flex items-center justify-between gap-3">
                 <h3 class="text-base font-semibold text-navy-800">{{ t('billing.recent_payments', current_language) }}</h3>
-                <a href="/billing/payments" class="text-sm font-medium text-navy-600 hover:text-navy-800">{{ t('billing.view_all', current_language) }} →</a>
+                <a href="/billing/payments" class="inline-flex items-center min-h-[44px] shrink-0 text-sm font-medium text-navy-600 hover:text-navy-800">{{ t('billing.view_all', current_language) }} →</a>
             </div>
 
             {% if recent_payments %}
@@ -292,7 +292,7 @@
                             </div>
                         </div>
                         <div class="text-right flex-shrink-0">
-                            <p class="text-sm font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(payment.amount) }}</p>
+                            <p class="text-sm font-semibold text-navy-800 whitespace-nowrap">{{ currency }} {{ "{:,.2f}".format(payment.amount) }}</p>
                             <p class="text-xs text-navy-500">{{ payment.payment_date.strftime('%b %d') }}</p>
                         </div>
                     </div>

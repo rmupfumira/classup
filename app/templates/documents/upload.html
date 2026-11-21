@@ -27,20 +27,20 @@
                 <label class="block text-sm font-medium text-neutral-700">Share With</label>
                 <div class="flex flex-wrap gap-4">
                     {% if is_admin %}
-                    <label class="flex items-center">
+                    <label class="flex items-center min-h-[2.75rem] cursor-pointer">
                         <input type="radio" name="scope" value="SCHOOL"
                                class="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
                                onchange="handleScopeChange()" checked>
                         <span class="ml-2 text-sm text-neutral-700">School-wide</span>
                     </label>
                     {% endif %}
-                    <label class="flex items-center">
+                    <label class="flex items-center min-h-[2.75rem] cursor-pointer">
                         <input type="radio" name="scope" value="CLASS"
                                class="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
                                onchange="handleScopeChange()" {% if not is_admin %}checked{% endif %}>
                         <span class="ml-2 text-sm text-neutral-700">Class</span>
                     </label>
-                    <label class="flex items-center">
+                    <label class="flex items-center min-h-[2.75rem] cursor-pointer">
                         <input type="radio" name="scope" value="STUDENT"
                                class="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
                                onchange="handleScopeChange()">
@@ -53,7 +53,7 @@
             <div id="class-section" class="{% if is_admin %}hidden{% endif %}">
                 <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
                 <select id="class_id" name="class_id"
-                        class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                        class="block w-full sm:w-64 cu-input !rounded-xl"
                         onchange="handleClassChange()">
                     <option value="">Select class...</option>
                     {% for cls in classes %}
@@ -78,7 +78,7 @@
                 <label for="title" class="block text-sm font-medium text-neutral-700 mb-1">Document Title <span class="text-red-500">*</span></label>
                 <input type="text" id="title" name="title" maxlength="255" required
                        placeholder="Enter document title..."
-                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                       class="block w-full cu-input !rounded-xl">
             </div>
 
             <!-- Description -->
@@ -86,7 +86,7 @@
                 <label for="description" class="block text-sm font-medium text-neutral-700 mb-1">Description (optional)</label>
                 <textarea id="description" name="description" rows="3" maxlength="500"
                           placeholder="Add a description for this document..."
-                          class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
+                          class="cu-textarea"></textarea>
             </div>
 
             <!-- Upload Area -->

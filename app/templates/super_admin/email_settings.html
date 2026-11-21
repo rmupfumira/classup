@@ -3,22 +3,9 @@
 {% block title %}Email Settings - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
-    <!-- Page Header -->
-    <div class="flex items-center gap-4">
-        <a href="/admin"
-           class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-lg transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
-            </svg>
-        </a>
-        <div>
-            <h1 class="text-xl font-semibold text-navy-800">Email Settings</h1>
-            <p class="mt-1 text-sm text-navy-500">
-                Configure how the platform sends transactional emails
-            </p>
-        </div>
-    </div>
+{% from "super_admin/_hero.html" import platform_hero %}
+<div class="space-y-6 [&>*:not(.cu-hero)]:max-w-5xl">
+    {{ platform_hero('Email Settings', 'Configure how the platform sends transactional emails', eyebrow='Messaging') }}
 
     <!-- Email Configuration Card -->
     <div class="cu-card p-6">
@@ -83,7 +70,7 @@
                         <input type="email" id="from_email" name="from_email" required
                                value="{{ email_config.get('from_email', '') }}"
                                placeholder="notifications@classup.co.za"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                     </div>
                     <div>
                         <label for="from_name" class="block text-sm font-medium text-navy-700 mb-1">
@@ -92,7 +79,7 @@
                         <input type="text" id="from_name" name="from_name"
                                value="{{ email_config.get('from_name', 'ClassUp') }}"
                                placeholder="ClassUp"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                         <p class="mt-1 text-xs text-navy-500">
                             Fallback sender name. Tenant-scoped emails automatically use the tenant's name instead.
                         </p>
@@ -114,7 +101,7 @@
                         <input type="text" id="smtp_host" name="smtp_host"
                                value="{{ email_config.get('smtp_host', '') }}"
                                placeholder="mail.classup.co.za"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -124,15 +111,15 @@
                             <input type="number" id="smtp_port" name="smtp_port"
                                    value="{{ email_config.get('smtp_port', 465) }}"
                                    min="1" max="65535"
-                                   class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                                   class="cu-input">
                             <p class="mt-1 text-xs text-navy-500">465 = SSL, 587 = STARTTLS</p>
                         </div>
                         <div class="flex items-center pt-6">
-                            <label class="relative inline-flex items-center cursor-pointer">
+                            <label class="cu-tap relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="smtp_use_tls" name="smtp_use_tls"
                                        {% if email_config.get('smtp_use_tls', true) %}checked{% endif %}
                                        class="sr-only peer">
-                                <div class="w-9 h-5 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-navy-200 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-navy-500"></div>
+                                <div class="relative shrink-0 w-9 h-5 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-navy-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-navy-200 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-navy-500"></div>
                                 <span class="ms-3 text-sm font-medium text-navy-700">Use TLS</span>
                             </label>
                         </div>
@@ -144,7 +131,7 @@
                         <input type="text" id="smtp_username" name="smtp_username"
                                value="{{ email_config.get('smtp_username', '') }}"
                                placeholder="user@classup.co.za"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                     </div>
                     <div>
                         <label for="smtp_password" class="block text-sm font-medium text-navy-700 mb-1">
@@ -153,7 +140,7 @@
                         <input type="password" id="smtp_password" name="smtp_password"
                                value="{{ email_config.get('smtp_password', '') }}"
                                placeholder="SMTP password"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                     </div>
                 </div>
             </div>
@@ -169,7 +156,7 @@
                         <input type="password" id="resend_api_key" name="resend_api_key"
                                value="{{ email_config.get('resend_api_key', '') }}"
                                placeholder="re_xxxxxxxxxxxx"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                         <p class="mt-1 text-xs text-navy-500">
                             Get your API key from <a href="https://resend.com" target="_blank" class="text-navy-600 hover:underline">resend.com</a>
                         </p>
@@ -181,16 +168,16 @@
             <div class="border-t border-navy-100"></div>
 
             <!-- Enabled Toggle -->
-            <div class="flex items-center justify-between">
-                <div>
+            <div class="flex items-center justify-between gap-4">
+                <div class="min-w-0">
                     <h3 class="text-sm font-medium text-navy-800">Enable Email Sending</h3>
                     <p class="text-xs text-navy-500 mt-1">When disabled, no emails will be sent from the platform</p>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
+                <label class="cu-tap relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="enabled" name="enabled"
                            {% if email_config.get('enabled', false) %}checked{% endif %}
                            class="sr-only peer">
-                    <div class="w-9 h-5 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-navy-200 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-navy-500"></div>
+                    <div class="relative shrink-0 w-9 h-5 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-navy-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-navy-200 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-navy-500"></div>
                 </label>
             </div>
 
@@ -206,10 +193,10 @@
                         </label>
                         <input type="email" id="test_to" name="test_to"
                                placeholder="Leave blank to send to your own email"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                     </div>
                     <button type="button" id="test-btn"
-                            class="inline-flex items-center px-4 py-2 text-sm font-medium text-navy-600 bg-navy-50 rounded-xl hover:bg-navy-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                            class="cu-tap inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-navy-600 bg-navy-50 rounded-xl hover:bg-navy-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                   d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"></path>
@@ -219,9 +206,9 @@
                 </div>
 
                 <!-- Save Row -->
-                <div class="flex items-center justify-end gap-3 border-t border-navy-100 pt-4">
+                <div class="flex flex-wrap items-center justify-end gap-3 border-t border-navy-100 pt-4">
                     <a href="/admin"
-                       class="px-4 py-2 text-sm text-navy-600 hover:text-navy-800 transition-colors">
+                       class="cu-tap inline-flex items-center justify-center px-4 py-2 text-sm text-navy-600 hover:text-navy-800 transition-colors">
                         Cancel
                     </a>
                     <button type="submit" id="submit-btn"

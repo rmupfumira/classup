@@ -26,7 +26,7 @@
             <div>
                 <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class <span class="text-red-500">*</span></label>
                 <select id="class_id" name="class_id" required
-                        class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                        class="block w-full sm:w-64 cu-input !rounded-xl"
                         onchange="handleClassChange()">
                     <option value="">Select class...</option>
                     {% for cls in classes %}
@@ -42,7 +42,7 @@
                 <label for="caption" class="block text-sm font-medium text-neutral-700 mb-1">Caption (optional)</label>
                 <input type="text" id="caption" name="caption" maxlength="255"
                        placeholder="Add a caption for these photos..."
-                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                       class="block w-full cu-input !rounded-xl">
             </div>
 
             <!-- Student Tags -->

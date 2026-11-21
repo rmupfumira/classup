@@ -10,10 +10,14 @@
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div class="max-w-xl">
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">People</span>
-                <h1 class="cu-page-title text-white">Classes</h1>
+                <h1 class="cu-page-title leading-tight text-white">Classes</h1>
                 <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
+                    {% if user.role == 'TEACHER' %}
+                    {{ total }} class{{ 'es' if total != 1 else '' }} assigned to you. Open a class for its roster, subjects and timetable.
+                    {% else %}
                     {{ total }} class{{ 'es' if total != 1 else '' }} across the school.
                     Manage rosters, teachers and grade-level groupings from one place.
+                    {% endif %}
                 </p>
             </div>
             {% if permissions.can_manage_classes() %}
@@ -98,8 +102,9 @@
         {% for cls in classes %}
         <a href="/classes/{{ cls.id }}" class="cu-card cu-card-hover p-5 block">
             <div class="flex items-start justify-between mb-4">
+                {% set _parts = (cls.name or '?').split() %}
                 <div class="cu-avatar">
-                    {{ cls.name[:2] | upper }}
+                    {%- if _parts|length >= 2 -%}{{ (_parts[0][0] ~ _parts[1][0]) | upper }}{%- else -%}{{ (cls.name or '?')[:2] | upper }}{%- endif -%}
                 </div>
                 {% if cls.is_active %}
                 <span class="cu-status cu-status-finalized">

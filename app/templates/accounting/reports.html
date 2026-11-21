@@ -9,7 +9,7 @@
     <section class="cu-hero">
         <div class="max-w-2xl">
             <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance · Accounting</span>
-            <h1 class="cu-page-title text-white">Reports</h1>
+            <h1 class="cu-page-title leading-tight text-white">Reports</h1>
             <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                 High-level totals live on the <a href="/accounting" class="underline underline-offset-2 hover:text-gold-300">accounting dashboard</a>;
                 this page is the itemised view — pick one report at a time.
@@ -22,8 +22,8 @@
     {# ------ Report selector + date range + actions ------ #}
     <div class="cu-card p-4">
         <div class="flex flex-wrap items-end gap-3">
-            <div class="min-w-[220px]">
-                <label class="block text-xs font-medium text-navy-700 mb-1">Report</label>
+            <div class="w-full sm:w-auto sm:min-w-[220px]">
+                <label for="report-select" class="block text-xs font-medium text-navy-700 mb-1">Report</label>
                 <select id="report-select" class="cu-select">
                     <option value="pl">Profit &amp; Loss</option>
                     <option value="cat">Expenses by category</option>
@@ -32,23 +32,23 @@
                 </select>
             </div>
 
-            <div data-range>
-                <label class="block text-xs font-medium text-navy-700 mb-1">From</label>
+            <div data-range class="flex-1 min-w-[8.5rem] sm:flex-none">
+                <label for="from-date" class="block text-xs font-medium text-navy-700 mb-1">From</label>
                 <input type="date" id="from-date" class="cu-input">
             </div>
-            <div data-range>
-                <label class="block text-xs font-medium text-navy-700 mb-1">To</label>
+            <div data-range class="flex-1 min-w-[8.5rem] sm:flex-none">
+                <label for="to-date" class="block text-xs font-medium text-navy-700 mb-1">To</label>
                 <input type="date" id="to-date" class="cu-input">
             </div>
-            <div data-range class="flex items-center gap-1 flex-wrap">
-                <button onclick="setRange('month')" class="cu-pill">This month</button>
-                <button onclick="setRange('quarter')" class="cu-pill">Quarter</button>
-                <button onclick="setRange('year')" class="cu-pill">Year</button>
-                <button onclick="setRange('ytd')" class="cu-pill">YTD</button>
+            <div data-range class="flex items-center gap-1 flex-wrap w-full sm:w-auto">
+                <button onclick="setRange('month')" class="cu-pill cu-tap">This month</button>
+                <button onclick="setRange('quarter')" class="cu-pill cu-tap">Quarter</button>
+                <button onclick="setRange('year')" class="cu-pill cu-tap">Year</button>
+                <button onclick="setRange('ytd')" class="cu-pill cu-tap">YTD</button>
             </div>
 
-            <div class="ml-auto flex items-center gap-2">
-                <button onclick="loadCurrent()" class="cu-btn-primary">
+            <div class="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
+                <button onclick="loadCurrent()" class="cu-btn-primary flex-1 sm:flex-none justify-center">
                     Run report
                 </button>
                 <button onclick="downloadCsv()" title="Download CSV" class="cu-btn-soft">
@@ -70,7 +70,7 @@
             <h2 id="report-title" class="text-base font-bold text-navy-800">Profit &amp; Loss</h2>
             <p id="report-subtitle" class="text-xs text-navy-500">—</p>
         </div>
-        <div id="report-body" class="p-5 overflow-x-auto">
+        <div id="report-body" class="p-3 sm:p-5">
             <p class="text-center text-navy-400 py-6 text-sm">Pick a report and click "Run report".</p>
         </div>
     </div>
@@ -78,7 +78,7 @@
 
 <style>
 @media print {
-    nav, aside, header, .no-print, button { display: none !important; }
+    nav, aside, header, .no-print, button, .cu-scroll-hint { display: none !important; }
     body { background: white; }
     .cu-card, .cu-table-wrap { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
 }
@@ -137,9 +137,9 @@ async function loadPL(from, to) {
     const d = res.data;
     const rowHtml = (r) => `
         <tr style="border-top: 1px solid #f4f7fb;">
-            <td style="padding: 0.75rem; font-family: ui-monospace, monospace; font-size: 0.75rem; color: #3a5f96; width: 5rem;">${r.code}</td>
+            <td style="padding: 0.75rem; font-family: ui-monospace, monospace; font-size: 0.75rem; color: #3a5f96; width: 4rem;">${r.code}</td>
             <td style="padding: 0.75rem;" class="text-navy-800">${r.name}</td>
-            <td style="padding: 0.75rem; text-align: right;" class="font-semibold text-navy-800">${fmt(r.total)}</td>
+            <td style="padding: 0.75rem; text-align: right;" class="whitespace-nowrap font-semibold text-navy-800">${fmt(r.total)}</td>
         </tr>`;
     const incRows = d.income.length ? d.income.map(rowHtml).join('') :
         '<tr><td colspan="3" style="padding: 1rem; text-align: center;" class="text-navy-400 text-sm">No income in range.</td></tr>';
@@ -154,7 +154,7 @@ async function loadPL(from, to) {
                     <tfoot>
                         <tr style="border-top: 2px solid #c2d2e7; background: #ecfdf5;">
                             <td colspan="2" style="padding: 0.75rem;" class="font-bold text-navy-800">Total income</td>
-                            <td style="padding: 0.75rem; text-align: right;" class="font-bold text-emerald-700">${fmt(d.income_total)}</td>
+                            <td style="padding: 0.75rem; text-align: right;" class="whitespace-nowrap font-bold text-emerald-700">${fmt(d.income_total)}</td>
                         </tr>
                     </tfoot>
                 </table></div>
@@ -166,15 +166,15 @@ async function loadPL(from, to) {
                     <tfoot>
                         <tr style="border-top: 2px solid #c2d2e7; background: #fdf9ec;">
                             <td colspan="2" style="padding: 0.75rem;" class="font-bold text-navy-800">Total expenses</td>
-                            <td style="padding: 0.75rem; text-align: right;" class="font-bold text-gold-700">${fmt(d.expense_total)}</td>
+                            <td style="padding: 0.75rem; text-align: right;" class="whitespace-nowrap font-bold text-gold-700">${fmt(d.expense_total)}</td>
                         </tr>
                     </tfoot>
                 </table></div>
             </div>
         </div>
-        <div class="mt-4 pt-4 border-t border-navy-100 flex items-center justify-between">
+        <div class="mt-4 pt-4 border-t border-navy-100 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <p class="text-sm font-bold text-navy-800">Net profit / (loss)</p>
-            <p class="text-xl font-extrabold ${d.net_profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${fmt(d.net_profit)}</p>
+            <p class="text-xl font-extrabold whitespace-nowrap ${d.net_profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${fmt(d.net_profit)}</p>
         </div>
     `;
 }
@@ -186,11 +186,12 @@ async function loadCategories(from, to) {
     if (!rows.length) return '<p class="text-center text-navy-400 py-6 text-sm">No expenses in range.</p>';
     const grand = rows.reduce((s, r) => s + Number(r.total || 0), 0);
     return `
-        <div class="overflow-x-auto"><table class="cu-table">
+        <p class="cu-scroll-hint">Swipe sideways for totals and share</p>
+        <div class="cu-table-scroll"><table class="cu-table">
             <thead>
                 <tr>
-                    <th>Code</th>
-                    <th>Category</th>
+                    <th class="hidden sm:table-cell">Code</th>
+                    <th class="cu-sticky-col">Category</th>
                     <th style="text-align:right">Entries</th>
                     <th style="text-align:right">Total</th>
                     <th style="text-align:right">Share</th>
@@ -201,10 +202,10 @@ async function loadCategories(from, to) {
                     const pct = grand > 0 ? (Number(r.total) / grand * 100) : 0;
                     return `
                         <tr>
-                            <td class="font-mono text-xs text-navy-500" style="width: 5rem;">${r.code}</td>
-                            <td class="text-navy-800">${r.name}</td>
+                            <td class="hidden sm:table-cell font-mono text-xs text-navy-500" style="width: 5rem;">${r.code}</td>
+                            <td class="cu-sticky-col text-navy-800"><span class="sm:hidden font-mono text-xs text-navy-500 mr-1">${r.code}</span>${r.name}</td>
                             <td style="text-align:right" class="text-navy-600">${r.count}</td>
-                            <td style="text-align:right" class="font-semibold text-navy-800">${fmt(r.total)}</td>
+                            <td style="text-align:right" class="whitespace-nowrap font-semibold text-navy-800">${fmt(r.total)}</td>
                             <td style="text-align:right">
                                 <div class="inline-flex items-center gap-2">
                                     <div class="w-16 cu-progress"><div class="cu-progress-fill" style="width: ${pct}%"></div></div>
@@ -217,8 +218,10 @@ async function loadCategories(from, to) {
             </tbody>
             <tfoot>
                 <tr style="border-top: 2px solid #c2d2e7; background: #f4f7fb;">
-                    <td colspan="3" style="padding: 0.75rem 1rem;" class="font-bold text-navy-800">Total</td>
-                    <td style="padding: 0.75rem 1rem; text-align: right;" class="font-bold text-navy-800">${fmt(grand)}</td>
+                    <td class="hidden sm:table-cell" style="padding: 0.75rem 1rem;"></td>
+                    <td style="padding: 0.75rem 1rem; background: #f4f7fb;" class="cu-sticky-col font-bold text-navy-800">Total</td>
+                    <td style="padding: 0.75rem 1rem;"></td>
+                    <td style="padding: 0.75rem 1rem; text-align: right;" class="whitespace-nowrap font-bold text-navy-800">${fmt(grand)}</td>
                     <td></td>
                 </tr>
             </tfoot>
@@ -232,10 +235,11 @@ async function loadCash() {
     document.getElementById('report-subtitle').textContent = `As of ${d.as_of}`;
     if (!d.banks.length) return '<p class="text-center text-navy-400 py-6 text-sm">No bank accounts yet.</p>';
     return `
-        <div class="overflow-x-auto"><table class="cu-table">
+        <p class="cu-scroll-hint">Swipe sideways for balances</p>
+        <div class="cu-table-scroll"><table class="cu-table">
             <thead>
                 <tr>
-                    <th>Account</th>
+                    <th class="cu-sticky-col">Account</th>
                     <th>Bank</th>
                     <th>Type</th>
                     <th style="text-align:right">Balance</th>
@@ -244,7 +248,7 @@ async function loadCash() {
             <tbody>
                 ${d.banks.map(b => `
                     <tr style="${b.is_active ? '' : 'opacity: 0.5;'}">
-                        <td class="font-semibold text-navy-800">
+                        <td class="cu-sticky-col font-semibold text-navy-800">
                             ${b.name}
                             ${b.is_default ? '<span class="ml-1 cu-chip-gold">Default</span>' : ''}
                             ${!b.is_active ? '<span class="ml-1 cu-chip-neutral">Inactive</span>' : ''}
@@ -257,8 +261,9 @@ async function loadCash() {
             </tbody>
             <tfoot>
                 <tr style="border-top: 2px solid #c2d2e7; background: #f4f7fb;">
-                    <td colspan="3" style="padding: 0.75rem 1rem;" class="font-bold text-navy-800">Total cash on hand</td>
-                    <td style="padding: 0.75rem 1rem; text-align: right;" class="font-extrabold text-navy-800">${fmt(d.total)}</td>
+                    <td style="padding: 0.75rem 1rem; background: #f4f7fb;" class="cu-sticky-col font-bold text-navy-800">Total cash on hand</td>
+                    <td colspan="2" style="padding: 0.75rem 1rem;"></td>
+                    <td style="padding: 0.75rem 1rem; text-align: right;" class="whitespace-nowrap font-extrabold text-navy-800">${fmt(d.total)}</td>
                 </tr>
             </tfoot>
         </table></div>
@@ -278,7 +283,7 @@ async function loadTx(from, to) {
         ? '<span class="cu-chip-gold">Expense</span>'
         : '<span class="cu-chip-navy">Transfer</span>';
     return `
-        <div class="overflow-x-auto"><table class="cu-table">
+        <div class="overflow-x-auto"><table class="cu-table cu-table--stack">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -292,12 +297,12 @@ async function loadTx(from, to) {
             <tbody>
                 ${rows.map(t => `
                     <tr>
-                        <td class="text-navy-600">${t.date}</td>
-                        <td>${badge(t.type)}</td>
-                        <td class="text-navy-800">${t.account_name || (t.type === 'TRANSFER' ? 'Transfer' : '—')}</td>
-                        <td class="text-navy-600">${t.description || ''}${t.reference ? `<div class="text-xs text-navy-400">Ref: ${t.reference}</div>` : ''}</td>
-                        <td class="text-navy-600">${t.bank_account_name || '—'}${t.transfer_to_bank_account_name ? ` → ${t.transfer_to_bank_account_name}` : ''}</td>
-                        <td style="text-align:right" class="font-bold ${t.type === 'INCOME' ? 'text-emerald-700' : (t.type === 'EXPENSE' ? 'text-gold-800' : 'text-navy-700')}">${fmt(t.amount)}</td>
+                        <td data-label="Date" class="text-navy-600 whitespace-nowrap">${t.date}</td>
+                        <td data-label="Type">${badge(t.type)}</td>
+                        <td data-label="Account" class="text-navy-800">${t.account_name || (t.type === 'TRANSFER' ? 'Transfer' : '—')}</td>
+                        <td data-label="Description" class="text-navy-600 ${t.description || t.reference ? '' : 'cu-stack-hide'}"><div>${t.description || ''}${t.reference ? `<div class="text-xs text-navy-400">Ref: ${t.reference}</div>` : ''}</div></td>
+                        <td data-label="Bank" class="text-navy-600">${t.bank_account_name || '—'}${t.transfer_to_bank_account_name ? ` → ${t.transfer_to_bank_account_name}` : ''}</td>
+                        <td data-label="Amount" style="text-align:right" class="whitespace-nowrap font-bold ${t.type === 'INCOME' ? 'text-emerald-700' : (t.type === 'EXPENSE' ? 'text-gold-800' : 'text-navy-700')}">${fmt(t.amount)}</td>
                     </tr>
                 `).join('')}
             </tbody>

@@ -11,7 +11,7 @@
             </svg>
             Back to Imports
         </a>
-        <h1 class="mt-4 text-2xl font-bold text-neutral-900">Import Results</h1>
+        <h1 class="cu-page-title leading-tight mt-4">Import Results</h1>
     </div>
 
     <!-- Summary -->
@@ -57,11 +57,11 @@
     </div>
 
     {% if job.errors %}
-    <div class="bg-white shadow-sm rounded-lg p-6">
+    <div class="bg-white shadow-sm rounded-lg p-4 sm:p-6">
         <h3 class="text-lg font-medium text-neutral-900 mb-4">Errors</h3>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-neutral-200">
-                <thead class="bg-neutral-50">
+            <table class="min-w-full divide-y divide-neutral-200 cu-table--stack">
+                <thead class="bg-navy-50">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Row</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Field</th>
@@ -72,12 +72,12 @@
                 <tbody class="bg-white divide-y divide-neutral-200">
                     {% for error in job.errors %}
                     <tr>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">{{ error.get('row', '-') }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">{{ error.get('field', '-') }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">
+                        <td data-label="Row" class="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">{{ error.get('row', '-') }}</td>
+                        <td data-label="Field" class="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">{{ error.get('field', '-') }}</td>
+                        <td data-label="Value" class="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">
                             {{ error.get('value', '-')[:30] }}{% if error.get('value', '')|length > 30 %}...{% endif %}
                         </td>
-                        <td class="px-4 py-3 text-sm text-red-600">{{ error.get('message', 'Unknown error') }}</td>
+                        <td data-label="Error" class="px-4 py-3 text-sm text-red-600"><div>{{ error.get('message', 'Unknown error') }}</div></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -97,15 +97,15 @@
         </p>
         <div class="mt-6">
             {% if job.import_type == 'STUDENTS' %}
-            <a href="/students" class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+            <a href="/students" class="cu-btn-primary">
                 View Students
             </a>
             {% elif job.import_type == 'TEACHERS' %}
-            <a href="/settings" class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+            <a href="/settings" class="cu-btn-primary">
                 View Teachers
             </a>
             {% else %}
-            <a href="/dashboard" class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+            <a href="/dashboard" class="cu-btn-primary">
                 Go to Dashboard
             </a>
             {% endif %}

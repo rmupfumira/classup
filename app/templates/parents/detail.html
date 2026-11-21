@@ -8,7 +8,7 @@
     {# ------ Hero banner ------ #}
     <section class="cu-hero">
         <div class="relative">
-            <a href="/parents" class="inline-flex items-center gap-1 text-white/70 hover:text-white text-xs font-semibold mb-3">
+            <a href="/parents" class="inline-flex items-center gap-1 min-h-[44px] text-white/70 hover:text-white text-xs font-semibold mb-1">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 Back to parents
             </a>
@@ -86,7 +86,7 @@
 
         <div class="flex justify-end gap-2 pt-2">
             <button type="submit"
-                    class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
+                    class="cu-btn-primary w-full sm:w-auto justify-center">
                 Save changes
             </button>
         </div>
@@ -94,10 +94,10 @@
 
     <!-- Children -->
     <div class="cu-card p-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between gap-3 mb-4">
             <h2 class="text-lg font-semibold text-neutral-900">Children linked</h2>
             <button type="button" id="link-child-btn"
-                    class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                    class="cu-tap shrink-0 text-sm text-primary-600 hover:text-primary-700 font-semibold">
                 + Link child
             </button>
         </div>
@@ -106,8 +106,8 @@
         <ul class="divide-y divide-neutral-100">
             {% for ps in active_children %}
             <li class="py-3 flex items-center justify-between gap-3">
-                <div>
-                    <a href="/students/{{ ps.student.id }}" class="text-sm font-medium text-neutral-900 hover:text-primary-700">
+                <div class="min-w-0">
+                    <a href="/students/{{ ps.student.id }}" class="inline-block py-1 text-sm font-medium text-neutral-900 hover:text-primary-700">
                         {{ ps.student.first_name }} {{ ps.student.last_name }}
                     </a>
                     <p class="text-xs text-neutral-500">
@@ -117,7 +117,7 @@
                         {% endif %}
                     </p>
                 </div>
-                <button type="button" class="unlink-child-btn text-xs text-red-600 hover:text-red-700 font-medium"
+                <button type="button" class="unlink-child-btn cu-btn-soft !py-1.5 !px-3 !text-xs !text-rose-700 shrink-0"
                         data-student-id="{{ ps.student.id }}"
                         data-student-name="{{ ps.student.first_name }} {{ ps.student.last_name }}">
                     Unlink
@@ -135,16 +135,16 @@
         <h2 class="text-lg font-semibold text-neutral-900">Password & account</h2>
         <div class="flex flex-col sm:flex-row gap-2">
             <button type="button" id="send-reset-btn"
-                    class="inline-flex items-center justify-center px-4 py-2 border border-primary-300 text-primary-700 bg-white text-sm font-medium rounded-lg hover:bg-primary-50">
+                    class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-primary-300 text-primary-700 bg-white text-sm font-medium rounded-full hover:bg-primary-50">
                 Send password reset email
             </button>
             <button type="button" id="set-password-btn"
-                    class="inline-flex items-center justify-center px-4 py-2 border border-neutral-300 text-neutral-700 bg-white text-sm font-medium rounded-lg hover:bg-neutral-50">
+                    class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-neutral-300 text-neutral-700 bg-white text-sm font-medium rounded-full hover:bg-neutral-50">
                 Set a temporary password…
             </button>
             {% if parent.is_active %}
             <button type="button" id="deactivate-btn"
-                    class="sm:ml-auto inline-flex items-center justify-center px-4 py-2 border border-red-300 text-red-700 bg-white text-sm font-medium rounded-lg hover:bg-red-50">
+                    class="sm:ml-auto inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-red-300 text-red-700 bg-white text-sm font-medium rounded-full hover:bg-red-50">
                 Deactivate account
             </button>
             {% else %}

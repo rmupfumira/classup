@@ -616,12 +616,16 @@ mark.search-hit {
     background: #ffffff;
     border-radius: 1.5rem;
     padding: 1.25rem;
+    min-width: 0; /* let grid tracks shrink instead of pushing the page wide */
     box-shadow:
         0 2px 8px -2px rgba(27, 58, 107, 0.08),
         0 1px 3px -1px rgba(27, 58, 107, 0.05),
         inset 0 0 0 1px rgba(27, 58, 107, 0.06);
 }
+@media (max-width: 379px) { .cu-stat-tile { padding: 1rem; } }
 .cu-stat-tile-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-size: 0.75rem;
     font-weight: 600;
     color: #3a5f96; /* navy-500 */
@@ -749,8 +753,10 @@ mark.search-hit {
 /* ---------- Avatar / initials ---------- */
 
 /* Rounded navy avatar used for class/subject initials ("F3", "G5A"). */
-.cu-avatar {
+/* Size modifiers carry the base look too, so cu-avatar-sm alone works. */
+.cu-avatar, .cu-avatar-sm, .cu-avatar-lg {
     display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
     border-radius: 1rem;
@@ -761,8 +767,8 @@ mark.search-hit {
     box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
                 inset 0 0 0 1px rgba(27, 58, 107, 0.1);
 }
-.cu-avatar-sm { width: 2.5rem; height: 2.5rem; font-size: 0.8125rem; }
 .cu-avatar    { width: 3.5rem; height: 3.5rem; font-size: 1.125rem; }
+.cu-avatar-sm { width: 2.5rem; height: 2.5rem; font-size: 0.8125rem; border-radius: 0.75rem; }
 .cu-avatar-lg { width: 4rem;   height: 4rem;   font-size: 1.25rem; }
 
 /* ---------- Sidebar / nav patterns ---------- */
@@ -771,7 +777,7 @@ mark.search-hit {
 .cu-nav-group-label {
     font-size: 0.6875rem; /* 11px */
     font-weight: 800;
-    color: #a07420; /* gold-600 */
+    color: #835f1b; /* gold-700 — small text needs AA 4.5:1 */
     text-transform: uppercase;
     letter-spacing: 0.08em;
     padding: 0.5rem 0.75rem 0.25rem;
@@ -823,7 +829,7 @@ mark.search-hit {
     padding: 0.25rem 0.75rem;
     font-size: 0.625rem; /* 10px */
     font-weight: 800;
-    color: #a07420; /* gold-600 */
+    color: #835f1b; /* gold-700 — small text needs AA 4.5:1 */
     text-transform: uppercase;
     letter-spacing: 0.12em;
     background: #fdf9ec;
@@ -837,7 +843,7 @@ mark.search-hit {
 }
 
 /* Page title — bold, tracked down, used after .cu-eyebrow. */
-.cu-page-title { font-size: 1.875rem; font-weight: 800; letter-spacing: -0.025em; color: #0e1b34; }
+.cu-page-title { font-size: 1.875rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1.15; color: #0e1b34; }
 @media (min-width: 768px) { .cu-page-title { font-size: 2.25rem; } }
 
 /* ---------- Form fields ---------- */
@@ -888,7 +894,9 @@ mark.search-hit {
         0 2px 8px -2px rgba(27, 58, 107, 0.08),
         0 1px 3px -1px rgba(27, 58, 107, 0.05),
         inset 0 0 0 1px rgba(27, 58, 107, 0.06);
-    overflow: hidden;
+    /* Wide tables scroll inside the card instead of being clipped. */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .cu-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .cu-table thead th {
@@ -930,3 +938,529 @@ mark.search-hit {
 }
 .cu-empty-title { font-size: 1rem; font-weight: 700; color: #0e1b34; margin-bottom: 0.25rem; }
 .cu-empty-text  { font-size: 0.875rem; color: #3a5f96; max-width: 28rem; margin: 0 auto; }
+
+/* =============================================================
+   MOBILE LAYER (shared shell + reusable responsive patterns)
+   Added 2026-11 for the mobile UX rollout. Portal templates should
+   reach for these classes instead of one-off media queries.
+   ============================================================= */
+
+:root {
+    /* Space the floating bottom tab bar occupies (< md). Use it for any
+       fixed/sticky bottom bar so it sits above the tab bar. */
+    --cu-tabbar-space: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+/* Fixed / sticky bottom action bars: <div class="sticky cu-above-tabbar"> */
+.cu-above-tabbar { bottom: var(--cu-tabbar-space); }
+@media (min-width: 768px) { .cu-above-tabbar { bottom: 0; } }
+
+/* Page scroll lock while a drawer / sheet is open. */
+html.cu-scroll-lock, html.cu-scroll-lock body { overflow: hidden; }
+
+/* Generic round icon button with a 44px hit area. */
+.cu-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    color: #3a5f96;
+    background: transparent;
+    border: 0;
+}
+.cu-icon-btn:hover { background: #f0f4f9; color: #1B3A6B; }
+
+/* ---------- Bottom tab bar (floating pill, < md) ---------- */
+
+.cu-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 0 0.75rem calc(0.5rem + env(safe-area-inset-bottom));
+    pointer-events: none;
+}
+.cu-tabbar-inner {
+    pointer-events: auto;
+    margin: 0 auto;
+    max-width: 28rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.125rem;
+    padding: 0.375rem;
+    background: rgba(255, 255, 255, 0.92);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    border-radius: 9999px;
+    box-shadow:
+        0 20px 40px -12px rgba(27, 58, 107, 0.18),
+        0 6px 12px -6px rgba(27, 58, 107, 0.08),
+        inset 0 0 0 1px #dce4f0;
+}
+.cu-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border-radius: 9999px;
+    color: #3a5f96;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: transparent;
+    border: 0;
+}
+.cu-tab:hover { background: #f0f4f9; color: #1B3A6B; }
+/* Inactive tabs are icon-only (approved mockup); the label stays for AT. */
+.cu-tab-label {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+.cu-tab-active, .cu-tab-active:hover {
+    padding: 0 1rem;
+    background: #1B3A6B;
+    color: #ffffff;
+    box-shadow: 0 8px 24px -8px rgba(27, 58, 107, 0.35);
+}
+.cu-tab-active .cu-tab-label {
+    position: static;
+    width: auto; height: auto;
+    margin: 0;
+    overflow: hidden;
+    clip: auto;
+    max-width: 6.5rem;
+    text-overflow: ellipsis;
+}
+.cu-tab-dot {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #DC2626;
+    box-shadow: 0 0 0 2px #ffffff;
+}
+@media (max-width: 359px) {
+    .cu-tabbar { padding-left: 0.5rem; padding-right: 0.5rem; }
+    .cu-tab-active, .cu-tab-active:hover { padding: 0 0.75rem; }
+}
+
+/* ---------- Slide-out navigation drawer (< md) ---------- */
+
+.cu-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(12, 25, 45, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    /* visibility flips instantly on open (so the first tap lands) and only
+       after the fade on close. */
+    transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+}
+.cu-drawer-overlay.is-open { opacity: 1; visibility: visible; transition: opacity 0.2s ease, visibility 0s; }
+.cu-drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 56;
+    width: min(20rem, 88vw);
+    display: flex;
+    flex-direction: column;
+    background: #f4f7fb;
+    border-radius: 0 1.5rem 1.5rem 0;
+    box-shadow: 0 20px 40px -12px rgba(27, 58, 107, 0.25);
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
+}
+.cu-drawer.is-open { transform: none; visibility: visible; transition: transform 0.22s ease, visibility 0s; }
+.cu-drawer-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 0.75rem 0.75rem 1rem;
+}
+.cu-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+}
+/* The drawer reuses the sidebar markup; keep rows thumb-sized and undo
+   the desktop icon-rail mode, which must never apply on a phone. */
+.cu-drawer .nav-link,
+.cu-drawer .nav-card a,
+.cu-drawer .nav-card button:not(.nav-section-header) { min-height: 2.75rem; }
+.cu-drawer .nav-section-header { min-height: 2rem; }
+html.sidebar-collapsed .cu-drawer .nav-section-header { display: flex; }
+html.sidebar-collapsed .cu-drawer .nav-label { display: block; }
+html.sidebar-collapsed .cu-drawer .nav-trailing:not(.hidden) { display: inline-flex; }
+html.sidebar-collapsed .cu-drawer .nav-card { padding: 0.75rem; }
+html.sidebar-collapsed .cu-drawer .nav-link { justify-content: flex-start; padding: 0.5rem 0.625rem; }
+html.sidebar-collapsed .cu-drawer .nav-section-items { max-height: none !important; }
+.cu-drawer .nav-section-items.collapsed,
+html.sidebar-collapsed .cu-drawer .nav-section-items.collapsed { max-height: 0 !important; }
+
+/* ---------- Mobile search sheet (header search on < md) ---------- */
+
+.cu-search-cancel { display: none; }
+.cu-search-backdrop { display: none; }
+@media (max-width: 767px) {
+    /* The header pill uses backdrop-filter, which would turn it into the
+       containing block for the fixed sheet — drop it while searching. */
+    html.cu-search-open header nav { -webkit-backdrop-filter: none; backdrop-filter: none; }
+    html.cu-search-open .cu-search-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 45;
+        background: rgba(12, 25, 45, 0.35);
+    }
+    html.cu-search-open .cu-search-form {
+        display: flex !important;
+        align-items: center;
+        gap: 0.25rem;
+        position: fixed;
+        left: 0.75rem;
+        right: 0.75rem;
+        top: max(env(safe-area-inset-top), 0.75rem);
+        z-index: 46;
+        padding: 0.375rem;
+        background: #ffffff;
+        border-radius: 9999px;
+        box-shadow: 0 20px 40px -12px rgba(27, 58, 107, 0.18), inset 0 0 0 1px #dce4f0;
+    }
+    html.cu-search-open .cu-search-field { flex: 1; width: auto; }
+    html.cu-search-open #global-search-input { height: 2.75rem; font-size: 16px; padding-right: 1rem; }
+    html.cu-search-open .cu-search-field > svg { top: 0.875rem; }
+    html.cu-search-open #global-search-results {
+        position: fixed;
+        left: 0.75rem;
+        right: 0.75rem;
+        top: calc(max(env(safe-area-inset-top), 0.75rem) + 4rem);
+        width: auto;
+        max-width: none;
+        margin-top: 0;
+        max-height: calc(100dvh - 6rem - var(--cu-tabbar-space));
+    }
+    html.cu-search-open .cu-search-cancel {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.75rem;
+        padding: 0 0.875rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1B3A6B;
+        background: transparent;
+        border: 0;
+    }
+}
+
+/* ---------- Responsive tables ----------
+
+   (a) Stacked cards on phones — each row becomes a card with label/value
+       lines. Give every <td> a data-label; mark the headline cell
+       cu-stack-primary, low-priority cells cu-stack-hide, the actions cell
+       cu-stack-actions. Demo: templates/students/list.html.
+
+   (b) Horizontal scroll for wide grids (mark sheets, timetables) with an
+       edge shadow that shows there is more to the right, and an optional
+       sticky first column (cu-sticky-col). Demo: templates/exams/mark.html.
+*/
+
+.cu-table-scroll {
+    position: relative;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    background:
+        linear-gradient(to right, #ffffff 30%, rgba(255, 255, 255, 0)) left center / 2.5rem 100% no-repeat local,
+        linear-gradient(to left, #ffffff 30%, rgba(255, 255, 255, 0)) right center / 2.5rem 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgba(27, 58, 107, 0.16), rgba(27, 58, 107, 0)) left center / 0.875rem 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(27, 58, 107, 0.16), rgba(27, 58, 107, 0)) right center / 0.875rem 100% no-repeat scroll,
+        #ffffff;
+}
+.cu-table-scroll > table { min-width: 100%; }
+.cu-table-scroll th,
+.cu-table-scroll td { white-space: nowrap; }
+.cu-table-scroll .cu-wrap { white-space: normal; }
+.cu-sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #ffffff;
+    box-shadow: inset -1px 0 0 #e3ebf5;
+}
+thead .cu-sticky-col, th.cu-sticky-col { z-index: 2; background: #f4f7fb; }
+.cu-table tbody tr:hover td.cu-sticky-col { background: #f8fafc; }
+.cu-scroll-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #3a5f96;
+}
+.cu-scroll-hint::after { content: "\2192"; }
+@media (min-width: 1024px) { .cu-scroll-hint { display: none; } }
+
+@media (max-width: 639px) {
+    .cu-table--stack thead {
+        position: absolute;
+        width: 1px; height: 1px;
+        margin: -1px; padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+    .cu-table--stack,
+    .cu-table--stack tbody,
+    .cu-table--stack tr,
+    .cu-table--stack td { display: block; width: 100%; }
+    .cu-table--stack tbody tr {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #e3ebf5;
+    }
+    .cu-table--stack tbody tr:last-child { border-bottom: 0; }
+    .cu-table--stack tbody td,
+    .cu-table--stack tbody tr:hover td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.25rem 0;
+        border: 0;
+        background: transparent;
+        text-align: right;
+    }
+    .cu-table--stack tbody td[data-label]::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        text-align: left;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #3a5f96;
+    }
+    .cu-table--stack tbody td.cu-stack-primary { display: block; text-align: left; padding-bottom: 0.5rem; }
+    .cu-table--stack tbody td.cu-stack-hide { display: none; }
+    .cu-table--stack tbody td.cu-stack-actions { justify-content: flex-end; padding-top: 0.5rem; }
+}
+
+/* ---------- Filter / toolbar rows ----------
+
+   <div class="cu-filter-row"> wraps controls onto as many lines as they
+   need; add cu-filter-row--scroll for a single swipeable line of chips. */
+.cu-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.cu-filter-row > * { flex: 1 1 10rem; min-width: 0; }
+.cu-filter-row > .cu-filter-fixed { flex: 0 0 auto; }
+.cu-filter-row--scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0 1rem 0.25rem;
+}
+.cu-filter-row--scroll::-webkit-scrollbar { display: none; }
+.cu-filter-row--scroll > * { flex: 0 0 auto; }
+@media (min-width: 768px) {
+    .cu-filter-row--scroll { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; flex-wrap: wrap; }
+}
+
+/* ---------- Touch sizing on phones ---------- */
+
+@media (max-width: 767px) {
+    /* 16px stops iOS zooming into focused fields. */
+    .cu-input, .cu-select, .cu-textarea,
+    input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+    input[type="tel"], input[type="url"], input[type="number"], input[type="date"],
+    input[type="time"], input[type="datetime-local"], select, textarea { font-size: 16px; }
+    .cu-input, .cu-select { min-height: 2.75rem; }
+    .cu-btn-primary, .cu-btn-soft, .cu-btn-gold, .cu-btn-ghost-dark { min-height: 2.75rem; }
+    .cu-tap { min-height: 2.75rem; min-width: 2.75rem; }
+}
+
+/* ---------- Small-phone typography ---------- */
+
+@media (max-width: 379px) {
+    .cu-page-title { font-size: 1.625rem; }
+    .cu-hero { padding: 1.25rem; border-radius: 1.5rem; }
+}
+
+/* ---------- Dialogs fit the viewport ---------- */
+
+dialog[open] {
+    max-width: calc(100vw - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* ---------- Focus + motion ---------- */
+
+:where(a, button, summary, [role="button"], [tabindex]:not([tabindex="-1"]),
+       input[type="checkbox"], input[type="radio"]):focus-visible {
+    outline: 2px solid #1B3A6B;
+    outline-offset: 2px;
+}
+:where(.cu-hero, .nav-plan) :where(a, button):focus-visible,
+.cu-tab-active:focus-visible { outline-color: #C9962A; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* =====================================================================
+   Parent portal (iteration 1)
+   Parent-only presentation helpers. Append-only section; nothing above
+   is overridden for staff roles.
+   ===================================================================== */
+
+/* Child switcher chips (components/_child_switcher.html) */
+.cu-child-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3.25rem;
+    max-width: 16rem;
+    padding: 0.375rem 1rem 0.375rem 0.375rem;
+    border-radius: 1rem;
+    background: #ffffff;
+    color: #1B3A6B;
+    box-shadow: 0 1px 2px rgba(27, 58, 107, 0.06), inset 0 0 0 1px #dce4f0;
+    transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+a.cu-child-chip:hover { box-shadow: 0 1px 2px rgba(27, 58, 107, 0.06), inset 0 0 0 1px #9fb3d1; }
+.cu-child-chip.is-selected { background: #1B3A6B; color: #ffffff; box-shadow: 0 8px 24px -8px rgba(27, 58, 107, 0.35); }
+.cu-child-chip.is-static { background: #ffffff; color: #1B3A6B; box-shadow: inset 0 0 0 1px #dce4f0; }
+.cu-child-chip-avatar {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.5rem; height: 2.5rem; flex-shrink: 0;
+    border-radius: 0.75rem;
+    font-size: 0.8125rem; font-weight: 700;
+    background: #eef2f8; color: #1B3A6B;
+}
+.cu-child-chip.is-selected:not(.is-static) .cu-child-chip-avatar { background: rgba(255, 255, 255, 0.15); color: #ffffff; }
+.cu-child-chip-sub { color: #3a5f96; }
+.cu-child-chip.is-selected:not(.is-static) .cu-child-chip-sub { color: rgba(255, 255, 255, 0.72); }
+
+/* Parent tab bar: labels on every tab (P-MOB-01). */
+.cu-tabbar--labels .cu-tabbar-inner { max-width: 30rem; padding: 0.3125rem; gap: 0; }
+.cu-tabbar--labels .cu-tab {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-height: 3.25rem;
+    padding: 0.25rem 0.125rem;
+    border-radius: 1.25rem;
+    font-size: 0.6875rem;
+    line-height: 1.1;
+}
+.cu-tabbar--labels .cu-tab-label {
+    position: static;
+    width: auto; height: auto;
+    margin: 0;
+    overflow: hidden;
+    clip: auto;
+    max-width: 100%;
+    text-overflow: ellipsis;
+}
+.cu-tabbar--labels .cu-tab-active,
+.cu-tabbar--labels .cu-tab-active:hover { padding: 0.25rem 0.125rem; }
+.cu-tabbar--labels .cu-tab-dot { top: 0.375rem; right: calc(50% - 1rem); }
+
+/* Compact page header on phones (P-MOB-02): eyebrow + title + chip. */
+.cu-parent-head { display: flex; flex-direction: column; gap: 0.25rem; }
+.cu-parent-head-title { font-size: 1.375rem; line-height: 1.2; font-weight: 800; color: #0e1b34; letter-spacing: -0.01em; }
+@media (min-width: 768px) { .cu-parent-head-title { font-size: 1.75rem; } }
+
+/* Whole-card tap rows (P-DASH-02). */
+.cu-tap-row { display: flex; align-items: flex-start; gap: 0.75rem; min-height: 2.75rem; }
+a.cu-tap-row:hover .cu-tap-row-chevron { color: #1B3A6B; transform: translateX(2px); }
+.cu-tap-row-chevron { flex-shrink: 0; align-self: center; color: #9fb3d1; transition: transform 0.15s ease, color 0.15s ease; }
+
+/* Plain-word status pills. */
+.cu-status { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+.cu-status--paid, .cu-status--present { background: #ecfdf5; color: #047857; }
+.cu-status--due, .cu-status--late { background: #fdf6e7; color: #8a6414; }
+.cu-status--overdue, .cu-status--absent { background: #fff1f2; color: #be123c; }
+.cu-status--info, .cu-status--excused, .cu-status--unmarked { background: #eef2f8; color: #3a5f96; }
+
+/* Attendance day dots (P-DASH-04). */
+.cu-day-dots { display: flex; gap: 0.5rem; }
+.cu-day-dot { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; min-width: 2.25rem; font-size: 0.6875rem; font-weight: 600; color: #3a5f96; }
+.cu-day-dot > span:first-child { width: 0.875rem; height: 0.875rem; border-radius: 9999px; background: #dce4f0; }
+.cu-day-dot.is-present > span:first-child { background: #10b981; }
+.cu-day-dot.is-late > span:first-child { background: #fff; box-shadow: inset 0 0 0 3px #C9962A; }
+.cu-day-dot.is-absent > span:first-child { background: #e11d48; }
+.cu-day-dot.is-excused > span:first-child { background: #7b93b8; }
+.cu-day-dot.is-upcoming > span:first-child { background: transparent; box-shadow: inset 0 0 0 1.5px #dce4f0; }
+.cu-day-dot.is-today { color: #0e1b34; }
+
+/* Copy-to-clipboard rows on "How to pay" (P-BILL-01). */
+.cu-copy-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 0; border-top: 1px solid #e3ebf5; }
+.cu-copy-row:first-child { border-top: 0; }
+.cu-copy-value { white-space: pre-line; word-break: break-word; font-size: 0.875rem; color: #0e1b34; }
+
+/* Report-card marks as rows on phones, table for print (P-ACAD-06). */
+.cu-marks-rows { display: none; }
+@media (max-width: 639px) {
+    .cu-marks-rows { display: block; }
+    .cu-marks-table-wrap { display: none; }
+}
+@media print {
+    .cu-marks-rows { display: none !important; }
+    .cu-marks-table-wrap { display: block !important; }
+}
+
+/* Anchored targets clear the floating navbar (P-MOB-04). */
+[id^="event-"], [id^="a-"], [id^="child-"], .cu-anchor, main h2[id] { scroll-margin-top: 5.5rem; }
+
+/* Disclosure (<details>) used for "Show full statement" etc. */
+.cu-disclosure > summary { list-style: none; cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.cu-disclosure > summary::-webkit-details-marker { display: none; }
+.cu-disclosure > summary .cu-disclosure-chevron { transition: transform 0.15s ease; }
+.cu-disclosure[open] > summary .cu-disclosure-chevron { transform: rotate(180deg); }
+
+/* Parent tab labels fit on small phones (QA D7: "Attendance" clipped at 320). */
+@media (max-width: 360px) {
+    .cu-tabbar--labels { padding-left: 0.375rem; padding-right: 0.375rem; }
+    .cu-tabbar--labels .cu-tabbar-inner { padding: 0.25rem; }
+    .cu-tabbar--labels .cu-tab { font-size: 0.625rem; letter-spacing: -0.01em; padding: 0.25rem 0; }
+    .cu-tabbar--labels .cu-tab-active,
+    .cu-tabbar--labels .cu-tab-active:hover { padding: 0.25rem 0; }
+}
+
+/* Report-card marks: rows (not the 6-column table) up to the lg breakpoint
+   so the Grade column is never clipped on tablets (QA D13). */
+@media (max-width: 1023px) {
+    .cu-marks-rows { display: block; }
+    .cu-marks-table-wrap { display: none; }
+}

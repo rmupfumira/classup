@@ -15,7 +15,7 @@
             </a>
             <div class="max-w-xl">
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
-                <h1 class="cu-page-title text-white">Generate Invoices</h1>
+                <h1 class="cu-page-title leading-tight text-white">Generate Invoices</h1>
                 <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                     Create invoices for multiple students at once in three quick steps.
                 </p>
@@ -55,7 +55,7 @@
 
     {# ------ Step 1: Select Class & Students ------ #}
     <div id="step-1" class="cu-card transition-all duration-300">
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
             <h2 class="text-lg font-bold text-navy-800 mb-4 flex items-center gap-2">
                 <span class="w-7 h-7 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center text-xs font-bold">1</span>
                 Select Class &amp; Students
@@ -75,7 +75,7 @@
                 <div id="students-container" class="hidden">
                     <div class="flex items-center justify-between mb-3">
                         <label class="block text-sm font-medium text-navy-700">Students</label>
-                        <label class="inline-flex items-center cursor-pointer">
+                        <label class="inline-flex items-center min-h-[44px] cursor-pointer">
                             <input type="checkbox" id="select-all-students" onchange="toggleAllStudents()"
                                    class="rounded border-navy-300 text-navy-600 focus:ring-navy-500">
                             <span class="ml-2 text-sm text-navy-600">Select All</span>
@@ -111,7 +111,7 @@
 
     {# ------ Step 2: Select Fee Items ------ #}
     <div id="step-2" class="cu-card transition-all duration-300 opacity-40 scale-[0.99] pointer-events-none">
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
             <h2 class="text-lg font-bold text-navy-800 mb-4 flex items-center gap-2">
                 <span class="w-7 h-7 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center text-xs font-bold">2</span>
                 Select Fee Items &amp; Dates
@@ -123,8 +123,8 @@
                     {% if fee_items %}
                     <div class="space-y-2">
                         {% for item in fee_items %}
-                        <label class="flex items-center justify-between p-3 border border-navy-100 rounded-2xl hover:bg-navy-50 cursor-pointer transition-colors">
-                            <div class="flex items-center">
+                        <label class="flex items-center justify-between gap-3 p-3 border border-navy-100 rounded-2xl hover:bg-navy-50 cursor-pointer transition-colors">
+                            <div class="flex items-center min-w-0">
                                 <input type="checkbox" name="fee_items" value="{{ item.id }}"
                                        data-amount="{{ item.amount }}" data-name="{{ item.name }}"
                                        onchange="updateFeeSelection()"
@@ -136,7 +136,7 @@
                                     {% endif %}
                                 </div>
                             </div>
-                            <span class="text-sm font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(item.amount) }}</span>
+                            <span class="text-sm font-semibold text-navy-800 whitespace-nowrap">{{ currency }} {{ "{:,.2f}".format(item.amount) }}</span>
                         </label>
                         {% endfor %}
                     </div>
@@ -157,7 +157,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Billing Period <span class="text-navy-400 font-normal">(optional)</span></label>
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div class="grid grid-cols-2 sm:flex sm:flex-row sm:items-center gap-3">
                         <div>
                             <label for="period_start" class="sr-only">Period Start</label>
                             <input type="date" id="period_start" placeholder="Start date" class="cu-input sm:max-w-xs">
@@ -194,13 +194,13 @@
 
     {# ------ Step 3: Review & Generate ------ #}
     <div id="step-3" class="cu-card transition-all duration-300 opacity-40 scale-[0.99] pointer-events-none">
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
             <h2 class="text-lg font-bold text-navy-800 mb-4 flex items-center gap-2">
                 <span class="w-7 h-7 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center text-xs font-bold">3</span>
                 Review &amp; Generate
             </h2>
 
-            <div class="bg-navy-50 rounded-2xl border border-navy-100 p-5 space-y-4">
+            <div class="bg-navy-50 rounded-2xl border border-navy-100 p-4 sm:p-5 space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <p class="text-xs text-navy-500 uppercase tracking-wider font-semibold">Students</p>
@@ -212,7 +212,7 @@
                     </div>
                     <div>
                         <p class="text-xs text-navy-500 uppercase tracking-wider font-semibold">Total Per Student</p>
-                        <p class="mt-1 text-2xl font-extrabold text-navy-800" id="review-per-student">{{ currency }} 0.00</p>
+                        <p class="mt-1 text-2xl font-extrabold text-navy-800 whitespace-nowrap" id="review-per-student">{{ currency }} 0.00</p>
                     </div>
                 </div>
 
@@ -234,10 +234,10 @@
                     </div>
                 </div>
 
-                <div class="border-t border-navy-100 pt-4 bg-gradient-to-br from-gold-50 to-navy-50 -mx-5 -mb-5 px-5 py-4 rounded-b-2xl">
-                    <div class="flex items-center justify-between">
+                <div class="border-t border-navy-100 pt-4 bg-gradient-to-br from-gold-50 to-navy-50 -mx-4 -mb-4 px-4 sm:-mx-5 sm:-mb-5 sm:px-5 py-4 rounded-b-2xl">
+                    <div class="flex flex-wrap items-center justify-between gap-x-3">
                         <p class="text-sm font-semibold text-navy-800">Grand Total</p>
-                        <p class="text-lg font-extrabold text-navy-800" id="review-grand-total">{{ currency }} 0.00</p>
+                        <p class="text-lg font-extrabold text-navy-800 whitespace-nowrap" id="review-grand-total">{{ currency }} 0.00</p>
                     </div>
                     <p class="text-xs text-navy-600 mt-1" id="review-grand-total-desc">
                         0 students x {{ currency }} 0.00 = {{ currency }} 0.00
@@ -263,6 +263,9 @@
 
 {% block scripts %}
 <script>
+// Display-only: thousands separators + 2dp (values sent to the API are unchanged).
+const fmtMoney2 = (n) => (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const currency = '{{ currency }}';
 let selectedStudents = [];
 let selectedFeeItems = [];
@@ -422,7 +425,7 @@ function updateFeeSelection() {
     const dueDate = document.getElementById('due_date').value;
 
     document.getElementById('fee-summary-count').textContent = selectedFeeItems.length;
-    document.getElementById('fee-summary-total').textContent = total.toFixed(2);
+    document.getElementById('fee-summary-total').textContent = fmtMoney2(total);
 
     if (selectedFeeItems.length > 0) {
         summary.classList.remove('hidden');
@@ -447,7 +450,7 @@ function updateReviewSummary() {
 
     document.getElementById('review-student-count').textContent = studentCount;
     document.getElementById('review-fee-count').textContent = feeCount;
-    document.getElementById('review-per-student').textContent = `${currency} ${perStudent.toFixed(2)}`;
+    document.getElementById('review-per-student').textContent = `${currency} ${fmtMoney2(perStudent)}`;
     document.getElementById('review-due-date').textContent = dueDate || '—';
 
     const periodRow = document.getElementById('review-period-row');
@@ -465,14 +468,14 @@ function updateReviewSummary() {
         row.className = 'flex items-center justify-between text-sm';
         row.innerHTML = `
             <span class="text-navy-600">${ClassUp.escapeHtml(item.name)}</span>
-            <span class="font-semibold text-navy-800">${currency} ${item.amount.toFixed(2)}</span>
+            <span class="font-semibold text-navy-800">${currency} ${fmtMoney2(item.amount)}</span>
         `;
         breakdown.appendChild(row);
     });
 
-    document.getElementById('review-grand-total').textContent = `${currency} ${grandTotal.toFixed(2)}`;
+    document.getElementById('review-grand-total').textContent = `${currency} ${fmtMoney2(grandTotal)}`;
     document.getElementById('review-grand-total-desc').textContent =
-        `${studentCount} student${studentCount !== 1 ? 's' : ''} x ${currency} ${perStudent.toFixed(2)} = ${currency} ${grandTotal.toFixed(2)}`;
+        `${studentCount} student${studentCount !== 1 ? 's' : ''} x ${currency} ${fmtMoney2(perStudent)} = ${currency} ${fmtMoney2(grandTotal)}`;
 }
 
 // --- Generate ---

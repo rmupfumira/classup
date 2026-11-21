@@ -3,6 +3,18 @@
 {% block title %}Daily Attendance - {{ app_name }}{% endblock %}
 
 {% block content %}
+<style>
+    /* The selected status must win over hover colours: on touch screens the
+       tapped button keeps :hover, which otherwise paints it pale. */
+    .status-btn.bg-green-600, .status-btn.bg-green-600:hover { background-color: #16a34a; color: #fff; }
+    .status-btn.bg-amber-500, .status-btn.bg-amber-500:hover { background-color: #f59e0b; color: #fff; }
+    .status-btn.bg-red-600, .status-btn.bg-red-600:hover { background-color: #dc2626; color: #fff; }
+    .status-btn.bg-neutral-600, .status-btn.bg-neutral-600:hover { background-color: #475569; color: #fff; }
+    /* Small phones (320–379px): keep all four status labels on one line. */
+    @media (max-width: 379px) {
+        .status-btn { font-size: 0.75rem; padding-left: 0.125rem; padding-right: 0.125rem; letter-spacing: -0.01em; }
+    }
+</style>
 <div class="space-y-6">
     {# ------ Hero banner ------ #}
     <section class="cu-hero">
@@ -61,72 +73,27 @@
     </div>
 
     {% if attendance_data %}
-    <!-- Stats Summary with Icons -->
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+    <!-- Stats Summary with Icons (phones get the compact counts in the overview card below) -->
+    <div class="hidden sm:grid grid-cols-3 xl:grid-cols-5 gap-4">
         <div class="cu-stat-tile">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-navy-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-navy-500 font-semibold uppercase tracking-wider">Total</p>
-                    <p class="text-2xl font-extrabold text-navy-800">{{ attendance_data.stats.total_students }}</p>
-                </div>
-            </div>
+            <div class="flex items-start justify-between gap-2"><p class="cu-stat-tile-label">Total</p><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-navy-50 text-navy-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div></div>
+            <p class="cu-stat-tile-value !mt-2">{{ attendance_data.stats.total_students }}</p>
         </div>
         <div class="cu-stat-tile">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-green-600">Present</p>
-                    <p class="text-2xl font-bold text-green-700">{{ attendance_data.stats.present_count }}</p>
-                </div>
-            </div>
+            <div class="flex items-start justify-between gap-2"><p class="cu-stat-tile-label">Present</p><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-emerald-50 text-emerald-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div></div>
+            <p class="cu-stat-tile-value !mt-2">{{ attendance_data.stats.present_count }}</p>
         </div>
         <div class="cu-stat-tile">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-red-600">Absent</p>
-                    <p class="text-2xl font-bold text-red-700">{{ attendance_data.stats.absent_count }}</p>
-                </div>
-            </div>
+            <div class="flex items-start justify-between gap-2"><p class="cu-stat-tile-label">Absent</p><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-rose-50 text-rose-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div></div>
+            <p class="cu-stat-tile-value !mt-2">{{ attendance_data.stats.absent_count }}</p>
         </div>
         <div class="cu-stat-tile">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-amber-600">Late</p>
-                    <p class="text-2xl font-bold text-amber-700">{{ attendance_data.stats.late_count }}</p>
-                </div>
-            </div>
+            <div class="flex items-start justify-between gap-2"><p class="cu-stat-tile-label">Late</p><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-gold-50 text-gold-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div></div>
+            <p class="cu-stat-tile-value !mt-2">{{ attendance_data.stats.late_count }}</p>
         </div>
         <div class="cu-stat-tile">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-neutral-50 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-neutral-500">Excused</p>
-                    <p class="text-2xl font-bold text-neutral-700">{{ attendance_data.stats.excused_count }}</p>
-                </div>
-            </div>
+            <div class="flex items-start justify-between gap-2"><p class="cu-stat-tile-label">Excused</p><div class="w-9 h-9 shrink-0 rounded-2xl flex items-center justify-center bg-navy-50 text-navy-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div></div>
+            <p class="cu-stat-tile-value !mt-2">{{ attendance_data.stats.excused_count }}</p>
         </div>
     </div>
 
@@ -154,11 +121,11 @@
             <div class="bg-neutral-400 transition-all duration-500" style="width: {{ excused_pct }}%" title="Excused {{ excused_pct }}%"></div>
             {% endif %}
         </div>
-        <div class="flex items-center gap-4 mt-2 text-xs text-neutral-500">
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Present</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Late</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Absent</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-neutral-400"></span> Excused</span>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-neutral-500">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Present<span class="sm:hidden font-semibold text-navy-700 tabular-nums">{{ attendance_data.stats.present_count }}</span></span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Late<span class="sm:hidden font-semibold text-navy-700 tabular-nums">{{ attendance_data.stats.late_count }}</span></span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Absent<span class="sm:hidden font-semibold text-navy-700 tabular-nums">{{ attendance_data.stats.absent_count }}</span></span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-neutral-400"></span> Excused<span class="sm:hidden font-semibold text-navy-700 tabular-nums">{{ attendance_data.stats.excused_count }}</span></span>
         </div>
     </div>
     {% endif %}
@@ -171,7 +138,7 @@
                 <h2 class="text-lg font-medium text-neutral-900">{{ attendance_data.class_name }}</h2>
                 <p class="text-sm text-neutral-500">{{ attendance_data.students | length }} student{{ 's' if attendance_data.students | length != 1 else '' }}</p>
             </div>
-            <button type="button" onclick="saveAttendance()"
+            <button type="button" onclick="saveAttendance()" data-save-attendance
                     class="cu-btn-primary hidden sm:inline-flex">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -183,28 +150,28 @@
         {% if attendance_data.students %}
         <div class="divide-y divide-neutral-200">
             {% for student in attendance_data.students %}
-            <div class="p-4 hover:bg-neutral-50 transition-colors border-l-4
+            <div class="px-3 py-3 sm:p-4 hover:bg-neutral-50 transition-colors border-l-4
                 {% if student.status == 'PRESENT' %}border-l-green-500
                 {% elif student.status == 'LATE' %}border-l-amber-500
                 {% elif student.status == 'ABSENT' %}border-l-red-500
                 {% elif student.status == 'EXCUSED' %}border-l-neutral-400
                 {% else %}border-l-transparent{% endif %}"
                  data-student-id="{{ student.student_id }}">
-                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
                     <!-- Student Info -->
                     <div class="flex items-center flex-1 min-w-0">
-                        <div class="flex-shrink-0 h-12 w-12">
+                        <div class="flex-shrink-0 h-10 w-10 sm:h-12 sm:w-12">
                             {% if student.photo_path %}
-                            <img class="h-12 w-12 rounded-full object-cover" src="{{ student.photo_path }}" alt="">
+                            <img class="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover" src="{{ student.photo_path }}" alt="">
                             {% else %}
-                            <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
+                            <div class="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary-100 flex items-center justify-center">
                                 <span class="text-primary-700 font-medium">
                                     {{ student.student_name.split()[0][0] }}{{ student.student_name.split()[-1][0] if student.student_name.split()|length > 1 else '' }}
                                 </span>
                             </div>
                             {% endif %}
                         </div>
-                        <div class="ml-4 min-w-0">
+                        <div class="ml-3 sm:ml-4 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <p class="text-sm font-medium text-neutral-900 truncate">{{ student.student_name }}</p>
                                 {# Parent-reported absence badge — shows when a parent used the dashboard to report
@@ -222,10 +189,10 @@
                             </div>
                             <div class="flex items-center gap-3 text-xs text-neutral-500">
                                 {% if student.check_in_time %}
-                                <span>In: {{ student.check_in_time[:5] }}</span>
+                                {% set _cin = student.check_in_time | string %}<span>In: <time data-local-time="{{ _cin }}">{{ _cin.split('T')[1][:5] if 'T' in _cin else _cin[:5] }}</time></span>
                                 {% endif %}
                                 {% if student.check_out_time %}
-                                <span class="text-blue-600">Out: {{ student.check_out_time[:5] }}</span>
+                                {% set _cout = student.check_out_time | string %}<span class="text-blue-600">Out: <time data-local-time="{{ _cout }}">{{ _cout.split('T')[1][:5] if 'T' in _cout else _cout[:5] }}</time></span>
                                 {% endif %}
                                 {% if student.notes and student.source == 'PARENT_REPORTED' %}
                                 <span class="text-amber-600 truncate" title="{{ student.notes }}">{{ student.notes }}</span>
@@ -234,28 +201,28 @@
                         </div>
                     </div>
 
-                    <!-- Status Buttons -->
-                    <div class="flex items-center gap-2">
+                    <!-- Status Buttons: a full-width 4-up grid on phones (thumb-sized), inline row from sm -->
+                    <div class="grid grid-cols-4 gap-1.5 sm:flex sm:items-center sm:gap-2" role="group" aria-label="Attendance status for {{ student.student_name }}">
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'PRESENT')"
-                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-green-400
+                                class="status-btn min-h-[2.75rem] px-1.5 sm:px-4 py-2.5 rounded-xl sm:rounded-lg text-sm font-semibold sm:font-medium touch-manipulation select-none focus:ring-2 focus:ring-offset-1 focus:ring-green-400
                                        {% if student.status == 'PRESENT' %}bg-green-600 text-white shadow-sm shadow-green-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-green-50 hover:text-green-700{% endif %}"
                                 data-status="PRESENT">
                             Present
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'LATE')"
-                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-amber-400
+                                class="status-btn min-h-[2.75rem] px-1.5 sm:px-4 py-2.5 rounded-xl sm:rounded-lg text-sm font-semibold sm:font-medium touch-manipulation select-none focus:ring-2 focus:ring-offset-1 focus:ring-amber-400
                                        {% if student.status == 'LATE' %}bg-amber-500 text-white shadow-sm shadow-amber-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-amber-50 hover:text-amber-700{% endif %}"
                                 data-status="LATE">
                             Late
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'ABSENT')"
-                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-red-400
+                                class="status-btn min-h-[2.75rem] px-1.5 sm:px-4 py-2.5 rounded-xl sm:rounded-lg text-sm font-semibold sm:font-medium touch-manipulation select-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400
                                        {% if student.status == 'ABSENT' %}bg-red-600 text-white shadow-sm shadow-red-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-red-50 hover:text-red-700{% endif %}"
                                 data-status="ABSENT">
                             Absent
                         </button>
                         <button type="button" onclick="setStatus('{{ student.student_id }}', 'EXCUSED')"
-                                class="status-btn px-4 py-2.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-offset-1 focus:ring-neutral-400
+                                class="status-btn min-h-[2.75rem] px-1.5 sm:px-4 py-2.5 rounded-xl sm:rounded-lg text-sm font-semibold sm:font-medium touch-manipulation select-none focus:ring-2 focus:ring-offset-1 focus:ring-neutral-400
                                        {% if student.status == 'EXCUSED' %}bg-neutral-600 text-white shadow-sm shadow-neutral-200{% else %}bg-neutral-100 text-neutral-700 hover:bg-neutral-200{% endif %}"
                                 data-status="EXCUSED">
                             Excused
@@ -263,12 +230,12 @@
 
                         {% if student.record_id and student.status in ('PRESENT', 'LATE') %}
                             {% if student.check_out_time %}
-                            <span class="px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-700">
+                            <span class="col-span-4 sm:col-span-1 text-center px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-700">
                                 Checked Out
                             </span>
                             {% else %}
                             <button type="button" onclick="checkOutStudent('{{ student.record_id }}')"
-                                    class="px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                    class="col-span-4 sm:col-span-1 min-h-[2.75rem] px-3 py-2.5 rounded-xl sm:rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                                 Check Out
                             </button>
                             {% endif %}
@@ -277,21 +244,23 @@
                 </div>
 
                 <!-- Notes (collapsible) -->
-                <div class="mt-3 sm:ml-16">
+                <div class="mt-2.5 sm:mt-3 sm:ml-16">
                     <input type="text" placeholder="Add notes (optional)"
                            data-notes="{{ student.student_id }}"
                            value="{{ student.notes or '' }}"
-                           class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           aria-label="Notes for {{ student.student_name }}"
+                           class="w-full min-h-[2.75rem] px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                 </div>
             </div>
             {% endfor %}
         </div>
 
-        <!-- Save Button (Mobile Fixed) — sits ABOVE the h-14 mobile bottom nav -->
-        <div class="sm:hidden fixed bottom-14 left-0 right-0 p-4 bg-white border-t border-neutral-200 shadow-lg z-30">
-            <button type="button" onclick="saveAttendance()"
-                    class="cu-btn-primary w-full !py-3 !rounded-2xl">
-                Save Attendance
+        <!-- Save Button (Mobile Fixed) — floats ABOVE the mobile bottom tab bar -->
+        <div class="sm:hidden fixed cu-above-tabbar left-3 right-3 mb-2 p-2 bg-white/95 backdrop-blur rounded-2xl shadow-lg ring-1 ring-navy-100 z-30 flex items-center gap-3">
+            <span class="pl-2 text-xs font-semibold text-navy-700 tabular-nums whitespace-nowrap" id="attendance-marked-mobile" aria-live="polite"></span>
+            <button type="button" onclick="saveAttendance()" data-save-attendance
+                    class="cu-btn-primary flex-1 !py-3 !rounded-xl">
+                Save attendance
             </button>
         </div>
         {% else %}
@@ -305,6 +274,16 @@
         </div>
         {% endif %}
     </form>
+
+    {% elif not_class_teacher %}
+    <!-- Subject-only teacher: attendance belongs to the class teacher -->
+    <div class="cu-card cu-empty" data-attendance-not-class-teacher>
+        <p class="cu-empty-title">Attendance is taken by the class teacher</p>
+        <p class="cu-empty-text">
+            You teach a subject in this class, so its register is kept by the class teacher.
+            {% if classes %}Pick one of your own classes above to take attendance.{% endif %}
+        </p>
+    </div>
 
     {% elif not classes %}
     <!-- No Classes -->
@@ -330,8 +309,8 @@
     {% endif %}
 </div>
 
-<!-- Add padding at bottom for mobile fixed button -->
-<div class="sm:hidden h-20"></div>
+<!-- Add padding at bottom for mobile fixed button (bar height + gap) -->
+<div class="sm:hidden h-24" aria-hidden="true"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -350,6 +329,17 @@ function validateAttendanceDate(input) {
     warning.classList.add('hidden');
     input.form.submit();
 }
+
+// Check-in/out are stored as full ISO timestamps (UTC); show them as the
+// teacher's local HH:MM. Plain "HH:MM:SS" values are left as rendered.
+document.querySelectorAll('time[data-local-time]').forEach(el => {
+    const v = el.dataset.localTime;
+    if (!v.includes('T')) return;
+    const d = new Date(v);
+    if (!Number.isNaN(d.getTime())) {
+        el.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+});
 
 // Store attendance data
 const attendanceData = {};
@@ -411,7 +401,28 @@ function setStatus(studentId, status) {
             btn.classList.add(...inactiveStyles);
         }
     });
+    updateMarkedCount();
 }
+
+// "8/12 marked" next to the mobile save button so the teacher can see what's left.
+function updateMarkedCount() {
+    const el = document.getElementById('attendance-marked-mobile');
+    if (!el) return;
+    const rows = document.querySelectorAll('[data-student-id]');
+    let marked = 0;
+    rows.forEach(r => { if ((attendanceData[r.dataset.studentId] || {}).status) marked += 1; });
+    el.textContent = `${marked}/${rows.length} marked`;
+}
+updateMarkedCount();
+
+// The page reloads after a save, so carry the success toast across the reload.
+try {
+    const flash = sessionStorage.getItem('attendance-flash');
+    if (flash) {
+        sessionStorage.removeItem('attendance-flash');
+        ClassUp.toast(flash, 'success');
+    }
+} catch (_) { /* storage unavailable: no flash */ }
 
 async function saveAttendance() {
     const classId = '{{ current_class_id or '' }}';
@@ -443,6 +454,8 @@ async function saveAttendance() {
         return;
     }
 
+    const saveButtons = document.querySelectorAll('[data-save-attendance]');
+    saveButtons.forEach(b => { b.disabled = true; b.dataset.label = b.innerHTML; b.textContent = 'Saving…'; });
     try {
         const result = await ClassUp.fetch('/api/v1/attendance/bulk', {
             method: 'POST',
@@ -453,11 +466,14 @@ async function saveAttendance() {
             })
         });
 
-        ClassUp.toast(`Attendance saved! ${result.data.success_count} records saved.`, 'success');
+        const msg = `Attendance saved! ${result.data.success_count} records saved.`;
+        ClassUp.toast(msg, 'success');
+        try { sessionStorage.setItem('attendance-flash', msg); } catch (_) {}
         window.location.reload();
     } catch (error) {
         console.error('Error saving attendance:', error);
         ClassUp.toast('Failed to save attendance. Please try again.', 'error');
+        saveButtons.forEach(b => { b.disabled = false; b.innerHTML = b.dataset.label; });
     }
 }
 

@@ -3,13 +3,14 @@
 {% block title %}Payments - {{ app_name }}{% endblock %}
 
 {% block content %}
+<style>.cu-stretched-link::after { content: ""; position: absolute; inset: 0; }</style>
 <div class="space-y-6">
 
     {# ------ Hero ------ #}
     <section class="cu-hero">
         <div class="max-w-xl">
             <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
-            <h1 class="cu-page-title text-white">Payments</h1>
+            <h1 class="cu-page-title leading-tight text-white">Payments</h1>
             <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                 {{ total }} payment{{ 's' if total != 1 else '' }} recorded against invoices.
             </p>
@@ -66,8 +67,8 @@
                                 </span>
                             </div>
                         </td>
-                        <td style="text-align:right" class="font-semibold text-navy-800">
-                            {{ currency }} {{ "%.2f"|format(payment.amount) }}
+                        <td style="text-align:right" class="whitespace-nowrap font-semibold text-navy-800">
+                            {{ currency }} {{ "{:,.2f}".format(payment.amount) }}
                         </td>
                         <td>
                             {% if payment.payment_method %}
@@ -93,7 +94,7 @@
         {# Mobile cards #}
         <div class="md:hidden border-t border-navy-50">
             {% for payment in payments %}
-            <div class="p-4 border-b border-navy-50 last:border-b-0">
+            <div class="relative p-4 border-b border-navy-50 last:border-b-0 {% if payment.invoice %}hover:bg-navy-50 transition-colors{% endif %}">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs text-navy-500">
                         {{ payment.payment_date.strftime('%Y-%m-%d') if payment.payment_date else payment.created_at.strftime('%Y-%m-%d') }}
@@ -120,14 +121,15 @@
                                 {% endif %}
                             </p>
                             {% if payment.invoice %}
-                            <a href="/billing/invoices/{{ payment.invoice.id }}" class="text-xs text-navy-600 hover:text-navy-800">
+                            {# Stretched link: the whole card opens the invoice. #}
+                            <a href="/billing/invoices/{{ payment.invoice.id }}" class="cu-stretched-link text-xs text-navy-600 hover:text-navy-800">
                                 {{ payment.invoice.invoice_number }}
                             </a>
                             {% endif %}
                         </div>
                     </div>
-                    <p class="text-sm font-bold text-navy-800 flex-shrink-0 ml-3">
-                        {{ currency }} {{ "%.2f"|format(payment.amount) }}
+                    <p class="text-sm font-bold text-navy-800 flex-shrink-0 ml-3 whitespace-nowrap">
+                        {{ currency }} {{ "{:,.2f}".format(payment.amount) }}
                     </p>
                 </div>
                 {% if payment.reference %}

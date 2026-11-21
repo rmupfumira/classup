@@ -7,7 +7,7 @@
     <section class="cu-hero">
         <div>
             <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Configuration</span>
-            <h1 class="cu-page-title text-white">Settings</h1>
+            <h1 class="cu-page-title leading-tight text-white">Settings</h1>
             <p class="mt-2 text-sm text-white/80">Manage your school settings and preferences.</p>
         </div>
     </section>
@@ -146,7 +146,7 @@
                         {% set subject_mode_on = (tenant.settings or {}).get('subject_teacher_enabled', False) %}
                         <input type="checkbox" name="subject_teacher_enabled" value="1"
                                {% if subject_mode_on %}checked{% endif %}
-                               class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                               class="mt-1 h-4 w-4 rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                         <span>
                             <span class="block text-sm font-medium text-neutral-900">
                                 Subject-specialist teachers

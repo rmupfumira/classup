@@ -5,45 +5,38 @@
 {% block content %}
 <div class="space-y-6">
     <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div class="flex items-start gap-4">
-            <a href="/admin/tenants"
-               class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-lg transition-colors mt-1">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <div>
-                <div class="flex items-center gap-3">
-                    <h1 class="text-xl font-semibold text-navy-800">{{ tenant.name }}</h1>
+    <section class="cu-hero !py-6 md:!py-7">
+        <div class="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+            <div class="min-w-0">
+                <a href="/admin/tenants" class="inline-flex items-center gap-1 min-h-[2.75rem] -mt-3 md:min-h-0 md:mt-0 md:mb-3 text-xs font-medium text-white/70 hover:text-white">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    All tenants
+                </a><br>
+                <span class="cu-eyebrow cu-eyebrow-on-dark">Tenant</span>
+                <div class="flex items-center gap-3 flex-wrap mt-3">
+                    <h1 class="cu-page-title text-white leading-tight break-words">{{ tenant.name }}</h1>
                     {% if tenant.is_active %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
-                        Active
-                    </span>
+                    <span class="cu-status cu-status-finalized"><span class="cu-status-dot"></span>Active</span>
                     {% else %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-100 text-navy-600">
-                        Inactive
-                    </span>
+                    <span class="cu-status cu-status-draft"><span class="cu-status-dot"></span>Inactive</span>
                     {% endif %}
                 </div>
-                <p class="mt-1 text-sm text-navy-500">
-                    {{ tenant.education_type.value | replace('_', ' ') | title }} &bull; {{ tenant.slug }}
+                <p class="mt-2 text-sm md:text-base text-white/75">
+                    {{ (tenant.education_type.value or tenant.education_type) | replace('_', ' ') | title }} &bull; {{ tenant.slug }}
                 </p>
             </div>
-        </div>
-        <div class="flex gap-2 sm:ml-auto">
-            <a href="/admin/tenants/{{ tenant.id }}/edit"
-               class="inline-flex items-center px-3 py-1.5 border border-navy-200 text-navy-700 text-sm rounded hover:bg-navy-50 transition-colors">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex flex-wrap gap-3 shrink-0">
+            <a href="/admin/tenants/{{ tenant.id }}/edit" class="cu-btn-ghost-dark">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                           d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                 </svg>
                 Edit
             </a>
             <button type="button" id="toggle-status-btn"
-                    class="inline-flex items-center px-3 py-1.5 {% if tenant.is_active %}border border-error-300 text-error-600 hover:bg-error-50{% else %}bg-success-500 text-white hover:bg-success-600{% endif %} text-sm rounded transition-colors">
+                    class="{% if tenant.is_active %}cu-btn-ghost-dark !text-rose-200 hover:!bg-rose-500/20{% else %}cu-btn-gold{% endif %}">
                 {% if tenant.is_active %}
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                           d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
                 </svg>
@@ -56,73 +49,51 @@
                 Activate
                 {% endif %}
             </button>
-        </div>
-    </div>
-
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Users -->
-        <div class="cu-card p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 w-10 h-10 bg-navy-50 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-navy-500">Total Users</p>
-                    <p class="text-xl font-semibold text-navy-800">{{ stats.total_users }}</p>
-                </div>
             </div>
         </div>
+    </section>
 
-        <!-- Teachers -->
-        <div class="cu-card p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 w-10 h-10 bg-success-50 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-navy-500">Teachers</p>
-                    <p class="text-xl font-semibold text-navy-800">{{ stats.total_teachers }}</p>
-                </div>
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div class="cu-stat-tile">
+            <div class="flex items-start justify-between gap-3">
+                <div class="cu-stat-tile-label">Total users</div>
+                <span class="w-9 h-9 rounded-2xl bg-navy-50 text-navy-600 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                </span>
             </div>
+            <div class="cu-stat-tile-value !mt-1">{{ stats.total_users }}</div>
+            <div class="cu-stat-tile-hint">All roles</div>
         </div>
-
-        <!-- Students -->
-        <div class="cu-card p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-navy-500">Students</p>
-                    <p class="text-xl font-semibold text-navy-800">{{ stats.total_students }}</p>
-                </div>
+        <div class="cu-stat-tile">
+            <div class="flex items-start justify-between gap-3">
+                <div class="cu-stat-tile-label">Teachers</div>
+                <span class="w-9 h-9 rounded-2xl bg-navy-50 text-navy-600 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </span>
             </div>
+            <div class="cu-stat-tile-value !mt-1">{{ stats.total_teachers }}</div>
+            <div class="cu-stat-tile-hint">Staff accounts</div>
         </div>
-
-        <!-- Classes -->
-        <div class="cu-card p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 w-10 h-10 bg-error-50 rounded-lg flex items-center justify-center">
-                    <svg class="h-5 w-5 text-error-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs text-navy-500">Classes</p>
-                    <p class="text-xl font-semibold text-navy-800">{{ stats.total_classes }}</p>
-                </div>
+        <div class="cu-stat-tile">
+            <div class="flex items-start justify-between gap-3">
+                <div class="cu-stat-tile-label">Students</div>
+                <span class="w-9 h-9 rounded-2xl bg-navy-50 text-navy-600 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </span>
             </div>
+            <div class="cu-stat-tile-value !mt-1">{{ stats.total_students }}</div>
+            <div class="cu-stat-tile-hint">Enrolled</div>
+        </div>
+        <div class="cu-stat-tile">
+            <div class="flex items-start justify-between gap-3">
+                <div class="cu-stat-tile-label">Classes</div>
+                <span class="w-9 h-9 rounded-2xl bg-navy-50 text-navy-600 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                </span>
+            </div>
+            <div class="cu-stat-tile-value !mt-1">{{ stats.total_classes }}</div>
+            <div class="cu-stat-tile-hint">Active classes</div>
         </div>
     </div>
 
@@ -132,24 +103,24 @@
         <div class="cu-card p-5">
             <h2 class="text-base font-semibold text-navy-800 mb-4">Contact Information</h2>
             <dl class="space-y-3">
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                     <dt class="text-sm text-navy-500">Email</dt>
-                    <dd class="text-sm text-navy-800">
-                        <a href="mailto:{{ tenant.email }}" class="text-navy-600 hover:text-navy-700">
+                    <dd class="text-sm text-navy-800 min-w-0 text-right break-all">
+                        <a href="mailto:{{ tenant.email }}" class="inline-flex items-center min-h-[2.75rem] -my-3.5 text-navy-600 hover:text-navy-700">
                             {{ tenant.email }}
                         </a>
                     </dd>
                 </div>
                 {% if tenant.phone %}
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                     <dt class="text-sm text-navy-500">Phone</dt>
                     <dd class="text-sm text-navy-800">{{ tenant.phone }}</dd>
                 </div>
                 {% endif %}
                 {% if tenant.address %}
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                     <dt class="text-sm text-navy-500">Address</dt>
-                    <dd class="text-sm text-navy-800 text-right">{{ tenant.address }}</dd>
+                    <dd class="text-sm text-navy-800 text-right min-w-0 break-words">{{ tenant.address }}</dd>
                 </div>
                 {% endif %}
             </dl>
@@ -159,28 +130,28 @@
         <div class="cu-card p-5">
             <h2 class="text-base font-semibold text-navy-800 mb-4">System Information</h2>
             <dl class="space-y-3">
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                     <dt class="text-sm text-navy-500">Tenant ID</dt>
-                    <dd class="text-sm text-navy-800 font-mono text-xs">{{ tenant.id }}</dd>
+                    <dd class="text-navy-800 font-mono text-xs min-w-0 text-right break-all">{{ tenant.id }}</dd>
                 </div>
                 <div class="flex justify-between items-start gap-2">
                     <dt class="text-sm text-navy-500 flex-shrink-0">Login URL</dt>
-                    <dd class="text-sm text-right">
+                    <dd class="text-sm text-right min-w-0">
                         <a href="{{ settings.app_base_url }}/{{ tenant.slug }}" target="_blank"
-                           class="text-navy-600 hover:underline break-all">
+                           class="inline-block py-1 -my-1 text-navy-600 hover:underline break-all">
                             {{ settings.app_base_url.replace('http://', '').replace('https://', '').rstrip('/') }}/{{ tenant.slug }}
                         </a>
                     </dd>
                 </div>
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                     <dt class="text-sm text-navy-500">Created</dt>
-                    <dd class="text-sm text-navy-800">{{ tenant.created_at.strftime('%B %d, %Y at %H:%M') }}</dd>
+                    <dd class="text-sm text-navy-800 text-right">{{ tenant.created_at.strftime('%B %d, %Y at %H:%M') }}</dd>
                 </div>
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                     <dt class="text-sm text-navy-500">Onboarding</dt>
                     <dd class="text-sm">
                         {% if tenant.onboarding_completed %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
+                        <span class="cu-chip-emerald">
                             Completed
                         </span>
                         {% else %}
@@ -200,17 +171,17 @@
         {% set features = tenant.settings.get('features', {}) if tenant.settings else {} %}
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {% for feature, enabled in features.items() %}
-            <div class="flex items-center gap-2 p-2 rounded-lg {% if enabled %}bg-success-50{% else %}bg-navy-50{% endif %}">
+            <div class="flex items-center gap-2 p-2 rounded-lg min-w-0 {% if enabled %}bg-success-50{% else %}bg-navy-50{% endif %}">
                 {% if enabled %}
-                <svg class="w-4 h-4 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 shrink-0 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
                 {% else %}
-                <svg class="w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 shrink-0 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
                 {% endif %}
-                <span class="text-sm {% if enabled %}text-success-700{% else %}text-navy-500{% endif %}">
+                <span class="text-sm min-w-0 break-words {% if enabled %}text-success-700{% else %}text-navy-500{% endif %}">
                     {{ feature | replace('_', ' ') | title }}
                 </span>
             </div>
@@ -220,7 +191,7 @@
 
     <!-- Admin Users -->
     <div class="cu-card p-5">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h2 class="text-base font-semibold text-navy-800">Admin Users</h2>
             <button type="button" id="add-admin-btn"
                     class="inline-flex items-center px-3 py-1.5 cu-btn-primary transition-colors">
@@ -234,21 +205,21 @@
         {% if admins %}
         <div class="space-y-3">
             {% for admin in admins %}
-            <div class="flex items-center justify-between p-3 bg-navy-50 rounded-lg">
-                <div class="flex items-center gap-3">
+            <div class="flex items-center justify-between gap-3 p-3 bg-navy-50 rounded-lg">
+                <div class="flex items-center gap-3 min-w-0">
                     <div class="flex-shrink-0 w-10 h-10 bg-navy-100 rounded-full flex items-center justify-center">
                         <span class="text-navy-600 font-medium text-sm">
                             {{ admin.first_name[0] }}{{ admin.last_name[0] }}
                         </span>
                     </div>
-                    <div>
-                        <p class="text-sm font-medium text-navy-800">{{ admin.first_name }} {{ admin.last_name }}</p>
-                        <p class="text-xs text-navy-500">{{ admin.email }}</p>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-navy-800 break-words">{{ admin.first_name }} {{ admin.last_name }}</p>
+                        <p class="text-xs text-navy-500 break-all">{{ admin.email }}</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 shrink-0">
                     {% if admin.is_active %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-50 text-success-700">
+                    <span class="cu-chip-emerald">
                         Active
                     </span>
                     {% else %}
@@ -281,7 +252,7 @@
             <div class="bg-white rounded-xl shadow-xl w-full max-w-md relative">
                 <div class="flex items-center justify-between p-4 border-b border-navy-100">
                     <h3 class="text-lg font-semibold text-navy-800">Create Admin User</h3>
-                    <button type="button" id="close-modal-btn" class="p-1 text-navy-400 hover:text-navy-600">
+                    <button type="button" id="close-modal-btn" class="cu-icon-btn" aria-label="Close">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -294,14 +265,14 @@
                                 First Name <span class="text-error-500">*</span>
                             </label>
                             <input type="text" id="admin_first_name" name="first_name" required
-                                   class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                                   class="cu-input">
                         </div>
                         <div>
                             <label for="admin_last_name" class="block text-sm font-medium text-navy-700 mb-1">
                                 Last Name <span class="text-error-500">*</span>
                             </label>
                             <input type="text" id="admin_last_name" name="last_name" required
-                                   class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                                   class="cu-input">
                         </div>
                     </div>
                     <div>
@@ -309,26 +280,26 @@
                             Email Address <span class="text-error-500">*</span>
                         </label>
                         <input type="email" id="admin_email" name="email" required
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                     </div>
                     <div>
                         <label for="admin_phone" class="block text-sm font-medium text-navy-700 mb-1">
                             Phone Number
                         </label>
                         <input type="tel" id="admin_phone" name="phone"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                     </div>
                     <div>
                         <label for="admin_password" class="block text-sm font-medium text-navy-700 mb-1">
                             Password <span class="text-error-500">*</span>
                         </label>
                         <input type="password" id="admin_password" name="password" required minlength="8"
-                               class="w-full px-3 py-2 text-sm border border-navy-200 rounded-xl focus:ring-2 focus:ring-navy-500 focus:border-navy-500">
+                               class="cu-input">
                         <p class="mt-1 text-xs text-navy-500">Minimum 8 characters</p>
                     </div>
                     <div class="flex justify-end gap-3 pt-2">
                         <button type="button" id="cancel-modal-btn"
-                                class="px-4 py-2 text-sm text-navy-600 hover:text-navy-800">
+                                class="cu-tap px-4 py-2 text-sm text-navy-600 hover:text-navy-800">
                             Cancel
                         </button>
                         <button type="submit" id="create-admin-submit"
@@ -354,7 +325,7 @@
             + phone used here become reusable on the platform. This cannot be undone.
         </p>
         <button type="button" id="delete-tenant-btn"
-                class="inline-flex items-center px-3 py-1.5 border border-error-300 text-error-600 text-sm rounded hover:bg-error-50 transition-colors">
+                class="cu-tap inline-flex items-center justify-center px-3 py-1.5 border border-error-300 text-error-600 text-sm rounded hover:bg-error-50 transition-colors">
             <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -372,10 +343,10 @@
      tokens — easier to type accurately and uniquely identifies the
      tenant in the platform. -->
 <dialog id="tenant-purge-modal" class="rounded-2xl shadow-2xl border-0 p-0 w-full max-w-xl backdrop:bg-black/60">
-    <div class="p-6">
-        <div class="flex items-start justify-between mb-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+    <div class="p-4 sm:p-6">
+        <div class="flex items-start justify-between gap-2 mb-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 shrink-0 rounded-xl bg-red-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                     </svg>
@@ -383,7 +354,7 @@
                 <h3 class="text-lg font-semibold text-navy-800">Permanently delete tenant</h3>
             </div>
             <button type="button" onclick="document.getElementById('tenant-purge-modal').close()"
-                    class="text-navy-400 hover:text-navy-600">
+                    class="cu-icon-btn" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -417,17 +388,17 @@
                     Type the tenant slug <strong id="tenant-purge-slug-input-echo"></strong> to confirm
                 </label>
                 <input type="text" id="tenant-purge-confirm-input"
-                       class="w-full px-3 py-2 border border-navy-200 rounded-lg focus:ring-red-500 focus:border-red-500"
+                       class="cu-input w-full px-3 py-2 border border-navy-200 rounded-lg focus:ring-red-500 focus:border-red-500"
                        autocomplete="off">
             </div>
 
             <div class="flex gap-3 pt-2 border-t border-navy-50">
                 <button type="button" onclick="document.getElementById('tenant-purge-modal').close()"
-                        class="flex-1 py-2.5 text-sm font-medium text-navy-700 bg-navy-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                        class="cu-tap flex-1 py-2.5 text-sm font-medium text-navy-700 bg-navy-100 rounded-lg hover:bg-neutral-200 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="tenant-purge-confirm-btn" disabled
-                        class="flex-1 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="cu-tap flex-1 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     Permanently delete
                 </button>
             </div>

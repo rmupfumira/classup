@@ -81,7 +81,7 @@
                 ('FINALIZED', 'Finalised', finalized_count),
                 ('DRAFT', 'Draft', draft_count),
             ] %}
-            <button type="button" data-filter="{{ key }}" class="cu-pill shrink-0 {% if key == 'ALL' %}cu-pill-active{% endif %}">
+            <button type="button" data-filter="{{ key }}" class="cu-pill shrink-0 min-h-[2.75rem] md:min-h-0 {% if key == 'ALL' %}cu-pill-active{% endif %}">
                 {{ label }} <span class="cu-pill-count">{{ count }}</span>
             </button>
             {% endfor %}
@@ -166,7 +166,7 @@
                 </div>
             </div>
 
-            <div class="px-5 py-3.5 flex items-center justify-between border-t border-navy-50">
+            <div class="px-5 py-3 md:py-3.5 flex items-center justify-between gap-3 border-t border-navy-50">
                 <div class="flex items-center gap-2 text-xs text-navy-500 min-w-0">
                     <svg class="w-3.5 h-3.5 shrink-0 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     {% if scheduled %}
@@ -175,7 +175,7 @@
                     <span class="truncate">Created {{ e.created_at.strftime('%b %d, %Y') if e.created_at else '—' }}</span>
                     {% endif %}
                 </div>
-                <a href="/exams/{{ e.id }}" class="inline-flex items-center gap-1.5 pl-4 pr-3 py-1.5 bg-navy-50 hover:bg-navy-600 text-navy-700 hover:text-white rounded-full text-xs font-bold transition-all">
+                <a href="/exams/{{ e.id }}" class="shrink-0 inline-flex items-center gap-1.5 pl-4 pr-3 py-1.5 min-h-[2.75rem] md:min-h-0 bg-navy-50 hover:bg-navy-600 text-navy-700 hover:text-white rounded-full text-xs font-bold transition-all">
                     Open
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                 </a>
@@ -232,7 +232,7 @@
 
 {% if permissions.can_manage_classes() %}
 <dialog id="new-exam-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
-    <form class="p-6" onsubmit="createExam(event)">
+    <form class="p-5 sm:p-6" onsubmit="createExam(event)">
         <h3 class="text-lg font-semibold text-neutral-800 mb-4">New exam</h3>
         <p class="text-xs text-neutral-500 mb-4">
             One exam per (class, term). On save we auto-create a paper for every subject
@@ -242,11 +242,11 @@
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Name</label>
                 <input type="text" id="e-name" required maxlength="200" placeholder="e.g. End of Term 1 Exam"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                       class="block w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded">
             </div>
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Class</label>
-                <select id="e-class" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                <select id="e-class" required class="block w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
                     <option value="">Pick a class…</option>
                     {% for c in classes %}
                     <option value="{{ c.id }}">{{ c.name }}</option>
@@ -257,11 +257,11 @@
                 <div>
                     <label class="block text-xs font-medium text-neutral-700 mb-1">Academic year</label>
                     <input type="text" id="e-year" required maxlength="10" value="{{ (exams[0].academic_year if exams else '') or '' }}"
-                           placeholder="2026" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded">
+                           placeholder="2026" class="block w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-neutral-700 mb-1">Term</label>
-                    <select id="e-term" required class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                    <select id="e-term" required class="block w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
                         <option value="1">Term 1</option>
                         <option value="2">Term 2</option>
                         <option value="3">Term 3</option>
@@ -272,7 +272,7 @@
             {% if templates_list %}
             <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">Report template</label>
-                <select id="e-template" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
+                <select id="e-template" class="block w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded bg-white">
                     <option value="">Use first active template (default)</option>
                     {% for t in templates_list %}
                     <option value="{{ t.id }}">{{ t.name }}</option>
@@ -284,8 +284,8 @@
         </div>
         <div class="flex justify-end gap-2 mt-5">
             <button type="button" onclick="document.getElementById('new-exam-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
-            <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Create</button>
+                    class="min-h-[2.75rem] sm:min-h-0 px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</button>
+            <button type="submit" class="min-h-[2.75rem] sm:min-h-0 px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Create</button>
         </div>
     </form>
 </dialog>

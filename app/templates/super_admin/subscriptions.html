@@ -3,49 +3,47 @@
 {% block title %}Subscriptions & Revenue - {{ app_name }}{% endblock %}
 
 {% block content %}
+{% from "super_admin/_hero.html" import platform_hero %}
 <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-xl font-semibold text-navy-800">Subscriptions & Revenue</h1>
-            <p class="mt-1 text-sm text-navy-500">Manage plans, view subscriptions, and track revenue</p>
-        </div>
-        <button onclick="showPlanModal()"
-                class="inline-flex items-center px-4 py-2 bg-navy-500 text-white text-sm font-medium rounded-xl hover:bg-primary-600 transition-colors shadow-sm">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+    {% call platform_hero('Subscriptions & Revenue', 'Plans, tenant subscriptions and platform revenue across every school.', eyebrow='Platform billing') %}
+        <button onclick="showPlanModal()" class="cu-btn-gold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
             </svg>
             Create Plan
         </button>
-    </div>
+    {% endcall %}
 
     <!-- Revenue Metrics -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="cu-card p-5">
-            <p class="text-sm font-medium text-navy-500">Monthly Recurring Revenue</p>
-            <p class="mt-2 text-3xl font-semibold text-navy-900" id="mrr">{{ platform_currency_symbol }} 0.00</p>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Monthly recurring revenue</div>
+            <div class="cu-stat-tile-value !text-xl sm:!text-2xl xl:!text-3xl sm:whitespace-nowrap break-words" id="mrr">{{ platform_currency_symbol }} 0.00</div>
+            <div class="cu-stat-tile-hint">From active plans</div>
         </div>
-        <div class="cu-card p-5">
-            <p class="text-sm font-medium text-navy-500">Revenue This Month</p>
-            <p class="mt-2 text-3xl font-semibold text-success-600" id="monthly-revenue">{{ platform_currency_symbol }} 0.00</p>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Revenue this month</div>
+            <div class="cu-stat-tile-value !text-xl sm:!text-2xl xl:!text-3xl sm:whitespace-nowrap break-words !text-emerald-700" id="monthly-revenue">{{ platform_currency_symbol }} 0.00</div>
+            <div class="cu-stat-tile-hint">Paid platform invoices</div>
         </div>
-        <div class="cu-card p-5">
-            <p class="text-sm font-medium text-navy-500">Total Revenue</p>
-            <p class="mt-2 text-3xl font-semibold text-navy-900" id="total-revenue">{{ platform_currency_symbol }} 0.00</p>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Total revenue</div>
+            <div class="cu-stat-tile-value !text-xl sm:!text-2xl xl:!text-3xl sm:whitespace-nowrap break-words" id="total-revenue">{{ platform_currency_symbol }} 0.00</div>
+            <div class="cu-stat-tile-hint">All time</div>
         </div>
-        <div class="cu-card p-5">
-            <p class="text-sm font-medium text-navy-500">Active Subscriptions</p>
-            <p class="mt-2 text-3xl font-semibold text-navy-600" id="active-count">0</p>
-            <div class="mt-2 text-xs text-navy-500" id="status-breakdown"></div>
+        <div class="cu-stat-tile">
+            <div class="cu-stat-tile-label">Active subscriptions</div>
+            <div class="cu-stat-tile-value !text-xl sm:!text-2xl xl:!text-3xl" id="active-count">0</div>
+            <div class="cu-stat-tile-hint" id="status-breakdown"></div>
         </div>
     </div>
 
     <!-- Plans Section -->
     <div class="cu-card">
-        <div class="px-6 py-4 border-b border-navy-100">
+        <div class="px-4 sm:px-6 py-4 border-b border-navy-100">
             <h2 class="text-lg font-semibold text-navy-800">Subscription Plans</h2>
         </div>
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="plans-grid">
                 <div class="text-center text-navy-400 py-8 col-span-full">Loading plans...</div>
             </div>
@@ -54,10 +52,10 @@
 
     <!-- Subscriptions Table -->
     <div class="cu-card">
-        <div class="px-6 py-4 border-b border-navy-100 flex items-center justify-between">
+        <div class="px-4 sm:px-6 py-4 border-b border-navy-100 flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-lg font-semibold text-navy-800">Tenant Subscriptions</h2>
             <select id="status-filter" onchange="loadSubscriptions()"
-                    class="text-sm border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500">
+                    class="cu-select !w-auto text-sm" aria-label="Filter by status">
                 <option value="">All Statuses</option>
                 <option value="TRIALING">Trialing</option>
                 <option value="ACTIVE">Active</option>
@@ -66,17 +64,19 @@
                 <option value="CANCELLED">Cancelled</option>
             </select>
         </div>
+        
+        <p class="cu-scroll-hint hidden sm:flex lg:hidden px-4 pt-3 !mb-0">Swipe sideways for more columns</p>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-navy-100">
-                <thead class="bg-navy-50">
+            <table class="cu-table cu-table--stack">
+                <thead>
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Tenant</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Plan</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Trial End</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Next Billing</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Price</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Actions</th>
+                        <th class="sm:sticky sm:left-0 sm:z-[2]">Tenant</th>
+                        <th>Plan</th>
+                        <th>Status</th>
+                        <th>Trial End</th>
+                        <th>Next Billing</th>
+                        <th>Price</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="subscriptions-body" class="bg-white divide-y divide-navy-100">
@@ -88,18 +88,20 @@
 
     <!-- Recent Invoices -->
     <div class="cu-card">
-        <div class="px-6 py-4 border-b border-navy-100">
+        <div class="px-4 sm:px-6 py-4 border-b border-navy-100">
             <h2 class="text-lg font-semibold text-navy-800">Recent Platform Invoices</h2>
         </div>
+        
+        <p class="cu-scroll-hint hidden sm:flex lg:hidden px-4 pt-3 !mb-0">Swipe sideways for more columns</p>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-navy-100">
-                <thead class="bg-navy-50">
+            <table class="cu-table cu-table--stack">
+                <thead>
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Tenant</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Amount</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Period</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase">Paid At</th>
+                        <th class="sm:sticky sm:left-0 sm:z-[2]">Tenant</th>
+                        <th>Amount</th>
+                        <th>Period</th>
+                        <th>Status</th>
+                        <th>Paid At</th>
                     </tr>
                 </thead>
                 <tbody id="invoices-body" class="bg-white divide-y divide-navy-100">
@@ -115,7 +117,7 @@
     <div class="p-6">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold" id="plan-modal-title">Create Subscription Plan</h3>
-            <button onclick="document.getElementById('plan-modal').close()" class="text-navy-400 hover:text-navy-600">
+            <button type="button" onclick="document.getElementById('plan-modal').close()" class="cu-icon-btn" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -123,14 +125,14 @@
             <input type="hidden" name="plan_id" value="">
             <div>
                 <label class="block text-sm font-medium text-navy-700 mb-1">Plan Name</label>
-                <input type="text" name="name" required class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="e.g. Starter">
+                <input type="text" name="name" required class="cu-input" placeholder="e.g. Starter">
             </div>
             <div>
                 <label class="block text-sm font-medium text-navy-700 mb-1">Description</label>
                 <div class="flex gap-2 items-start">
-                    <textarea name="description" rows="2" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="What's included"></textarea>
+                    <textarea name="description" rows="2" class="cu-textarea" placeholder="What's included"></textarea>
                     <button type="button" onclick="autoGenerateDescription()" title="Auto-generate from features"
-                            class="shrink-0 mt-1 p-1.5 text-navy-400 hover:text-navy-600 border border-navy-100 rounded-xl hover:border-primary-300 transition-colors">
+                            class="cu-tap shrink-0 mt-1 p-1.5 inline-flex items-center justify-center text-navy-400 hover:text-navy-600 border border-navy-100 rounded-xl hover:border-primary-300 transition-colors" aria-label="Auto-generate description">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     </button>
                 </div>
@@ -138,7 +140,7 @@
             <div>
                 <label class="block text-sm font-medium text-navy-700 mb-1">Currency</label>
                 <select name="currency" id="plan-currency"
-                        class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500"
+                        class="cu-select"
                         onchange="updatePriceLabels(this.value)">
                     {% for cur in currencies %}
                     <option value="{{ cur.code }}"
@@ -157,13 +159,13 @@
                     <label class="block text-sm font-medium text-navy-700 mb-1">
                         Monthly Price (<span class="price-currency-label">{{ platform_currency_code }}</span>)
                     </label>
-                    <input type="number" name="price_monthly" step="0.01" required class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="299.00">
+                    <input type="number" name="price_monthly" step="0.01" required class="cu-input" placeholder="299.00">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">
                         Annual Price (<span class="price-currency-label">{{ platform_currency_code }}</span>)
                     </label>
-                    <input type="number" name="price_annually" step="0.01" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="2990.00">
+                    <input type="number" name="price_annually" step="0.01" class="cu-input" placeholder="2990.00">
                 </div>
             </div>
             {# Charge model + per-student rate. See ChargeModel enum
@@ -177,7 +179,7 @@
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Charge model</label>
                     <select name="charge_model" id="plan-charge-model"
-                            class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500"
+                            class="cu-select"
                             onchange="togglePerStudentField()">
                         <option value="FLAT">Flat — one price per cycle</option>
                         <option value="PER_STUDENT">Per student — price × active student count</option>
@@ -193,7 +195,7 @@
                         Per-student amount (<span class="price-currency-label">{{ platform_currency_code }}</span>)
                     </label>
                     <input type="number" name="per_student_amount" step="0.01"
-                           class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500"
+                           class="cu-input"
                            placeholder="1.00">
                     <p class="text-xs text-navy-500 mt-1">
                         Per student per billing cycle. Annual plans phrase this as
@@ -204,21 +206,21 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Max Students</label>
-                    <input type="number" name="max_students" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="Unlimited">
+                    <input type="number" name="max_students" class="cu-input" placeholder="Unlimited">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Max Staff</label>
-                    <input type="number" name="max_staff" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500" placeholder="Unlimited">
+                    <input type="number" name="max_staff" class="cu-input" placeholder="Unlimited">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Trial Days</label>
-                    <input type="number" name="trial_days" value="30" class="w-full border-navy-200 rounded-xl focus:ring-navy-500 focus:border-navy-500">
+                    <input type="number" name="trial_days" value="30" class="cu-input">
                 </div>
             </div>
             <!-- Active toggle (edit only) -->
             <div id="plan-active-toggle" class="hidden">
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="is_active" checked class="rounded border-navy-200 text-navy-600">
+                <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer">
+                    <input type="checkbox" name="is_active" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600">
                     <span class="font-medium text-navy-700">Plan is active</span>
                 </label>
             </div>
@@ -227,34 +229,34 @@
                 <label class="block text-sm font-medium text-navy-700 mb-2">Included Features</label>
                 <div class="max-h-56 overflow-y-auto border border-navy-100 rounded-xl p-3 space-y-3">
                     <p class="text-xs text-navy-500 font-medium uppercase tracking-wide">Core</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_attendance_tracking" checked class="rounded border-navy-200 text-navy-600"> Attendance Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_messaging" checked class="rounded border-navy-200 text-navy-600"> Messaging</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_photo_sharing" checked class="rounded border-navy-200 text-navy-600"> Photo Sharing</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_document_sharing" checked class="rounded border-navy-200 text-navy-600"> Document Sharing</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_parent_communication" checked class="rounded border-navy-200 text-navy-600"> Parent Communication</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_attendance_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Attendance Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_messaging" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Messaging</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_photo_sharing" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Photo Sharing</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_document_sharing" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Document Sharing</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_parent_communication" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Parent Communication</label>
 
                     <p class="text-xs text-navy-500 font-medium uppercase tracking-wide pt-2">Daycare</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_daily_reports" checked class="rounded border-navy-200 text-navy-600"> Daily Reports</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_nap_tracking" checked class="rounded border-navy-200 text-navy-600"> Nap Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_bathroom_tracking" checked class="rounded border-navy-200 text-navy-600"> Bathroom Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_fluid_tracking" checked class="rounded border-navy-200 text-navy-600"> Fluid Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_meal_tracking" checked class="rounded border-navy-200 text-navy-600"> Meal Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_diaper_tracking" checked class="rounded border-navy-200 text-navy-600"> Diaper Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_daily_reports" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Daily Reports</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_nap_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Nap Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_bathroom_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Bathroom Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_fluid_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Fluid Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_meal_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Meal Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_diaper_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Diaper Tracking</label>
 
                     <p class="text-xs text-navy-500 font-medium uppercase tracking-wide pt-2">School</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_homework_tracking" checked class="rounded border-navy-200 text-navy-600"> Homework Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_grade_tracking" checked class="rounded border-navy-200 text-navy-600"> Grade Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_behavior_tracking" checked class="rounded border-navy-200 text-navy-600"> Behavior Tracking</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_timetable_management" checked class="rounded border-navy-200 text-navy-600"> Timetable Management</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_subject_management" checked class="rounded border-navy-200 text-navy-600"> Subject Management</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_exam_management" checked class="rounded border-navy-200 text-navy-600"> Exam Management</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_disciplinary_records" checked class="rounded border-navy-200 text-navy-600"> Disciplinary Records</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_homework_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Homework Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_grade_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Grade Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_behavior_tracking" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Behavior Tracking</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_timetable_management" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Timetable Management</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_subject_management" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Subject Management</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_exam_management" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Exam Management</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_disciplinary_records" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Disciplinary Records</label>
 
                     <p class="text-xs text-navy-500 font-medium uppercase tracking-wide pt-2">Admin & Integrations</p>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_billing" checked class="rounded border-navy-200 text-navy-600"> Billing & Invoicing</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_accounting" class="rounded border-navy-200 text-navy-600"> Accounting</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_enabled" class="rounded border-navy-200 text-navy-600"> WhatsApp Integration</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="feat_whatsapp_ai_enabled" class="rounded border-navy-200 text-navy-600"> AI-Powered WhatsApp Bot</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_billing" checked class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Billing & Invoicing</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_accounting" class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> Accounting</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_whatsapp_enabled" class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> WhatsApp Integration</label>
+                    <label class="flex items-center gap-2 text-sm min-h-[2.75rem] sm:min-h-0 cursor-pointer"><input type="checkbox" name="feat_whatsapp_ai_enabled" class="h-5 w-5 sm:h-4 sm:w-4 shrink-0 rounded border-navy-200 text-navy-600"> AI-Powered WhatsApp Bot</label>
                 </div>
             </div>
             <div class="flex justify-end gap-3 pt-4">
@@ -263,7 +265,7 @@
                     Cancel
                 </button>
                 <button type="submit" id="plan-submit-btn"
-                        class="px-4 py-2 text-sm font-medium text-white bg-navy-500 rounded-xl hover:bg-primary-600">
+                        class="cu-btn-primary">
                     Create Plan
                 </button>
             </div>
@@ -276,7 +278,7 @@
     <div class="p-6">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-navy-800">Extend Trial</h3>
-            <button onclick="document.getElementById('extend-trial-modal').close()" class="text-navy-400 hover:text-navy-600">
+            <button type="button" onclick="document.getElementById('extend-trial-modal').close()" class="cu-icon-btn" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -291,7 +293,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-navy-700 mb-1">Days to extend</label>
                 <input type="number" id="extend-days" min="1" max="365" value="14" required
-                       class="block w-full rounded-xl border-navy-200 shadow-sm focus:border-navy-500 focus:ring-navy-500 text-sm">
+                       class="cu-input">
                 <p class="mt-1 text-xs text-navy-400">New end date will be calculated from current trial end</p>
             </div>
             <!-- Quick select buttons -->
@@ -309,7 +311,7 @@
                 <button type="button" onclick="document.getElementById('extend-trial-modal').close()"
                         class="px-4 py-2 text-sm text-navy-700 bg-navy-100 rounded-lg hover:bg-neutral-200">Cancel</button>
                 <button type="submit"
-                        class="px-4 py-2 text-sm text-white bg-primary-600 rounded-lg hover:bg-primary-700">Extend Trial</button>
+                        class="cu-btn-primary">Extend Trial</button>
             </div>
         </form>
     </div>
@@ -678,15 +680,15 @@ async function loadSubscriptions() {
             const canExtend = ['TRIALING', 'SUSPENDED', 'CANCELLED'].includes(s.status);
             return `
             <tr class="hover:bg-navy-50">
-                <td class="px-6 py-4 text-sm font-medium text-navy-900">${s.tenant_name || 'Unknown'}</td>
-                <td class="px-6 py-4 text-sm text-navy-600">${s.plan_name || '-'}</td>
-                <td class="px-6 py-4 text-sm">${badge(s.status)}</td>
-                <td class="px-6 py-4 text-sm text-navy-600">${s.trial_end || '-'}</td>
-                <td class="px-6 py-4 text-sm text-navy-600">${s.current_period_end || '-'}</td>
-                <td class="px-6 py-4 text-sm font-medium text-navy-900">${s.plan_price ? fmtMoney(s.plan_price, s.plan_currency) : '-'}</td>
-                <td class="px-6 py-4 text-sm">
+                <td class="cu-stack-primary sm:sticky sm:left-0 sm:z-[1] sm:bg-white sm:shadow-[inset_-1px_0_0_#e3ebf5] px-6 py-4 text-sm font-medium text-navy-900">${s.tenant_name || 'Unknown'}</td>
+                <td data-label="Plan" class="px-6 py-4 text-sm text-navy-600">${s.plan_name || '-'}</td>
+                <td data-label="Status" class="px-6 py-4 text-sm">${badge(s.status)}</td>
+                <td data-label="Trial end" class="px-6 py-4 text-sm text-navy-600">${s.trial_end || '-'}</td>
+                <td data-label="Next billing" class="px-6 py-4 text-sm text-navy-600">${s.current_period_end || '-'}</td>
+                <td data-label="Price" class="px-6 py-4 text-sm font-medium text-navy-900">${s.plan_price ? fmtMoney(s.plan_price, s.plan_currency) : '-'}</td>
+                <td data-label="Actions" class="px-6 py-4 text-sm">
                     ${canExtend ? `<button onclick="showExtendTrialModal('${s.id}', '${s.tenant_name || 'Unknown'}', '${s.trial_end || ''}')"
-                        class="inline-flex items-center px-2 py-1 text-xs font-medium text-navy-600 bg-navy-50 rounded hover:bg-navy-100 transition-colors"
+                        class="cu-tap inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium text-navy-600 bg-navy-50 rounded hover:bg-navy-100 transition-colors"
                         title="Extend trial">
                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -709,11 +711,11 @@ async function loadInvoices() {
         }
         tbody.innerHTML = res.data.map(inv => `
             <tr class="hover:bg-navy-50">
-                <td class="px-6 py-4 text-sm font-medium text-navy-900">${inv.tenant_name || 'Unknown'}</td>
-                <td class="px-6 py-4 text-sm font-medium text-navy-900">${fmtMoney(inv.amount, inv.currency)}</td>
-                <td class="px-6 py-4 text-sm text-navy-600">${inv.billing_period_start} - ${inv.billing_period_end}</td>
-                <td class="px-6 py-4 text-sm">${badge(inv.status)}</td>
-                <td class="px-6 py-4 text-sm text-navy-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
+                <td class="cu-stack-primary sm:sticky sm:left-0 sm:z-[1] sm:bg-white sm:shadow-[inset_-1px_0_0_#e3ebf5] px-6 py-4 text-sm font-medium text-navy-900">${inv.tenant_name || 'Unknown'}</td>
+                <td data-label="Amount" class="px-6 py-4 text-sm font-medium text-navy-900">${fmtMoney(inv.amount, inv.currency)}</td>
+                <td data-label="Period" class="px-6 py-4 text-sm text-navy-600">${inv.billing_period_start} - ${inv.billing_period_end}</td>
+                <td data-label="Status" class="px-6 py-4 text-sm">${badge(inv.status)}</td>
+                <td data-label="Paid at" class="px-6 py-4 text-sm text-navy-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '-'}</td>
             </tr>
         `).join('');
     } catch (e) { console.error('Failed to load invoices', e); }

@@ -3,25 +3,12 @@
 {% block title %}WhatsApp Settings - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-    <!-- Page Header -->
-    <div class="flex items-center gap-4">
-        <a href="/admin"
-           class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-lg transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
-            </svg>
-        </a>
-        <div>
-            <h1 class="text-xl font-semibold text-navy-800">WhatsApp Settings</h1>
-            <p class="mt-1 text-sm text-navy-500">
-                Configure the Meta Cloud API + verify the bot pipeline works end-to-end.
-            </p>
-        </div>
-    </div>
+{% from "super_admin/_hero.html" import platform_hero %}
+<div class="space-y-6 [&>*:not(.cu-hero)]:max-w-5xl">
+    {{ platform_hero('WhatsApp Settings', 'Configure the Meta Cloud API + verify the bot pipeline works end-to-end.', eyebrow='Messaging') }}
 
     <!-- POC banner -->
-    <div class="rounded-lg bg-info-50 border border-info-200 p-4 text-sm text-info-800">
+    <div class="rounded-3xl bg-navy-50 p-5 text-sm text-navy-700 ring-1 ring-inset ring-navy-100">
         <p class="font-medium mb-1">Phase 1 — Plumbing only</p>
         <p>
             Right now every inbound WhatsApp message gets a canned auto-reply
@@ -52,14 +39,14 @@
                     <label class="block text-sm font-medium text-navy-700 mb-1">Phone number ID</label>
                     <input type="text" id="phone_number_id" required maxlength="60"
                            placeholder="15551234567890"
-                           class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg font-mono">
+                           class="cu-input font-mono">
                     <p class="text-xs text-navy-500 mt-1">Meta assigns this — not the actual phone number.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Business account ID</label>
                     <input type="text" id="business_account_id" maxlength="60"
                            placeholder="15551234567890"
-                           class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg font-mono">
+                           class="cu-input font-mono">
                     <p class="text-xs text-navy-500 mt-1">WABA ID — optional but useful for template ops.</p>
                 </div>
             </div>
@@ -68,7 +55,7 @@
                 <label class="block text-sm font-medium text-navy-700 mb-1">Access token</label>
                 <input type="password" id="access_token" required maxlength="600"
                        placeholder="EAAG..."
-                       class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg font-mono">
+                       class="cu-input font-mono">
                 <p class="text-xs text-navy-500 mt-1">
                     Use a <strong>System User</strong> access token (never-expiring). Temporary tokens work for testing but expire in 24h.
                 </p>
@@ -79,7 +66,7 @@
                     <label class="block text-sm font-medium text-navy-700 mb-1">Verify token</label>
                     <input type="text" id="verify_token" required maxlength="120"
                            placeholder="Pick a random string"
-                           class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg font-mono">
+                           class="cu-input font-mono">
                     <p class="text-xs text-navy-500 mt-1">
                         Set this to whatever you want — you'll paste the same value into Meta's webhook config.
                     </p>
@@ -88,22 +75,22 @@
                     <label class="block text-sm font-medium text-navy-700 mb-1">App secret</label>
                     <input type="password" id="app_secret" required maxlength="120"
                            placeholder="From Meta App → Settings → Basic"
-                           class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg font-mono">
+                           class="cu-input font-mono">
                     <p class="text-xs text-navy-500 mt-1">Used to verify incoming webhook signatures.</p>
                 </div>
             </div>
 
             <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-navy-50">
                 <button type="button" id="btn-test"
-                        class="px-3 py-1.5 bg-white text-navy-700 text-sm font-medium rounded-xl border border-navy-200 hover:bg-navy-50">
+                        class="cu-tap px-3 py-1.5 bg-white text-navy-700 text-sm font-medium rounded-xl border border-navy-200 hover:bg-navy-50">
                     Test connection
                 </button>
                 <button type="button" onclick="loadConfig()"
-                        class="px-3 py-1.5 bg-white text-navy-600 text-sm rounded-xl border border-navy-200 hover:bg-navy-50">
+                        class="cu-tap px-3 py-1.5 bg-white text-navy-600 text-sm rounded-xl border border-navy-200 hover:bg-navy-50">
                     Revert
                 </button>
                 <button type="submit"
-                        class="px-4 py-2 bg-navy-500 text-white text-sm font-medium rounded-xl hover:bg-primary-600 disabled:opacity-50">
+                        class="cu-btn-primary">
                     Save
                 </button>
             </div>
@@ -122,7 +109,7 @@
                 <dd class="flex items-center gap-2 p-2.5 bg-navy-50 border border-navy-100 rounded-xl">
                     <code class="flex-1 text-xs font-mono text-navy-700 break-all" id="webhook-url">—</code>
                     <button type="button" data-copy="webhook-url"
-                            class="flex-shrink-0 px-2 py-1 bg-white text-xs text-navy-700 border border-navy-200 rounded hover:bg-navy-100">
+                            class="flex-shrink-0 cu-btn-soft !py-1 !px-3 !text-xs">
                         Copy
                     </button>
                 </dd>
@@ -132,7 +119,7 @@
                 <dd class="flex items-center gap-2 p-2.5 bg-navy-50 border border-navy-100 rounded-xl">
                     <code class="flex-1 text-xs font-mono text-navy-700 break-all" id="webhook-verify-token">—</code>
                     <button type="button" data-copy="webhook-verify-token"
-                            class="flex-shrink-0 px-2 py-1 bg-white text-xs text-navy-700 border border-navy-200 rounded hover:bg-navy-100">
+                            class="flex-shrink-0 cu-btn-soft !py-1 !px-3 !text-xs">
                         Copy
                     </button>
                 </dd>
@@ -157,12 +144,12 @@
                     <label class="block text-sm font-medium text-navy-700 mb-1">Recipient phone (E.164)</label>
                     <input type="tel" id="send-to-phone" required maxlength="32"
                            placeholder="+27821234567"
-                           class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg font-mono">
+                           class="cu-input font-mono">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-navy-700 mb-1">Template</label>
                     <select id="send-template"
-                            class="block w-full h-10 px-3 text-sm border border-navy-200 rounded-lg bg-white">
+                            class="cu-select">
                         <option value="welcome" selected>welcome</option>
                         <option value="attendance_alert">attendance_alert</option>
                         <option value="announcement">announcement</option>
@@ -174,11 +161,11 @@
             <div>
                 <label class="block text-xs font-medium text-navy-700 mb-1">School name (fills the first template param)</label>
                 <input type="text" id="send-school" maxlength="120" value="ClassUp"
-                       class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-lg">
+                       class="cu-input">
             </div>
             <div class="flex justify-end">
                 <button type="submit"
-                        class="px-4 py-2 bg-navy-500 text-white text-sm font-medium rounded-xl hover:bg-primary-600 disabled:opacity-50">
+                        class="cu-btn-primary">
                     Send test
                 </button>
             </div>
@@ -188,14 +175,14 @@
 
     <!-- Live inbound feed -->
     <div class="cu-card overflow-hidden">
-        <div class="px-6 py-3 border-b border-navy-50 flex items-center justify-between">
-            <div>
+        <div class="px-4 sm:px-6 py-3 border-b border-navy-50 flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0">
                 <h2 class="text-base font-semibold text-navy-800">Recent inbound messages</h2>
                 <p class="text-xs text-navy-500 mt-0.5">Auto-refreshes every 10 seconds. Send a WhatsApp to your business number and watch it appear.</p>
             </div>
             <div class="flex items-center gap-2">
                 <span id="feed-live-dot" class="w-2 h-2 rounded-full bg-neutral-300"></span>
-                <button onclick="loadFeed()" class="text-xs text-navy-600 hover:underline">Refresh now</button>
+                <button type="button" onclick="loadFeed()" class="cu-tap inline-flex items-center text-xs text-navy-600 hover:underline">Refresh now</button>
             </div>
         </div>
         <div id="feed-body">
@@ -337,28 +324,30 @@ async function loadFeed() {
             return;
         }
         wrap.innerHTML = `
-            <table class="min-w-full text-sm">
-                <thead class="bg-navy-50">
+            <p class="cu-scroll-hint hidden sm:flex lg:hidden px-4 pt-3 !mb-0">Swipe sideways for more columns</p>
+            <div class="overflow-x-auto">
+            <table class="cu-table cu-table--stack">
+                <thead>
                     <tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-navy-500 uppercase">When</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-navy-500 uppercase">From</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-navy-500 uppercase">Text</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-navy-500 uppercase">Matched user</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-navy-500 uppercase">Auto-reply</th>
+                        <th class="sm:sticky sm:left-0 sm:z-[2]">When</th>
+                        <th>From</th>
+                        <th>Text</th>
+                        <th>Matched user</th>
+                        <th>Auto-reply</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-navy-50">
                     ${rows.map(m => `
                         <tr class="hover:bg-navy-50">
-                            <td class="px-4 py-2 whitespace-nowrap text-xs text-navy-500">${new Date(m.created_at).toLocaleString()}</td>
-                            <td class="px-4 py-2 whitespace-nowrap font-mono text-xs text-navy-700">${m.from_phone}</td>
-                            <td class="px-4 py-2 text-navy-800 max-w-md truncate" title="${(m.text || '').replace(/"/g, '&quot;')}">${(m.text || '').substring(0, 120) || `<span class="text-navy-400 italic">[${m.message_type}]</span>`}</td>
-                            <td class="px-4 py-2 whitespace-nowrap text-xs">
+                            <td data-label="When" class="sm:sticky sm:left-0 sm:z-[1] sm:bg-white sm:shadow-[inset_-1px_0_0_#e3ebf5] px-4 py-2 sm:whitespace-nowrap text-xs text-navy-500">${new Date(m.created_at).toLocaleString()}</td>
+                            <td data-label="From" class="px-4 py-2 sm:whitespace-nowrap text-xs text-navy-700"><span class="font-mono">${m.from_phone}</span></td>
+                            <td class="cu-stack-primary px-4 py-2 text-navy-800 break-words sm:max-w-md sm:truncate" title="${(m.text || '').replace(/"/g, '&quot;')}">${(m.text || '').substring(0, 120) || `<span class="text-navy-400 italic">[${m.message_type}]</span>`}</td>
+                            <td data-label="Matched user" class="px-4 py-2 sm:whitespace-nowrap text-xs">
                                 ${m.matched_user
                                     ? `<span class="text-success-700">${m.matched_user}</span> <span class="text-navy-400">(${m.tenant_name || 'no tenant'})</span>`
                                     : `<span class="text-warning-700">unknown number</span>`}
                             </td>
-                            <td class="px-4 py-2 whitespace-nowrap text-xs">
+                            <td data-label="Auto-reply" class="px-4 py-2 sm:whitespace-nowrap text-xs">
                                 ${m.auto_replied
                                     ? `<span class="text-success-700">sent</span>`
                                     : m.auto_reply_error
@@ -368,7 +357,8 @@ async function loadFeed() {
                         </tr>
                     `).join('')}
                 </tbody>
-            </table>`;
+            </table>
+            </div>`;
     } catch (err) {
         console.error('feed load failed', err);
     }

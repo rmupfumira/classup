@@ -1,6 +1,9 @@
 {# Sub-navigation for the accounting module — included on every page.
-   Uses cu-pill / cu-pill-active for brand-consistent segmented nav. #}
-<nav class="cu-card p-2 flex flex-wrap items-center gap-1 overflow-x-auto">
+   Uses cu-pill / cu-pill-active for brand-consistent segmented nav.
+   Phones: one swipeable row (the active pill is scrolled into view);
+   md+: wraps as before. #}
+<nav class="cu-card p-2 flex flex-nowrap md:flex-wrap items-center gap-1 overflow-x-auto [scrollbar-width:none]"
+     aria-label="Accounting sections" data-acct-nav>
     {% set items = [
         ('/accounting', 'Dashboard'),
         ('/accounting/expenses', 'Expenses'),
@@ -12,8 +15,25 @@
     ] %}
     {% for url, label in items %}
     {% set active = (url == '/accounting' and request.url.path == '/accounting') or (url != '/accounting' and request.url.path.startswith(url)) %}
-    <a href="{{ url }}" class="cu-pill {% if active %}cu-pill-active{% endif %}">
+    <a href="{{ url }}" class="cu-pill cu-tap shrink-0 justify-center {% if active %}cu-pill-active{% endif %}"
+       {% if active %}aria-current="page"{% endif %}>
         {{ label }}
     </a>
     {% endfor %}
 </nav>
+<style>
+    /* Stacked tables on phones: lift the headline cell to the top of each card. */
+    @media (max-width: 639px) {
+        .cu-stack-reorder tbody tr { display: flex; flex-direction: column; }
+        .cu-stack-reorder tbody td.cu-stack-primary { order: -1; }
+    }
+</style>
+<script>
+(() => {
+    const nav = document.querySelector('[data-acct-nav]');
+    const active = nav && nav.querySelector('[aria-current="page"]');
+    if (active && nav.scrollWidth > nav.clientWidth) {
+        nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+    }
+})();
+</script>

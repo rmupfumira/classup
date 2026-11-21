@@ -7,17 +7,21 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 pt-6 pb-24 space-y-5">
-    <div class="flex items-start justify-between flex-wrap gap-2">
-        <div>
-            <h1 class="text-xl font-semibold text-navy-800">Grade distribution</h1>
-            <p class="mt-0.5 text-sm text-navy-500">
-                Histogram + bell curve overlay to see whether an assessment produced a healthy spread
+<div class="space-y-6">
+    <section class="cu-hero">
+        <div class="absolute -top-20 -right-20 w-72 h-72 bg-gold-400/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div class="max-w-2xl">
+                <span class="cu-eyebrow cu-eyebrow-on-dark mb-4">Insights</span>
+                <h1 class="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.05] text-white mb-3">Grade distribution</h1>
+                <p class="text-navy-100 text-base md:text-lg leading-relaxed">
+                    Histogram + bell curve overlay to see whether an assessment produced a healthy spread
                 or an abnormal concentration. Pick a subject to isolate it.
-            </p>
+                </p>
+            </div>
+            <div class="shrink-0">{% include 'mis/_export_bar.html' %}</div>
         </div>
-        {% include 'mis/_export_bar.html' %}
-    </div>
+    </section>
 
     {% set active_tab = 'distribution' %}
     {% include 'mis/_tabs.html' %}
@@ -44,40 +48,42 @@
     <!-- Filters -->
     <div class="cu-card p-4">
         <div class="flex flex-wrap items-end gap-3">
-            <div>
+            <div class="flex-1 min-w-[8.5rem] sm:flex-none">
                 <label class="block text-xs font-medium text-navy-600 mb-1">From</label>
-                <input type="date" id="from-date" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl">
+                <input type="date" id="from-date" class="cu-input">
             </div>
-            <div>
+            <div class="flex-1 min-w-[8.5rem] sm:flex-none">
                 <label class="block text-xs font-medium text-navy-600 mb-1">To</label>
-                <input type="date" id="to-date" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl">
+                <input type="date" id="to-date" class="cu-input">
             </div>
-            <div class="flex items-center gap-1">
-                <button onclick="setRange('month')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">This month</button>
-                <button onclick="setRange('term')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">Term</button>
-                <button onclick="setRange('ytd')" class="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded hover:bg-neutral-200">YTD</button>
+            <div class="flex flex-wrap items-center gap-1 w-full sm:w-auto">
+                <button onclick="setRange('month')" class="cu-pill cu-tap">This month</button>
+                <button onclick="setRange('term')" class="cu-pill cu-tap">Term</button>
+                <button onclick="setRange('ytd')" class="cu-pill cu-tap">YTD</button>
             </div>
             <div class="min-w-[180px]">
                 <label class="block text-xs font-medium text-navy-600 mb-1">Class</label>
-                <select id="class-filter" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-xl bg-white">
-                    <option value="">Whole school</option>
+                <select id="class-filter" class="cu-select">
+                    {% if mis_teacher %}{% for c in mis_classes %}
+                    <option value="{{ c.id }}"{% if c.id == mis_default_class_id %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                    {% else %}<option value="">Whole school</option>{% endif %}
                 </select>
             </div>
             <div class="min-w-[180px]">
                 <label class="block text-xs font-medium text-navy-600 mb-1">Subject</label>
-                <select id="subject-filter" class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-xl bg-white">
+                <select id="subject-filter" class="cu-select">
                     <option value="">All subjects</option>
                 </select>
             </div>
             <div>
                 <label class="block text-xs font-medium text-navy-600 mb-1">Bin size</label>
-                <select id="bin-size" class="block h-9 px-3 text-sm border border-navy-200 rounded-xl bg-white">
+                <select id="bin-size" class="cu-select">
                     <option value="5">5%</option>
                     <option value="10" selected>10%</option>
                     <option value="20">20%</option>
                 </select>
             </div>
-            <button onclick="load()" class="ml-auto px-4 py-2 text-sm text-white bg-navy-500 rounded-xl hover:bg-primary-600">Refresh</button>
+            <button onclick="load()" class="cu-btn-primary w-full sm:w-auto sm:ml-auto justify-center">Refresh</button>
         </div>
     </div>
 
@@ -106,7 +112,7 @@
     <!-- Histogram + bell curve -->
     <div class="cu-card p-4">
         <h2 class="text-sm font-semibold text-navy-800 mb-3">Percentage distribution + bell curve</h2>
-        <div class="h-80"><canvas id="hist-chart"></canvas></div>
+        <div class="relative h-72 sm:h-80 min-w-0"><canvas class="block max-w-full" id="hist-chart"></canvas></div>
         <p class="mt-2 text-xs text-navy-500">
             Bars = actual count per band · dotted line = expected normal (bell) curve with the same mean and standard deviation.
         </p>
@@ -115,7 +121,7 @@
     <!-- Band distribution -->
     <div class="cu-card p-4">
         <h2 class="text-sm font-semibold text-navy-800 mb-3">Grade-letter distribution</h2>
-        <div class="h-56"><canvas id="band-chart"></canvas></div>
+        <div class="relative h-56 min-w-0"><canvas class="block max-w-full" id="band-chart"></canvas></div>
     </div>
 </div>
 
@@ -148,7 +154,7 @@ async function populateFilters() {
     try {
         const sel = document.getElementById('class-filter');
         let page = 1;
-        while (true) {
+        while (!window.MIS_TEACHER) {  // teachers get their classes server-rendered
             const r = await ClassUp.fetch(`/api/v1/classes?page=${page}&page_size=100&active_only=true`);
             const items = (r && r.data) || [];
             items.forEach(c => {
@@ -271,6 +277,7 @@ function renderBands(d) {
 }
 
 async function load() {
+    if (window.MIS_TEACHER && !document.getElementById('class-filter').value) return;
     const from = document.getElementById('from-date').value;
     const to = document.getElementById('to-date').value;
     if (!from || !to) return;
@@ -297,6 +304,7 @@ async function load() {
     }
 }
 
+const MIS_TEACHER = window.MIS_TEACHER = {{ 'true' if mis_teacher else 'false' }};
 populateFilters();
 setRange('term');
 </script>

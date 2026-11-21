@@ -3,6 +3,36 @@
 {% block title %}Edit Report - {{ report.student.first_name }} {{ report.student.last_name }} - {{ app_name }}{% endblock %}
 
 {% block content %}
+<style>
+    /* Phones: report forms. Subject grades become one compact card per subject
+       (subject / marks + out of + grade / remarks) instead of a 600px table, and
+       repeatable-entry rows get 44px fields and a 44px remove button. */
+    @media (max-width: 639px) {
+        .rpt-grades { min-width: 0 !important; border: 0 !important; }
+        .rpt-grades thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+        .rpt-grades, .rpt-grades tbody { display: block; }
+        .rpt-grades tr {
+            display: grid; grid-template-columns: 6.5rem 1fr auto; align-items: center;
+            grid-template-areas: "subj subj subj" "marks total grade" "remarks remarks remarks";
+            gap: 0.5rem 0.75rem; padding: 0.875rem 0; border-bottom: 1px solid #e3ebf5; background: transparent !important;
+        }
+        .rpt-grades tr:last-child { border-bottom: 0; }
+        .rpt-grades td { display: block; border: 0 !important; padding: 0 !important; text-align: left !important; }
+        .rpt-grades .g-idx { display: none; }
+        .rpt-grades .g-subj { grid-area: subj; font-weight: 600; }
+        .rpt-grades .g-marks { grid-area: marks; }
+        .rpt-grades .g-total { grid-area: total; color: #3a5f96; font-size: 0.8125rem; }
+        .rpt-grades .g-total::before { content: "out of "; }
+        .rpt-grades .g-grade { grid-area: grade; font-size: 1rem; }
+        .rpt-grades .g-remarks { grid-area: remarks; }
+        .rpt-grades .g-marks input { width: 100% !important; margin: 0 !important; min-height: 2.75rem; font-weight: 600; }
+    }
+    @media (max-width: 767px) {
+        .rpt-repeat input:not([type="hidden"]), .rpt-repeat select { min-height: 2.75rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+        .rpt-repeat td:last-child > button { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; }
+        .rpt-form label.inline-flex { min-height: 2.75rem; }
+    }
+</style>
 <div class="space-y-6">
     {# ------ Hero banner ------ #}
     <section class="cu-hero">
@@ -46,7 +76,7 @@
     </div>
 
     <!-- Report Sections Form -->
-    <form id="report-form">
+    <form id="report-form" class="rpt-form">
         {% for section in report.template.sections %}
         <div class="cu-card mb-6">
             <div class="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
@@ -66,7 +96,7 @@
                 {% set grades_config = grading_system.grades if grading_system else (section.grading_system or []) %}
                 {% if subjects_list %}
                 <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-                    <table class="min-w-[550px] w-full border border-neutral-300">
+                    <table class="min-w-[550px] w-full border border-neutral-300 rpt-grades">
                         <thead>
                             <tr class="bg-neutral-100">
                                 <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">#</th>
@@ -89,19 +119,21 @@
                             {% endif %}
                             {% set subject_data = section_data.get(subject_id, {}) %}
                             <tr class="{% if loop.index is odd %}bg-white{% else %}bg-neutral-50{% endif %}">
-                                <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600">{{ loop.index }}</td>
-                                <td class="border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900">{{ subject_name }}</td>
-                                <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600 text-center">{{ total_for_subject }}</td>
-                                <td class="border border-neutral-300 px-3 py-1">
-                                    <input type="number" name="sections.{{ section.id }}.{{ subject_id }}.marks_obtained"
+                                <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600 g-idx">{{ loop.index }}</td>
+                                <td class="border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 g-subj">{{ subject_name }}</td>
+                                <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600 text-center g-total">{{ total_for_subject }}</td>
+                                <td class="border border-neutral-300 px-3 py-1 g-marks">
+                                    <input type="number" name="sections.{{ section.id }}.{{ subject_id }}.marks_obtained" inputmode="decimal"
+                                           aria-label="Marks for {{ subject_name }}"
                                            value="{{ subject_data.get('marks_obtained', '') }}"
                                            min="0" max="{{ total_for_subject }}" step="0.5"
                                            class="block w-20 mx-auto rounded border border-neutral-300 text-sm text-center focus:ring-primary-500 focus:border-primary-500">
                                 </td>
-                                <td class="border border-neutral-300 px-3 py-1">
-                                    <input type="text" name="sections.{{ section.id }}.{{ subject_id }}.remarks"
+                                <td class="border border-neutral-300 px-3 py-1 g-remarks">
+                                    <input type="text" name="sections.{{ section.id }}.{{ subject_id }}.remarks" placeholder="Remarks"
+                                           aria-label="Remarks for {{ subject_name }}"
                                            value="{{ subject_data.get('remarks', '') }}"
-                                           class="block w-full rounded border border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                           class="block w-full cu-input !rounded-xl sm:!text-sm">
                                 </td>
                             </tr>
                             {% endfor %}
@@ -129,7 +161,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center gap-2">
                         <label class="w-32 text-sm font-medium text-neutral-700">{{ field.label }}</label>
                         <select name="sections.{{ section.id }}.{{ field.id }}_amount"
-                                class="w-32 rounded-lg border-neutral-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                                class="w-32 cu-input !rounded-xl sm:!text-sm">
                             <option value="">-</option>
                             {% for opt in meal_options %}
                             <option value="{{ opt }}" {% if section_data.get(field.id ~ '_amount') == opt %}selected{% endif %}>{{ opt }}</option>
@@ -138,7 +170,7 @@
                         <input type="text" name="sections.{{ section.id }}.{{ field.id }}_desc"
                                value="{{ section_data.get(field.id ~ '_desc', '') }}"
                                placeholder="Description (optional)"
-                               class="flex-1 rounded-lg border-neutral-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                               class="flex-1 cu-input !rounded-xl sm:!text-sm">
                     </div>
                     {% endif %}
                     {% endfor %}
@@ -147,7 +179,7 @@
                 {% elif section.type == 'REPEATABLE_ENTRIES' %}
                 <div class="space-y-3">
                     <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-                    <table class="w-full min-w-[500px]" id="table-{{ section.id }}">
+                    <table class="w-full min-w-[500px] rpt-repeat" id="table-{{ section.id }}">
                         <thead>
                             <tr class="text-left text-sm text-neutral-500">
                                 {% for field in section.fields %}
@@ -202,7 +234,7 @@
                     </table>
                     </div>
                     <button type="button" onclick="addRepeatableEntry('{{ section.id }}')"
-                            class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+                            class="inline-flex items-center min-h-[2.75rem] text-sm text-primary-600 hover:text-primary-700">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
@@ -223,7 +255,7 @@
 
                         {% if field.type == 'SELECT' %}
                         <select name="sections.{{ section.id }}.{{ field.id }}"
-                                class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                class="block w-full cu-input !rounded-xl"
                                 {% if field.required %}required{% endif %}>
                             <option value="">Select...</option>
                             {% for opt in field.options %}
@@ -246,13 +278,13 @@
                         {% elif field.type == 'TIME' %}
                         <input type="time" name="sections.{{ section.id }}.{{ field.id }}"
                                value="{{ field_value }}"
-                               class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               class="block w-full cu-input !rounded-xl"
                                {% if field.required %}required{% endif %}>
 
                         {% elif field.type == 'NUMBER' %}
                         <input type="number" name="sections.{{ section.id }}.{{ field.id }}"
                                value="{{ field_value }}"
-                               class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               class="block w-full cu-input !rounded-xl"
                                {% if field.required %}required{% endif %}>
 
                         {% elif field.type == 'CHECKBOX' %}
@@ -265,13 +297,13 @@
 
                         {% elif field.type == 'TEXTAREA' %}
                         <textarea name="sections.{{ section.id }}.{{ field.id }}" rows="3"
-                                  class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                  class="cu-textarea"
                                   {% if field.required %}required{% endif %}>{{ field_value }}</textarea>
 
                         {% else %}
                         <input type="text" name="sections.{{ section.id }}.{{ field.id }}"
                                value="{{ field_value }}"
-                               class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                               class="block w-full cu-input !rounded-xl"
                                {% if field.required %}required{% endif %}>
                         {% endif %}
                     </div>
@@ -283,11 +315,13 @@
         {% endfor %}
     </form>
 
-    <!-- Form Actions -->
-    <div class="flex items-center justify-end gap-3">
-        <a href="/reports/{{ report.id }}" class="cu-btn-soft">Cancel</a>
-        <button type="button" onclick="saveReport(false)" class="cu-btn-soft">Save draft</button>
-        <button type="button" onclick="saveReport(true)" class="cu-btn-primary">Save & Finalize</button>
+    <!-- Form Actions: sticky above the mobile tab bar so Save is always reachable -->
+    <div class="sticky cu-above-tabbar z-10 sm:static">
+        <div class="cu-card sm:!bg-transparent sm:!shadow-none p-2.5 sm:p-0 grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end sm:gap-3">
+            <a href="/reports/{{ report.id }}" class="cu-btn-soft hidden sm:inline-flex">Cancel</a>
+            <button type="button" onclick="saveReport(false)" class="cu-btn-soft justify-center">Save draft</button>
+            <button type="button" onclick="saveReport(true)" class="cu-btn-primary justify-center">Save & Finalize</button>
+        </div>
     </div>
 </div>
 {% endblock %}

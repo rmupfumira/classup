@@ -6,7 +6,7 @@
 <div class="max-w-6xl mx-auto">
     <div class="flex items-center justify-between mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-neutral-900">Bulk Import</h1>
+            <h1 class="cu-page-title leading-tight">Bulk Import</h1>
             <p class="mt-1 text-sm text-navy-500">Import students, teachers, or parents from CSV files.</p>
         </div>
         <div class="flex items-center gap-3">
@@ -18,7 +18,7 @@
                 Excel Enrollment
             </a>
             <a href="/imports/upload"
-               class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+               class="cu-btn-primary">
                 <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                 </svg>
@@ -30,7 +30,7 @@
     {% if jobs %}
     <div class="bg-white shadow-sm rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
-        <table class="cu-table">
+        <table class="cu-table cu-table--stack">
             <thead>
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-navy-500 uppercase tracking-wider">File</th>
@@ -44,18 +44,18 @@
             <tbody class="bg-white divide-y divide-neutral-200">
                 {% for job in jobs %}
                 <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <svg class="h-5 w-5 text-navy-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <td class="cu-stack-primary px-6 py-4 sm:whitespace-nowrap">
+                        <div class="flex items-center min-w-0">
+                            <svg class="h-5 w-5 shrink-0 text-navy-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
-                            <span class="text-sm font-medium text-neutral-900">{{ job.file_name }}</span>
+                            <span class="text-sm font-medium text-neutral-900 [overflow-wrap:anywhere]">{{ job.file_name }}</span>
                         </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td data-label="Type" class="px-6 py-4 whitespace-nowrap">
                         <span class="text-sm text-navy-500">{{ job.import_type }}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td data-label="Status" class="px-6 py-4 whitespace-nowrap">
                         {% if job.status == 'COMPLETED' %}
                         <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
                             Completed
@@ -74,7 +74,7 @@
                         </span>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td data-label="Results" class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-navy-500">
                             {% if job.status == 'COMPLETED' %}
                             <span class="text-green-600">{{ job.success_count }} success</span>
@@ -89,16 +89,16 @@
                             {% endif %}
                         </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-navy-500">
+                    <td data-label="Date" class="px-6 py-4 whitespace-nowrap text-sm text-navy-500">
                         {{ job.created_at.strftime('%Y-%m-%d %H:%M') }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td class="cu-stack-actions px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         {% if job.status == 'PENDING' %}
-                        <a href="/imports/{{ job.id }}/mapping" class="text-primary-600 hover:text-primary-900">
+                        <a href="/imports/{{ job.id }}/mapping" class="cu-btn-soft !py-1.5 !px-3 !text-xs">
                             Continue
                         </a>
                         {% else %}
-                        <a href="/imports/{{ job.id }}" class="text-primary-600 hover:text-primary-900">
+                        <a href="/imports/{{ job.id }}" class="cu-btn-soft !py-1.5 !px-3 !text-xs">
                             View
                         </a>
                         {% endif %}
@@ -118,7 +118,7 @@
         <p class="mt-1 text-sm text-navy-500">Get started by importing your first CSV file.</p>
         <div class="mt-6">
             <a href="/imports/upload"
-               class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500">
+               class="cu-btn-primary">
                 Start Import
             </a>
         </div>

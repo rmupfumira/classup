@@ -2,10 +2,10 @@
 
 {% block title %}Arrears Report - {{ app_name }}{% endblock %}
 
-{% block extra_head %}
+{% block head %}
 <style>
 @media print {
-    nav, .sidebar, .bottom-nav, form, button, a[href*="export"], .print\:hidden { display: none !important; }
+    nav, .sidebar, .bottom-nav, form, button, a[href*="export"], .print\:hidden, .cu-scroll-hint { display: none !important; }
     .cu-card, .cu-table-wrap { box-shadow: none !important; border: 1px solid #ddd !important; }
     body { font-size: 11px; }
     table { width: 100%; }
@@ -22,7 +22,7 @@
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div class="max-w-xl">
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
-                <h1 class="cu-page-title text-white">Arrears / Ageing Report</h1>
+                <h1 class="cu-page-title leading-tight text-white">Arrears / Ageing Report</h1>
                 <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                     Outstanding balances with ageing breakdown.
                 </p>
@@ -47,9 +47,9 @@
 
     {# ------ Class filter ------ #}
     <section class="cu-card p-4 print:hidden">
-        <form method="get" class="flex items-center gap-3">
-            <label class="text-sm font-medium text-navy-700">Filter by class:</label>
-            <select name="class_id" onchange="this.form.submit()" class="cu-select max-w-xs">
+        <form method="get" class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <label for="arrears-class" class="text-sm font-medium text-navy-700">Filter by class:</label>
+            <select id="arrears-class" name="class_id" onchange="this.form.submit()" class="cu-select sm:max-w-xs">
                 <option value="">All Classes</option>
                 {% for cls in classes %}
                 <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
@@ -61,33 +61,34 @@
     </section>
 
     {# ------ Summary tiles ------ #}
-    <section class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <section class="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-4">
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">Total Due</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(totals.total_due) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal"><span class="cu-stat-unit">{{ currency }}</span><span class="whitespace-nowrap">{{ "{:,.2f}".format(totals.total_due) }}</span></div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">Total Paid</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(totals.total_paid) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal"><span class="cu-stat-unit">{{ currency }}</span><span class="whitespace-nowrap">{{ "{:,.2f}".format(totals.total_paid) }}</span></div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">Outstanding</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(totals.outstanding) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal"><span class="cu-stat-unit">{{ currency }}</span><span class="whitespace-nowrap">{{ "{:,.2f}".format(totals.outstanding) }}</span></div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">90+ Days Overdue</div>
-            <div class="cu-stat-tile-value">{{ currency }} {{ "%.2f"|format(totals.days_90_plus) }}</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal"><span class="cu-stat-unit">{{ currency }}</span><span class="whitespace-nowrap">{{ "{:,.2f}".format(totals.days_90_plus) }}</span></div>
         </div>
     </section>
 
     {# ------ Arrears table ------ #}
     {% if arrears_data %}
+    <p class="cu-scroll-hint print:hidden">Amounts in {{ currency }}. Swipe sideways for the ageing columns</p>
     <div class="cu-table-wrap">
-        <div class="overflow-x-auto">
+        <div class="cu-table-scroll">
             <table class="cu-table">
                 <thead>
                     <tr>
-                        <th>Student</th>
+                        <th class="cu-sticky-col">Student</th>
                         <th>Class</th>
                         <th style="text-align:right">Total Due</th>
                         <th style="text-align:right">Paid</th>
@@ -101,42 +102,43 @@
                 <tbody>
                     {% for d in arrears_data %}
                     <tr>
-                        <td>
-                            <a href="/students/{{ d.student.id }}" class="font-semibold text-navy-800 hover:text-navy-600">
+                        <td class="cu-sticky-col">
+                            <a href="/students/{{ d.student.id }}" class="inline-block py-3 -my-3 font-semibold text-navy-800 hover:text-navy-600">
                                 {{ d.student.first_name }} {{ d.student.last_name }}
                             </a>
                         </td>
                         <td class="text-navy-600">
                             {{ d.student.school_class.name if d.student.school_class else '—' }}
                         </td>
-                        <td style="text-align:right" class="font-medium text-navy-700">{{ "%.2f"|format(d.total_due) }}</td>
-                        <td style="text-align:right" class="text-emerald-700">{{ "%.2f"|format(d.total_paid) }}</td>
-                        <td style="text-align:right" class="font-semibold text-navy-800">{{ "%.2f"|format(d.outstanding) }}</td>
-                        <td style="text-align:right" class="text-navy-600">
-                            {% if d.current > 0 %}{{ "%.2f"|format(d.current) }}{% else %}—{% endif %}
+                        <td style="text-align:right" class="whitespace-nowrap font-medium text-navy-700">{{ "{:,.2f}".format(d.total_due) }}</td>
+                        <td style="text-align:right" class="whitespace-nowrap text-emerald-700">{{ "{:,.2f}".format(d.total_paid) }}</td>
+                        <td style="text-align:right" class="whitespace-nowrap font-semibold text-navy-800">{{ "{:,.2f}".format(d.outstanding) }}</td>
+                        <td style="text-align:right" class="whitespace-nowrap text-navy-600">
+                            {% if d.current > 0 %}{{ "{:,.2f}".format(d.current) }}{% else %}—{% endif %}
                         </td>
                         <td style="text-align:right">
-                            {% if d.days_30 > 0 %}<span class="text-gold-700 font-medium">{{ "%.2f"|format(d.days_30) }}</span>{% else %}—{% endif %}
+                            {% if d.days_30 > 0 %}<span class="text-gold-700 font-medium">{{ "{:,.2f}".format(d.days_30) }}</span>{% else %}—{% endif %}
                         </td>
                         <td style="text-align:right">
-                            {% if d.days_60 > 0 %}<span class="text-gold-800 font-semibold">{{ "%.2f"|format(d.days_60) }}</span>{% else %}—{% endif %}
+                            {% if d.days_60 > 0 %}<span class="text-gold-800 font-semibold">{{ "{:,.2f}".format(d.days_60) }}</span>{% else %}—{% endif %}
                         </td>
                         <td style="text-align:right">
-                            {% if d.days_90_plus > 0 %}<span class="text-rose-700 font-bold">{{ "%.2f"|format(d.days_90_plus) }}</span>{% else %}—{% endif %}
+                            {% if d.days_90_plus > 0 %}<span class="text-rose-700 font-bold">{{ "{:,.2f}".format(d.days_90_plus) }}</span>{% else %}—{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr style="background: #f4f7fb; border-top: 2px solid #dce4f0;" class="font-bold text-sm">
-                        <td style="padding: 0.875rem 1rem;" colspan="2" class="text-navy-800">Totals</td>
-                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-navy-800">{{ "%.2f"|format(totals.total_due) }}</td>
-                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-emerald-700">{{ "%.2f"|format(totals.total_paid) }}</td>
-                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-navy-800">{{ "%.2f"|format(totals.outstanding) }}</td>
-                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-navy-700">{{ "%.2f"|format(totals.current) }}</td>
-                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-gold-700">{{ "%.2f"|format(totals.days_30) }}</td>
-                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-gold-800">{{ "%.2f"|format(totals.days_60) }}</td>
-                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-rose-700">{{ "%.2f"|format(totals.days_90_plus) }}</td>
+                        <td style="padding: 0.875rem 1rem; background: #f4f7fb;" class="cu-sticky-col text-navy-800">Totals</td>
+                        <td style="padding: 0.875rem 1rem;"></td>
+                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-navy-800">{{ "{:,.2f}".format(totals.total_due) }}</td>
+                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-emerald-700">{{ "{:,.2f}".format(totals.total_paid) }}</td>
+                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-navy-800">{{ "{:,.2f}".format(totals.outstanding) }}</td>
+                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-navy-700">{{ "{:,.2f}".format(totals.current) }}</td>
+                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-gold-700">{{ "{:,.2f}".format(totals.days_30) }}</td>
+                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-gold-800">{{ "{:,.2f}".format(totals.days_60) }}</td>
+                        <td style="text-align:right; padding: 0.875rem 1rem;" class="text-rose-700">{{ "{:,.2f}".format(totals.days_90_plus) }}</td>
                     </tr>
                 </tfoot>
             </table>

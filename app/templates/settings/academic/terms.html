@@ -7,13 +7,13 @@
     <!-- Header -->
     <div class="flex items-center gap-4">
         <a href="/settings"
-           class="p-2 text-navy-400 hover:text-navy-600 hover:bg-neutral-100 rounded-lg transition-colors">
+           class="cu-icon-btn -ml-2 text-navy-400 hover:text-navy-600" aria-label="Back to settings">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path>
             </svg>
         </a>
         <div>
-            <h1 class="text-xl font-semibold text-navy-800">Academic Terms</h1>
+            <h1 class="cu-page-title leading-tight">Academic Terms</h1>
             <p class="mt-1 text-sm text-navy-500">
                 Define the terms in your academic year. Report cards use these
                 to auto-fill the term, academic year, and days present / absent
@@ -23,14 +23,14 @@
     </div>
 
     <!-- Add / Edit form -->
-    <div class="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
+    <div class="cu-card p-4 sm:p-6">
         <h2 class="text-base font-semibold text-navy-800 mb-3" id="form-heading">Add a term</h2>
         <form id="term-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="hidden" id="term-form-id" value="">
             <div>
                 <label for="term-number" class="block text-sm font-medium text-neutral-700 mb-1">Term number</label>
                 <select id="term-number" required
-                        class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                        class="cu-select">
                     <option value="1">Term 1</option>
                     <option value="2">Term 2</option>
                     <option value="3">Term 3</option>
@@ -39,18 +39,18 @@
             </div>
             <div>
                 <label for="term-year" class="block text-sm font-medium text-neutral-700 mb-1">Academic year</label>
-                <input type="number" id="term-year" required min="2000" max="2100"
-                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                <input type="number" id="term-year" required min="2000" max="2100" inputmode="numeric"
+                       class="cu-input">
             </div>
             <div>
                 <label for="term-start" class="block text-sm font-medium text-neutral-700 mb-1">Start date</label>
                 <input type="date" id="term-start" required
-                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                       class="cu-input">
             </div>
             <div>
                 <label for="term-end" class="block text-sm font-medium text-neutral-700 mb-1">End date</label>
                 <input type="date" id="term-end" required
-                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                       class="cu-input">
             </div>
             <div class="sm:col-span-2">
                 <label for="term-label" class="block text-sm font-medium text-neutral-700 mb-1">
@@ -58,13 +58,13 @@
                 </label>
                 <input type="text" id="term-label" maxlength="100"
                        placeholder="e.g. Term 1 2026 or Autumn 2026"
-                       class="block w-full h-10 px-3 text-sm border border-neutral-300 rounded-lg">
+                       class="cu-input">
             </div>
             <div class="sm:col-span-2 flex justify-end gap-2">
-                <button type="button" id="term-reset" class="hidden px-4 py-2 text-sm text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50">
+                <button type="button" id="term-reset" class="hidden cu-btn-soft">
                     Cancel edit
                 </button>
-                <button type="submit" class="px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">
+                <button type="submit" class="cu-btn-primary">
                     Save term
                 </button>
             </div>
@@ -72,9 +72,9 @@
     </div>
 
     <!-- List -->
-    <div class="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+    <div class="cu-card overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm cu-table--stack">
                 <thead class="bg-neutral-50 text-left text-xs text-navy-500 uppercase">
                     <tr>
                         <th class="px-4 py-2">Label</th>
@@ -85,7 +85,7 @@
                         <th class="px-4 py-2"></th>
                     </tr>
                 </thead>
-                <tbody id="terms-body" class="divide-y divide-neutral-100">
+                <tbody id="terms-body" class="divide-y divide-navy-50">
                     <tr><td colspan="6" class="px-4 py-6 text-center text-navy-400">Loading…</td></tr>
                 </tbody>
             </table>
@@ -105,16 +105,18 @@ async function fetchTerms() {
         }
         tbody.innerHTML = rows.map(t => `
             <tr>
-                <td class="px-4 py-3 font-medium text-neutral-800">${t.label}</td>
-                <td class="px-4 py-3">Term ${t.number}</td>
-                <td class="px-4 py-3">${t.year}</td>
-                <td class="px-4 py-3">${t.start || ''}</td>
-                <td class="px-4 py-3">${t.end || ''}</td>
-                <td class="px-4 py-3 text-right">
+                <td class="cu-stack-primary px-4 py-3 font-medium text-neutral-800">${t.label}</td>
+                <td data-label="Term" class="px-4 py-3">Term ${t.number}</td>
+                <td data-label="Year" class="px-4 py-3">${t.year}</td>
+                <td data-label="Start" class="px-4 py-3 whitespace-nowrap">${t.start || ''}</td>
+                <td data-label="End" class="px-4 py-3 whitespace-nowrap">${t.end || ''}</td>
+                <td class="cu-stack-actions px-4 py-3 text-right">
+                    <div class="inline-flex items-center gap-2">
                     <button type="button" data-edit="${t.id}" data-row='${JSON.stringify(t).replace(/'/g, "&apos;")}'
-                            class="text-primary-600 hover:text-primary-700 text-xs font-medium">Edit</button>
+                            class="cu-btn-soft !py-1.5 !px-3 !text-xs">Edit</button>
                     <button type="button" data-delete="${t.id}"
-                            class="ml-3 text-red-600 hover:text-red-700 text-xs font-medium">Delete</button>
+                            class="cu-btn-soft !py-1.5 !px-3 !text-xs !text-rose-700">Delete</button>
+                    </div>
                 </td>
             </tr>
         `).join('');

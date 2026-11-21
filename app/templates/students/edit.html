@@ -6,7 +6,7 @@
 <div class="max-w-3xl mx-auto space-y-6">
     {# ------ Header ------ #}
     <div>
-        <a href="/students/{{ student.id }}" class="inline-flex items-center gap-1 text-navy-500 hover:text-navy-700 text-xs font-semibold mb-2">
+        <a href="/students/{{ student.id }}" class="inline-flex items-center gap-1 min-h-[44px] text-navy-500 hover:text-navy-700 text-xs font-semibold -mt-3 mb-0">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             Back to {{ student.first_name }} {{ student.last_name }}
         </a>
@@ -17,7 +17,7 @@
     <!-- Form -->
     <form id="student-form" class="space-y-6">
         <!-- Basic Information -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Basic Information</h2>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -27,7 +27,7 @@
                     </label>
                     <input type="text" id="first_name" name="first_name" required
                            value="{{ student.first_name }}"
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="last_name" class="block text-sm font-medium text-neutral-700 mb-1">
@@ -35,7 +35,7 @@
                     </label>
                     <input type="text" id="last_name" name="last_name" required
                            value="{{ student.last_name }}"
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="date_of_birth" class="block text-sm font-medium text-neutral-700 mb-1">
@@ -43,14 +43,14 @@
                     </label>
                     <input type="date" id="date_of_birth" name="date_of_birth"
                            value="{{ student.date_of_birth.strftime('%Y-%m-%d') if student.date_of_birth else '' }}"
-                           class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="gender" class="block text-sm font-medium text-neutral-700 mb-1">
                         Gender
                     </label>
                     <select id="gender" name="gender"
-                            class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                            class="cu-select">
                         <option value="">Select...</option>
                         <option value="MALE" {% if student.gender == 'MALE' %}selected{% endif %}>Male</option>
                         <option value="FEMALE" {% if student.gender == 'FEMALE' %}selected{% endif %}>Female</option>
@@ -61,7 +61,7 @@
         </div>
 
         <!-- Class Assignment -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Class Assignment</h2>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -70,8 +70,8 @@
                         Class
                     </label>
                     <select id="class_id" name="class_id"
-                            class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">No class assigned</option>
+                            class="cu-select"{% if user.role == 'TEACHER' %} required{% endif %}>
+                        {% if user.role != 'TEACHER' %}<option value="">No class assigned</option>{% endif %}
                         {% for cls in classes %}
                         <option value="{{ cls.id }}" {% if student.class_id and (student.class_id|string) == (cls.id|string) %}selected{% endif %}>
                             {{ cls.name }}{% if cls.grade_level_rel %} ({{ cls.grade_level_rel.name }}){% endif %}
@@ -87,7 +87,7 @@
                         Status
                     </label>
                     <select id="is_active" name="is_active"
-                            class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                            class="cu-select">
                         <option value="true" {% if student.is_active %}selected{% endif %}>Active</option>
                         <option value="false" {% if not student.is_active %}selected{% endif %}>Inactive</option>
                     </select>
@@ -96,7 +96,7 @@
         </div>
 
         <!-- Medical Information -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Medical Information</h2>
 
             <div class="space-y-4">
@@ -106,7 +106,7 @@
                     </label>
                     <textarea id="allergies" name="allergies" rows="2"
                               placeholder="List any allergies..."
-                              class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">{{ student.allergies or '' }}</textarea>
+                              class="cu-textarea">{{ student.allergies or '' }}</textarea>
                 </div>
                 <div>
                     <label for="medical_info" class="block text-sm font-medium text-neutral-700 mb-1">
@@ -114,25 +114,25 @@
                     </label>
                     <textarea id="medical_info" name="medical_info" rows="3"
                               placeholder="Any medical conditions, medications, or special needs..."
-                              class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">{{ student.medical_info or '' }}</textarea>
+                              class="cu-textarea">{{ student.medical_info or '' }}</textarea>
                 </div>
             </div>
         </div>
 
         <!-- Emergency Contacts -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-semibold text-neutral-900">Emergency Contacts</h2>
                 <button type="button" id="add-contact-btn"
-                        class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                        class="cu-tap shrink-0 text-sm text-primary-600 hover:text-primary-700 font-semibold">
                     + Add Contact
                 </button>
             </div>
 
             <div id="contacts-container" class="space-y-4">
                 {% for contact in student.emergency_contacts or [] %}
-                <div class="contact-item border border-neutral-200 rounded-lg p-4 relative">
-                    <button type="button" class="remove-contact absolute top-2 right-2 text-neutral-400 hover:text-red-500">
+                <div class="contact-item border border-neutral-200 rounded-lg p-4 pt-12 relative">
+                    <button type="button" class="remove-contact cu-icon-btn absolute top-1 right-1 !text-neutral-400 hover:!text-red-500" title="Remove contact" aria-label="Remove contact">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -142,19 +142,19 @@
                             <label class="block text-sm font-medium text-neutral-700 mb-1">Name</label>
                             <input type="text" name="emergency_contacts[][name]" required
                                    value="{{ contact.name }}"
-                                   class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                                   class="cu-input">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
-                            <input type="tel" name="emergency_contacts[][phone]" required
+                            <input type="tel" name="emergency_contacts[][phone]" required inputmode="tel" autocomplete="off"
                                    value="{{ contact.phone }}"
-                                   class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                                   class="cu-input">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-neutral-700 mb-1">Relationship</label>
                             <input type="text" name="emergency_contacts[][relationship]"
                                    value="{{ contact.relationship }}"
-                                   class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                                   class="cu-input">
                         </div>
                     </div>
                 </div>
@@ -163,18 +163,18 @@
         </div>
 
         <!-- Notes -->
-        <div class="cu-card p-6">
+        <div class="cu-card p-4 sm:p-6">
             <h2 class="text-lg font-semibold text-neutral-900 mb-4">Additional Notes</h2>
 
             <textarea id="notes" name="notes" rows="3"
                       placeholder="Any additional notes about the student..."
-                      class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">{{ student.notes or '' }}</textarea>
+                      class="cu-textarea">{{ student.notes or '' }}</textarea>
         </div>
 
         <!-- Actions -->
-        <div class="flex items-center justify-between">
+        <div class="sticky cu-above-tabbar z-20 rounded-2xl bg-white/95 backdrop-blur shadow-lg p-3 md:static md:z-auto md:rounded-none md:bg-transparent md:backdrop-blur-none md:shadow-none md:p-0 flex flex-wrap items-center justify-between gap-2">
             <button type="button" id="delete-btn"
-                    class="px-4 py-2 text-rose-600 hover:text-rose-700 font-semibold text-sm">
+                    class="cu-tap px-3 py-2 text-rose-600 hover:text-rose-700 font-semibold text-sm">
                 Delete Student
             </button>
             <div class="flex gap-3">
@@ -250,11 +250,11 @@
                     Type <strong id="purge-name-echo"></strong> to confirm
                 </label>
                 <input type="text" id="purge-confirm-input"
-                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                       class="cu-input"
                        autocomplete="off">
             </div>
 
-            <div class="flex gap-3 pt-2 border-t border-neutral-100">
+            <div class="flex gap-3 pt-2 border-t border-navy-50">
                 <button type="button" onclick="document.getElementById('purge-modal').close()"
                         class="flex-1 py-2.5 text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
                     Cancel
@@ -270,8 +270,8 @@
 
 <!-- Contact Template -->
 <template id="contact-template">
-    <div class="contact-item border border-neutral-200 rounded-lg p-4 relative">
-        <button type="button" class="remove-contact absolute top-2 right-2 text-neutral-400 hover:text-red-500">
+    <div class="contact-item border border-neutral-200 rounded-lg p-4 pt-12 relative">
+        <button type="button" class="remove-contact cu-icon-btn absolute top-1 right-1 !text-neutral-400 hover:!text-red-500" title="Remove contact" aria-label="Remove contact">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -280,17 +280,17 @@
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Name</label>
                 <input type="text" name="emergency_contacts[][name]" required
-                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       class="cu-input">
             </div>
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
-                <input type="tel" name="emergency_contacts[][phone]" required
-                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <input type="tel" name="emergency_contacts[][phone]" required inputmode="tel" autocomplete="off"
+                       class="cu-input">
             </div>
             <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Relationship</label>
                 <input type="text" name="emergency_contacts[][relationship]" value="Parent"
-                       class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                       class="cu-input">
             </div>
         </div>
     </div>

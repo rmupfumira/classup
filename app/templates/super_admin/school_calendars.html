@@ -3,39 +3,25 @@
 {% block title %}School Calendars - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
-    <!-- Page header -->
-    <div class="flex items-center gap-4">
-        <a href="/admin"
-           class="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-lg transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
-            </svg>
-        </a>
-        <div class="flex-1">
-            <h1 class="text-xl font-semibold text-navy-800">School Calendars</h1>
-            <p class="mt-1 text-sm text-navy-500">
-                Academic years, terms, and public holidays per country.
-                Billing uses these to label "Term 2 2026" invoices and reports
-                use them for the term header.
-            </p>
-        </div>
+{% from "super_admin/_hero.html" import platform_hero %}
+<div class="space-y-6">
+    {% call platform_hero('School Calendars', 'Academic years, terms and public holidays per country. Billing uses these to label "Term 2 2026" invoices and report cards use them for the term header.') %}
         <button type="button"
                 onclick="document.getElementById('new-calendar-dialog').showModal()"
-                class="inline-flex items-center px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl shadow-sm">
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                class="cu-btn-gold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
             </svg>
             New calendar
         </button>
-    </div>
+    {% endcall %}
 
     <!-- Calendar list -->
     <div class="cu-card">
         {% if calendars %}
         <ul class="divide-y divide-navy-50">
             {% for cal in calendars %}
-            <li class="p-5 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+            <li class="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <h3 class="text-base font-semibold text-navy-800">
@@ -59,27 +45,27 @@
                     <p class="text-xs text-navy-400 mt-1">{{ cal.source }}</p>
                     {% endif %}
                 </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
                     <button type="button"
                             data-cc="{{ cal.country_code }}"
                             data-year="{{ cal.year }}"
                             onclick="openEditDialog(this.dataset.cc, parseInt(this.dataset.year))"
-                            class="px-3 py-1.5 text-sm text-navy-700 hover:bg-navy-100 rounded-xl border border-navy-100">
+                            class="cu-tap px-3 py-1.5 text-sm text-navy-700 hover:bg-navy-100 rounded-xl border border-navy-100">
                         Edit
                     </button>
                     <button type="button"
                             data-cc="{{ cal.country_code }}"
                             data-year="{{ cal.year }}"
                             onclick="copyToNextYear(this.dataset.cc, parseInt(this.dataset.year))"
-                            class="px-3 py-1.5 text-sm text-navy-700 hover:bg-navy-100 rounded-xl border border-navy-100">
+                            class="cu-tap px-3 py-1.5 text-sm text-navy-700 hover:bg-navy-100 rounded-xl border border-navy-100">
                         Copy → {{ cal.year + 1 }}
                     </button>
                     <button type="button"
                             data-cc="{{ cal.country_code }}"
                             data-year="{{ cal.year }}"
                             onclick="deleteCalendar(this.dataset.cc, parseInt(this.dataset.year))"
-                            class="px-2 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-xl"
-                            title="Delete">
+                            class="cu-tap inline-flex items-center justify-center px-2 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-xl"
+                            title="Delete" aria-label="Delete calendar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3"/>
                         </svg>
@@ -98,7 +84,7 @@
 
 <!-- New calendar dialog -->
 <dialog id="new-calendar-dialog" class="rounded-xl p-0 backdrop:bg-black/40 w-full max-w-md">
-    <form id="new-calendar-form" class="p-6 space-y-4">
+    <form id="new-calendar-form" class="p-4 sm:p-6 space-y-4">
         <h2 class="text-lg font-semibold text-navy-800">New calendar</h2>
         <p class="text-xs text-navy-500">
             Pick a country + year, we'll create the row with three empty terms you can fill in.
@@ -106,22 +92,22 @@
         <div>
             <label class="block text-sm font-medium text-navy-700 mb-1">Country code</label>
             <input name="country_code" required maxlength="2"
-                   class="w-full px-3 py-2 border border-navy-200 rounded-xl uppercase"
+                   class="cu-input uppercase"
                    placeholder="ZW" pattern="[A-Za-z]{2}">
         </div>
         <div>
             <label class="block text-sm font-medium text-navy-700 mb-1">Year</label>
             <input name="year" type="number" required min="2000" max="2100"
-                   class="w-full px-3 py-2 border border-navy-200 rounded-xl"
+                   class="cu-input"
                    placeholder="2026">
         </div>
         <div class="flex justify-end gap-2 pt-2">
             <button type="button" onclick="document.getElementById('new-calendar-dialog').close()"
-                    class="px-4 py-2 text-sm text-navy-700 hover:bg-navy-100 rounded-xl">
+                    class="cu-tap px-4 py-2 text-sm text-navy-700 hover:bg-navy-100 rounded-xl">
                 Cancel
             </button>
             <button type="submit"
-                    class="px-4 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-xl">
+                    class="cu-btn-primary">
                 Create
             </button>
         </div>
@@ -130,11 +116,11 @@
 
 <!-- Edit calendar dialog -->
 <dialog id="edit-calendar-dialog" class="rounded-xl p-0 backdrop:bg-black/40 w-full max-w-3xl">
-    <form id="edit-calendar-form" class="p-6 space-y-5">
-        <div class="flex items-start justify-between">
+    <form id="edit-calendar-form" class="p-4 sm:p-6 space-y-5">
+        <div class="flex items-start justify-between gap-2">
             <h2 id="edit-title" class="text-lg font-semibold text-navy-800">Edit calendar</h2>
             <button type="button" onclick="document.getElementById('edit-calendar-dialog').close()"
-                    class="text-navy-400 hover:text-navy-600">
+                    class="cu-icon-btn -mt-2 -mr-2" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -145,30 +131,30 @@
             <h3 class="text-sm font-medium text-navy-800 mb-2">Terms</h3>
             <div id="edit-terms" class="space-y-2"></div>
             <button type="button" onclick="addTermRow()"
-                    class="mt-2 text-xs text-navy-600 hover:text-navy-700">+ add term</button>
+                    class="cu-tap mt-2 text-xs text-navy-600 hover:text-navy-700">+ add term</button>
         </div>
 
         <div>
             <h3 class="text-sm font-medium text-navy-800 mb-2">Public holidays</h3>
             <div id="edit-holidays" class="space-y-2"></div>
             <button type="button" onclick="addHolidayRow()"
-                    class="mt-2 text-xs text-navy-600 hover:text-navy-700">+ add holiday</button>
+                    class="cu-tap mt-2 text-xs text-navy-600 hover:text-navy-700">+ add holiday</button>
         </div>
 
         <div>
             <label class="block text-sm font-medium text-navy-700 mb-1">Source / notes</label>
             <input name="source" maxlength="500"
-                   class="w-full px-3 py-2 border border-navy-200 rounded-xl"
+                   class="cu-input"
                    placeholder="e.g. MoPSE Circular 02 of 2026">
         </div>
 
         <div class="flex justify-end gap-2 pt-2 border-t border-navy-50">
             <button type="button" onclick="document.getElementById('edit-calendar-dialog').close()"
-                    class="px-4 py-2 text-sm text-navy-700 hover:bg-navy-100 rounded-xl">
+                    class="cu-tap px-4 py-2 text-sm text-navy-700 hover:bg-navy-100 rounded-xl">
                 Cancel
             </button>
             <button type="submit"
-                    class="px-4 py-2 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-xl">
+                    class="cu-btn-primary">
                 Save calendar
             </button>
         </div>
@@ -182,18 +168,18 @@ let editingYear = 0;
 function termRow(t = {}) {
     const n = Math.max(1, (document.querySelectorAll('#edit-terms .term-row').length + 1));
     const div = document.createElement('div');
-    div.className = 'term-row grid grid-cols-12 gap-2 items-center';
+    div.className = 'term-row grid grid-cols-6 sm:grid-cols-12 gap-2 items-center pb-2 sm:pb-0 border-b border-navy-50 sm:border-0';
     div.innerHTML = `
         <input name="number" type="number" min="1" max="6" value="${t.number ?? n}" required
-               class="col-span-2 px-2 py-1.5 border border-navy-200 rounded-xl text-sm" placeholder="#">
+               class="col-span-1 sm:col-span-2 min-w-0 w-full px-2 py-1.5 border border-navy-200 rounded-xl text-sm min-h-[2.75rem] sm:min-h-0" placeholder="#" aria-label="Term number">
         <input name="name" required value="${t.name ?? ''}" maxlength="50"
-               class="col-span-3 px-2 py-1.5 border border-navy-200 rounded-xl text-sm" placeholder="Term 1">
+               class="col-span-4 sm:col-span-3 min-w-0 w-full px-2 py-1.5 border border-navy-200 rounded-xl text-sm min-h-[2.75rem] sm:min-h-0" placeholder="Term 1" aria-label="Term name">
         <input name="start" type="date" required value="${t.start ?? ''}"
-               class="col-span-3 px-2 py-1.5 border border-navy-200 rounded-xl text-sm">
+               class="col-span-3 order-2 sm:order-none min-w-0 w-full px-2 py-1.5 border border-navy-200 rounded-xl text-sm min-h-[2.75rem] sm:min-h-0">
         <input name="end" type="date" required value="${t.end ?? ''}"
-               class="col-span-3 px-2 py-1.5 border border-navy-200 rounded-xl text-sm">
+               class="col-span-3 order-2 sm:order-none min-w-0 w-full px-2 py-1.5 border border-navy-200 rounded-xl text-sm min-h-[2.75rem] sm:min-h-0">
         <button type="button" onclick="this.closest('.term-row').remove()"
-                class="col-span-1 text-navy-400 hover:text-red-600 text-sm" title="Remove">×</button>
+                class="cu-tap col-span-1 order-1 sm:order-none text-navy-400 hover:text-red-600 text-lg sm:text-sm" title="Remove" aria-label="Remove">×</button>
     `;
     return div;
 }
@@ -202,16 +188,16 @@ function holidayRow(h = {}) {
     const d = h.start ?? h.date ?? '';
     const e = h.end ?? h.date ?? '';
     const div = document.createElement('div');
-    div.className = 'hol-row grid grid-cols-12 gap-2 items-center';
+    div.className = 'hol-row grid grid-cols-6 sm:grid-cols-12 gap-2 items-center pb-2 sm:pb-0 border-b border-navy-50 sm:border-0';
     div.innerHTML = `
         <input name="name" required value="${h.name ?? ''}" maxlength="100"
-               class="col-span-5 px-2 py-1.5 border border-navy-200 rounded-xl text-sm" placeholder="Holiday name">
+               class="col-span-5 min-w-0 w-full px-2 py-1.5 border border-navy-200 rounded-xl text-sm min-h-[2.75rem] sm:min-h-0" placeholder="Holiday name" aria-label="Holiday name">
         <input name="start" type="date" required value="${d}"
-               class="col-span-3 px-2 py-1.5 border border-navy-200 rounded-xl text-sm">
+               class="col-span-3 order-2 sm:order-none min-w-0 w-full px-2 py-1.5 border border-navy-200 rounded-xl text-sm min-h-[2.75rem] sm:min-h-0">
         <input name="end" type="date" required value="${e}"
-               class="col-span-3 px-2 py-1.5 border border-navy-200 rounded-xl text-sm">
+               class="col-span-3 order-2 sm:order-none min-w-0 w-full px-2 py-1.5 border border-navy-200 rounded-xl text-sm min-h-[2.75rem] sm:min-h-0">
         <button type="button" onclick="this.closest('.hol-row').remove()"
-                class="col-span-1 text-navy-400 hover:text-red-600 text-sm" title="Remove">×</button>
+                class="cu-tap col-span-1 order-1 sm:order-none text-navy-400 hover:text-red-600 text-lg sm:text-sm" title="Remove" aria-label="Remove">×</button>
     `;
     return div;
 }

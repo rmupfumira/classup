@@ -22,12 +22,15 @@
     {% set dot_class = 'bg-neutral-500' %}
     {% set label = 'Local dev' %}
 {% endif %}
-<div class="env-pill fixed bottom-24 md:bottom-3 right-3 z-[60] print:hidden hide-in-standalone pointer-events-none"
+<div class="env-pill fixed bottom-24 md:bottom-3 right-3 z-30 print:hidden hide-in-standalone pointer-events-none"
      role="status" aria-live="polite">
+    {# On phones only the dot shows, so it never sits on top of sticky
+       Save bars; the label is still read out by screen readers. #}
     <span class="inline-flex items-center gap-1.5 {{ pill_class }} border rounded-full
-                 shadow-sm text-[11px] font-medium py-1 px-2.5 backdrop-blur-sm">
+                 shadow-sm text-[11px] font-medium p-1.5 md:py-1 md:px-2.5 backdrop-blur-sm opacity-80 md:opacity-100"
+          title="{{ label }}">
         <span class="inline-block w-1.5 h-1.5 rounded-full {{ dot_class }}" aria-hidden="true"></span>
-        {{ label }}
+        <span class="sr-only md:not-sr-only">{{ label }}</span>
     </span>
 </div>
 {% endif %}

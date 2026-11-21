@@ -3,21 +3,25 @@
 {% block title %}Activity log - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 pt-6 pb-24 space-y-5">
-    <div>
-        <h1 class="text-xl font-semibold text-navy-800">Activity log</h1>
-        <p class="mt-1 text-sm text-navy-500">
-            Who did what, scoped to <strong>{{ tenant.name if tenant else 'this school' }}</strong>.
-            Captures sign-ins and every write — including invoices, payments, cancellations,
-            setting changes, imports, and student / class edits.
-        </p>
-    </div>
+<div class="space-y-6">
+    <section class="cu-hero">
+        <div class="absolute -top-20 -right-20 w-72 h-72 bg-gold-400/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative max-w-3xl">
+            <span class="cu-eyebrow cu-eyebrow-on-dark mb-4">Insights</span>
+            <h1 class="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.05] text-white mb-3">Activity log</h1>
+            <p class="text-navy-100 text-base md:text-lg leading-relaxed">
+                Who did what at <strong class="text-white">{{ tenant.name if tenant else 'this school' }}</strong>:
+                sign-ins and every change, including invoices, payments, cancellations,
+                settings, imports, and student and class edits.
+            </p>
+        </div>
+    </section>
 
     <!-- Filters -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 flex flex-wrap items-end gap-3">
-        <div class="min-w-[200px]">
-            <label class="block text-xs font-medium text-navy-600 mb-1">Area</label>
-            <select id="f-area" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+    <div class="cu-card p-4 flex flex-wrap items-end gap-3">
+        <div class="w-full sm:w-auto sm:min-w-[200px]">
+            <label for="f-area" class="block text-xs font-medium text-navy-600 mb-1">Area</label>
+            <select id="f-area" class="cu-select">
                 <option value="">All activity</option>
                 <option value="billing.">Billing (invoices + payments)</option>
                 <option value="billing.payments">Payments only</option>
@@ -30,9 +34,9 @@
                 <option value="imports.">Imports</option>
             </select>
         </div>
-        <div class="min-w-[160px]">
-            <label class="block text-xs font-medium text-navy-600 mb-1">Since</label>
-            <select id="f-since" class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+        <div class="flex-1 sm:flex-none min-w-[160px]">
+            <label for="f-since" class="block text-xs font-medium text-navy-600 mb-1">Since</label>
+            <select id="f-since" class="cu-select">
                 <option value="">Any time</option>
                 <option value="60">Last hour</option>
                 <option value="1440" selected>Last 24 hours</option>
@@ -40,19 +44,25 @@
             </select>
         </div>
         <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs font-medium text-navy-600 mb-1">Search (name / email / path)</label>
-            <input id="f-search" type="text"
+            <label for="f-search" class="block text-xs font-medium text-navy-600 mb-1">Search (name / email / path)</label>
+            <input id="f-search" type="search" enterkeyhint="search"
                    placeholder="e.g. a user's email"
-                   class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white">
+                   class="cu-input">
         </div>
-        <button onclick="load(1)" class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">Apply</button>
+        <button onclick="load(1)" class="cu-btn-primary w-full sm:w-auto justify-center">Apply</button>
     </div>
 
     <!-- Events table -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+    <div class="cu-card">
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-neutral-50 border-b border-neutral-200">
+            <style>
+                @media (max-width: 639px) {
+                    .audit-stack tbody tr { display: flex; flex-direction: column; }
+                    .audit-stack tbody td.cu-stack-primary { order: -1; }
+                }
+            </style>
+            <table class="min-w-full text-sm cu-table--stack audit-stack">
+                <thead class="bg-navy-50 border-b border-navy-100">
                     <tr>
                         <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase whitespace-nowrap">When</th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Who</th>
@@ -61,16 +71,16 @@
                         <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase whitespace-nowrap">Status</th>
                     </tr>
                 </thead>
-                <tbody id="events-body" class="divide-y divide-neutral-100">
+                <tbody id="events-body" class="divide-y divide-navy-50">
                     <tr><td colspan="5" class="text-center text-navy-400 py-8 text-sm">Loading…</td></tr>
                 </tbody>
             </table>
         </div>
-        <div class="px-3 py-2 border-t border-neutral-100 flex items-center justify-between text-xs text-navy-500">
+        <div class="px-3 py-2 border-t border-navy-50 flex items-center justify-between text-xs text-navy-500">
             <span id="page-info">—</span>
             <div class="flex gap-2">
-                <button id="prev-btn" onclick="prevPage()" class="px-2 py-1 border border-neutral-200 rounded hover:bg-neutral-50 disabled:opacity-40" disabled>Prev</button>
-                <button id="next-btn" onclick="nextPage()" class="px-2 py-1 border border-neutral-200 rounded hover:bg-neutral-50 disabled:opacity-40" disabled>Next</button>
+                <button id="prev-btn" onclick="prevPage()" class="cu-btn-soft !py-1 !px-3 !text-xs disabled:opacity-40" disabled>Prev</button>
+                <button id="next-btn" onclick="nextPage()" class="cu-btn-soft !py-1 !px-3 !text-xs disabled:opacity-40" disabled>Next</button>
             </div>
         </div>
     </div>
@@ -126,15 +136,15 @@ async function load(page = 1) {
             body.innerHTML = '<tr><td colspan="5" class="text-center text-navy-400 py-8 text-sm">No activity matches those filters.</td></tr>';
         } else {
             body.innerHTML = rows.map(e => `
-                <tr class="hover:bg-neutral-50">
-                    <td class="px-3 py-2 whitespace-nowrap text-navy-600">${fmtDate(e.created_at)}</td>
-                    <td class="px-3 py-2">
+                <tr class="hover:bg-navy-50/50">
+                    <td data-label="When" class="px-3 py-2 whitespace-nowrap text-navy-600">${fmtDate(e.created_at)}</td>
+                    <td class="cu-stack-primary px-3 py-2">
                         <div class="text-neutral-800 font-medium">${(e.user_name && e.user_name.trim()) || e.user_email || 'Unknown'}</div>
                         <div class="text-xs text-navy-400">${e.user_role || ''}${e.ip_address ? ' · ' + e.ip_address : ''}</div>
                     </td>
-                    <td class="px-3 py-2 text-neutral-700">${fmtAction(e.action)}</td>
-                    <td class="px-3 py-2 text-navy-500 font-mono text-xs break-all">${e.method || ''} ${e.path || ''}</td>
-                    <td class="px-3 py-2 text-right whitespace-nowrap">${statusBadge(e.status_code)}</td>
+                    <td data-label="Action" class="px-3 py-2 text-neutral-700">${fmtAction(e.action)}</td>
+                    <td data-label="Path" class="px-3 py-2 text-navy-500 font-mono text-xs break-all"><div class="min-w-0">${e.method || ''} ${e.path || ''}</div></td>
+                    <td data-label="Status" class="px-3 py-2 text-right whitespace-nowrap">${statusBadge(e.status_code)}</td>
                 </tr>
             `).join('');
         }

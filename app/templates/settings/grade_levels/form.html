@@ -6,12 +6,12 @@
 <div class="max-w-2xl mx-auto space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-4">
-        <a href="/settings/grade-levels" class="text-navy-400 hover:text-navy-600">
+        <a href="/settings/grade-levels" class="cu-icon-btn -ml-2 text-navy-400 hover:text-navy-600" aria-label="Back">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
         </a>
-        <h1 class="text-2xl font-bold text-neutral-900">
+        <h1 class="cu-page-title leading-tight">
             {% if grade_level %}Edit Grade Level{% else %}Add Grade Level{% endif %}
         </h1>
     </div>
@@ -27,7 +27,7 @@
                 <input type="text" id="name" name="name" required
                        value="{{ grade_level.name if grade_level else '' }}"
                        placeholder="e.g., Grade 1, Kindergarten, Year 7"
-                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
+                       class="cu-input">
             </div>
 
             <!-- Code -->
@@ -38,7 +38,7 @@
                 <input type="text" id="code" name="code" required maxlength="30"
                        value="{{ grade_level.code if grade_level else '' }}"
                        placeholder="e.g., GRADE_1, KINDERGARTEN"
-                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500 uppercase">
+                       class="cu-input uppercase">
                 <p class="text-sm text-navy-500 mt-1">Unique identifier (max 30 characters)</p>
             </div>
 
@@ -50,7 +50,7 @@
                 <input type="number" id="display_order" name="display_order"
                        value="{{ grade_level.display_order if grade_level else 0 }}"
                        min="0"
-                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
+                       class="cu-input">
                 <p class="text-sm text-navy-500 mt-1">Lower numbers appear first</p>
             </div>
 
@@ -61,7 +61,7 @@
                 </label>
                 <textarea id="description" name="description" rows="3"
                           placeholder="Optional description of this grade level..."
-                          class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">{{ grade_level.description if grade_level else '' }}</textarea>
+                          class="cu-textarea">{{ grade_level.description if grade_level else '' }}</textarea>
             </div>
 
             {% if grade_level %}
@@ -70,7 +70,7 @@
                 <label class="flex items-center gap-3">
                     <input type="checkbox" id="is_active" name="is_active"
                            {% if grade_level.is_active %}checked{% endif %}
-                           class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                           class="rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                     <span class="text-sm font-medium text-neutral-700">Active</span>
                 </label>
                 <p class="text-sm text-navy-500 mt-1 ml-7">Inactive grade levels won't appear in selection dropdowns</p>
@@ -91,7 +91,7 @@
                 </div>
                 <div class="mt-3 flex items-center gap-3">
                     <button type="button" id="save-subject-links"
-                            class="px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors">
+                            class="cu-btn-primary !py-1.5 !px-3">
                         Save subjects
                     </button>
                     <span id="subject-links-status" class="text-xs text-navy-500"></span>
@@ -103,11 +103,11 @@
         <!-- Form Actions -->
         <div class="flex justify-end gap-3 pt-4 border-t border-neutral-200">
             <a href="/settings/grade-levels"
-               class="px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900">
+               class="cu-btn-soft">
                 Cancel
             </a>
             <button type="submit"
-                    class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors">
+                    class="cu-btn-primary">
                 {% if grade_level %}Save Changes{% else %}Add Grade Level{% endif %}
             </button>
         </div>

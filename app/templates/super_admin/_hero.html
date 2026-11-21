@@ -1,0 +1,30 @@
+{# Platform-admin page header. Same cu-hero as school pages, but always
+   carries the PLATFORM eyebrow so super admins can tell at a glance
+   they're in platform administration, not a school.
+
+   {% from "super_admin/_hero.html" import platform_hero %}
+   {{ platform_hero("Email Settings", "How the platform sends email") }}
+   {% call platform_hero("Subscriptions", "…") %}<button class="cu-btn-gold">…</button>{% endcall %}
+#}
+{% macro platform_hero(title, description='', eyebrow='Platform', back_href='/admin', back_label='Platform overview', title_id='') -%}
+<section class="cu-hero !py-6 md:!py-7">
+    <div class="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+        <div class="max-w-3xl min-w-0">
+            {% if back_href %}
+            <a href="{{ back_href }}" class="inline-flex items-center gap-1 min-h-[2.75rem] -mt-3 md:min-h-0 md:mt-0 md:mb-3 text-xs font-medium text-white/70 hover:text-white">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                {{ back_label }}
+            </a><br>
+            {% endif %}
+            <span class="cu-eyebrow cu-eyebrow-on-dark">{{ eyebrow }}</span>
+            <h1 {% if title_id %}id="{{ title_id }}"{% endif %} class="cu-page-title text-white mt-3 leading-tight break-words">{{ title }}</h1>
+            {% if description %}
+            <p class="mt-2 text-sm md:text-base text-white/75 leading-relaxed">{{ description }}</p>
+            {% endif %}
+        </div>
+        {% if caller is defined %}
+        <div class="flex flex-wrap gap-3 shrink-0">{{ caller() }}</div>
+        {% endif %}
+    </div>
+</section>
+{%- endmacro %}

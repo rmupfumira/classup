@@ -3,34 +3,36 @@
 {% block title %}New Timetable - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl">
-    <div class="mb-5">
-        <a href="/timetable" class="text-sm text-neutral-500 hover:text-neutral-700">&larr; Back to Timetables</a>
-        <h1 class="mt-2 text-xl font-semibold text-neutral-800">Create New Timetable</h1>
-        <p class="mt-0.5 text-sm text-neutral-500">Start with an empty grid, then auto-generate or edit manually.</p>
+<div class="max-w-3xl mx-auto space-y-6">
+    <div>
+        <a href="/timetable" class="flex w-fit items-center gap-1 min-h-[44px] text-navy-500 hover:text-navy-700 text-xs font-semibold mb-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Back to timetables
+        </a>
+        <div><span class="cu-eyebrow">New timetable</span></div>
+        <h1 class="cu-page-title mt-2 leading-tight">Create timetable</h1>
+        <p class="mt-1 text-sm text-navy-500">Start with an empty grid, then auto-generate or edit manually.</p>
     </div>
 
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6">
-        <form id="create-form" class="space-y-4">
+    <div class="cu-card p-6">
+        <form id="create-form" class="space-y-5">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
-                <select id="class_id" required
-                        class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                <label for="class_id" class="block text-sm font-semibold text-navy-700 mb-1.5">Class</label>
+                <select id="class_id" required class="cu-select">
                     <option value="">Select a class...</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}">{{ cls.name }}</option>
                     {% endfor %}
                 </select>
-                <p class="mt-1 text-xs text-neutral-500">Only classes with subjects assigned can be auto-generated.</p>
+                <p class="mt-1.5 text-xs text-navy-500">Only classes with subjects assigned can be auto-generated.</p>
             </div>
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Timetable Name</label>
-                <input type="text" id="name" required placeholder="e.g. Grade 7A - Term 1"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                <label for="name" class="block text-sm font-semibold text-navy-700 mb-1.5">Timetable name</label>
+                <input type="text" id="name" required placeholder="Grade 7A - Term 1" class="cu-input">
             </div>
             <div class="flex justify-end gap-2 pt-2">
-                <a href="/timetable" class="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded hover:bg-neutral-200">Cancel</a>
-                <button type="submit" class="px-4 py-2 text-sm text-white bg-primary-500 rounded hover:bg-primary-600">Create</button>
+                <a href="/timetable" class="cu-btn-soft">Cancel</a>
+                <button type="submit" class="cu-btn-primary">Create</button>
             </div>
         </form>
     </div>

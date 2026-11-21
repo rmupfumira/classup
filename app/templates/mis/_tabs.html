@@ -4,31 +4,51 @@
     passes active_tab={dashboard|subjects|distribution|longitudinal|
     early_warning} so the right tab lights up.
 #}
-<div class="border-b border-neutral-200">
-    <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto">
+<div class="border-b border-navy-100">
+    <nav class="-mb-px flex flex-nowrap md:flex-wrap gap-x-4 overflow-x-auto [scrollbar-width:none]" aria-label="Insights sections" data-mis-tabs>
         <a href="/mis"
-           class="{% if active_tab == 'dashboard' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+           class="{% if active_tab == 'dashboard' %}border-primary-500 text-primary-600{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap shrink-0 border-b-2 py-3 px-1 text-sm font-medium">
             Dashboard
         </a>
         <a href="/mis/subjects"
-           class="{% if active_tab == 'subjects' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+           class="{% if active_tab == 'subjects' %}border-primary-500 text-primary-600{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap shrink-0 border-b-2 py-3 px-1 text-sm font-medium">
             Subject performance
         </a>
         <a href="/mis/distribution"
-           class="{% if active_tab == 'distribution' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+           class="{% if active_tab == 'distribution' %}border-primary-500 text-primary-600{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap shrink-0 border-b-2 py-3 px-1 text-sm font-medium">
             Grade distribution
         </a>
         <a href="/mis/merit-lists"
-           class="{% if active_tab == 'merit_lists' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+           class="{% if active_tab == 'merit_lists' %}border-primary-500 text-primary-600{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap shrink-0 border-b-2 py-3 px-1 text-sm font-medium">
             Merit lists
         </a>
         <a href="/mis/longitudinal"
-           class="{% if active_tab == 'longitudinal' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+           class="{% if active_tab == 'longitudinal' %}border-primary-500 text-primary-600{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap shrink-0 border-b-2 py-3 px-1 text-sm font-medium">
             Longitudinal
         </a>
         <a href="/mis/early-warning"
-           class="{% if active_tab == 'early_warning' %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700{% endif %} whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium">
+           class="{% if active_tab == 'early_warning' %}border-primary-500 text-primary-600{% else %}border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700{% endif %} whitespace-nowrap shrink-0 border-b-2 py-3 px-1 text-sm font-medium">
             Early warning
         </a>
     </nav>
 </div>
+{% if mis_teacher and not mis_classes %}
+<div class="cu-card cu-empty mt-4" data-mis-no-class>
+    <p class="cu-empty-title">No class to analyse yet</p>
+    <p class="cu-empty-text">
+        Insights cover the classes you're the class teacher of. Once your school admin assigns you a class, its analytics appear here.
+    </p>
+</div>
+{% endif %}
+<script>
+(() => {
+    const nav = document.querySelector('[data-mis-tabs]');
+    const active = nav && nav.querySelector('a.border-primary-500');
+    if (active) {
+        active.setAttribute('aria-current', 'page');
+        if (nav.scrollWidth > nav.clientWidth) {
+            nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+        }
+    }
+})();
+</script>

@@ -3,6 +3,36 @@
 {% block title %}Create Report - {{ app_name }}{% endblock %}
 
 {% block content %}
+<style>
+    /* Phones: report forms. Subject grades become one compact card per subject
+       (subject / marks + out of + grade / remarks) instead of a 600px table, and
+       repeatable-entry rows get 44px fields and a 44px remove button. */
+    @media (max-width: 639px) {
+        .rpt-grades { min-width: 0 !important; border: 0 !important; }
+        .rpt-grades thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+        .rpt-grades, .rpt-grades tbody { display: block; }
+        .rpt-grades tr {
+            display: grid; grid-template-columns: 6.5rem 1fr auto; align-items: center;
+            grid-template-areas: "subj subj subj" "marks total grade" "remarks remarks remarks";
+            gap: 0.5rem 0.75rem; padding: 0.875rem 0; border-bottom: 1px solid #e3ebf5; background: transparent !important;
+        }
+        .rpt-grades tr:last-child { border-bottom: 0; }
+        .rpt-grades td { display: block; border: 0 !important; padding: 0 !important; text-align: left !important; }
+        .rpt-grades .g-idx { display: none; }
+        .rpt-grades .g-subj { grid-area: subj; font-weight: 600; }
+        .rpt-grades .g-marks { grid-area: marks; }
+        .rpt-grades .g-total { grid-area: total; color: #3a5f96; font-size: 0.8125rem; }
+        .rpt-grades .g-total::before { content: "out of "; }
+        .rpt-grades .g-grade { grid-area: grade; font-size: 1rem; }
+        .rpt-grades .g-remarks { grid-area: remarks; }
+        .rpt-grades .g-marks input { width: 100% !important; margin: 0 !important; min-height: 2.75rem; font-weight: 600; }
+    }
+    @media (max-width: 767px) {
+        .rpt-repeat input:not([type="hidden"]), .rpt-repeat select { min-height: 2.75rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+        .rpt-repeat td:last-child > button { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; }
+        .rpt-form label.inline-flex { min-height: 2.75rem; }
+    }
+</style>
 <div class="space-y-6">
 
     {# ------ Hero banner ------ #}
@@ -68,7 +98,7 @@
                 <div>
                     <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Class</label>
                     <select id="class_id" name="class_id" onchange="handleClassChange()"
-                            class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                            class="block w-full sm:w-64 cu-input !rounded-xl">
                         <option value="">Select class...</option>
                         {% for cls in classes %}
                         <option value="{{ cls.id }}" {% if selected_student and selected_student.class_id == cls.id %}selected{% endif %}>
@@ -82,7 +112,7 @@
                 <div>
                     <label for="student_id" class="block text-sm font-medium text-neutral-700 mb-1">Student</label>
                     <select id="student_id" name="student_id" onchange="handleStudentChange()"
-                            class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                            class="block w-full sm:w-64 cu-input !rounded-xl">
                         <option value="">Select student...</option>
                         {% if selected_student %}
                         <option value="{{ selected_student.id }}" selected>
@@ -108,7 +138,7 @@
                 <div>
                     <label for="template_id" class="block text-sm font-medium text-neutral-700 mb-1">Report Template</label>
                     <select id="template_id" name="template_id" onchange="handleTemplateChange()"
-                            class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                            class="block w-full sm:w-64 cu-input !rounded-xl">
                         <option value="">Select template...</option>
                         {% for template in templates %}
                         <option value="{{ template.id }}"
@@ -126,7 +156,7 @@
                     <input type="date" id="report_date" name="report_date"
                            value="{{ report_date }}"
                            max="{{ today }}"
-                           class="block w-full sm:w-48 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                           class="block w-full sm:w-48 cu-input !rounded-xl">
                     <!-- Inline weekend warning -->
                     <div id="report-weekend-warning" class="hidden mt-2 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +175,7 @@
                     </label>
                     <select id="term_id" name="term_id"
                             onchange="handleTermChange()"
-                            class="block w-full sm:w-64 rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                            class="block w-full sm:w-64 cu-input !rounded-xl">
                         <option value="">None (daily / non-term report)</option>
                     </select>
                     <div id="term-summary-preview"
@@ -173,7 +203,7 @@
                 </h2>
 
                 <!-- Dynamic Form Sections -->
-                <div id="report-sections" class="space-y-6">
+                <div id="report-sections" class="space-y-6 rpt-form">
                     {% if selected_template and selected_template.sections %}
                     {% for section in selected_template.sections %}
                     <div class="border-t border-neutral-200 pt-6 first:border-t-0 first:pt-0" data-section-id="{{ section.id }}">
@@ -190,7 +220,7 @@
 
                                 {% if field.type == 'SELECT' %}
                                 <select name="sections.{{ section.id }}.{{ field.id }}"
-                                        class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                        class="block w-full cu-input !rounded-xl"
                                         {% if field.required %}required{% endif %}>
                                     <option value="">Select...</option>
                                     {% for option in field.options %}
@@ -211,22 +241,22 @@
 
                                 {% elif field.type == 'TIME' %}
                                 <input type="time" name="sections.{{ section.id }}.{{ field.id }}"
-                                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                       class="block w-full cu-input !rounded-xl"
                                        {% if field.required %}required{% endif %}>
 
                                 {% elif field.type == 'NUMBER' %}
                                 <input type="number" name="sections.{{ section.id }}.{{ field.id }}"
-                                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                       class="block w-full cu-input !rounded-xl"
                                        {% if field.required %}required{% endif %}>
 
                                 {% elif field.type == 'TEXTAREA' %}
                                 <textarea name="sections.{{ section.id }}.{{ field.id }}" rows="3"
-                                          class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                          class="cu-textarea"
                                           {% if field.required %}required{% endif %}></textarea>
 
                                 {% else %}
                                 <input type="text" name="sections.{{ section.id }}.{{ field.id }}"
-                                       class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                       class="block w-full cu-input !rounded-xl"
                                        {% if field.required %}required{% endif %}>
                                 {% endif %}
                             </div>
@@ -236,7 +266,7 @@
                         {% elif section.type == 'REPEATABLE_ENTRIES' %}
                         <div class="space-y-3">
                             <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-                            <table class="w-full min-w-[500px]" id="table-{{ section.id }}">
+                            <table class="w-full min-w-[500px] rpt-repeat" id="table-{{ section.id }}">
                                 <thead>
                                     <tr class="text-left text-sm text-neutral-500">
                                         {% for field in section.fields %}
@@ -251,7 +281,7 @@
                             </table>
                             </div>
                             <button type="button" onclick="addRepeatableEntry('{{ section.id }}')"
-                                    class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+                                    class="inline-flex items-center min-h-[2.75rem] text-sm text-primary-600 hover:text-primary-700">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                 </svg>
@@ -268,8 +298,8 @@
     </div>
 
     <!-- Sticky Action Bar (offset above the mobile bottom nav which is h-14) -->
-    <div id="form-actions" class="{% if not selected_template %}hidden{% endif %} sticky bottom-14 md:bottom-0 z-10">
-        <div class="cu-card px-4 sm:px-6 py-4">
+    <div id="form-actions" class="{% if not selected_template %}hidden{% endif %} sticky cu-above-tabbar z-10">
+        <div class="cu-card p-2.5 sm:px-6 sm:py-4">
             <!-- Desktop layout -->
             <div class="hidden sm:flex items-center justify-between">
                 <a href="/reports" class="text-sm font-medium text-navy-500 hover:text-navy-700 transition-colors">Cancel</a>
@@ -284,15 +314,15 @@
                 </div>
             </div>
             <!-- Mobile layout -->
-            <div class="sm:hidden space-y-2">
-                <button type="button" onclick="saveReport(true)" class="cu-btn-primary w-full">
+            {# One compact row so the sticky bar doesn't eat the screen; Cancel is the hero back arrow. #}
+            <div class="sm:hidden grid grid-cols-2 gap-2">
+                <button type="button" onclick="saveReport(false)" class="cu-btn-soft w-full justify-center">Save draft</button>
+                <button type="button" onclick="saveReport(true)" class="cu-btn-primary w-full justify-center">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    Save & Finalize
+                    Finalize
                 </button>
-                <button type="button" onclick="saveReport(false)" class="cu-btn-soft w-full">Save as draft</button>
-                <a href="/reports" class="block text-center text-sm font-medium text-navy-500 hover:text-navy-700 py-2 transition-colors">Cancel</a>
             </div>
         </div>
     </div>
@@ -550,13 +580,13 @@ function renderMealsSection(section) {
             <div class="flex flex-col sm:flex-row sm:items-center gap-2">
                 <label class="w-32 text-sm font-medium text-neutral-700">${field.label}</label>
                 <select name="sections.${section.id}.${field.id}_amount"
-                        class="w-32 rounded-lg border-neutral-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                        class="w-32 cu-input !rounded-xl sm:!text-sm">
                     <option value="">-</option>
                     ${mealOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                 </select>
                 <input type="text" name="sections.${section.id}.${field.id}_desc"
                        placeholder="Description (optional)"
-                       class="flex-1 rounded-lg border-neutral-300 shadow-sm text-sm focus:ring-primary-500 focus:border-primary-500">
+                       class="flex-1 cu-input !rounded-xl sm:!text-sm">
             </div>`;
         }
     });
@@ -580,7 +610,7 @@ function renderAcademicGradesSection(section) {
         : (section.grading_system || []);
 
     let html = '<div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">';
-    html += '<table class="min-w-[600px] w-full border border-neutral-300">';
+    html += '<table class="min-w-[600px] w-full border border-neutral-300 rpt-grades">';
     html += `<thead><tr class="bg-neutral-100">
         <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">#</th>
         <th class="border border-neutral-300 px-4 py-2 text-left text-sm font-semibold text-neutral-700">Subject</th>
@@ -593,22 +623,24 @@ function renderAcademicGradesSection(section) {
     subjects.forEach((subject, idx) => {
         const rowClass = idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50';
         html += `<tr class="${rowClass}" data-subject-id="${subject.id}" data-total-marks="${subject.total_marks}">
-            <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600">${idx + 1}</td>
-            <td class="border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900">${subject.name}</td>
-            <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600 text-center">${subject.total_marks}</td>
-            <td class="border border-neutral-300 px-3 py-1">
-                <input type="number" name="sections.${section.id}.${subject.id}.marks_obtained"
+            <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600 g-idx">${idx + 1}</td>
+            <td class="border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 g-subj">${subject.name}</td>
+            <td class="border border-neutral-300 px-4 py-2 text-sm text-neutral-600 text-center g-total">${subject.total_marks}</td>
+            <td class="border border-neutral-300 px-3 py-1 g-marks">
+                <input type="number" name="sections.${section.id}.${subject.id}.marks_obtained" inputmode="decimal"
+                       aria-label="Marks for ${subject.name}"
                        min="0" max="${subject.total_marks}" step="0.5"
                        onchange="updateSubjectGrade(this, ${subject.total_marks})"
                        oninput="updateSubjectGrade(this, ${subject.total_marks})"
                        class="block w-20 mx-auto rounded border border-neutral-300 text-sm text-center focus:ring-primary-500 focus:border-primary-500">
             </td>
-            <td class="border border-neutral-300 px-4 py-2 text-sm text-center font-bold">
+            <td class="border border-neutral-300 px-4 py-2 text-sm text-center font-bold g-grade">
                 <span class="grade-display">-</span>
             </td>
-            <td class="border border-neutral-300 px-3 py-1">
-                <input type="text" name="sections.${section.id}.${subject.id}.remarks"
-                       class="block w-full rounded border border-neutral-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            <td class="border border-neutral-300 px-3 py-1 g-remarks">
+                <input type="text" name="sections.${section.id}.${subject.id}.remarks" placeholder="Remarks"
+                       aria-label="Remarks for ${subject.name}"
+                       class="block w-full cu-input !rounded-xl sm:!text-sm">
             </td>
         </tr>`;
     });
@@ -672,7 +704,7 @@ function renderField(sectionId, field) {
 
     switch (field.type) {
         case 'SELECT':
-            inputHtml = `<select name="${fieldName}" class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>
+            inputHtml = `<select name="${fieldName}" class="block w-full cu-input !rounded-xl" ${requiredAttr}>
                 <option value="">Select...</option>
                 ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
             </select>`;
@@ -695,16 +727,16 @@ function renderField(sectionId, field) {
                 </label>
             </div>`;
         case 'TIME':
-            inputHtml = `<input type="time" name="${fieldName}" class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>`;
+            inputHtml = `<input type="time" name="${fieldName}" class="block w-full cu-input !rounded-xl" ${requiredAttr}>`;
             break;
         case 'NUMBER':
-            inputHtml = `<input type="number" name="${fieldName}" class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>`;
+            inputHtml = `<input type="number" name="${fieldName}" class="block w-full cu-input !rounded-xl" ${requiredAttr}>`;
             break;
         case 'TEXTAREA':
-            inputHtml = `<textarea name="${fieldName}" rows="3" class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}></textarea>`;
+            inputHtml = `<textarea name="${fieldName}" rows="3" class="cu-textarea" ${requiredAttr}></textarea>`;
             break;
         default:
-            inputHtml = `<input type="text" name="${fieldName}" class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500" ${requiredAttr}>`;
+            inputHtml = `<input type="text" name="${fieldName}" class="block w-full cu-input !rounded-xl" ${requiredAttr}>`;
     }
 
     return `<div class="${colSpan}">
@@ -720,7 +752,8 @@ function renderRepeatableSection(section) {
     }).join('');
 
     return `<div class="space-y-3">
-        <table class="w-full" id="table-${section.id}">
+        <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+        <table class="w-full min-w-[500px] rpt-repeat" id="table-${section.id}">
             <thead>
                 <tr class="text-left text-sm text-neutral-500">
                     ${headers}
@@ -730,8 +763,9 @@ function renderRepeatableSection(section) {
             <tbody id="entries-${section.id}">
             </tbody>
         </table>
+        </div>
         <button type="button" onclick="addRepeatableEntry('${section.id}')"
-                class="inline-flex items-center text-sm text-primary-600 hover:text-primary-700">
+                class="inline-flex items-center min-h-[2.75rem] text-sm text-primary-600 hover:text-primary-700">
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>

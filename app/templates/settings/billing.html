@@ -7,7 +7,7 @@
     <section class="cu-hero">
         <div>
             <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Configuration</span>
-            <h1 class="cu-page-title text-white">Settings</h1>
+            <h1 class="cu-page-title leading-tight text-white">Settings</h1>
             <p class="mt-2 text-sm text-white/80">Configure billing, banking details, and payment instructions.</p>
         </div>
     </section>
@@ -81,7 +81,7 @@
                 <div class="flex items-center">
                     <input type="checkbox" name="billing_overdue_reminders_enabled" id="billing_overdue_reminders_enabled" value="on"
                            {% if (tenant.settings or {}).get('billing_overdue_reminders_enabled', false) %}checked{% endif %}
-                           class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                           class="h-4 w-4 rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                     <label for="billing_overdue_reminders_enabled" class="ml-2 block text-sm text-navy-700">Enable overdue invoice reminders</label>
                 </div>
                 <div>

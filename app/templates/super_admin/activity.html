@@ -3,37 +3,22 @@
 {% block title %}Live Activity - {{ app_name }}{% endblock %}
 
 {% block content %}
+{% from "super_admin/_hero.html" import platform_hero %}
 <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-            <a href="/admin" class="text-sm text-navy-500 hover:text-navy-700">&larr; Admin</a>
-            <h1 class="mt-2 text-xl font-semibold text-navy-800 flex items-center gap-2">
-                Live Activity
-                <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Live"></span>
-            </h1>
-            <p class="mt-1 text-sm text-navy-500">Who's online right now and what they're doing. Auto-refreshes every 3 seconds.</p>
-        </div>
-        <div class="flex items-center gap-2">
-            <a href="/admin/audit"
-               class="inline-flex items-center px-3 py-1.5 text-sm text-navy-700 bg-white border border-navy-200 rounded hover:bg-navy-50">
-                Full audit log
-            </a>
-            <button id="pause-btn" onclick="togglePause()"
-                    class="inline-flex items-center px-3 py-1.5 text-sm text-navy-700 bg-white border border-navy-200 rounded hover:bg-navy-50">
-                Pause
-            </button>
-        </div>
-    </div>
+    {% call platform_hero('Live Activity', "Who's online right now and what they're doing. Auto-refreshes every 3 seconds.", eyebrow='Platform security') %}
+        <a href="/admin/audit" class="cu-btn-ghost-dark">Full audit log</a>
+        <button id="pause-btn" onclick="togglePause()" class="cu-btn-ghost-dark">Pause</button>
+    {% endcall %}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Online users panel -->
         <div class="lg:col-span-1 cu-card">
-            <div class="px-4 py-3 border-b border-navy-100 flex items-center justify-between">
+            <div class="px-4 py-3 border-b border-navy-100 flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-sm font-semibold text-navy-800">
                     Online now <span id="online-count" class="text-navy-400 ml-1">(…)</span>
                 </h2>
                 <select id="online-window"
-                        class="text-xs border-navy-200 rounded h-7 px-2"
+                        class="cu-select !w-auto text-xs" aria-label="Online window"
                         onchange="refreshOnline()">
                     <option value="5">Last 5 min</option>
                     <option value="15">Last 15 min</option>
@@ -48,7 +33,7 @@
 
         <!-- Event stream panel -->
         <div class="lg:col-span-2 cu-card">
-            <div class="px-4 py-3 border-b border-navy-100 flex items-center justify-between">
+            <div class="px-4 py-3 border-b border-navy-100 flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-sm font-semibold text-navy-800">Recent events</h2>
                 <span id="stream-meta" class="text-xs text-navy-400">—</span>
             </div>
@@ -151,9 +136,9 @@ async function refreshStream() {
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${colour}">${e.status_code || '—'}</span>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-xs font-mono text-navy-800">${e.action}</span>
+                                <span class="text-xs font-mono text-navy-800 break-all">${e.action}</span>
                                 ${e.method ? `<span class="text-[10px] text-navy-500">${e.method}</span>` : ''}
-                                <span class="text-xs text-navy-500 truncate">${e.path || ''}</span>
+                                <span class="text-xs text-navy-500 truncate min-w-0 max-w-full">${e.path || ''}</span>
                             </div>
                             <div class="text-xs text-navy-500 mt-0.5 truncate">
                                 ${e.user_name || 'Anonymous'}

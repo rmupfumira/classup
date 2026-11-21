@@ -9,7 +9,7 @@
     <section class="cu-hero">
         <div class="max-w-xl">
             <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
-            <h1 class="cu-page-title text-white">Accounting</h1>
+            <h1 class="cu-page-title leading-tight text-white">Accounting</h1>
             <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                 Track income, expenses, and your bank balances across the school.
             </p>
@@ -19,22 +19,22 @@
     {% include 'accounting/_layout.html' %}
 
     {# ------ Summary tiles ------ #}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="summary-cards">
+    <div class="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-4" id="summary-cards">
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">This month — Income</div>
-            <div class="cu-stat-tile-value cu-stat-tile-value--money" id="card-income">—</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal" id="card-income">—</div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">This month — Expenses</div>
-            <div class="cu-stat-tile-value cu-stat-tile-value--money" id="card-expense">—</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal" id="card-expense">—</div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">This month — Net</div>
-            <div class="cu-stat-tile-value cu-stat-tile-value--money" id="card-net">—</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal" id="card-net">—</div>
         </div>
         <div class="cu-stat-tile">
             <div class="cu-stat-tile-label">Cash Position</div>
-            <div class="cu-stat-tile-value cu-stat-tile-value--money" id="card-cash">—</div>
+            <div class="cu-stat-tile-value cu-stat-tile-value--money !whitespace-normal" id="card-cash">—</div>
         </div>
     </div>
 
@@ -42,7 +42,7 @@
     <div class="cu-card">
         <div class="px-5 py-4 border-b border-navy-100 flex items-center justify-between">
             <h2 class="text-base font-bold text-navy-800">Bank balances</h2>
-            <a href="/accounting/banks" class="text-sm font-semibold text-navy-600 hover:text-navy-800">Manage banks →</a>
+            <a href="/accounting/banks" class="inline-flex items-center min-h-[44px] text-sm font-semibold text-navy-600 hover:text-navy-800">Manage banks →</a>
         </div>
         <div id="banks-body" class="divide-y divide-navy-50">
             <p class="text-center text-navy-400 py-8 text-sm">Loading...</p>
@@ -70,6 +70,21 @@
 const CURRENCY_SYMBOL = {{ currency_symbol | tojson }};
 function fmt(n) { return CURRENCY_SYMBOL + ' ' + (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+// Tile value: small currency unit + a number that never wraps mid-figure.
+function setTile(id, n) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const num = (Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    el.innerHTML = '';
+    const unit = document.createElement('span');
+    unit.className = 'cu-stat-unit';
+    unit.textContent = CURRENCY_SYMBOL;
+    const val = document.createElement('span');
+    val.className = 'whitespace-nowrap';
+    val.textContent = num;
+    el.append(unit, val);
+}
+
 function setCardsError() {
     for (const id of ['card-income', 'card-expense', 'card-net', 'card-cash']) {
         const el = document.getElementById(id);
@@ -78,10 +93,7 @@ function setCardsError() {
 }
 
 function setCardsEmpty() {
-    document.getElementById('card-income').textContent = fmt(0);
-    document.getElementById('card-expense').textContent = fmt(0);
-    document.getElementById('card-net').textContent = fmt(0);
-    document.getElementById('card-cash').textContent = fmt(0);
+    for (const id of ['card-income', 'card-expense', 'card-net', 'card-cash']) setTile(id, 0);
 }
 
 async function load() {
@@ -96,22 +108,22 @@ async function load() {
             return;
         }
 
-        document.getElementById('card-income').textContent = fmt(d.income_this_month);
-        document.getElementById('card-expense').textContent = fmt(d.expense_this_month);
-        document.getElementById('card-net').textContent = fmt(d.net_this_month);
-        document.getElementById('card-cash').textContent = fmt(d.cash_total);
+        setTile('card-income', d.income_this_month);
+        setTile('card-expense', d.expense_this_month);
+        setTile('card-net', d.net_this_month);
+        setTile('card-cash', d.cash_total);
 
         if (!d.banks || !d.banks.length) {
             body.innerHTML = '<p class="text-center text-navy-400 py-6 text-sm">No bank accounts yet. <a href="/accounting/banks" class="text-navy-600 hover:text-navy-800 font-semibold">Add one →</a></p>';
             return;
         }
         body.innerHTML = d.banks.map(b => `
-            <div class="px-5 py-3 flex items-center justify-between">
-                <div>
+            <div class="px-5 py-3 flex items-center justify-between gap-3">
+                <div class="min-w-0">
                     <p class="text-sm font-semibold text-navy-800">${b.name}${b.is_default ? ' <span class="ml-1 cu-chip-gold">Default</span>' : ''}</p>
                     <p class="text-xs text-navy-500">${b.bank_name || '—'} · ${b.account_type}</p>
                 </div>
-                <p class="text-sm font-bold ${b.balance >= 0 ? 'text-navy-800' : 'text-rose-700'}">${fmt(b.balance)}</p>
+                <p class="text-sm font-bold whitespace-nowrap ${b.balance >= 0 ? 'text-navy-800' : 'text-rose-700'}">${fmt(b.balance)}</p>
             </div>
         `).join('');
     } catch (err) {

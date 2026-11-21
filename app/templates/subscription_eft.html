@@ -9,12 +9,12 @@
     <section class="cu-hero">
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div class="max-w-2xl">
-                <a href="/subscription" class="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white mb-3">
+                <a href="/subscription" class="inline-flex items-center gap-1 min-h-[44px] text-sm text-white/70 hover:text-white mb-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     Back to Subscription
                 </a>
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Billing</span>
-                <h1 class="cu-page-title text-white">Pay by EFT</h1>
+                <h1 class="cu-page-title leading-tight text-white">Pay by EFT</h1>
                 <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                     Transfer the amount into our bank account and upload your proof of payment below.
                     Super admin will review and confirm — usually within 1 business day.
@@ -65,7 +65,7 @@
                 </label>
                 <input type="file" name="pop" id="pop" required
                        accept="application/pdf,image/jpeg,image/png,image/webp"
-                       class="block w-full text-sm text-navy-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:bg-navy-50 file:text-navy-700 hover:file:bg-navy-100 file:cursor-pointer">
+                       class="block w-full text-sm text-navy-700 file:mr-3 file:py-3 file:px-4 file:rounded-full file:border-0 file:bg-navy-50 file:text-navy-700 hover:file:bg-navy-100 file:cursor-pointer">
                 <p class="mt-1 text-xs text-navy-400">PDF or image. Max 10MB.</p>
             </div>
 
@@ -89,7 +89,7 @@
         <div class="px-6 py-4 border-b border-navy-50">
             <h2 class="text-base font-semibold text-navy-800">Your EFT submissions</h2>
         </div>
-        <div id="history-body" class="p-6 text-sm overflow-x-auto">
+        <div id="history-body" class="p-0 sm:p-6 text-sm overflow-x-auto">
             <p class="text-center text-navy-400">Loading...</p>
         </div>
     </section>
@@ -164,7 +164,7 @@ async function loadHistory() {
             return;
         }
         el.innerHTML = `
-            <table class="cu-table">
+            <table class="cu-table cu-table--stack">
                 <thead>
                     <tr>
                         <th>Submitted</th>
@@ -176,16 +176,16 @@ async function loadHistory() {
                 <tbody>
                     ${items.map(p => `
                         <tr>
-                            <td class="text-navy-600">${new Date(p.submitted_at).toLocaleString()}</td>
-                            <td class="text-navy-800 font-medium">${p.currency} ${p.amount.toFixed(2)}</td>
-                            <td class="text-navy-600">${p.reference}</td>
-                            <td>
+                            <td data-label="Submitted" class="text-navy-600">${new Date(p.submitted_at).toLocaleString()}</td>
+                            <td data-label="Amount" class="whitespace-nowrap text-navy-800 font-medium">${p.currency} ${p.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td data-label="Reference" class="text-navy-600 [overflow-wrap:anywhere]">${p.reference}</td>
+                            <td data-label="Status"><div class="text-right sm:text-left">
                                 <span class="${STATUS_COLOURS[p.status] || 'cu-status cu-status-draft'}">
                                     <span class="cu-status-dot"></span>
                                     ${p.status}
                                 </span>
                                 ${p.rejection_reason ? `<div class="text-xs text-red-600 mt-0.5">${p.rejection_reason}</div>` : ''}
-                            </td>
+                            </div></td>
                         </tr>
                     `).join('')}
                 </tbody>

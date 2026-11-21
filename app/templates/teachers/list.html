@@ -10,7 +10,7 @@
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div class="max-w-xl">
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">People</span>
-                <h1 class="cu-page-title text-white">Teachers</h1>
+                <h1 class="cu-page-title leading-tight text-white">Teachers</h1>
                 <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                     {{ total }} teacher{{ 's' if total != 1 else '' }} on staff. Invite new
                     colleagues, manage class assignments and reset passwords.
@@ -26,8 +26,8 @@
     </section>
 
     {# ------ Filter row ------ #}
-    <form method="get" class="flex flex-col md:flex-row md:items-center gap-3">
-        <div class="cu-search flex-1">
+    <form method="get" class="flex flex-row items-center gap-3">
+        <div class="cu-search flex-1 min-w-0">
             <svg class="cu-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <input type="text" name="search" value="{{ search or '' }}" class="cu-input" placeholder="Search by name or email...">
         </div>
@@ -76,7 +76,7 @@
                         {% endif %}
                         <div class="relative inline-block text-left" data-dropdown>
                             <button type="button" onclick="toggleDropdown(this)"
-                                    class="inline-flex items-center p-1.5 text-neutral-400 hover:text-neutral-600 rounded hover:bg-neutral-100">
+                                    class="cu-icon-btn" aria-label="More actions" aria-haspopup="menu">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
@@ -86,7 +86,7 @@
                                 {% if inv.status == 'PENDING' %}
                                 <button type="button"
                                         onclick='editInvitationAssignments({{ inv.id|string|tojson }}, {{ (inv.intended_assignments or [])|tojson }})'
-                                        class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                        class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
                                     <svg class="w-4 h-4 text-neutral-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                         <rect x="2" y="2" width="7" height="7" rx="1.25"/>
                                         <rect x="11" y="2" width="7" height="7" rx="1.25"/>
@@ -97,7 +97,7 @@
                                 </button>
                                 {% endif %}
                                 <button type="button" onclick="resendInvitation('{{ inv.id }}')"
-                                        class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                        class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
                                     <svg class="w-4 h-4 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                               d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"></path>
@@ -106,7 +106,7 @@
                                 </button>
                                 <div class="border-t border-neutral-100 my-1"></div>
                                 <button type="button" onclick="cancelInvitation('{{ inv.id }}')"
-                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                        class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                               d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
@@ -162,7 +162,7 @@
                     <tr>
                         <td>
                             <div class="flex items-center">
-                                <div class="cu-avatar-sm flex-shrink-0">
+                                <div class="cu-avatar cu-avatar-sm flex-shrink-0">
                                     {{ teacher.first_name[0] }}{{ teacher.last_name[0] if teacher.last_name else '' }}
                                 </div>
                                 <div class="ml-3">
@@ -175,7 +175,7 @@
                         <td class="text-navy-600">
                             {{ teacher.email }}
                         </td>
-                        <td class="text-navy-600">
+                        <td class="text-navy-600 whitespace-nowrap">
                             {{ teacher.phone or '—' }}
                         </td>
                         <td class="text-navy-600 min-w-[180px]">
@@ -211,7 +211,7 @@
                         <td style="text-align:right">
                             <div class="relative inline-block text-left" data-dropdown>
                                 <button type="button" onclick="toggleDropdown(this)"
-                                        class="inline-flex items-center p-1.5 text-neutral-400 hover:text-neutral-600 rounded hover:bg-neutral-100">
+                                        class="cu-icon-btn" aria-label="More actions" aria-haspopup="menu">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
@@ -219,7 +219,7 @@
                                 </button>
                                 <div class="dropdown-menu hidden fixed w-48 bg-white rounded-md shadow-lg border border-neutral-200 z-50">
                                     <a href="/teachers/{{ teacher.id }}/edit"
-                                       class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                       class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
                                         <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                   d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path>
@@ -228,7 +228,7 @@
                                     </a>
                                     <button type="button"
                                             onclick="openSetPasswordDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                                            class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                            class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
                                         <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                   d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
@@ -237,7 +237,7 @@
                                     </button>
                                     <button type="button"
                                             onclick="openManageAssignmentsDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                                            class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                            class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
                                         <svg class="w-4 h-4 text-neutral-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                             <rect x="2" y="2" width="7" height="7" rx="1.25"/>
                                             <rect x="11" y="2" width="7" height="7" rx="1.25"/>
@@ -248,7 +248,7 @@
                                     </button>
                                     <button type="button"
                                             onclick="sendResetEmail('{{ teacher.id }}', '{{ teacher.email }}')"
-                                            class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                            class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
                                         <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                   d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"></path>
@@ -259,7 +259,7 @@
                                     {% if teacher.is_active %}
                                     <button type="button"
                                             onclick="deactivateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                            class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                   d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
@@ -269,7 +269,7 @@
                                     {% else %}
                                     <button type="button"
                                             onclick="activateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                                            class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2">
+                                            class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-green-600 hover:bg-green-50 flex items-center gap-2">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                   d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -279,7 +279,7 @@
                                     {% endif %}
                                     <button type="button"
                                             onclick="deleteTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                            class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                   d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
@@ -300,49 +300,85 @@
             {% for teacher in teachers %}
             <div class="p-4">
                 <div class="flex items-center">
-                    <div class="cu-avatar-sm flex-shrink-0">
+                    <div class="cu-avatar cu-avatar-sm flex-shrink-0">
                         {{ teacher.first_name[0] }}{{ teacher.last_name[0] if teacher.last_name else '' }}
                     </div>
                     <div class="ml-3 flex-1 min-w-0">
                         <p class="text-sm font-semibold text-navy-800">
                             {{ teacher.first_name }} {{ teacher.last_name }}
                         </p>
-                        <p class="text-xs text-navy-500">{{ teacher.email }}</p>
+                        <p class="text-xs text-navy-500 [overflow-wrap:anywhere]">{{ teacher.email }}</p>
                     </div>
                     {% if teacher.is_active %}
                     <span class="cu-status cu-status-finalized">
                         <span class="cu-status-dot"></span>Active
                     </span>
+                    {% else %}
+                    <span class="cu-status cu-status-draft">
+                        <span class="cu-status-dot"></span>Inactive
+                    </span>
                     {% endif %}
                 </div>
-                <div class="mt-2 ml-13 flex flex-wrap gap-3">
-                    <a href="/teachers/{{ teacher.id }}/edit"
-                       class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        Edit
-                    </a>
+                {% set m_subj_rows = subject_assignments_by_teacher.get(teacher.id, []) %}
+                {% if teacher.teacher_classes or m_subj_rows %}
+                <div class="mt-2 flex flex-wrap gap-1">
+                    {% for tc in teacher.teacher_classes %}
+                    <span class="cu-chip-navy">{{ tc.school_class.name if tc.school_class else 'Unknown' }}</span>
+                    {% endfor %}
+                    {% for sa in m_subj_rows %}
+                    <span class="cu-chip-gold">{{ sa.class_name }} · {{ sa.subject_name }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if teacher.phone %}
+                <a href="tel:{{ teacher.phone }}" class="mt-1 inline-flex items-center min-h-[44px] text-sm text-navy-600">{{ teacher.phone }}</a>
+                {% endif %}
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <a href="/teachers/{{ teacher.id }}/edit" class="cu-btn-soft !px-3 !text-xs">Edit</a>
+                    <button type="button"
+                            onclick="openManageAssignmentsDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                            class="cu-btn-soft !px-3 !text-xs">
+                        Classes
+                    </button>
                     <button type="button"
                             onclick="openSetPasswordDialog('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        Set Password
+                            class="cu-btn-soft !px-3 !text-xs">
+                        Set password
                     </button>
-                    <button type="button"
-                            onclick="sendResetEmail('{{ teacher.id }}', '{{ teacher.email }}')"
-                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                        Reset Email
-                    </button>
-                    {% if teacher.is_active %}
-                    <button type="button"
-                            onclick="deactivateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                            class="text-xs text-red-600 hover:text-red-700 font-medium">
-                        Deactivate
-                    </button>
-                    {% else %}
-                    <button type="button"
-                            onclick="activateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
-                            class="text-xs text-green-600 hover:text-green-700 font-medium">
-                        Activate
-                    </button>
-                    {% endif %}
+                    <div class="relative inline-block text-left ml-auto" data-dropdown>
+                        <button type="button" onclick="toggleDropdown(this)" class="cu-icon-btn" aria-label="More actions" aria-haspopup="menu">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu hidden fixed w-56 bg-white rounded-2xl shadow-lg border border-neutral-200 z-50 py-1">
+                            <button type="button"
+                                    onclick="sendResetEmail('{{ teacher.id }}', '{{ teacher.email }}')"
+                                    class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-neutral-700 hover:bg-neutral-50">
+                                Send reset email
+                            </button>
+                            <div class="border-t border-neutral-100 my-1"></div>
+                            {% if teacher.is_active %}
+                            <button type="button"
+                                    onclick="deactivateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                                    class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-red-600 hover:bg-red-50">
+                                Deactivate
+                            </button>
+                            {% else %}
+                            <button type="button"
+                                    onclick="activateTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                                    class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-green-600 hover:bg-green-50">
+                                Activate
+                            </button>
+                            {% endif %}
+                            <button type="button"
+                                    onclick="deleteTeacher('{{ teacher.id }}', '{{ teacher.first_name }} {{ teacher.last_name }}')"
+                                    class="w-full text-left px-4 py-2 min-h-[44px] text-sm text-red-600 hover:bg-red-50">
+                                Delete permanently
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -352,7 +388,7 @@
     <!-- Pagination -->
     {% if total_pages > 1 %}
     <div class="flex items-center justify-between cu-card px-4 py-3">
-        <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
+        <div class="flex items-center justify-between gap-3 w-full">
             <p class="text-sm text-navy-600">
                 Page <span class="font-semibold text-navy-800">{{ page }}</span> of <span class="font-semibold text-navy-800">{{ total_pages }}</span>
             </p>
@@ -376,7 +412,7 @@
 
     {% elif not pending_invitations %}
     <!-- Empty State (no teachers AND no invitations) -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-10 text-center">
+    <div class="cu-card cu-empty">
         <div class="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -394,7 +430,7 @@
         {% if not search %}
         <div class="mt-5">
             <button type="button" onclick="document.getElementById('invite-teacher-dialog').showModal()"
-                    class="inline-flex items-center px-3 py-1.5 bg-primary-500 text-white text-sm rounded hover:bg-primary-600 transition-colors">
+                    class="cu-btn-primary">
                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                           d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"></path>
@@ -413,7 +449,7 @@
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-neutral-800">Invite Teacher</h2>
             <button type="button" onclick="document.getElementById('invite-teacher-dialog').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="cu-icon-btn -mr-2" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -424,21 +460,18 @@
                 <div>
                     <label for="first_name" class="block text-sm font-medium text-neutral-700 mb-1">First Name</label>
                     <input type="text" id="first_name" name="first_name" required
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                  focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                 </div>
                 <div>
                     <label for="last_name" class="block text-sm font-medium text-neutral-700 mb-1">Last Name</label>
                     <input type="text" id="last_name" name="last_name"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                                  focus:border-primary-500 focus:ring-0">
+                           class="cu-input">
                 </div>
             </div>
             <div>
                 <label for="email" class="block text-sm font-medium text-neutral-700 mb-1">Email Address</label>
                 <input type="email" id="email" name="email" required
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                              focus:border-primary-500 focus:ring-0"
+                       class="cu-input"
                        placeholder="teacher@example.com">
             </div>
 
@@ -459,7 +492,7 @@
                             </span>
                         </label>
                         <button type="button" data-add-subject-row="invite-subject-rows"
-                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                class="cu-tap shrink-0 text-xs text-primary-600 hover:text-primary-700 font-semibold">
                             + Add subject
                         </button>
                     </div>
@@ -476,7 +509,7 @@
                             </span>
                         </label>
                         <button type="button" data-add-class-row="invite-ct-rows"
-                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                class="cu-tap shrink-0 text-xs text-primary-600 hover:text-primary-700 font-semibold">
                             + Add class
                         </button>
                     </div>
@@ -494,11 +527,11 @@
             <div id="form-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('invite-teacher-dialog').close()"
-                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                        class="cu-btn-soft">
                     Cancel
                 </button>
                 <button type="submit" id="submit-btn"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                        class="cu-btn-primary">
                     Send Invitation
                 </button>
             </div>
@@ -512,7 +545,7 @@
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-neutral-800">Edit Pending Assignments</h2>
             <button type="button" onclick="document.getElementById('edit-invitation-dialog').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="cu-icon-btn -mr-2" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -530,7 +563,7 @@
                         Subjects they teach
                     </span>
                     <button type="button" data-add-subject-row="ei-subject-rows"
-                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            class="cu-tap shrink-0 text-xs text-primary-600 hover:text-primary-700 font-semibold">
                         + Add subject
                     </button>
                 </div>
@@ -543,7 +576,7 @@
                         Classes they're the class teacher of
                     </span>
                     <button type="button" data-add-class-row="ei-ct-rows"
-                            class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                            class="cu-tap shrink-0 text-xs text-primary-600 hover:text-primary-700 font-semibold">
                         + Add class
                     </button>
                 </div>
@@ -552,11 +585,11 @@
             <div id="ei-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('edit-invitation-dialog').close()"
-                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                        class="cu-btn-soft">
                     Cancel
                 </button>
                 <button type="submit"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                        class="cu-btn-primary">
                     Save
                 </button>
             </div>
@@ -573,7 +606,7 @@
                 <span id="ma-teacher-name" class="ml-1 font-normal text-neutral-500 text-sm"></span>
             </h2>
             <button type="button" onclick="document.getElementById('manage-assignments-dialog').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="cu-icon-btn -mr-2" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -600,7 +633,7 @@
                             Subjects they teach
                         </span>
                         <button type="button" data-add-subject-row="ma-subject-rows"
-                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                class="cu-tap shrink-0 text-xs text-primary-600 hover:text-primary-700 font-semibold">
                             + Add subject
                         </button>
                     </div>
@@ -613,7 +646,7 @@
                             Classes they're the class teacher of
                         </span>
                         <button type="button" data-add-class-row="ma-ct-rows"
-                                class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                class="cu-tap shrink-0 text-xs text-primary-600 hover:text-primary-700 font-semibold">
                             + Add class
                         </button>
                     </div>
@@ -622,7 +655,7 @@
                 <div id="ma-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
                 <div class="flex justify-end gap-3">
                     <button type="submit"
-                            class="px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                            class="cu-btn-primary !py-1.5 !px-3">
                         Save new assignments
                     </button>
                 </div>
@@ -636,7 +669,7 @@
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-neutral-800">Set Password</h2>
             <button type="button" onclick="document.getElementById('set-password-dialog').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="cu-icon-btn -mr-2" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -650,26 +683,24 @@
             <div>
                 <label for="sp-password" class="block text-sm font-medium text-neutral-700 mb-1">New Password</label>
                 <input type="password" id="sp-password" name="password" required minlength="8"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                              focus:border-primary-500 focus:ring-0"
+                       class="cu-input"
                        placeholder="Minimum 8 characters">
             </div>
             <div>
                 <label for="sp-confirm" class="block text-sm font-medium text-neutral-700 mb-1">Confirm Password</label>
                 <input type="password" id="sp-confirm" name="confirm_password" required minlength="8"
-                       class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
-                              focus:border-primary-500 focus:ring-0"
+                       class="cu-input"
                        placeholder="Confirm new password">
             </div>
             <div id="sp-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
             <div id="sp-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('set-password-dialog').close()"
-                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                        class="cu-btn-soft">
                     Cancel
                 </button>
                 <button type="submit" id="sp-submit-btn"
-                        class="px-4 py-2 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">
+                        class="cu-btn-primary">
                     Set Password
                 </button>
             </div>
@@ -729,7 +760,7 @@ async function buildSubjectRow(containerId, preselected) {
             <div class="flex-1 space-y-2">
                 <div>
                     <label class="block text-xs font-medium text-neutral-600 mb-1">Subject</label>
-                    <select class="sr-subject block w-full h-8 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                    <select class="sr-subject cu-select">
                         <option value="">— pick a subject —</option>
                         ${subjectOpts}
                     </select>
@@ -741,7 +772,7 @@ async function buildSubjectRow(containerId, preselected) {
                     </div>
                 </div>
             </div>
-            <button type="button" class="sr-remove text-neutral-400 hover:text-red-600 mt-1" title="Remove">
+            <button type="button" class="sr-remove cu-icon-btn -mr-2 -mt-1 hover:!text-red-600" title="Remove" aria-label="Remove subject">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -801,7 +832,7 @@ async function buildClassTeacherRow(containerId, preselected) {
             <div class="flex-1 space-y-2">
                 <div>
                     <label class="block text-xs font-medium text-neutral-600 mb-1">Class</label>
-                    <select class="ct-class block w-full h-8 px-2 text-sm border border-neutral-300 rounded bg-white focus:border-primary-500 focus:ring-0">
+                    <select class="ct-class cu-select">
                         <option value="">— pick a class —</option>
                         ${classOpts}
                     </select>
@@ -811,7 +842,7 @@ async function buildClassTeacherRow(containerId, preselected) {
                     One class teacher per class &mdash; assigning here replaces whoever currently owns it.
                 </p>
             </div>
-            <button type="button" class="ct-remove text-neutral-400 hover:text-red-600 mt-1" title="Remove">
+            <button type="button" class="ct-remove cu-icon-btn -mr-2 -mt-1 hover:!text-red-600" title="Remove" aria-label="Remove class">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -1218,9 +1249,9 @@ function toggleDropdown(btn) {
     const place = () => {
         const r = btn.getBoundingClientRect();
         // Right-align the menu with the button, 4px below. Width 12rem (w-48).
-        const menuW = 192;
+        const menuW = menu.offsetWidth || 192;
         let left = r.right - menuW;
-        if (left < 8) left = 8;  // keep off-screen when near left edge
+        if (left < 8) left = 8;  // keep on-screen when near left edge
         menu.style.left = left + 'px';
         menu.style.top = (r.bottom + 4) + 'px';
     };

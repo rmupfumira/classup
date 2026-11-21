@@ -25,7 +25,7 @@
     <section class="cu-hero">
         <div class="max-w-xl">
             <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
-            <h1 class="cu-page-title text-white">Your Subscription</h1>
+            <h1 class="cu-page-title leading-tight text-white">Your Subscription</h1>
             <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
                 Manage your {{ app_name }} subscription and billing.
             </p>
@@ -87,7 +87,7 @@
         <div class="px-6 py-4 border-b border-navy-100">
             <h2 class="text-base font-bold text-navy-800">Payment History</h2>
         </div>
-        <div id="invoices-section" class="p-6 overflow-x-auto">
+        <div id="invoices-section" class="p-0 sm:p-6 overflow-x-auto">
             <p class="text-center text-navy-400">Loading...</p>
         </div>
     </div>
@@ -482,7 +482,7 @@ async function loadInvoices() {
           : s === 'FAILED' ? '<span class="cu-status cu-status-danger"><span class="cu-status-dot"></span>Failed</span>'
           :                  '<span class="cu-status cu-status-progress"><span class="cu-status-dot"></span>Pending</span>';
         section.innerHTML = `
-            <table class="cu-table">
+            <table class="cu-table cu-table--stack">
                 <thead>
                     <tr>
                         <th>Period</th>
@@ -495,11 +495,11 @@ async function loadInvoices() {
                 <tbody>
                     ${res.data.map(inv => `
                         <tr>
-                            <td>${inv.billing_period_start} - ${inv.billing_period_end}</td>
-                            <td class="font-semibold text-navy-800">${fmtMoney(inv.amount)}</td>
-                            <td>${statusChip(inv.status)}</td>
-                            <td class="text-navy-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}</td>
-                            <td style="text-align:right">
+                            <td class="cu-stack-primary font-medium text-navy-800">${inv.billing_period_start} - ${inv.billing_period_end}</td>
+                            <td data-label="Amount" class="whitespace-nowrap font-semibold text-navy-800">${fmtMoney(inv.amount)}</td>
+                            <td data-label="Status">${statusChip(inv.status)}</td>
+                            <td data-label="Paid" class="text-navy-600">${inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}</td>
+                            <td class="${(inv.status === 'PENDING' && showPay) ? 'cu-stack-actions' : 'cu-stack-hide'}" style="text-align:right">
                                 ${(inv.status === 'PENDING' && showPay)
                                     ? `<button onclick="payInvoice('${inv.id}', this)" class="cu-btn-primary !py-1 !px-3 !text-xs">Pay by card</button>`
                                     : '<span class="text-xs text-navy-400">—</span>'}

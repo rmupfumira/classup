@@ -3,26 +3,26 @@
 {% block title %}Conversation with {{ phone }} - Super Admin{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-4">
+<div class="space-y-6 [&>*:not(.cu-hero)]:max-w-5xl">
 
-    <!-- Header -->
-    <div class="flex items-center gap-3">
-        <a href="/admin/whatsapp-conversations" class="text-navy-500 hover:text-navy-700">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-        </a>
-        <div class="flex-1 min-w-0">
-            <h1 id="conv-title" class="text-xl sm:text-2xl font-bold text-navy-900 truncate">
+    <!-- Header (title/subtitle filled in by the script below) -->
+    <section class="cu-hero !py-6 md:!py-7">
+        <div class="relative min-w-0">
+            <a href="/admin/whatsapp-conversations" class="inline-flex items-center gap-1 min-h-[2.75rem] -mt-3 md:min-h-0 md:mt-0 md:mb-3 text-xs font-medium text-white/70 hover:text-white">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                All conversations
+            </a><br>
+            <span class="cu-eyebrow cu-eyebrow-on-dark">WhatsApp</span>
+            <h1 id="conv-title" class="cu-page-title text-white mt-3 leading-tight break-words">
                 Loading conversation…
             </h1>
-            <p id="conv-subtitle" class="text-sm text-navy-500 truncate"></p>
+            <p id="conv-subtitle" class="mt-2 text-sm md:text-base text-white/75 break-words md:truncate"></p>
         </div>
-    </div>
+    </section>
 
     <!-- Thread -->
     <div id="thread"
-         class="cu-card p-4 min-h-[300px]">
+         class="cu-card p-3 sm:p-4 md:p-6 min-h-[300px] flex flex-col">
         <p class="text-sm text-navy-500 text-center py-8">Loading messages…</p>
     </div>
 
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const arrowCls = isOut ? 'text-navy-600' : 'text-navy-500';
         const arrow = isOut ? '→' : '←';
         const typeBadge = m.template_name
-            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-navy-100 text-navy-600 font-mono">${escapeHtml(m.template_name)}</span>`
+            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-navy-100 text-navy-600 font-mono break-all">${escapeHtml(m.template_name)}</span>`
             : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-white border border-navy-100 text-navy-500">${escapeHtml(m.message_type || 'text')}</span>`;
         const errorLine = m.error
             ? `<p class="mt-1 text-xs text-red-600">⚠ ${escapeHtml(m.error)}</p>`
@@ -93,8 +93,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ? `<span class="text-[10px] text-red-600 ml-1" title="${escapeHtml(m.auto_reply_error)}">⚠ auto-reply failed</span>`
                 : '';
         return `
-            <div class="msg-bubble mb-3 max-w-[85%] ${bubbleCls} border rounded-lg p-3">
-                <div class="flex items-center gap-2 mb-1">
+            <div class="msg-bubble mb-3 w-fit max-w-[92%] sm:max-w-[85%] min-w-0 ${bubbleCls} border rounded-lg p-3">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
                     <span class="text-xs font-medium ${arrowCls}">${arrow} ${isOut ? 'Sent' : 'Received'}</span>
                     ${typeBadge}
                     ${inboundNote}

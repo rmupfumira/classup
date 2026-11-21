@@ -1,576 +1,185 @@
-<!-- Mobile Bottom Navigation - Ant Design Style -->
-{# `safe-area-bottom` adds padding-bottom: env(safe-area-inset-bottom)
-   so the home indicator on iPhones X+ doesn't overlap the icons. #}
-<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 z-50 safe-area-bottom">
-    <div class="flex items-center justify-around h-14">
+{#
+  Mobile navigation (< md).
+
+  - Floating pill tab bar at the bottom: four role-specific destinations
+    plus "Menu". Every target is >= 44px tall.
+  - "Menu" opens a left slide-out drawer whose navigation is a JS clone of
+    the desktop sidebar (#cu-sidebar nav[aria-label="Primary"]), so the
+    role + feature gates stay identical to desktop with one source of truth.
+  - Teachers with several classes get a "Switch class" row; parents get a
+    "Your children" switcher fed by /api/v1/students/my-children.
+  Ids kept for other scripts: mobile-menu, mobile-menu-overlay,
+  mobile-msg-badge, mobile-msg-badge-parent, menu-notifications,
+  menu-notifications-subtitle, pwa-install-trigger.
+#}
+{% set _mt = tenant if tenant is defined and tenant else request.state.tenant %}
+{% set _mf = _mt.features if _mt else {} %}
+{% set _mp = request.url.path %}
+
+{% macro tab(href, label, active, icon, badge_id='') -%}
+<a href="{{ href }}" class="cu-tab {% if active %}cu-tab-active{% endif %}" {% if active %}aria-current="page"{% endif %}>
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ icon }}"/>
+    </svg>
+    <span class="cu-tab-label">{{ label }}</span>
+    {% if badge_id %}<span id="{{ badge_id }}" class="cu-tab-dot hidden"></span>{% endif %}
+</a>
+{%- endmacro %}
+
+{% set _i_home = 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' %}
+{% set _i_students = 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' %}
+{% set _i_attendance = 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' %}
+{% set _i_messages = 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' %}
+{% set _i_reports = 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' %}
+{% set _i_exams = 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z' %}
+{% set _i_overview = 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z' %}
+{% set _i_tenants = 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' %}
+{% set _i_subs = 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z' %}
+{% set _i_eft = 'M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z' %}
+
+<nav class="cu-tabbar md:hidden{% if user.role == 'PARENT' %} cu-tabbar--labels{% endif %}" aria-label="Quick navigation">
+    <div class="cu-tabbar-inner">
         {% if user.role == 'SUPER_ADMIN' %}
-        <!-- SUPER ADMIN MOBILE NAVIGATION -->
-        <!-- Overview -->
-        <a href="/admin"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if request.url.path == '/admin' else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-            </svg>
-            <span class="text-xs mt-0.5">Overview</span>
-        </a>
-
-        <!-- Tenants -->
-        <a href="/admin/tenants"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if '/admin/tenants' in request.url.path else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <span class="text-xs mt-0.5">Tenants</span>
-        </a>
-
-        <!-- More Menu -->
-        <button onclick="toggleMobileMenu()"
-                class="flex flex-col items-center justify-center flex-1 h-full text-neutral-500">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <span class="text-xs mt-0.5">More</span>
-        </button>
-
-        {% elif user.role in ['SCHOOL_ADMIN', 'TEACHER'] %}
-        <!-- SCHOOL ADMIN / TEACHER MOBILE NAVIGATION -->
-
-        {% if user.role == 'TEACHER' and teacher_classes is defined and teacher_classes|length > 1 %}
-        <!-- Class Switcher (Teacher with multiple classes) -->
-        <button onclick="toggleMobileClassSwitcher()"
-                class="flex flex-col items-center justify-center flex-1 h-full text-primary-500">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
-            </svg>
-            <span class="text-xs mt-0.5 max-w-[60px] truncate">
-                {% if selected_class is defined and selected_class %}{{ selected_class.name }}{% else %}Class{% endif %}
-            </span>
-        </button>
+            {{ tab('/admin', 'Overview', _mp == '/admin', _i_overview) }}
+            {{ tab('/admin/tenants', 'Tenants', _mp.startswith('/admin/tenants'), _i_tenants) }}
+            {{ tab('/admin/subscriptions', 'Plans', _mp.startswith('/admin/subscriptions'), _i_subs) }}
+            {{ tab('/admin/eft-payments', 'EFT', _mp.startswith('/admin/eft-payments'), _i_eft) }}
+        {% elif user.role == 'SCHOOL_ADMIN' %}
+            {{ tab('/dashboard', 'Home', _mp == '/dashboard', _i_home) }}
+            {{ tab('/students', 'Students', _mp.startswith('/students'), _i_students) }}
+            {{ tab('/attendance', 'Attendance', _mp.startswith('/attendance'), _i_attendance) }}
+            {{ tab('/messages', 'Messages', _mp.startswith('/messages'), _i_messages, 'mobile-msg-badge') }}
+        {% elif user.role == 'TEACHER' %}
+            {{ tab('/dashboard', 'Home', _mp == '/dashboard', _i_home) }}
+            {{ tab('/attendance', 'Attendance', _mp.startswith('/attendance'), _i_attendance) }}
+            {% if _mf.get('exam_management', false) %}
+            {{ tab('/exams', 'Exams', _mp.startswith('/exams'), _i_exams) }}
+            {% else %}
+            {{ tab('/students', 'Students', _mp.startswith('/students'), _i_students) }}
+            {% endif %}
+            {{ tab('/messages', 'Messages', _mp.startswith('/messages'), _i_messages, 'mobile-msg-badge') }}
+        {% else %}
+            {# Parent IA (Parent Portal iter 1, §4 + P-MOB-01): Home · Learning ·
+               Attendance · Fees · More, labels always visible. Fees only when
+               billing is on; otherwise Messages takes the slot. #}
+            {{ tab('/dashboard', 'Home', _mp == '/dashboard', _i_home) }}
+            {{ tab('/reports', 'Learning', _mp.startswith('/reports') or _mp.startswith('/timetable'), _i_reports) }}
+            {{ tab('/attendance/my-child', 'Attendance', _mp.startswith('/attendance'), _i_attendance) }}
+            {% if _mf.get('billing', false) %}
+            {{ tab('/billing/statement', 'Fees', _mp.startswith('/billing'), _i_eft) }}
+            {% else %}
+            {{ tab('/messages', 'Messages', _mp.startswith('/messages'), _i_messages, 'mobile-msg-badge-parent') }}
+            {% endif %}
         {% endif %}
-
-        <!-- Home -->
-        <a href="/dashboard"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if request.url.path == '/dashboard' else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        <button type="button" class="cu-tab" id="mobile-menu-toggle" aria-label="Menu"
+                onclick="toggleMobileMenu()"
+                aria-controls="mobile-menu" aria-expanded="false">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
-            <span class="text-xs mt-0.5">Home</span>
-        </a>
-
-        <!-- Students -->
-        <a href="/students"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if '/students' in request.url.path else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-            </svg>
-            <span class="text-xs mt-0.5">Students</span>
-        </a>
-
-        <!-- Attendance -->
-        <a href="/attendance"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if '/attendance' in request.url.path else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            <span class="text-xs mt-0.5">Attendance</span>
-        </a>
-
-        <!-- Messages -->
-        <a href="/messages"
-           class="flex flex-col items-center justify-center flex-1 h-full relative
-                  {{ 'text-primary-500' if '/messages' in request.url.path else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span class="text-xs mt-0.5">Messages</span>
-            <span id="mobile-msg-badge" class="hidden absolute top-1 right-1/4 h-2 w-2 rounded-full bg-error-500"></span>
-        </a>
-
-        <!-- More Menu -->
-        <button onclick="toggleMobileMenu()"
-                class="flex flex-col items-center justify-center flex-1 h-full text-neutral-500">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <span class="text-xs mt-0.5">More</span>
+            <span class="cu-tab-label">{{ 'More' if user.role == 'PARENT' else 'Menu' }}</span>
+            {% if user.role == 'PARENT' and _mf.get('billing', false) %}<span id="mobile-msg-badge-parent" class="cu-tab-dot hidden" aria-hidden="true"></span>{% endif %}
         </button>
-
-        {% elif user.role == 'PARENT' %}
-        <!-- PARENT MOBILE NAVIGATION -->
-        <!-- Home -->
-        <a href="/dashboard"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if request.url.path == '/dashboard' else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span class="text-xs mt-0.5">Home</span>
-        </a>
-
-        <!-- My Children -->
-        <a href="/students"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if '/students' in request.url.path else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span class="text-xs mt-0.5">Children</span>
-        </a>
-
-        <!-- Reports -->
-        <a href="/reports"
-           class="flex flex-col items-center justify-center flex-1 h-full
-                  {{ 'text-primary-500' if '/reports' in request.url.path else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span class="text-xs mt-0.5">Reports</span>
-        </a>
-
-        <!-- Messages -->
-        <a href="/messages"
-           class="flex flex-col items-center justify-center flex-1 h-full relative
-                  {{ 'text-primary-500' if '/messages' in request.url.path else 'text-neutral-500' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span class="text-xs mt-0.5">Messages</span>
-            <span id="mobile-msg-badge-parent" class="hidden absolute top-1 right-1/4 h-2 w-2 rounded-full bg-error-500"></span>
-        </a>
-
-        <!-- More Menu -->
-        <button onclick="toggleMobileMenu()"
-                class="flex flex-col items-center justify-center flex-1 h-full text-neutral-500">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <span class="text-xs mt-0.5">More</span>
-        </button>
-        {% endif %}
     </div>
 </nav>
 
-<!-- Mobile Menu Overlay -->
-<div id="mobile-menu-overlay"
-     class="hidden fixed inset-0 bg-black/40 z-50 transition-opacity"
-     onclick="toggleMobileMenu()">
-</div>
-
-<!-- Mobile Menu Drawer -->
-<div id="mobile-menu"
-     class="hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 max-h-[75vh] overflow-y-auto safe-area-bottom shadow-lg">
-    <div class="p-4">
-        <!-- Handle -->
-        <div class="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-4"></div>
-
-        <!-- User Info -->
-        <div class="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl mb-4">
-            <div class="h-10 w-10 rounded-full bg-accent-500 flex items-center justify-center text-white text-sm font-medium">
-                {{ user.first_name[0] | upper }}{{ user.last_name[0] | upper }}
-            </div>
-            <div class="flex-1 min-w-0">
-                <p class="font-medium text-neutral-800 truncate">{{ user.full_name }}</p>
-                <p class="text-xs text-neutral-500">{{ user.role | replace('_', ' ') | title }}</p>
-            </div>
+<!-- Slide-out navigation drawer -->
+<div id="mobile-menu-overlay" class="cu-drawer-overlay md:hidden" onclick="closeMobileMenu()" aria-hidden="true"></div>
+<div id="mobile-menu" class="cu-drawer md:hidden" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true">
+    <div class="cu-drawer-head">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+            {{ user.first_name[0] | upper }}{{ user.last_name[0] | upper }}
         </div>
+        <div class="flex-1 min-w-0">
+            <p class="font-semibold text-navy-800 truncate">{{ user.full_name }}</p>
+            <p class="text-xs text-navy-500 truncate">{% if user.role == 'PARENT' %}{{ _mt.name if _mt else '' }}{% else %}{{ user.role | replace('_', ' ') | title }}{% if _mt and user.role != 'SUPER_ADMIN' %} · {{ _mt.name }}{% endif %}{% endif %}</p>
+        </div>
+        <button type="button" class="cu-icon-btn" onclick="closeMobileMenu()" aria-label="Close menu" data-drawer-close>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
 
-        <!-- Menu Items -->
-        <nav class="space-y-1">
-            {% if user.role == 'SUPER_ADMIN' %}
-            <!-- SUPER ADMIN MORE MENU -->
-            <a href="/admin" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                </svg>
-                Platform Overview
-            </a>
+    <div class="cu-drawer-body">
+        {% if user.role == 'TEACHER' and teacher_classes is defined and teacher_classes|length > 1 %}
+        <button type="button" onclick="closeMobileMenu(); toggleMobileClassSwitcher();"
+                class="nav-card w-full flex items-center gap-3 text-left mb-4">
+            <span class="w-9 h-9 rounded-xl bg-navy-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {{ (selected_class.name[:2] if selected_class is defined and selected_class else 'CL') | upper }}
+            </span>
+            <span class="flex-1 min-w-0">
+                <span class="block text-[11px] font-bold uppercase tracking-wider text-accent-700">Current class</span>
+                <span class="block text-sm font-semibold text-navy-800 truncate">{% if selected_class is defined and selected_class %}{{ selected_class.name }}{% else %}Select a class{% endif %}</span>
+            </span>
+            <span class="text-xs font-semibold text-navy-600">Switch</span>
+        </button>
+        {% endif %}
 
-            <a href="/admin/tenants" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                Manage Tenants
-            </a>
+        {% if user.role == 'PARENT' %}
+        <div id="mobile-children" class="nav-card mb-4 hidden">
+            <p class="nav-section-header !cursor-default">Your children</p>
+            <div id="mobile-children-list" class="space-y-1"></div>
+        </div>
+        {% endif %}
 
-            <a href="/admin/tenants/create" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Add New Tenant
-            </a>
+        {# Filled from the desktop sidebar by the script below. #}
+        <div id="mobile-nav-clone" class="space-y-4"></div>
 
-            <a href="/admin/subscriptions" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                </svg>
-                Subscriptions &amp; Revenue
-            </a>
-
-            <a href="/admin/email-settings" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                </svg>
-                Email Settings
-            </a>
-
-            <div class="my-2 h-px bg-neutral-100"></div>
-
-            <a href="/profile" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                My Profile
-            </a>
-
-            {% elif user.role in ['SCHOOL_ADMIN', 'TEACHER'] %}
-            {# SCHOOL ADMIN / TEACHER MORE MENU — grouped by section to mirror
-               the desktop sidebar's new IA. Headers are static (not collapsible)
-               since the drawer is already a self-contained sheet. #}
-            {% set _mtenant1 = tenant if tenant is defined and tenant else request.state.tenant %}
-            {% set _mfeat1 = _mtenant1.features if _mtenant1 else {} %}
-            {% set _m_admin = user.role == 'SCHOOL_ADMIN' %}
-
-            {# Reusable item markup is inline rather than macro'd — mobile nav
-               already uses a different icon style from the sidebar, so the
-               duplication keeps each item easy to tweak. #}
-
-            {# ---------- ACADEMIC ---------- #}
-            <p class="px-3 pb-1 pt-1 text-[11px] font-bold text-accent-600 uppercase tracking-wider">Academic</p>
-
-            {% if _mfeat1.get('timetable_management', false) %}
-            <a href="/timetable" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                Timetable
-            </a>
-            {% endif %}
-
-            {% if _m_admin and _mfeat1.get('exam_management', false) %}
-            <a href="/exams" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/></svg>
-                Exams
-            </a>
-            {% endif %}
-
-            <a href="/reports" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                {{ t('nav.reports', current_language) }}
-            </a>
-
-            {% if _m_admin %}
-            <a href="/reports/templates/manage" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/></svg>
-                Report Templates
-            </a>
-            {% endif %}
-
-            {# ---------- PEOPLE ---------- #}
-            <p class="px-3 pb-1 pt-3 text-[11px] font-bold text-accent-600 uppercase tracking-wider">People</p>
-
-            <a href="/classes" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                Classes
-            </a>
-
-            {% if _m_admin %}
-            <a href="/teachers" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                Teachers
-            </a>
-
-            <a href="/parents" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg>
-                Parents
-            </a>
-            {% endif %}
-
-            <a href="/invitations" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
-                Invitations
-            </a>
-
-            {# ---------- COMMUNICATION ---------- #}
-            <p class="px-3 pb-1 pt-3 text-[11px] font-bold text-accent-600 uppercase tracking-wider">Communication</p>
-
-            <a href="/announcements" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
-                Announcements
-            </a>
-
-            <a href="/events" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
-                Events
-            </a>
-
-            {% if _mfeat1.get('photo_sharing', false) %}
-            <a href="/photos" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                {{ t('nav.photos', current_language) }}
-            </a>
-            {% endif %}
-
-            {% if _mfeat1.get('document_sharing', false) %}
-            <a href="/documents" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                {{ t('nav.documents', current_language) }}
-            </a>
-            {% endif %}
-
-            {% if _m_admin %}
-            {% set _tenant = _mtenant1 %}
-            {% set _billing_on = _mfeat1.get('billing', false) %}
-            {% set _accounting_on = _mfeat1.get('accounting', false) %}
-
-            {% if _billing_on or _accounting_on %}
-            {# ---------- FINANCE ---------- #}
-            <p class="px-3 pb-1 pt-3 text-[11px] font-bold text-accent-600 uppercase tracking-wider">Finance</p>
-
-            {% if _billing_on %}
-            <a href="/billing" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
-                {{ t('nav.billing', current_language) }}
-            </a>
-            {% endif %}
-
-            {% if _accounting_on %}
-            <a href="/accounting" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605"/></svg>
-                Accounting
-            </a>
-            {% endif %}
-
-            {% if _billing_on %}
-            <a href="/subscription" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/></svg>
-                Subscription
-            </a>
-            {% endif %}
-            {% endif %}
-
-            {# ---------- INSIGHTS ---------- #}
-            <p class="px-3 pb-1 pt-3 text-[11px] font-bold text-accent-600 uppercase tracking-wider">Insights</p>
-
-            {% if _mfeat1.get('mis', false) %}
-            <a href="/mis" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                Executive Dashboard
-            </a>
-            {% endif %}
-
-            <a href="/settings/audit" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Activity Log
-            </a>
-
-            {# ---------- SETUP ---------- #}
-            <p class="px-3 pb-1 pt-3 text-[11px] font-bold text-accent-600 uppercase tracking-wider">Setup</p>
-
-            {% if _mfeat1.get('subject_management', false) %}
-            <a href="/settings/academic/subjects" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
-                Subjects
-            </a>
-
-            <a href="/settings/academic/grading" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                Grading Systems
-            </a>
-            {% endif %}
-
-            <a href="/imports/enrollment" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
-                Bulk Enrollment
-            </a>
-
-            <a href="/settings" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                {{ t('nav.settings', current_language) }}
-            </a>
-            {% endif %}
-
-            <div class="my-2 h-px bg-neutral-100"></div>
-
-            <a href="/profile" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                {{ t('nav.profile', current_language) }}
-            </a>
-
-            <a href="/help" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>
-                Help &amp; Guides
-            </a>
-
-            {% elif user.role == 'PARENT' %}
-            <!-- PARENT MORE MENU -->
-            {% set _tenant = tenant if tenant is defined and tenant else request.state.tenant %}
-            {% if _tenant and _tenant.features.get('billing', false) %}
-            <a href="/billing/statement" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-                </svg>
-                {{ t('nav.billing', current_language) }}
-            </a>
-            {% endif %}
-
-            {% set _mfeat2 = _tenant.features if _tenant else {} %}
-            {% if _mfeat2.get('photo_sharing', false) %}
-            <a href="/photos" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {{ t('nav.photos', current_language) }}
-            </a>
-            {% endif %}
-
-            {% if _mfeat2.get('document_sharing', false) %}
-            <a href="/documents" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                {{ t('nav.documents', current_language) }}
-            </a>
-            {% endif %}
-
-            <a href="/announcements" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                </svg>
-                Announcements
-            </a>
-
-            <div class="my-2 h-px bg-neutral-100"></div>
-
-            <a href="/profile" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {{ t('nav.profile', current_language) }}
-            </a>
-
-            <a href="/help" class="flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-                </svg>
-                Help &amp; Guides
-            </a>
-            {% endif %}
-
-            <div class="my-2 h-px bg-neutral-100"></div>
-
-            {# Notifications — always visible (works for every role).
-               Subtitle shows current push state so users can check their
-               status at a glance without opening the sheet. The JS in
-               _notifications_sheet.html dispatches `classup:push-state-changed`
-               whenever state flips, and the handler below keeps the subtitle
-               in sync. #}
+        <div class="nav-card mt-4 space-y-1">
             <button id="menu-notifications" type="button"
-                    onclick="ClassUp.openNotificationsSheet && ClassUp.openNotificationsSheet()"
-                    class="w-full flex items-center px-3 py-2.5 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg transition-colors">
-                <div class="w-8 h-8 mr-3 rounded-lg bg-warning-50 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-4 h-4 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
-                    </svg>
-                </div>
-                <div class="flex-1 text-left min-w-0">
-                    <div class="text-sm font-medium">Notifications</div>
-                    <div class="text-[11px] text-neutral-500" id="menu-notifications-subtitle">Checking…</div>
-                </div>
-                <svg class="w-4 h-4 text-neutral-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                    onclick="closeMobileMenu(); ClassUp.openNotificationsSheet && ClassUp.openNotificationsSheet()"
+                    class="w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl text-left text-navy-600 hover:bg-navy-50">
+                <span class="w-8 h-8 rounded-xl bg-gold-50 text-gold-700 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+                </span>
+                <span class="flex-1 min-w-0">
+                    <span class="block text-sm font-medium">Notifications</span>
+                    <span class="block text-[11px] text-navy-500" id="menu-notifications-subtitle">Checking…</span>
+                </span>
             </button>
-
-            {# Install ClassUp — hidden by default, revealed via JS once an
-               install path is available (Android beforeinstallprompt fires
-               OR we detect iOS Safari outside standalone mode). The button
-               also auto-hides on already-installed PWAs via `is-standalone`. #}
             <button id="pwa-install-trigger" type="button"
                     onclick="ClassUp.installApp && ClassUp.installApp()"
-                    class="hidden w-full text-left items-center px-3 py-2.5 text-sm text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
-                <svg class="h-5 w-5 mr-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M12 4.5v15m0 0l-6.75-6.75M12 19.5l6.75-6.75M3.75 21h16.5" />
-                </svg>
-                <span>Install {{ app_name }} app</span>
+                    class="hidden w-full items-center gap-3 px-2.5 py-2 rounded-2xl text-left text-navy-700 bg-navy-50">
+                <span class="w-8 h-8 rounded-xl bg-white text-navy-600 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m0 0l-6.75-6.75M12 19.5l6.75-6.75M3.75 21h16.5"/></svg>
+                </span>
+                <span class="text-sm font-medium">Install {{ app_name }} app</span>
             </button>
-
-            <a href="/logout" class="flex items-center px-3 py-2.5 text-sm text-error-600 hover:bg-error-50 rounded transition-colors">
-                <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
+            <a href="/profile" class="flex items-center gap-3 px-2.5 py-2 rounded-2xl text-sm font-medium text-navy-600 hover:bg-navy-50">
+                <span class="w-8 h-8 rounded-xl bg-navy-50 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                </span>
+                {{ t('nav.profile', current_language) }}
+            </a>
+            <a href="/logout" class="flex items-center gap-3 px-2.5 py-2 rounded-2xl text-sm font-medium text-error-600 hover:bg-error-50">
+                <span class="w-8 h-8 rounded-xl bg-error-50 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </span>
                 {{ t('auth.logout', current_language) }}
             </a>
-        </nav>
+        </div>
     </div>
 </div>
 
-<!-- Mobile Class Switcher Sheet -->
 {% if user.role == 'TEACHER' and teacher_classes is defined and teacher_classes|length > 1 %}
-<div id="mobile-class-overlay"
-     class="hidden fixed inset-0 bg-black/40 z-50 transition-opacity"
-     onclick="toggleMobileClassSwitcher()">
-</div>
-<div id="mobile-class-switcher"
-     class="hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 safe-area-bottom shadow-lg">
+<!-- Teacher class switcher (bottom sheet) -->
+<div id="mobile-class-overlay" class="hidden fixed inset-0 bg-navy-900/40 z-[60]" onclick="toggleMobileClassSwitcher()"></div>
+<div id="mobile-class-switcher" role="dialog" aria-modal="true" aria-label="Switch class"
+     class="hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-[60] shadow-soft-lg"
+     style="padding-bottom: env(safe-area-inset-bottom);">
     <div class="p-4">
-        <div class="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-4"></div>
-        <p class="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Switch Class</p>
+        <div class="w-10 h-1 bg-navy-100 rounded-full mx-auto mb-4"></div>
+        <p class="text-[11px] font-bold text-accent-700 uppercase tracking-wider mb-3">Switch class</p>
         <div class="space-y-1">
             {% for tc in teacher_classes %}
-            <button onclick="switchClass('{{ tc.id }}')"
-                    class="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors
-                           {% if selected_class is defined and selected_class and selected_class.id == tc.id %}bg-primary-50{% else %}hover:bg-neutral-50{% endif %}">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg
-                            {% if selected_class is defined and selected_class and selected_class.id == tc.id %}bg-primary-100{% else %}bg-neutral-100{% endif %}
-                            flex items-center justify-center">
-                    <span class="text-sm font-semibold
-                                 {% if selected_class is defined and selected_class and selected_class.id == tc.id %}text-primary-600{% else %}text-neutral-500{% endif %}">
-                        {{ tc.name[:2] | upper }}
-                    </span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="font-medium {% if selected_class is defined and selected_class and selected_class.id == tc.id %}text-primary-700{% else %}text-neutral-700{% endif %}">
-                        {{ tc.name }}
-                    </p>
-                    <p class="text-xs text-neutral-500">{{ tc.grade_level or tc.age_group or '' }}</p>
-                </div>
-                {% if selected_class is defined and selected_class and selected_class.id == tc.id %}
-                <svg class="w-5 h-5 text-primary-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-                {% endif %}
+            {% set _cur = selected_class is defined and selected_class and selected_class.id == tc.id %}
+            <button type="button" onclick="switchClass('{{ tc.id }}')"
+                    class="w-full flex items-center gap-3 p-3 rounded-2xl text-left {% if _cur %}bg-navy-50{% else %}hover:bg-navy-50{% endif %}">
+                <span class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold {% if _cur %}bg-navy-600 text-white{% else %}bg-navy-50 text-navy-600{% endif %}">{{ tc.name[:2] | upper }}</span>
+                <span class="flex-1 min-w-0">
+                    <span class="block font-semibold text-navy-800 truncate">{{ tc.name }}</span>
+                    <span class="block text-xs text-navy-500">{{ tc.grade_level or tc.age_group or '' }}</span>
+                </span>
+                {% if _cur %}<svg class="w-5 h-5 text-navy-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>{% endif %}
             </button>
             {% endfor %}
         </div>
@@ -579,42 +188,148 @@
 {% endif %}
 
 <script>
-function toggleMobileMenu() {
-    const menu = document.getElementById('mobile-menu');
+(function () {
+    'use strict';
+    const drawer = document.getElementById('mobile-menu');
     const overlay = document.getElementById('mobile-menu-overlay');
+    const toggleBtn = document.getElementById('mobile-menu-toggle');
+    let lastFocus = null;
+    let built = false;
 
-    menu.classList.toggle('hidden');
-    overlay.classList.toggle('hidden');
+    // Clone the desktop sidebar nav so the drawer always matches its gates.
+    function buildNav() {
+        if (built) return;
+        built = true;
+        const src = document.querySelector('#cu-sidebar nav[aria-label="Primary"]');
+        const target = document.getElementById('mobile-nav-clone');
+        if (!src || !target) return;
+        const clone = src.cloneNode(true);
+        clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+        clone.setAttribute('aria-label', 'Menu');
+        clone.querySelectorAll('.nav-section').forEach(section => {
+            const header = section.querySelector('.nav-section-header');
+            const items = section.querySelector('.nav-section-items');
+            if (!header || !items) return;
+            // Always start expanded in the drawer; desktop collapse state
+            // shouldn't hide items on a phone.
+            header.setAttribute('aria-expanded', 'true');
+            items.classList.remove('collapsed');
+            header.addEventListener('click', () => {
+                const collapse = header.getAttribute('aria-expanded') === 'true';
+                header.setAttribute('aria-expanded', collapse ? 'false' : 'true');
+                items.classList.toggle('collapsed', collapse);
+            });
+        });
+        target.appendChild(clone);
+    }
 
-    // Show install option only when installable AND not already installed
-    const btn = document.getElementById('pwa-install-trigger');
-    if (btn && !menu.classList.contains('hidden')) {
+    async function buildChildren() {
+        const box = document.getElementById('mobile-children');
+        const list = document.getElementById('mobile-children-list');
+        if (!box || !list || list.dataset.loaded) return;
+        list.dataset.loaded = '1';
+        try {
+            const res = await ClassUp.fetch('/api/v1/students/my-children');
+            const kids = ((res && res.data) || []).slice().sort((a, b) =>
+                (a.first_name || '').toLowerCase().localeCompare((b.first_name || '').toLowerCase())
+                || (a.last_name || '').toLowerCase().localeCompare((b.last_name || '').toLowerCase())
+                || String(a.id).localeCompare(String(b.id)));
+            if (!kids.length) return;
+            // Same selection as every parent page: the server-validated
+            // selected_child_id cookie, else the first child.
+            const m = document.cookie.match(/(?:^|; )selected_child_id=([^;]+)/);
+            const saved = m ? decodeURIComponent(m[1]) : '';
+            const current = kids.some(k => String(k.id) === saved) ? saved : String(kids[0].id);
+            const here = location.pathname + location.search;
+            list.innerHTML = kids.map((k) => {
+                const active = current === String(k.id);
+                const initials = ((k.first_name || '')[0] || '') + ((k.last_name || '')[0] || '');
+                return `<a href="/dashboard/select-child?child_id=${encodeURIComponent(k.id)}&next=${encodeURIComponent(here)}" class="nav-link flex items-center gap-3 px-2.5 py-2 rounded-2xl text-sm ${active ? 'bg-navy-600 text-white font-semibold' : 'text-navy-600 font-medium hover:bg-navy-50'}">
+                    <span class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${active ? 'bg-white/15' : 'bg-navy-50'}">${ClassUp.escapeHtml(initials.toUpperCase())}</span>
+                    <span class="flex-1 min-w-0 truncate">${ClassUp.escapeHtml((k.first_name || '') + ' ' + (k.last_name || ''))}</span>
+                    ${k.class_name ? `<span class="text-[11px] ${active ? 'text-white/70' : 'text-navy-400'}">${ClassUp.escapeHtml(k.class_name)}</span>` : ''}
+                </a>`;
+            }).join('');
+            box.classList.remove('hidden');
+        } catch (e) { /* switcher is a convenience; the dashboard still works */ }
+    }
+
+    function refreshInstall() {
+        const btn = document.getElementById('pwa-install-trigger');
+        if (!btn) return;
         const canInstall = window.ClassUp && ClassUp.canInstall && ClassUp.canInstall();
         const standalone = window.ClassUp && ClassUp.isStandalone && ClassUp.isStandalone();
-        if (canInstall && !standalone) {
-            btn.classList.remove('hidden');
-            btn.classList.add('flex');
-        } else {
-            btn.classList.add('hidden');
-            btn.classList.remove('flex');
+        btn.classList.toggle('hidden', !(canInstall && !standalone));
+        btn.classList.toggle('flex', !!(canInstall && !standalone));
+    }
+
+    function openMenu() {
+        if (!drawer) return;
+        buildNav();
+        buildChildren();
+        refreshInstall();
+        lastFocus = document.activeElement;
+        drawer.classList.add('is-open');
+        overlay.classList.add('is-open');
+        drawer.setAttribute('aria-hidden', 'false');
+        toggleBtn && toggleBtn.setAttribute('aria-expanded', 'true');
+        document.documentElement.classList.add('cu-scroll-lock');
+        // Focus after the drawer has become visible (visibility is animated).
+        const closeBtn = drawer.querySelector('[data-drawer-close]');
+        requestAnimationFrame(() => requestAnimationFrame(() => closeBtn && closeBtn.focus({ preventScroll: true })));
+    }
+
+    function closeMenu() {
+        if (!drawer || !drawer.classList.contains('is-open')) return;
+        drawer.classList.remove('is-open');
+        overlay.classList.remove('is-open');
+        drawer.setAttribute('aria-hidden', 'true');
+        toggleBtn && toggleBtn.setAttribute('aria-expanded', 'false');
+        document.documentElement.classList.remove('cu-scroll-lock');
+        if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+    }
+
+    // Parents: fetch the child list when the browser is idle so the
+    // switcher is already filled the first time the drawer opens.
+    if (document.getElementById('mobile-children') && window.matchMedia('(max-width: 767px)').matches) {
+        (window.requestIdleCallback || ((fn) => setTimeout(fn, 1200)))(buildChildren);
+    }
+
+    window.openMobileMenu = openMenu;
+    window.closeMobileMenu = closeMenu;
+    window.toggleMobileMenu = function () {
+        drawer && drawer.classList.contains('is-open') ? closeMenu() : openMenu();
+    };
+
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') closeMenu();
+        // Keep Tab inside the open drawer.
+        if (ev.key === 'Tab' && drawer && drawer.classList.contains('is-open')) {
+            const f = [...drawer.querySelectorAll('a[href],button:not([disabled])')].filter(el => el.offsetParent);
+            if (!f.length) return;
+            const first = f[0], last = f[f.length - 1];
+            if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+            else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
         }
-    }
-}
+    });
+    // Close when a navigation link inside the drawer is followed.
+    drawer && drawer.addEventListener('click', (ev) => {
+        if (ev.target.closest('a[href]')) closeMenu();
+    });
+    // Desktop resize: never leave the page scroll-locked.
+    window.matchMedia('(min-width: 768px)').addEventListener('change', (m) => { if (m.matches) closeMenu(); });
 
-function toggleMobileClassSwitcher() {
-    const sheet = document.getElementById('mobile-class-switcher');
-    const overlay = document.getElementById('mobile-class-overlay');
-    if (sheet) {
-        sheet.classList.toggle('hidden');
-        overlay.classList.toggle('hidden');
-    }
-}
+    window.toggleMobileClassSwitcher = function () {
+        const sheet = document.getElementById('mobile-class-switcher');
+        const ov = document.getElementById('mobile-class-overlay');
+        if (!sheet) return;
+        const opening = sheet.classList.contains('hidden');
+        sheet.classList.toggle('hidden', !opening);
+        ov.classList.toggle('hidden', !opening);
+        document.documentElement.classList.toggle('cu-scroll-lock', opening);
+    };
 
-// Keep the Notifications menu subtitle in sync with the push state. The
-// _notifications_sheet.html partial emits `classup:push-state-changed`
-// whenever state is re-evaluated (initial load, after subscribe, after
-// unsubscribe, etc.), so we just listen and update the label.
-(function () {
+    // Keep the Notifications subtitle in sync with push state.
     const STATUS_LABELS = {
         loading: 'Checking…',
         unsupported: 'Not available on this browser',
@@ -624,19 +339,9 @@ function toggleMobileClassSwitcher() {
         ready: 'Off — tap to enable',
         subscribed: 'On for this device',
     };
-    function update(state) {
-        const el = document.getElementById('menu-notifications-subtitle');
-        if (el) el.textContent = STATUS_LABELS[state] || STATUS_LABELS.loading;
-    }
     document.addEventListener('classup:push-state-changed', (e) => {
-        update(e.detail && e.detail.state);
+        const el = document.getElementById('menu-notifications-subtitle');
+        if (el) el.textContent = STATUS_LABELS[e.detail && e.detail.state] || STATUS_LABELS.loading;
     });
 })();
 </script>
-
-<style>
-/* Safe area insets for iOS devices */
-.safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-}
-</style>

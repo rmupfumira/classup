@@ -12,21 +12,21 @@
             </svg>
         </a>
         <div>
-            <h1 class="text-2xl font-bold text-neutral-900">Manage Subjects</h1>
+            <h1 class="cu-page-title leading-tight">Manage Subjects</h1>
             <p class="text-navy-500">{{ school_class.name }}</p>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Assigned Subjects -->
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="cu-card">
             <div class="p-4 border-b border-neutral-200 bg-neutral-50">
                 <h2 class="font-semibold text-neutral-900">Assigned Subjects ({{ class_subjects | length }})</h2>
                 <p class="text-sm text-navy-500">Subjects included in report cards for this class</p>
             </div>
 
             {% if class_subjects %}
-            <div class="divide-y divide-neutral-100" id="assigned-subjects">
+            <div class="divide-y divide-navy-50" id="assigned-subjects">
                 {% for cs in class_subjects %}
                 <div class="p-4 flex items-center justify-between hover:bg-neutral-50" data-subject-id="{{ cs.subject_id }}">
                     <div class="flex items-center gap-3">
@@ -71,14 +71,14 @@
         </div>
 
         <!-- Available Subjects -->
-        <div class="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div class="cu-card">
             <div class="p-4 border-b border-neutral-200 bg-neutral-50">
                 <h2 class="font-semibold text-neutral-900">Available Subjects ({{ available_subjects | length }})</h2>
                 <p class="text-sm text-navy-500">Click to add subjects to this class</p>
             </div>
 
             {% if available_subjects %}
-            <div class="divide-y divide-neutral-100" id="available-subjects">
+            <div class="divide-y divide-navy-50" id="available-subjects">
                 {% for subject in available_subjects %}
                 <div class="p-4 flex items-center justify-between hover:bg-neutral-50 cursor-pointer"
                      onclick="addSubject('{{ subject.id }}', '{{ subject.name }}')"
@@ -113,7 +113,7 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+    <div class="cu-card p-4">
         <div class="flex flex-wrap gap-4 items-center justify-between">
             <p class="text-sm text-navy-600">
                 Need to create new subjects?
@@ -136,23 +136,23 @@
                 <label class="block text-sm font-medium text-neutral-700 mb-1">Total Marks</label>
                 <input type="number" id="edit-total-marks" min="1" max="1000"
                        placeholder="Leave empty to use default"
-                       class="w-full rounded-lg border-neutral-300 focus:ring-primary-500 focus:border-primary-500">
+                       class="cu-input">
                 <p class="text-sm text-navy-500 mt-1">Override the default marks for this class</p>
             </div>
             <div>
                 <label class="flex items-center gap-3">
                     <input type="checkbox" id="edit-compulsory"
-                           class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                           class="rounded border-navy-200 text-navy-600 focus:ring-navy-500">
                     <span class="text-sm font-medium text-neutral-700">Compulsory Subject</span>
                 </label>
             </div>
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" onclick="closeEditModal()"
-                        class="px-4 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900">
+                        class="cu-btn-soft">
                     Cancel
                 </button>
                 <button type="submit"
-                        class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
+                        class="cu-btn-primary">
                     Save
                 </button>
             </div>

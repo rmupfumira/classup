@@ -26,17 +26,17 @@
 
     {# ------ Filters ------ #}
     <section class="cu-card p-4">
-        <form method="GET" action="/admin/tenants" class="flex flex-col sm:flex-row gap-3">
-            <div class="cu-search flex-1">
+        <form method="GET" action="/admin/tenants" class="cu-filter-row">
+            <div class="cu-search" style="flex-basis:14rem">
                 <svg class="cu-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <input type="text" name="search" value="{{ search or '' }}" placeholder="Search tenants..." class="cu-input">
             </div>
-            <select name="is_active" class="cu-select sm:w-40">
+            <select name="is_active" class="cu-select" aria-label="Status">
                 <option value="">All Status</option>
                 <option value="true" {% if is_active == true %}selected{% endif %}>Active</option>
                 <option value="false" {% if is_active == false %}selected{% endif %}>Inactive</option>
             </select>
-            <select name="education_type" class="cu-select sm:w-48">
+            <select name="education_type" class="cu-select" aria-label="Education type">
                 <option value="">All Types</option>
                 <option value="DAYCARE" {% if education_type == 'DAYCARE' %}selected{% endif %}>Daycare</option>
                 <option value="PRIMARY_SCHOOL" {% if education_type == 'PRIMARY_SCHOOL' %}selected{% endif %}>Primary School</option>
@@ -44,9 +44,9 @@
                 <option value="K12" {% if education_type == 'K12' %}selected{% endif %}>K-12</option>
                 <option value="COMBINED" {% if education_type == 'COMBINED' %}selected{% endif %}>Combined</option>
             </select>
-            <button type="submit" class="cu-btn-primary">Filter</button>
+            <button type="submit" class="cu-btn-primary cu-filter-fixed">Filter</button>
             {% if search or is_active is not none or education_type %}
-            <a href="/admin/tenants" class="cu-btn-soft">Clear</a>
+            <a href="/admin/tenants" class="cu-btn-soft cu-filter-fixed">Clear</a>
             {% endif %}
         </form>
     </section>
@@ -54,10 +54,12 @@
     {# ------ Tenants ------ #}
     {% if tenants %}
     <div class="cu-table-wrap">
-        <table class="cu-table">
+        <p class="cu-scroll-hint hidden sm:flex lg:hidden px-4 pt-3 !mb-0">Swipe sideways for more columns</p>
+        <div class="overflow-x-auto">
+        <table class="cu-table cu-table--stack">
             <thead>
                 <tr>
-                    <th>Tenant</th>
+                    <th class="sm:sticky sm:left-0 sm:z-[2]">Tenant</th>
                     <th>Type</th>
                     <th>Contact</th>
                     <th>Status</th>
@@ -68,36 +70,38 @@
             <tbody>
                 {% for tenant in tenants %}
                 <tr>
-                    <td>
+                    <td class="cu-stack-primary sm:sticky sm:left-0 sm:z-[1] sm:bg-white sm:shadow-[inset_-1px_0_0_#e3ebf5]">
                         <div class="flex items-center gap-3">
-                            <div class="cu-avatar-sm">{{ tenant.name[:2] | upper }}</div>
-                            <div>
-                                <a href="/admin/tenants/{{ tenant.id }}" class="font-semibold text-navy-800 hover:text-navy-600">{{ tenant.name }}</a>
+                            <div class="cu-avatar !w-10 !h-10 !text-xs shrink-0">{{ tenant.name[:2] | upper }}</div>
+                            <div class="min-w-0">
+                                <a href="/admin/tenants/{{ tenant.id }}" class="inline-flex items-center min-h-[2.75rem] sm:min-h-0 font-semibold text-navy-800 hover:text-navy-600 break-words">{{ tenant.name }}</a>
                                 <p class="text-xs text-navy-500">{{ tenant.slug }}</p>
                             </div>
                         </div>
                     </td>
-                    <td>
-                        <span class="cu-chip-navy">{{ tenant.education_type.value | replace('_', ' ') | title }}</span>
+                    <td data-label="Type">
+                        <span class="cu-chip-navy">{{ (tenant.education_type.value or tenant.education_type) | replace('_', ' ') | title }}</span>
                     </td>
-                    <td>
+                    <td data-label="Contact">
+                        <div class="min-w-0 break-all">
                         <div class="text-navy-800">{{ tenant.email }}</div>
                         {% if tenant.phone %}<div class="text-xs text-navy-500">{{ tenant.phone }}</div>{% endif %}
+                        </div>
                     </td>
-                    <td>
+                    <td data-label="Status">
                         {% if tenant.is_active %}
                         <span class="cu-status cu-status-finalized"><span class="cu-status-dot"></span>Active</span>
                         {% else %}
                         <span class="cu-status cu-status-draft"><span class="cu-status-dot"></span>Inactive</span>
                         {% endif %}
                     </td>
-                    <td class="text-navy-500">{{ tenant.created_at.strftime('%b %d, %Y') }}</td>
-                    <td style="text-align:right">
-                        <div class="flex items-center justify-end gap-2">
-                            <a href="/admin/tenants/{{ tenant.id }}" class="p-1.5 text-navy-400 hover:text-navy-600" title="View Details">
+                    <td data-label="Created" class="text-navy-500">{{ tenant.created_at.strftime('%b %d, %Y') }}</td>
+                    <td class="cu-stack-actions" style="text-align:right">
+                        <div class="flex items-center justify-end gap-1">
+                            <a href="/admin/tenants/{{ tenant.id }}" class="cu-icon-btn" title="View Details" aria-label="View {{ tenant.name }}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </a>
-                            <a href="/admin/tenants/{{ tenant.id }}/edit" class="p-1.5 text-navy-400 hover:text-navy-600" title="Edit">
+                            <a href="/admin/tenants/{{ tenant.id }}/edit" class="cu-icon-btn" title="Edit" aria-label="Edit {{ tenant.name }}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </a>
                         </div>
@@ -106,18 +110,19 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
 
         {% if total_pages > 1 %}
-        <div class="px-4 py-3 border-t border-navy-50 flex items-center justify-between">
+        <div class="px-4 py-3 border-t border-navy-50 flex flex-wrap items-center justify-between gap-2">
             <p class="text-sm text-navy-500">Page {{ page }} of {{ total_pages }}</p>
             <div class="flex gap-2">
                 {% if page > 1 %}
                 <a href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}{% if is_active is not none %}&is_active={{ is_active }}{% endif %}{% if education_type %}&education_type={{ education_type }}{% endif %}"
-                   class="cu-btn-soft !py-1.5 !px-3 !text-xs">Previous</a>
+                   class="cu-btn-soft cu-tap !py-1.5 !px-3 !text-xs">Previous</a>
                 {% endif %}
                 {% if page < total_pages %}
                 <a href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}{% if is_active is not none %}&is_active={{ is_active }}{% endif %}{% if education_type %}&education_type={{ education_type }}{% endif %}"
-                   class="cu-btn-soft !py-1.5 !px-3 !text-xs">Next</a>
+                   class="cu-btn-soft cu-tap !py-1.5 !px-3 !text-xs">Next</a>
                 {% endif %}
             </div>
         </div>
