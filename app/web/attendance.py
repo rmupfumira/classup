@@ -185,7 +185,32 @@ async def attendance_daily(
     )
     weekends_allowed = school_type in ("BOARDING", "WEEKLY_BOARDING", "MIXED")
 
+    # On a weekend, can anyone in this class actually be marked? Uses the
+    # same per-student residence rule the save applies, so a MIXED school's
+    # all-day-scholar class gets the notice up front instead of every row
+    # failing on Save.
+    weekend_blocked = False
+    if class_id and target_date.weekday() >= 5:
+        from sqlalchemy import select as _select
+        from app.models import Student
+        students = (await db.execute(
+            _select(Student).where(
+                Student.tenant_id == get_tenant_id(),
+                Student.class_id == class_id,
+                Student.deleted_at.is_(None),
+            )
+        )).scalars().all()
+        svc_school_type = tenant.school_type if tenant else None
+        sunday = target_date.weekday() == 6
+
+        def _markable(s) -> bool:
+            res = (s.effective_residence(svc_school_type) or "DAY").upper()
+            return res == "FULL_BOARDER" or (res == "WEEKLY_BOARDER" and sunday)
+
+        weekend_blocked = bool(students) and not any(_markable(s) for s in students)
+
     context = {
+        "weekend_blocked": weekend_blocked,
         "request": request,
         "user": user,
         "classes": classes,

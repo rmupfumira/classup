@@ -304,6 +304,20 @@ class TestAttendanceScope:
                     records=[{"student_id": world["child_b"].id, "status": AttendanceStatus.PRESENT}],
                 ))
 
+    async def test_bulk_weekend_reports_the_real_reason(self, db, world):
+        # Day scholars can't be marked on a weekend; the error must say why
+        # (the UI shows it) rather than the generic "Validation failed".
+        day = _last_weekday()
+        while day.weekday() != 5:
+            day -= timedelta(days=1)
+        with as_user(world["admin"]):
+            result = await get_attendance_service().record_bulk_attendance(db, BulkAttendanceCreate(
+                class_id=world["class_a"].id, date=day,
+                records=[{"student_id": world["child_a"].id, "status": AttendanceStatus.PRESENT}],
+            ))
+        assert result.success_count == 0 and result.error_count == 1
+        assert "Saturday" in result.errors[0]["error"]
+
 
 # ─────────────────────────── Messages ───────────────────────────
 

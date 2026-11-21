@@ -68,8 +68,19 @@
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
             </svg>
-            Cannot record attendance on weekends. Date reset to today.
+            Cannot record attendance on weekends. Showing the Friday before.
         </div>
+        {% if target_date and target_date.weekday() >= 5 and (weekend_blocked or not weekends_allowed) %}
+        {# Day school on a Saturday/Sunday: the server rejects these marks, so
+           say so up front instead of after the teacher fills the register. #}
+        <div id="attendance-weekend-notice" role="status"
+             class="mt-3 flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            <span>{{ target_date.strftime('%A') }} isn't a school day, so attendance can't be recorded. Pick a weekday above.</span>
+        </div>
+        {% endif %}
     </div>
 
     {% if attendance_data %}
@@ -322,8 +333,12 @@ function validateAttendanceDate(input) {
     const weekendsAllowed = {{ 'true' if weekends_allowed else 'false' }};
     if ((day === 0 || day === 6) && !weekendsAllowed) {
         warning.classList.remove('hidden');
-        input.value = '{{ today.isoformat() }}';
+        // Step back to the Friday before (today may itself be a weekend).
+        d.setDate(d.getDate() - (day === 6 ? 1 : 2));
+        const pad = n => String(n).padStart(2, '0');
+        input.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
         setTimeout(() => warning.classList.add('hidden'), 4000);
+        input.form.submit();
         return;
     }
     warning.classList.add('hidden');
@@ -420,7 +435,9 @@ try {
     const flash = sessionStorage.getItem('attendance-flash');
     if (flash) {
         sessionStorage.removeItem('attendance-flash');
-        ClassUp.toast(flash, 'success');
+        let f;
+        try { f = JSON.parse(flash); } catch (_) { f = { msg: flash, type: 'success' }; }
+        ClassUp.toast(f.msg, f.type || 'success');
     }
 } catch (_) { /* storage unavailable: no flash */ }
 
@@ -466,9 +483,20 @@ async function saveAttendance() {
             })
         });
 
-        const msg = `Attendance saved! ${result.data.success_count} records saved.`;
-        ClassUp.toast(msg, 'success');
-        try { sessionStorage.setItem('attendance-flash', msg); } catch (_) {}
+        // Report what actually happened: never claim success when rows failed.
+        const saved = result.data.success_count || 0;
+        const failed = result.data.error_count || 0;
+        const reason = (result.data.errors && result.data.errors[0] && result.data.errors[0].error) || '';
+        if (saved === 0) {
+            ClassUp.toast(`Attendance not saved. ${reason || 'Please try again.'}`, 'error', 8000);
+            saveButtons.forEach(b => { b.disabled = false; b.innerHTML = b.dataset.label; });
+            return;
+        }
+        const msg = failed
+            ? `Saved ${saved} of ${saved + failed}. ${failed} couldn't be saved: ${reason}`
+            : `Attendance saved for ${saved} ${saved === 1 ? 'student' : 'students'}.`;
+        ClassUp.toast(msg, failed ? 'warning' : 'success', failed ? 8000 : 4000);
+        try { sessionStorage.setItem('attendance-flash', JSON.stringify({ msg, type: failed ? 'warning' : 'success' })); } catch (_) {}
         window.location.reload();
     } catch (error) {
         console.error('Error saving attendance:', error);

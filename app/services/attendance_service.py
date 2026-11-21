@@ -328,9 +328,17 @@ class AttendanceService:
 
             except Exception as e:
                 error_count += 1
+                # ValidationException's str() is just "Validation failed";
+                # surface the real reason so the teacher knows what to fix.
+                reason = str(e)
+                field_errors = getattr(e, "errors", None)
+                if isinstance(field_errors, list) and field_errors:
+                    reason = field_errors[0].get("message") or reason
+                elif getattr(e, "message", None):
+                    reason = e.message
                 errors.append({
                     "student_id": str(record_data.student_id),
-                    "error": str(e),
+                    "error": reason,
                 })
 
         await db.flush()
