@@ -206,6 +206,7 @@ async def students_list(
 @router.get("/new", response_class=HTMLResponse)
 async def student_create_form(
     request: Request,
+    class_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Render the student creation form."""
@@ -231,10 +232,18 @@ async def student_create_form(
     from app.models import Tenant
     tenant = await db.get(Tenant, get_tenant_id())
 
+    # "+ Add student" on a class page passes ?class_id= so the form opens
+    # with that class chosen. Only honoured if it's a class this user may
+    # pick (the list above is already scoped); anything else is ignored.
+    preselected_class_id = None
+    if class_id and any(str(c.id) == class_id.strip() for c in classes):
+        preselected_class_id = class_id.strip()
+
     context = {
         "request": request,
         "user": user,
         "classes": classes,
+        "preselected_class_id": preselected_class_id,
         "tenant": tenant,
         "current_language": get_current_language(),
         "permissions": permissions,

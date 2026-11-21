@@ -183,7 +183,7 @@
                         class="cu-select"{% if user.role == 'TEACHER' %} required{% endif %}>
                     {% if user.role != 'TEACHER' %}<option value="">No class assigned</option>{% endif %}
                     {% for cls in classes %}
-                    <option value="{{ cls.id }}">
+                    <option value="{{ cls.id }}"{% if preselected_class_id and (cls.id|string) == preselected_class_id %} selected{% endif %}>
                         {{ cls.name }}{% if cls.grade_level_rel %} ({{ cls.grade_level_rel.name }}){% endif %}
                     </option>
                     {% endfor %}

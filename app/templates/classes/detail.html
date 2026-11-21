@@ -180,7 +180,7 @@
             </div>
             <span id="student-count" class="text-xs text-neutral-500">—</span>
             {% if permissions.can_manage_students() %}
-            <a href="/students/create?class_id={{ school_class.id }}"
+            <a href="/students/new?class_id={{ school_class.id }}"
                class="inline-flex items-center min-h-[2.75rem] sm:min-h-0 px-3 py-1.5 text-sm text-white bg-primary-500 rounded-md hover:bg-primary-600">+ Add student</a>
             {% endif %}
         </div>
