@@ -21,6 +21,11 @@ from app.utils.tenant_context import (
     get_current_user_id_or_none,
 )
 from app.web.helpers import get_teacher_class_context
+from app.web._parent_context import (
+    get_parent_child_context,
+    remember_child,
+    require_login,
+)
 
 router = APIRouter(prefix="/attendance")
 
@@ -38,13 +43,59 @@ async def _get_current_user(db: AsyncSession) -> User | None:
 
 
 def _require_auth(request: Request):
-    """Check authentication and return redirect if not authenticated."""
-    user_id = get_current_user_id_or_none()
-    if not user_id:
-        response = RedirectResponse(url="/login", status_code=302)
-        response.delete_cookie("access_token")
-        return response
-    return None
+    """Check authentication; redirect to login keeping ``?next=``."""
+    return require_login(request)
+
+
+async def _period_range(db: AsyncSession, period: str, today: date) -> tuple[date, date, str]:
+    """(date_from, date_to, label) for a preset period (P-ATT-02).
+
+    "term" uses the school calendar's current (or most recent) term when
+    the jurisdiction calendar has one, else the calendar quarter.
+    """
+    from datetime import timedelta
+    if period == "week":
+        return today - timedelta(days=today.weekday()), today, "This week"
+    if period == "year":
+        return date(today.year, 1, 1), today, f"This year ({today.year})"
+    if period == "30d":
+        return today - timedelta(days=30), today, "Last 30 days"
+    # term (default)
+    try:
+        from app.models import Tenant
+        from app.services import calendar_service
+        from app.utils.tenant_context import get_tenant_id
+        tenant = await db.get(Tenant, get_tenant_id())
+        country = str(((tenant.settings if tenant else None) or {}).get("country") or "ZA").upper()
+        cal = await calendar_service.get_calendar(db, country, today.year)
+        if cal is not None and cal.terms:
+            current = cal.term_for(today)
+            if current is None:
+                past = [t for t in cal.terms if t.start <= today]
+                current = past[-1] if past else None
+            if current is not None:
+                return current.start, min(current.end, today), f"{current.name} (this term)"
+    except Exception:
+        pass
+    q_start = date(today.year, 3 * ((today.month - 1) // 3) + 1, 1)
+    return q_start, today, "This term"
+
+
+@router.get("/my-child")
+async def my_child_attendance(request: Request, db: AsyncSession = Depends(get_db)):
+    """Parent entry point (tab bar / sidebar): the selected child's history.
+
+    The child comes from the validated selected_child_id cookie; staff are
+    sent to the normal attendance page.
+    """
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+    ctx = await get_parent_child_context(request, db)
+    child = ctx.get("selected_child")
+    if child is None:
+        return RedirectResponse(url="/attendance" if not ctx else "/dashboard", status_code=302)
+    return RedirectResponse(url=f"/attendance/student/{child.id}", status_code=302)
 
 
 @router.get("", response_class=HTMLResponse)
@@ -90,10 +141,26 @@ async def attendance_daily(
     if user.role == Role.TEACHER.value:
         class_ctx = await get_teacher_class_context(request, db)
 
+    # Attendance is taken by the class teacher, so a teacher only gets
+    # classes they're class teacher of; subject-only classes get a friendly
+    # state instead of a 404.
+    not_class_teacher = False
+    if user.role == Role.TEACHER.value:
+        general_ids = class_ctx.get("general_class_ids") or set()
+        subject_only = [c for c in classes if c.id not in general_ids]
+        classes = [c for c in classes if c.id in general_ids]
+        if class_id and class_id not in general_ids:
+            not_class_teacher = True
+        elif not class_id and not classes and subject_only:
+            not_class_teacher = True
+        if not_class_teacher:
+            class_id = None
+
     # If no class selected, default to selected class from cookie (for teachers) or first class
-    if not class_id:
-        if class_ctx.get("selected_class"):
-            class_id = class_ctx["selected_class"].id
+    if not class_id and not not_class_teacher:
+        selected = class_ctx.get("selected_class")
+        if selected and any(c.id == selected.id for c in classes):
+            class_id = selected.id
         elif classes:
             class_id = classes[0].id
 
@@ -126,6 +193,7 @@ async def attendance_daily(
         "target_date": target_date,
         "today": date.today(),
         "attendance_data": attendance_data,
+        "not_class_teacher": not_class_teacher,
         "weekends_allowed": weekends_allowed,
         "current_language": get_current_language(),
         "permissions": permissions,
@@ -163,9 +231,10 @@ async def attendance_history(
     class_service = get_class_service()
     attendance_service = get_attendance_service()
 
-    # Get classes for filter dropdown
+    # Get classes for filter dropdown (teachers: classes they're class teacher of)
     if user.role == Role.TEACHER.value:
-        classes = await class_service.get_my_classes(db)
+        general_ids = (await get_teacher_class_context(request, db)).get("general_class_ids") or set()
+        classes = [c for c in await class_service.get_my_classes(db) if c.id in general_ids]
     else:
         classes, _ = await class_service.get_classes(db, is_active=True, page_size=100)
 
@@ -247,17 +316,36 @@ async def student_attendance_history(
     elif not permissions.can_view_attendance():
         raise ForbiddenException("You don't have permission to view attendance")
 
-    # Get attendance history
+    # Period presets (P-ATT-02). Parents default to "This term"; staff
+    # keep the previous default (last 30 days) unless they pick one.
+    is_parent = user.role == Role.PARENT.value
+    period = request.query_params.get("period")
+    if period not in ("week", "term", "year", "30d", "custom"):
+        period = None
+    if date_from or date_to:
+        period = "custom"
+    elif period is None and is_parent:
+        period = "term"
+    period_label = None
+    if period and period != "custom":
+        date_from, date_to, period_label = await _period_range(db, period, date.today())
+    elif period == "custom":
+        period_label = "Custom dates"
+
+    # Parents get every day in the period on one page so the
+    # "Needs a look" list (exceptions first) is complete.
+    page_size = 400 if is_parent else 30
     records, total, summary = await attendance_service.get_student_attendance_history(
         db,
         student_id=student_id,
         date_from=date_from,
         date_to=date_to,
-        page=page,
-        page_size=30,
+        page=1 if is_parent else page,
+        page_size=page_size,
     )
 
-    total_pages = (total + 29) // 30
+    total_pages = (total + page_size - 1) // page_size
+    exceptions = [r for r in records if r.status != "PRESENT"] if is_parent else []
 
     context = {
         "request": request,
@@ -270,9 +358,18 @@ async def student_attendance_history(
         "page": page,
         "total_pages": total_pages,
         "total": total,
+        "period": period,
+        "period_label": period_label,
+        "exceptions": exceptions,
         "current_language": get_current_language(),
         "permissions": permissions,
     }
     if user.role == Role.TEACHER.value:
         context.update(await get_teacher_class_context(request, db))
+    if is_parent:
+        child_ctx = await get_parent_child_context(request, db, explicit=student_id)
+        context.update(child_ctx)
+        response = templates.TemplateResponse("attendance/student_history.html", context)
+        remember_child(response, child_ctx)
+        return response
     return templates.TemplateResponse("attendance/student_history.html", context)

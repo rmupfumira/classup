@@ -20,6 +20,11 @@ from app.utils.tenant_context import (
     get_current_user_id_or_none,
 )
 from app.web.helpers import get_teacher_class_context
+from app.web._parent_context import (
+    get_parent_child_context,
+    remember_child,
+    require_login,
+)
 
 router = APIRouter(prefix="/reports")
 
@@ -62,13 +67,38 @@ async def _resolve_grading_system(
 
 
 def _require_auth(request: Request):
-    """Check authentication and return redirect if not authenticated."""
-    user_id = get_current_user_id_or_none()
-    if not user_id:
-        response = RedirectResponse(url="/login", status_code=302)
-        response.delete_cookie("access_token")
-        return response
-    return None
+    """Check authentication; redirect to login keeping ``?next=``."""
+    return require_login(request)
+
+
+async def _term_labels(db: AsyncSession, reports: list[dict]) -> dict:
+    """{report_id: "Term 2 2026"} for report cards / progress reports,
+    resolved from the jurisdiction school calendar (P-ACAD-02). A report
+    dated outside every term (or in a year with no calendar) gets its
+    month ("August 2026") instead; daily reports get no label."""
+    out: dict = {}
+    try:
+        from app.models import Tenant
+        from app.services import calendar_service
+        from app.utils.tenant_context import get_tenant_id
+        tenant = await db.get(Tenant, get_tenant_id())
+        country = str(((tenant.settings if tenant else None) or {}).get("country") or "ZA").upper()
+        cals: dict[int, object] = {}
+        for r in reports:
+            d = r.get("report_date")
+            if not d or r.get("report_type") not in ("REPORT_CARD", "PROGRESS_REPORT"):
+                continue
+            if d.year not in cals:
+                cals[d.year] = await calendar_service.get_calendar(db, country, d.year)
+            cal = cals[d.year]
+            term = cal.term_for(d) if cal is not None else None
+            # Only label a term when the date really falls inside that
+            # term on the tenant's calendar; otherwise (holidays, years
+            # without a calendar) say the month — never guess a term.
+            out[r["id"]] = f"{term.name} {d.year}" if term is not None else d.strftime("%B %Y")
+    except Exception:
+        pass
+    return out
 
 
 @router.get("", response_class=HTMLResponse)
@@ -109,6 +139,30 @@ async def reports_list(
     else:
         classes = []
 
+    # Parents: one child at a time (validated selection), published
+    # reports only (enforced by the service), no status / date filters.
+    child_ctx: dict = {}
+    page_size = 20
+    if user.role == Role.PARENT.value:
+        child_ctx = await get_parent_child_context(request, db, explicit=student_id)
+        student_id = child_ctx.get("selected_child_id")
+        class_id = None
+        report_date = None
+        status = None
+        page_size = 100
+        if student_id is None:
+            # No linked children → nothing to list (never fall through
+            # to an unfiltered query).
+            context = {
+                "request": request, "user": user, "reports": [], "classes": [],
+                "current_class_id": None, "current_student_id": None,
+                "current_date": None, "current_status": None, "page": 1,
+                "total_pages": 0, "total": 0, "report_years": [], "term_labels": {},
+                "current_language": get_current_language(), "permissions": permissions,
+                **child_ctx,
+            }
+            return templates.TemplateResponse("reports/list.html", context)
+
     # Get reports
     reports, total = await report_service.get_reports(
         db,
@@ -117,10 +171,21 @@ async def reports_list(
         report_date=report_date,
         status=status,
         page=page,
-        page_size=20,
+        page_size=page_size,
     )
 
-    total_pages = (total + 19) // 20
+    total_pages = (total + page_size - 1) // page_size
+
+    # Parent view groups by school year and labels terms (P-ACAD-02).
+    report_years: list = []
+    term_labels: dict = {}
+    if child_ctx:
+        term_labels = await _term_labels(db, reports)
+        for r in reports:
+            y = r["report_date"].year if r.get("report_date") else None
+            if not report_years or report_years[-1][0] != y:
+                report_years.append((y, []))
+            report_years[-1][1].append(r)
 
     context = {
         "request": request,
@@ -134,11 +199,18 @@ async def reports_list(
         "page": page,
         "total_pages": total_pages,
         "total": total,
+        "report_years": report_years,
+        "term_labels": term_labels,
         "current_language": get_current_language(),
         "permissions": permissions,
     }
     if teacher_ctx:
         context.update(teacher_ctx)
+    if child_ctx:
+        context.update(child_ctx)
+        response = templates.TemplateResponse("reports/list.html", context)
+        remember_child(response, child_ctx)
+        return response
     return templates.TemplateResponse("reports/list.html", context)
 
 
@@ -324,12 +396,64 @@ async def reports_view(
         "subject_grading_map": subject_grading_map,
         "auto_term_label": auto_term_label,
         "auto_academic_year": auto_academic_year,
+        # P-ACAD-03: last-resort Year label derived from the report date
+        # so the card never shows a bare "-".
+        "fallback_year": str(report.report_date.year) if report.report_date else "",
         "current_language": get_current_language(),
         "permissions": permissions,
     }
     if user.role == Role.TEACHER.value:
         context.update(await get_teacher_class_context(request, db))
+    if user.role == Role.PARENT.value:
+        # The report is the parent's own child's (get_report is scoped),
+        # so viewing it also makes that child the current selection.
+        child_ctx = await get_parent_child_context(request, db, explicit=report.student_id)
+        context.update(child_ctx)
+        response = templates.TemplateResponse(template_name, context)
+        remember_child(response, child_ctx)
+        return response
     return templates.TemplateResponse(template_name, context)
+
+
+@router.get("/{report_id}/pdf")
+async def report_pdf(
+    request: Request,
+    report_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download a report as PDF (P-ACAD-01).
+
+    Loads through ``report_service.get_report`` — already scoped to the
+    viewer (teacher: own classes; parent: own children's published
+    reports) — so an out-of-scope or draft id redirects to /reports and
+    never renders. Wraps the existing ``render_report_pdf``.
+    """
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+
+    report = await get_report_service().get_report(db, report_id)
+    if not report:
+        return RedirectResponse(url="/reports", status_code=302)
+
+    import re
+    from fastapi.responses import Response
+    from app.services.report_pdf import render_report_pdf
+
+    pdf_bytes = await render_report_pdf(db, report)
+    student = report.student
+    name = f"{student.first_name}_{student.last_name}" if student else "report"
+    kind = (report.template.name if report.template else "Report")
+    raw = f"{name}_{kind}_{report.report_date.isoformat() if report.report_date else ''}"
+    filename = re.sub(r"[^A-Za-z0-9._-]+", "_", raw).strip("_")[:120] or "report"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}.pdf"',
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.get("/{report_id}/edit", response_class=HTMLResponse)

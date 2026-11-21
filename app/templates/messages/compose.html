@@ -24,9 +24,9 @@
         <form id="compose-form" class="space-y-4">
             <!-- Student / child selector — label depends on role -->
             <div>
-                <label for="student-select" class="block text-sm font-medium text-neutral-700 mb-1">{{ compose_copy.student_label }}</label>
+                <label for="student-select" class="block text-sm font-medium text-navy-800 mb-1">{{ compose_copy.student_label }}</label>
                 <select id="student-select" name="student_id" required
-                        class="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                        class="w-full px-3 py-2.5 border border-navy-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">{{ compose_copy.student_placeholder }}</option>
                     {% for item in compose_data %}
                     <option value="{{ item.student_id }}"
@@ -40,11 +40,11 @@
             <!-- Recipient selector — label + empty-state text swap by role.
                  Teachers message parents; parents message teachers. -->
             <div>
-                <label for="recipient-select" class="block text-sm font-medium text-neutral-700 mb-1">{{ compose_copy.recipient_label }}</label>
+                <label for="recipient-select" class="block text-sm font-medium text-navy-800 mb-1">{{ compose_copy.recipient_label }}</label>
                 <select id="recipient-select" name="recipient_id" required
                         data-empty-option="{{ compose_copy.empty_recipient_option }}"
                         data-placeholder="{{ compose_copy.recipient_placeholder }}"
-                        class="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
+                        class="w-full px-3 py-2.5 border border-navy-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
                         disabled>
                     <option value="">{{ compose_copy.student_placeholder }}</option>
                 </select>
@@ -58,18 +58,18 @@
 
             <!-- Subject -->
             <div>
-                <label for="message-subject" class="block text-sm font-medium text-neutral-700 mb-1">Subject</label>
+                <label for="message-subject" class="block text-sm font-medium text-navy-800 mb-1">Subject</label>
                 <input id="message-subject" name="subject" type="text" required maxlength="255"
                        placeholder="e.g. Absence note, Homework question..."
-                       class="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                       class="w-full px-3 py-2.5 border border-navy-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <!-- Message Body -->
             <div>
-                <label for="message-body" class="block text-sm font-medium text-neutral-700 mb-1">Message</label>
+                <label for="message-body" class="block text-sm font-medium text-navy-800 mb-1">Message</label>
                 <textarea id="message-body" name="body" rows="4" required
                           placeholder="Write your message..."
-                          class="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 resize-none"></textarea>
+                          class="w-full px-3 py-2.5 border border-navy-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 resize-none"></textarea>
             </div>
 
             <!-- Submit -->

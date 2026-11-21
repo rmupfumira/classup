@@ -18,6 +18,7 @@ from app.templates_config import templates
 from app.utils.permissions import PermissionChecker
 from app.utils.tenant_context import get_current_language, get_current_user_id_or_none, get_tenant_id
 from app.web.helpers import get_teacher_class_context
+from app.web._parent_context import login_redirect, require_login
 
 router = APIRouter(prefix="/photos")
 
@@ -34,12 +35,8 @@ async def _get_current_user(db: AsyncSession) -> User | None:
 
 
 def _require_auth(request: Request):
-    user_id = get_current_user_id_or_none()
-    if not user_id:
-        response = RedirectResponse(url="/login", status_code=302)
-        response.delete_cookie("access_token")
-        return response
-    return None
+    """Check authentication; redirect to login keeping ``?next=``."""
+    return require_login(request)
 
 
 @router.get("", response_class=HTMLResponse)
@@ -56,7 +53,7 @@ async def photos_gallery(
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     permissions = PermissionChecker(user.role)
     photo_service = get_photo_service()
@@ -129,6 +126,20 @@ async def photos_gallery(
     }
     if user.role == Role.TEACHER.value:
         context.update(await get_teacher_class_context(request, db))
+    if user.role == Role.PARENT.value:
+        from app.web._parent_context import get_parent_child_context
+        _pctx = await get_parent_child_context(request, db)
+        _by_class: dict[str, list[str]] = {}
+        for _c in _pctx.get("parent_children", []):
+            if _c.class_id:
+                _by_class.setdefault(str(_c.class_id), []).append(_c.first_name)
+        context["class_child_names"] = _by_class
+        # Canonical child order (D8): classes follow the children's order.
+        _order = {cid: i for i, cid in enumerate(_by_class.keys())}
+        context["classes"] = sorted(
+            context.get("classes") or [],
+            key=lambda c: (_order.get(str(c.id), len(_order)), c.name or ""),
+        )
     return templates.TemplateResponse("photos/gallery.html", context)
 
 
@@ -145,7 +156,7 @@ async def photos_upload(
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     permissions = PermissionChecker(user.role)
 

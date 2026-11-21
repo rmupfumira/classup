@@ -32,7 +32,7 @@
                 {% if announcement.level == 'SCHOOL' %}
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">School-wide</span>
                 {% elif announcement.school_class %}
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-700">{{ announcement.school_class.name }}</span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-navy-50 text-navy-800">{{ announcement.school_class.name }}</span>
                 {% endif %}
 
                 {% if announcement.is_pinned %}
@@ -45,41 +45,41 @@
                 {% endif %}
 
                 {% if announcement.is_expired %}
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-400">Expired</span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-navy-50 text-navy-400">Expired</span>
                 {% endif %}
             </div>
         </div>
 
         <!-- Content -->
         <div class="p-6">
-            <h1 class="text-xl font-bold text-neutral-800 mb-4">{{ announcement.title }}</h1>
+            <h1 class="text-xl font-bold text-navy-900 mb-4">{{ announcement.title }}</h1>
 
-            <div class="prose prose-sm max-w-none text-neutral-700 whitespace-pre-wrap mb-6">{{ announcement.body }}</div>
+            <div class="prose prose-sm max-w-none text-navy-800 whitespace-pre-wrap mb-6">{{ announcement.body }}</div>
 
             <!-- Meta -->
-            <div class="border-t border-neutral-100 pt-4 space-y-2 text-sm text-neutral-500">
+            <div class="border-t border-navy-50 pt-4 space-y-2 text-sm text-navy-500">
                 <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     <span>
                         Posted by
                         {% if announcement.creator %}
-                        <strong class="text-neutral-700">{{ announcement.creator.first_name }} {{ announcement.creator.last_name }}</strong>
+                        <strong class="text-navy-800">{{ announcement.creator.first_name }} {{ announcement.creator.last_name }}</strong>
                         {% else %}
-                        <strong class="text-neutral-700">Unknown</strong>
+                        <strong class="text-navy-800">Unknown</strong>
                         {% endif %}
                     </span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <span>{{ announcement.created_at.strftime('%B %d, %Y at %H:%M') }}</span>
                 </div>
                 {% if announcement.expires_at %}
                 <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>
@@ -96,7 +96,7 @@
 
         <!-- Actions -->
         {% if permissions.can_send_class_announcements() and (user.id == announcement.created_by or permissions.can_send_announcements()) %}
-        <div class="px-6 py-3 bg-neutral-50 border-t border-neutral-100 flex gap-2">
+        <div class="px-6 py-3 bg-navy-50 border-t border-navy-50 flex gap-2">
             <button onclick="deleteAnnouncement('{{ announcement.id }}')"
                     class="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
                 Delete

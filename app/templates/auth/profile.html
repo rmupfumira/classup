@@ -21,32 +21,32 @@
         <form id="profile-form" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">First Name</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">First Name</label>
                     <input type="text" id="first_name" value="{{ user.first_name or '' }}" required
                            class="cu-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Last Name</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">Last Name</label>
                     <input type="text" id="last_name" value="{{ user.last_name or '' }}" required
                            class="cu-input">
                 </div>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Email</label>
+                <label class="block text-sm font-medium text-navy-800 mb-1">Email</label>
                 <input type="email" value="{{ user.email }}" disabled
                        class="cu-input !bg-navy-50 !text-navy-500">
-                <p class="mt-1 text-xs text-neutral-400">Contact your school administrator to change your email.</p>
+                <p class="mt-1 text-xs text-navy-400">Contact your school administrator to change your email.</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">Phone</label>
                     <input type="tel" id="phone" value="{{ user.phone or '' }}"
                            class="cu-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Language</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">Language</label>
                     <select id="language"
                             class="cu-input">
                         <option value="en" {% if user.language == 'en' %}selected{% endif %}>English</option>
@@ -57,7 +57,7 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">WhatsApp Number</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">WhatsApp Number</label>
                     <input type="tel" id="whatsapp_phone" value="{{ user.whatsapp_phone or '' }}" placeholder="+27..."
                            class="cu-input">
                     {# If the parent already gave us a phone but no WhatsApp
@@ -68,19 +68,19 @@
                     <p class="mt-1 text-xs text-primary-600">
                         Same number as your phone?
                         <button type="button" id="copy-phone-btn"
-                                class="ml-1 underline hover:no-underline font-medium">
+                                class="ml-1 inline-flex items-center min-h-[44px] underline hover:no-underline font-medium">
                             Use {{ user.phone }}
                         </button>
                     </p>
                     {% else %}
-                    <p class="mt-1 text-xs text-neutral-400">E.164 format (e.g. +27722621278)</p>
+                    <p class="mt-1 text-xs text-navy-400">E.164 format (e.g. +27722621278)</p>
                     {% endif %}
                 </div>
                 <div class="flex items-center pt-6">
                     <label class="inline-flex items-center">
                         <input type="checkbox" id="whatsapp_opted_in" {% if user.whatsapp_opted_in %}checked{% endif %}
-                               class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                        <span class="ml-2 text-sm text-neutral-700">Receive WhatsApp notifications</span>
+                               class="rounded border-navy-200 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm text-navy-800">Receive WhatsApp notifications</span>
                     </label>
                 </div>
             </div>
@@ -88,15 +88,15 @@
             <!-- Email channel preference — added 2026-10-09. Default
                  True (opted in). A parent who turns this off still
                  sees in-app notifications, just no email. -->
-            <div class="pt-4 border-t border-neutral-100">
+            <div class="pt-4 border-t border-navy-50">
                 <label class="inline-flex items-start gap-2 cursor-pointer">
                     <input type="checkbox" id="email_opted_in" {% if user.email_opted_in %}checked{% endif %}
-                           class="mt-0.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                    <span class="text-sm text-neutral-700">
+                           class="mt-0.5 rounded border-navy-200 text-primary-600 focus:ring-primary-500">
+                    <span class="text-sm text-navy-800">
                         Receive email notifications
-                        <span class="block text-xs text-neutral-500 mt-0.5">
-                            Master toggle. Turn off to stop all parent emails.
-                            Legal receipts are still delivered.
+                        <span class="block text-xs text-navy-500 mt-0.5">
+                            {% if user.role == 'PARENT' %}Turn this off to stop all emails from the school. You'll still get receipts for payments.{% else %}Master toggle. Turn off to stop all parent emails.
+                            Legal receipts are still delivered.{% endif %}
                         </span>
                     </span>
                 </label>
@@ -109,24 +109,24 @@
             {% if user.role == 'PARENT' %}
             {% set prefs = user.notification_prefs or {} %}
             {% set notif_events = [
-                ('attendance',    'Attendance alerts',       'Absent / late / excused on your child'),
-                ('announcements', 'School announcements',    'Urgent + Emergency only — routine notices stay in-app'),
-                ('invoices',      'Invoices + payments',     'New invoice, receipt, overdue reminder'),
-                ('reports',       'Report cards',            'When a new report is finalised for your child'),
+                ('attendance',    'Attendance alerts',       'When your child is marked absent, late or excused'),
+                ('announcements', 'School announcements',    'Urgent and emergency notices (everyday notices stay in the app)'),
+                ('invoices',      'Fees and payments',       'New invoices, payment receipts and overdue reminders'),
+                ('reports',       'Report cards',            'When a new report is published for your child'),
                 ('photos',        'Photo updates',           'When teachers share class photos'),
                 ('documents',     'Documents',               'Class notes, policies, forms shared by the school'),
-                ('events',        'Events + RSVPs',          'Parent meetings, outings, reminders'),
+                ('events',        'Events and replies',      'Parent meetings, outings and reminders'),
                 ('messages',      'Messages',                'Direct messages from teachers'),
             ] %}
-            <div class="pt-4 border-t border-neutral-100">
-                <h3 class="text-sm font-semibold text-neutral-800 mb-1">Notification preferences</h3>
-                <p class="text-xs text-neutral-500 mb-3">
-                    Pick which channels you want for each kind of notification.
+            <div class="pt-4 border-t border-navy-50">
+                <h3 class="text-sm font-semibold text-navy-900 mb-1">Notification preferences</h3>
+                <p class="text-xs text-navy-500 mb-3">
+                    Choose how you hear about each kind of update. The email and WhatsApp switches above still apply.
                 </p>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
-                            <tr class="text-xs text-neutral-500">
+                            <tr class="text-xs text-navy-500">
                                 <th class="text-left py-1"></th>
                                 <th class="px-2 text-center py-1">Email</th>
                                 <th class="px-2 text-center py-1">WhatsApp</th>
@@ -135,22 +135,22 @@
                         <tbody>
                             {% for slug, title, detail in notif_events %}
                             {% set evt = prefs.get(slug, {}) %}
-                            <tr class="border-t border-neutral-100">
+                            <tr class="border-t border-navy-50">
                                 <td class="py-2 pr-4">
-                                    <div class="font-medium text-neutral-800">{{ title }}</div>
-                                    <div class="text-xs text-neutral-500">{{ detail }}</div>
+                                    <div class="font-medium text-navy-900">{{ title }}</div>
+                                    <div class="text-xs text-navy-500">{{ detail }}</div>
                                 </td>
                                 <td class="px-2 text-center">
                                     <input type="checkbox"
                                            data-event="{{ slug }}" data-channel="email"
                                            {% if evt.get('email', True) %}checked{% endif %}
-                                           class="pref-cb rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                                           class="pref-cb rounded border-navy-200 text-primary-600 focus:ring-primary-500">
                                 </td>
                                 <td class="px-2 text-center">
                                     <input type="checkbox"
                                            data-event="{{ slug }}" data-channel="whatsapp"
                                            {% if evt.get('whatsapp', True) %}checked{% endif %}
-                                           class="pref-cb rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                                           class="pref-cb rounded border-navy-200 text-primary-600 focus:ring-primary-500">
                                 </td>
                             </tr>
                             {% endfor %}
@@ -193,19 +193,19 @@
 
         <form id="password-form" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Current Password</label>
+                <label class="block text-sm font-medium text-navy-800 mb-1">Current Password</label>
                 <input type="password" id="current_password" required autocomplete="current-password"
                        class="cu-input">
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">New Password</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">New Password</label>
                     <input type="password" id="new_password" required minlength="8" autocomplete="new-password"
                            class="cu-input">
-                    <p class="mt-1 text-xs text-neutral-400">Minimum 8 characters</p>
+                    <p class="mt-1 text-xs text-navy-400">Minimum 8 characters</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Confirm New Password</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">Confirm New Password</label>
                     <input type="password" id="confirm_password" required minlength="8" autocomplete="new-password"
                            class="cu-input">
                 </div>

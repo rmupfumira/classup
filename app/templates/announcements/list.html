@@ -3,7 +3,30 @@
 {% block title %}Announcements - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+{% set is_parent = user.role == 'PARENT' %}
+<div class="space-y-5 md:space-y-6">
+    {% if is_parent %}
+    <header class="cu-parent-head">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-gold-600">School</span>
+        <h1 class="cu-parent-head-title">Announcements</h1>
+        <p class="text-sm text-navy-500">News from {{ school_name or 'your school' }}.</p>
+    </header>
+
+    {# One chip row + search, filtering the loaded list (P-COMM-03). #}
+    <div class="space-y-3">
+        <div class="cu-search">
+            <svg class="cu-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="search" id="ann-search" class="cu-input" placeholder="Search announcements" aria-label="Search announcements">
+        </div>
+        <div class="cu-filter-row cu-filter-row--scroll" role="group" aria-label="Show">
+            <button type="button" class="ann-chip cu-tap inline-flex items-center px-4 rounded-full text-sm font-semibold bg-navy-600 text-white" data-filter="all" aria-pressed="true">All</button>
+            {% for cid, names in (class_children or {}).items() %}
+            <button type="button" class="ann-chip cu-tap inline-flex items-center px-4 rounded-full text-sm font-semibold bg-white text-navy-700 ring-1 ring-navy-100" data-filter="class:{{ cid }}" aria-pressed="false">For {{ names|join(' & ') }}'s class</button>
+            {% endfor %}
+            <button type="button" class="ann-chip cu-tap inline-flex items-center px-4 rounded-full text-sm font-semibold bg-white text-navy-700 ring-1 ring-navy-100" data-filter="urgent" aria-pressed="false">Urgent</button>
+        </div>
+    </div>
+    {% else %}
     {# ------ Hero banner ------ #}
     <section class="cu-hero">
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -29,16 +52,16 @@
     <div class="cu-card p-4">
         <form method="get" action="/announcements" class="flex flex-wrap items-end gap-3">
             <div>
-                <label class="block text-xs font-medium text-neutral-500 mb-1">Level</label>
-                <select name="level" class="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                <label class="block text-xs font-medium text-navy-500 mb-1">Level</label>
+                <select name="level" class="px-3 py-2 border border-navy-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">All Levels</option>
                     <option value="SCHOOL" {{ 'selected' if filter_level == 'SCHOOL' }}>School-wide</option>
                     <option value="CLASS" {{ 'selected' if filter_level == 'CLASS' }}>Class</option>
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-neutral-500 mb-1">Severity</label>
-                <select name="severity" class="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                <label class="block text-xs font-medium text-navy-500 mb-1">Severity</label>
+                <select name="severity" class="px-3 py-2 border border-navy-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">All Severities</option>
                     <option value="INFO" {{ 'selected' if filter_severity == 'INFO' }}>Info</option>
                     <option value="WARNING" {{ 'selected' if filter_severity == 'WARNING' }}>Warning</option>
@@ -48,8 +71,8 @@
             </div>
             {% if classes %}
             <div>
-                <label class="block text-xs font-medium text-neutral-500 mb-1">Class</label>
-                <select name="class_id" class="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
+                <label class="block text-xs font-medium text-navy-500 mb-1">Class</label>
+                <select name="class_id" class="px-3 py-2 border border-navy-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">All Classes</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {{ 'selected' if filter_class_id == cls.id|string }}>{{ cls.name }}</option>
@@ -60,19 +83,22 @@
             <div class="flex items-center gap-2">
                 <input type="checkbox" name="active_only" value="true" id="active_only"
                        {{ 'checked' if filter_active_only }}
-                       class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-                <label for="active_only" class="text-sm text-neutral-600">Active only</label>
+                       class="rounded border-navy-200 text-primary-600 focus:ring-primary-500">
+                <label for="active_only" class="text-sm text-navy-600">Active only</label>
             </div>
             <button type="submit" class="cu-btn-primary">Filter</button>
             <a href="/announcements" class="text-sm text-navy-500 hover:text-navy-700">Clear</a>
         </form>
     </div>
+    {% endif %}
 
     <!-- Announcement Cards -->
     {% if announcements %}
     <div class="space-y-4">
         {% for announcement in announcements %}
-        <div class="cu-card cu-card-hover overflow-hidden">
+        <div id="a-{{ announcement.id }}" class="ann-card cu-card cu-card-hover overflow-hidden {% if is_parent and announcement.id|string in (pinned_ids or []) %}border-l-4 border-rose-500{% endif %}"
+             data-class-id="{{ announcement.class_id or '' }}" data-severity="{{ announcement.severity }}"
+             data-text="{{ (announcement.title ~ ' ' ~ announcement.body)|lower|e }}">
             <div class="p-5">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
@@ -88,11 +114,16 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">Info</span>
                             {% endif %}
 
+                            {% if is_parent and announcement.id|string in (pinned_ids or []) %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-rose-50 text-rose-700">Pinned</span>
+                            {% endif %}
                             <!-- Level Badge -->
-                            {% if announcement.level == 'SCHOOL' %}
+                            {% if is_parent and announcement.class_id and (class_children or {}).get(announcement.class_id|string) %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-50 text-navy-800">For {{ class_children[announcement.class_id|string]|join(' & ') }}'s class</span>
+                            {% elif announcement.level == 'SCHOOL' %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">School-wide</span>
                             {% else %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-700">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-50 text-navy-800">
                                 {{ announcement.school_class.name if announcement.school_class else 'Class' }}
                             </span>
                             {% endif %}
@@ -104,23 +135,23 @@
                             {% endif %}
 
                             {% if announcement.is_expired %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-400">Expired</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-50 text-navy-400">Expired</span>
                             {% endif %}
                         </div>
 
                         <a href="/announcements/{{ announcement.id }}" class="block">
-                            <h3 class="text-lg font-semibold text-neutral-800 hover:text-primary-600 transition-colors">
+                            <h3 class="text-lg font-semibold text-navy-900 hover:text-primary-600 transition-colors">
                                 {{ announcement.title }}
                             </h3>
                         </a>
-                        <p class="mt-1 text-sm text-neutral-600 line-clamp-2">{{ announcement.body[:200] }}{{ '...' if announcement.body|length > 200 }}</p>
+                        <p class="mt-1 text-sm text-navy-600 line-clamp-2">{{ announcement.body[:200] }}{{ '...' if announcement.body|length > 200 }}</p>
 
-                        <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+                        <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-navy-400">
                             <span>
                                 By {{ announcement.creator.first_name }} {{ announcement.creator.last_name if announcement.creator else 'Unknown' }}
                             </span>
                             <span>&middot;</span>
-                            <span>{{ announcement.created_at.strftime('%b %d, %Y at %H:%M') }}</span>
+                            <span>{{ announcement.created_at.strftime('%d %b %Y') if is_parent else announcement.created_at.strftime('%b %d, %Y at %H:%M') }}</span>
                             {% if announcement.expires_at %}
                             <span>&middot;</span>
                             <span>Expires {{ announcement.expires_at.strftime('%b %d, %Y') }}</span>
@@ -131,7 +162,7 @@
                     {% if permissions.can_send_class_announcements() and (user.id == announcement.created_by or permissions.can_send_announcements()) %}
                     <div class="flex-shrink-0 flex gap-1">
                         <button onclick="deleteAnnouncement('{{ announcement.id }}')"
-                                class="p-2 text-neutral-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                                class="p-2 text-navy-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
                                 title="Delete">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -150,20 +181,21 @@
     <div class="flex items-center justify-center gap-2">
         {% if page > 1 %}
         <a href="/announcements?page={{ page - 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_class_id %}&class_id={{ filter_class_id }}{% endif %}{% if filter_active_only %}&active_only=true{% endif %}"
-           class="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
+           class="px-3 py-2 text-sm border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors">
             Previous
         </a>
         {% endif %}
-        <span class="px-3 py-2 text-sm text-neutral-500">Page {{ page }} of {{ total_pages }}</span>
+        <span class="px-3 py-2 text-sm text-navy-500">Page {{ page }} of {{ total_pages }}</span>
         {% if page < total_pages %}
         <a href="/announcements?page={{ page + 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_class_id %}&class_id={{ filter_class_id }}{% endif %}{% if filter_active_only %}&active_only=true{% endif %}"
-           class="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors">
+           class="px-3 py-2 text-sm border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors">
             Next
         </a>
         {% endif %}
     </div>
     {% endif %}
 
+    <p id="ann-none" class="hidden cu-card p-5 text-sm text-navy-500">No announcements match.</p>
     {% else %}
     <!-- Empty State -->
     <div class="cu-card cu-empty">
@@ -195,6 +227,40 @@
 
 {% block scripts %}
 <script>
+(function () {
+    const search = document.getElementById('ann-search');
+    if (!search) return;
+    const chips = Array.from(document.querySelectorAll('.ann-chip'));
+    const cards = Array.from(document.querySelectorAll('.ann-card'));
+    const none = document.getElementById('ann-none');
+    let filter = 'all';
+    function apply() {
+        const q = search.value.trim().toLowerCase();
+        let shown = 0;
+        cards.forEach(c => {
+            let ok = true;
+            if (filter === 'urgent') ok = ['URGENT', 'EMERGENCY'].includes(c.dataset.severity);
+            else if (filter.startsWith('class:')) ok = c.dataset.classId === filter.slice(6);
+            if (ok && q) ok = (c.dataset.text || '').includes(q);
+            c.classList.toggle('hidden', !ok);
+            if (ok) shown++;
+        });
+        if (none) none.classList.toggle('hidden', shown > 0);
+    }
+    chips.forEach(ch => ch.addEventListener('click', () => {
+        filter = ch.dataset.filter;
+        chips.forEach(o => {
+            const on = o === ch;
+            o.setAttribute('aria-pressed', on ? 'true' : 'false');
+            o.classList.toggle('bg-navy-600', on); o.classList.toggle('text-white', on);
+            o.classList.toggle('bg-white', !on); o.classList.toggle('text-navy-700', !on);
+            o.classList.toggle('ring-1', !on); o.classList.toggle('ring-navy-100', !on);
+        });
+        apply();
+    }));
+    search.addEventListener('input', ClassUp.debounce ? ClassUp.debounce(apply, 150) : apply);
+})();
+
 async function deleteAnnouncement(id) {
     const confirmed = await ClassUp.confirm('Are you sure you want to delete this announcement?');
     if (!confirmed) return;

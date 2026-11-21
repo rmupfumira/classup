@@ -32,6 +32,7 @@ from app.utils.tenant_context import (
     get_current_user_role,
     get_tenant_id,
 )
+from app.web._parent_context import login_redirect, require_login
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ async def events_index(
     user.role."""
     user = await _current_user(db)
     if user is None:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id) if tenant_id else None
@@ -199,7 +200,7 @@ async def event_detail(
     """Single-event view. Parent RSVP happens via the API from here."""
     user = await _current_user(db)
     if user is None:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     tenant_id = get_tenant_id()
     tenant = await db.get(Tenant, tenant_id) if tenant_id else None

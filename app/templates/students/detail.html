@@ -3,15 +3,25 @@
 {% block title %}{{ student.first_name }} {{ student.last_name }} - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+{% set is_parent_view = user and user.role == 'PARENT' %}
+<div class="space-y-5 md:space-y-6">
+
+    {% if is_parent_view %}
+    {# Compact header on phones (P-MOB-02) + shared child switcher #}
+    <header class="cu-parent-head md:hidden">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-gold-600">Profile{% if student.school_class %} &middot; {{ student.school_class.name }}{% endif %}</span>
+        <h1 class="cu-parent-head-title break-words">{{ student.first_name }} {{ student.last_name }}</h1>
+    </header>
+    {% include "components/_child_switcher.html" %}
+    {% endif %}
 
     {# ------ Hero banner with student profile ------ #}
-    <section class="cu-hero">
+    <section class="cu-hero {% if is_parent_view %}hidden md:block{% endif %}">
         <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div class="max-w-xl">
-                <a href="/students" class="inline-flex items-center gap-1 text-white/70 hover:text-white text-xs font-semibold mb-3">
+                <a href="{{ '/dashboard?child_id=' ~ student.id if user and user.role == 'PARENT' else '/students' }}" class="inline-flex items-center gap-1 text-white/70 hover:text-white text-xs font-semibold mb-3">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                    Back to students
+                    {{ 'Back to home' if user and user.role == 'PARENT' else 'Back to students' }}
                 </a>
                 <h1 class="cu-page-title text-white">
                     {{ student.first_name }} {{ student.last_name }}
@@ -36,7 +46,10 @@
 
     {# ------ Tab bar ------ #}
     <div class="border-b border-navy-100">
-        <nav class="-mb-px flex flex-wrap gap-x-4 overflow-x-auto" aria-label="Student sections">
+        <nav class="-mb-px flex flex-nowrap gap-x-5 overflow-x-auto" style="scrollbar-width:none" aria-label="Student sections">
+            {% if is_parent_view %}
+            {% set _tabs = [('overview', 'Overview'), ('academics', 'Learning'), ('attendance', 'Attendance')] + ([('financials', 'Fees')] if billing_on else []) %}
+            {% else %}
             {% set _tabs = [
                 ('overview', 'Overview'),
                 ('academics', 'Academics'),
@@ -44,9 +57,10 @@
                 ('financials', 'Financials'),
                 ('reports', 'Reports'),
             ] %}
+            {% endif %}
             {% for slug, label in _tabs %}
             <button type="button" data-tab="{{ slug }}"
-                    class="tab-btn whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold transition-colors
+                    class="tab-btn whitespace-nowrap border-b-2 py-3 px-1 min-h-[44px] min-w-[44px] text-sm font-semibold transition-colors
                            {% if loop.first %}border-navy-600 text-navy-800{% else %}border-transparent text-navy-500 hover:border-navy-300 hover:text-navy-700{% endif %}">
                 {{ label }}
             </button>
@@ -68,7 +82,7 @@
                         <img class="h-24 w-24 rounded-full object-cover"
                              src="{{ student.photo_path }}" alt="">
                         {% else %}
-                        <div class="cu-avatar-lg">
+                        <div class="cu-avatar cu-avatar-lg">
                             {{ student.first_name[0] }}{{ student.last_name[0] }}
                         </div>
                         {% endif %}
@@ -78,7 +92,8 @@
                             <h2 class="text-xl font-bold text-navy-900 tracking-tight">
                                 {{ student.first_name }} {{ student.last_name }}
                             </h2>
-                            {% if student.is_active %}
+                            {% if is_parent_view %}
+                            {% elif student.is_active %}
                             <span class="cu-status cu-status-finalized">
                                 <span class="cu-status-dot"></span>Active
                             </span>
@@ -91,36 +106,40 @@
 
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
-                                <dt class="text-neutral-500">Date of Birth</dt>
-                                <dd class="text-neutral-900 font-medium">
-                                    {{ student.date_of_birth.strftime('%B %d, %Y') if student.date_of_birth else '-' }}
+                                <dt class="text-navy-500">Date of Birth</dt>
+                                <dd class="text-navy-900 font-medium">
+                                    {{ (student.date_of_birth.day ~ ' ' ~ student.date_of_birth.strftime('%B %Y')) if student.date_of_birth else 'Not recorded' }}
                                 </dd>
                             </div>
                             <div>
-                                <dt class="text-neutral-500">Gender</dt>
-                                <dd class="text-neutral-900 font-medium">{{ student.gender or '-' }}</dd>
+                                <dt class="text-navy-500">Gender</dt>
+                                <dd class="text-navy-900 font-medium">{{ (student.gender|replace('_', ' ')|capitalize) if student.gender else 'Not recorded' }}</dd>
                             </div>
                             <div>
-                                <dt class="text-neutral-500">Class</dt>
-                                <dd class="text-neutral-900 font-medium">
+                                <dt class="text-navy-500">Class</dt>
+                                <dd class="text-navy-900 font-medium">
                                     {% if student.school_class %}
+                                        {% if user and user.role == 'PARENT' %}
+                                            {{ student.school_class.name }}
+                                        {% else %}
                                         <a href="/classes/{{ student.school_class.id }}" class="text-primary-600 hover:underline">
                                             {{ student.school_class.name }}
                                         </a>
+                                        {% endif %}
                                     {% else %}
                                         Unassigned
                                     {% endif %}
                                 </dd>
                             </div>
                             <div>
-                                <dt class="text-neutral-500">Enrollment Date</dt>
-                                <dd class="text-neutral-900 font-medium">
-                                    {{ student.enrollment_date.strftime('%B %d, %Y') if student.enrollment_date else '-' }}
+                                <dt class="text-navy-500">Enrollment Date</dt>
+                                <dd class="text-navy-900 font-medium">
+                                    {{ (student.enrollment_date.day ~ ' ' ~ student.enrollment_date.strftime('%B %Y')) if student.enrollment_date else 'Not recorded' }}
                                 </dd>
                             </div>
                             <div>
-                                <dt class="text-neutral-500">Grade Level</dt>
-                                <dd class="text-neutral-900 font-medium">
+                                <dt class="text-navy-500">Grade Level</dt>
+                                <dd class="text-navy-900 font-medium">
                                     {% if student.school_class and student.school_class.grade_level_rel %}
                                         {{ student.school_class.grade_level_rel.name }}
                                     {% else %}
@@ -140,10 +159,10 @@
             {% if student.medical_info or student.allergies or student.emergency_contacts or is_parent %}
             <div class="cu-card p-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-neutral-900">Medical Information</h3>
+                    <h3 class="text-lg font-semibold text-navy-900">Medical Information</h3>
                     {% if is_parent or permissions.can_manage_students() %}
                     <a href="/students/{{ student.id }}/edit-medical"
-                       class="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                       class="inline-flex items-center min-h-[44px] px-2 -mr-2 text-xs text-primary-600 hover:text-primary-700 font-medium">
                         Update
                     </a>
                     {% endif %}
@@ -152,7 +171,7 @@
                 {% if student.allergies %}
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-red-600 mb-2">Allergies</h4>
-                    <p class="text-neutral-700 bg-red-50 rounded-lg p-3 border border-red-100">
+                    <p class="text-navy-800 bg-red-50 rounded-lg p-3 border border-red-100">
                         {{ student.allergies }}
                     </p>
                 </div>
@@ -160,20 +179,20 @@
 
                 {% if student.medical_info %}
                 <div class="mb-4">
-                    <h4 class="text-sm font-medium text-neutral-700 mb-2">Medical Notes</h4>
-                    <p class="text-neutral-700">{{ student.medical_info }}</p>
+                    <h4 class="text-sm font-medium text-navy-800 mb-2">Medical Notes</h4>
+                    <p class="text-navy-800">{{ student.medical_info }}</p>
                 </div>
                 {% endif %}
 
                 {% if student.emergency_contacts %}
                 <div>
-                    <h4 class="text-sm font-medium text-neutral-700 mb-2">Emergency contacts</h4>
-                    <ul class="text-sm text-neutral-700 space-y-1">
+                    <h4 class="text-sm font-medium text-navy-800 mb-2">Emergency contacts</h4>
+                    <ul class="text-sm text-navy-800 space-y-1">
                         {% for c in student.emergency_contacts %}
                         <li>
                             <span class="font-medium">{{ c.name }}</span>
                             {% if c.phone %}· <a href="tel:{{ c.phone }}" class="text-primary-600 hover:text-primary-700">{{ c.phone }}</a>{% endif %}
-                            {% if c.relationship %}<span class="text-neutral-500">({{ c.relationship }})</span>{% endif %}
+                            {% if c.relationship %}<span class="text-navy-500">({{ c.relationship }})</span>{% endif %}
                         </li>
                         {% endfor %}
                     </ul>
@@ -181,7 +200,7 @@
                 {% endif %}
 
                 {% if is_parent and not student.medical_info and not student.allergies and not student.emergency_contacts %}
-                <p class="text-sm text-neutral-500">
+                <p class="text-sm text-navy-500">
                     Nothing on file yet. Tap <strong>Update</strong> to add allergies, medications or emergency contacts.
                 </p>
                 {% endif %}
@@ -191,8 +210,8 @@
             <!-- Notes -->
             {% if student.notes %}
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-4">Notes</h3>
-                <p class="text-neutral-700">{{ student.notes }}</p>
+                <h3 class="text-lg font-semibold text-navy-900 mb-4">Notes</h3>
+                <p class="text-navy-800">{{ student.notes }}</p>
             </div>
             {% endif %}
 
@@ -206,8 +225,8 @@
             <div class="cu-card p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h3 class="text-lg font-semibold text-neutral-900">Subject track</h3>
-                        <p class="text-xs text-neutral-500 mt-0.5">
+                        <h3 class="text-lg font-semibold text-navy-900">Subject track</h3>
+                        <p class="text-xs text-navy-500 mt-0.5">
                             What this student actually takes.
                             {% if is_combined %}
                             Edit a row to swap it for the alternate curriculum body.
@@ -215,12 +234,12 @@
                         </p>
                     </div>
                 </div>
-                <ul class="divide-y divide-neutral-100">
+                <ul class="divide-y divide-navy-50">
                     {% for row in subject_rows %}
                     {% set subject = row.effective_subject %}
                     <li class="py-3 flex items-center justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="text-sm font-medium text-neutral-800">
+                            <p class="text-sm font-medium text-navy-900">
                                 {{ subject.name }}
                                 {% if row.is_overridden %}
                                 <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">
@@ -229,7 +248,7 @@
                                 {% endif %}
                             </p>
                             {% if subject.curriculum_pack_code %}
-                            <p class="text-xs text-neutral-500 mt-0.5">
+                            <p class="text-xs text-navy-500 mt-0.5">
                                 {% if subject.curriculum_pack_code == 'ZW_ZIMSEC' %}ZIMSEC
                                 {% elif subject.curriculum_pack_code == 'ZW_CAMBRIDGE' %}Cambridge
                                 {% elif subject.curriculum_pack_code == 'ZA_CAPS' %}CAPS
@@ -262,7 +281,7 @@
             <!-- Parents/Guardians -->
             <div class="cu-card p-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-neutral-900">Parents/Guardians</h3>
+                    <h3 class="text-lg font-semibold text-navy-900">Parents/Guardians</h3>
                     {% if permissions.can_invite_parents() %}
                     <button type="button" onclick="document.getElementById('invite-parent-dialog').showModal()"
                             class="text-primary-600 text-sm hover:text-primary-700 font-medium">
@@ -277,14 +296,14 @@
                     {% if ps.parent %}
                     <li class="flex items-start gap-3">
                         <div class="flex-shrink-0">
-                            <div class="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center">
-                                <span class="text-neutral-600 font-medium text-sm">
+                            <div class="h-10 w-10 rounded-full bg-navy-50 flex items-center justify-center">
+                                <span class="text-navy-600 font-medium text-sm">
                                     {{ ps.parent.first_name[0] }}{{ ps.parent.last_name[0] }}
                                 </span>
                             </div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-neutral-900">
+                            <p class="text-sm font-medium text-navy-900">
                                 {{ ps.parent.first_name }} {{ ps.parent.last_name }}
                                 {% if ps.is_primary %}
                                 <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700">
@@ -292,14 +311,14 @@
                                 </span>
                                 {% endif %}
                             </p>
-                            <p class="text-sm text-neutral-500">{{ ps.relationship_type }}</p>
+                            {% if not is_parent_view %}<p class="text-sm text-navy-500">{{ ps.relationship_type }}</p>{% endif %}
                             {% if ps.parent.email %}
                             <a href="mailto:{{ ps.parent.email }}" class="text-sm text-primary-600 hover:underline">
                                 {{ ps.parent.email }}
                             </a>
                             {% endif %}
                             {% if ps.parent.phone %}
-                            <p class="text-sm text-neutral-500">{{ ps.parent.phone }}</p>
+                            <p class="text-sm text-navy-500">{{ ps.parent.phone }}</p>
                             {% endif %}
                         </div>
                     </li>
@@ -307,12 +326,12 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p class="text-sm text-neutral-500">No parents linked yet.</p>
+                <p class="text-sm text-navy-500">No parents linked yet.</p>
                 {% endif %}
 
                 <!-- Pending Invitations -->
                 {% if pending_invitations %}
-                <div class="mt-4 pt-4 border-t border-neutral-200">
+                <div class="mt-4 pt-4 border-t border-navy-100">
                     <h4 class="text-sm font-medium text-amber-700 mb-3">Pending Invitations</h4>
                     <ul class="space-y-3">
                         {% for inv in pending_invitations %}
@@ -346,39 +365,39 @@
 
             <!-- Emergency Contacts -->
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-4">Emergency Contacts</h3>
+                <h3 class="text-lg font-semibold text-navy-900 mb-4">Emergency Contacts</h3>
 
                 {% if student.emergency_contacts %}
                 <ul class="space-y-3">
                     {% for contact in student.emergency_contacts %}
                     <li class="border-l-4 border-red-400 pl-3 py-1">
-                        <p class="text-sm font-medium text-neutral-900">{{ contact.name }}</p>
-                        <p class="text-sm text-neutral-500">{{ contact.relationship }}</p>
-                        <p class="text-sm text-neutral-700">{{ contact.phone }}</p>
+                        <p class="text-sm font-medium text-navy-900">{{ contact.name }}</p>
+                        <p class="text-sm text-navy-500">{{ contact.relationship }}</p>
+                        <p class="text-sm text-navy-800">{{ contact.phone }}</p>
                     </li>
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p class="text-sm text-neutral-500">No emergency contacts added.</p>
+                <p class="text-sm text-navy-500">No emergency contacts added.</p>
                 {% endif %}
             </div>
 
             <!-- Quick Actions -->
             {% if permissions.can_manage_students() %}
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-4">Quick Actions</h3>
+                <h3 class="text-lg font-semibold text-navy-900 mb-4">Quick Actions</h3>
                 <div class="space-y-2">
                     <a href="/reports/create?student_id={{ student.id }}"
-                       class="block w-full px-4 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                       class="block w-full px-4 py-2 text-center text-sm font-medium text-navy-800 bg-navy-50 rounded-lg hover:bg-navy-100 transition-colors">
                         Create Report
                     </a>
                     {% if permissions.can_invite_parents() %}
                     <button type="button" onclick="document.getElementById('invite-parent-dialog').showModal()"
-                            class="block w-full px-4 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                            class="block w-full px-4 py-2 text-center text-sm font-medium text-navy-800 bg-navy-50 rounded-lg hover:bg-navy-100 transition-colors">
                         Invite Parent
                     </button>
                     <a href="/invitations?student_id={{ student.id }}"
-                       class="block w-full px-4 py-2 text-center text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                       class="block w-full px-4 py-2 text-center text-sm font-medium text-navy-800 bg-navy-50 rounded-lg hover:bg-navy-100 transition-colors">
                         View All Invitations
                     </a>
                     {% endif %}
@@ -389,38 +408,116 @@
     </div>
     {# ─── end OVERVIEW tab ─── #}
 
+    {% if is_parent_view %}
+    {# ================= Parent tabs (server-rendered) =================
+       P-ACAD-04 Learning: published reports only, plain words, no MIS /
+       staff links. P-ATT-01 Attendance: same summary + rate as
+       /attendance/student/{id}. P-MULTI-01 Fees: this child's balance
+       and a link to the Fees page. #}
+    <div data-tab-panel="academics" class="hidden space-y-4">
+        <div class="cu-card overflow-hidden">
+            <div class="px-5 py-3 border-b border-navy-100 flex items-center justify-between gap-3">
+                <h3 class="text-base font-bold text-navy-900">Latest reports</h3>
+                <a href="/reports?child_id={{ student.id }}" class="text-sm font-semibold text-navy-700 hover:text-navy-900 min-h-[44px] inline-flex items-center">All reports</a>
+            </div>
+            {% if recent_reports %}
+            <ul class="divide-y divide-navy-100">
+                {% for r in recent_reports %}
+                <li>
+                    <a href="/reports/{{ r.id }}" class="px-5 py-3 flex items-center justify-between gap-3 min-h-[44px] hover:bg-navy-50/40">
+                        <span class="min-w-0">
+                            <span class="block text-sm font-semibold text-navy-900 truncate">{{ r.template_name or 'Report' }}</span>
+                            <span class="block text-xs text-navy-500">{{ r.report_date.strftime('%d %b %Y') if r.report_date else '' }}{% if r.finalized_at %} &middot; Published {{ r.finalized_at.strftime('%d %b %Y') }}{% endif %}</span>
+                        </span>
+                        <svg class="cu-tap-row-chevron w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="px-5 py-4 text-sm text-navy-500">No reports have been published for {{ student.first_name }} yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div data-tab-panel="attendance" class="hidden space-y-4">
+        <div class="cu-card p-5">
+            <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+                <h3 class="text-base font-bold text-navy-900">{{ att_period_label or 'This term' }}</h3>
+                <a href="/attendance/student/{{ student.id }}" class="text-sm font-semibold text-navy-700 hover:text-navy-900 min-h-[44px] inline-flex items-center">See full history</a>
+            </div>
+            {% if att_summary and att_summary.total_days > 0 %}
+            <p class="text-sm text-navy-700">In school <strong class="text-navy-900">{{ att_summary.present_days + att_summary.late_days }} of {{ att_summary.total_days }}</strong> marked days &middot; <strong class="text-navy-900">{{ att_summary.attendance_rate }}%</strong></p>
+            <dl class="mt-3 grid grid-cols-4 gap-2 text-center">
+                <div class="rounded-xl bg-emerald-50 py-2"><dt class="text-[11px] text-emerald-700">Present</dt><dd class="text-lg font-bold text-emerald-800">{{ att_summary.present_days }}</dd></div>
+                <div class="rounded-xl bg-amber-50 py-2"><dt class="text-[11px] text-amber-700">Late</dt><dd class="text-lg font-bold text-amber-800">{{ att_summary.late_days }}</dd></div>
+                <div class="rounded-xl bg-rose-50 py-2"><dt class="text-[11px] text-rose-700">Absent</dt><dd class="text-lg font-bold text-rose-800">{{ att_summary.absent_days }}</dd></div>
+                <div class="rounded-xl bg-navy-50 py-2"><dt class="text-[11px] text-navy-600">Excused</dt><dd class="text-lg font-bold text-navy-800">{{ att_summary.excused_days }}</dd></div>
+            </dl>
+            <p class="mt-2 text-xs text-navy-500">Late days count as in school.</p>
+            {% else %}
+            <p class="text-sm text-navy-500">No attendance has been marked for {{ student.first_name }} this term yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if billing_on %}
+    <div data-tab-panel="financials" class="hidden space-y-4">
+        <div class="cu-card p-5">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 class="text-base font-bold text-navy-900">Fees for {{ student.first_name }}</h3>
+                <a href="/billing/statement?child_id={{ student.id }}" class="text-sm font-semibold text-navy-700 hover:text-navy-900 min-h-[44px] inline-flex items-center">Open Fees</a>
+            </div>
+            {% if fee_balance %}
+            {% if fee_balance.balance > 0 %}
+            <p class="mt-2 text-3xl font-extrabold tracking-tight text-navy-900">{{ fee_balance.balance|money(billing_currency) }}</p>
+            <p class="text-sm text-navy-600">to pay</p>
+            {% else %}
+            <p class="mt-2 text-xl font-bold text-emerald-700">Paid up</p>
+            {% endif %}
+            <dl class="mt-3 pt-3 border-t border-navy-100 grid grid-cols-2 gap-2 text-sm">
+                <div><dt class="text-xs text-navy-500">Charged so far</dt><dd class="font-semibold text-navy-900">{{ fee_balance.total_invoiced|money(billing_currency) }}</dd></div>
+                <div><dt class="text-xs text-navy-500">Paid so far</dt><dd class="font-semibold text-emerald-700">{{ fee_balance.total_paid|money(billing_currency) }}</dd></div>
+            </dl>
+            {% else %}
+            <p class="mt-2 text-sm text-navy-500">Fees for {{ student.first_name }} aren't available right now.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
     <!-- ========================================================= -->
     <!-- ACADEMICS TAB                                              -->
     <!-- ========================================================= -->
     <div data-tab-panel="academics" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Recent report cards</h3>
-                <p class="text-xs text-neutral-500 mb-4">
+                <h3 class="text-lg font-semibold text-navy-900 mb-1">Recent report cards</h3>
+                <p class="text-xs text-navy-500 mb-4">
                     Finalised and draft reports for this student, newest first.
                 </p>
-                <div id="academics-reports" class="text-sm text-neutral-500">Loading…</div>
+                <div id="academics-reports" class="text-sm text-navy-500">Loading…</div>
             </div>
             {% if permissions.is_staff and subject_rows %}
             {# Mirror the subject-track card from Overview here too —
                teachers landing on Academics expect the subject list. #}
             {% set is_combined2 = tenant and (tenant.settings or {}).get('curriculum_pack') == 'ZW_COMBINED' %}
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Subject track</h3>
-                <p class="text-xs text-neutral-500 mb-3">What this student actually takes.</p>
-                <ul class="divide-y divide-neutral-100">
+                <h3 class="text-lg font-semibold text-navy-900 mb-1">Subject track</h3>
+                <p class="text-xs text-navy-500 mb-3">What this student actually takes.</p>
+                <ul class="divide-y divide-navy-50">
                     {% for row in subject_rows %}
                     {% set subject = row.effective_subject %}
                     <li class="py-2 flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-neutral-800">
+                            <p class="text-sm font-medium text-navy-900">
                                 {{ subject.name }}
                                 {% if row.is_overridden %}
                                 <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">OVERRIDE</span>
                                 {% endif %}
                             </p>
                             {% if subject.curriculum_pack_code %}
-                            <p class="text-xs text-neutral-500">{{ subject.curriculum_pack_code.replace('ZW_', '').replace('ZA_', '').title() }}</p>
+                            <p class="text-xs text-navy-500">{{ subject.curriculum_pack_code.replace('ZW_', '').replace('ZA_', '').title() }}</p>
                             {% endif %}
                         </div>
                         {% if is_combined2 and permissions.can_manage_students() %}
@@ -443,9 +540,9 @@
                the feature is on. Silently hides when the tenant isn't
                on the MIS plan. #}
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Progress</h3>
-                <p class="text-xs text-neutral-500 mb-3">Current vs previous term.</p>
-                <div id="academics-progress" class="text-sm text-neutral-500">—</div>
+                <h3 class="text-lg font-semibold text-navy-900 mb-1">Progress</h3>
+                <p class="text-xs text-navy-500 mb-3">Current vs previous term.</p>
+                <div id="academics-progress" class="text-sm text-navy-500">—</div>
             </div>
         </div>
     </div>
@@ -455,13 +552,13 @@
     <!-- ========================================================= -->
     <div data-tab-panel="attendance" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 cu-card p-6">
-            <h3 class="text-lg font-semibold text-neutral-900 mb-1">Recent sessions</h3>
-            <p class="text-xs text-neutral-500 mb-4">Last 60 school days.</p>
-            <div id="attendance-table" class="text-sm text-neutral-500">Loading…</div>
+            <h3 class="text-lg font-semibold text-navy-900 mb-1">Recent sessions</h3>
+            <p class="text-xs text-navy-500 mb-4">Last 60 school days.</p>
+            <div id="attendance-table" class="text-sm text-navy-500">Loading…</div>
         </div>
         <div class="cu-card p-6">
-            <h3 class="text-lg font-semibold text-neutral-900 mb-3">Summary</h3>
-            <div id="attendance-summary" class="text-sm text-neutral-500">—</div>
+            <h3 class="text-lg font-semibold text-navy-900 mb-3">Summary</h3>
+            <div id="attendance-summary" class="text-sm text-navy-500">—</div>
         </div>
     </div>
 
@@ -471,19 +568,19 @@
     <div data-tab-panel="financials" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-1">Invoices</h3>
-                <p class="text-xs text-neutral-500 mb-4">Every invoice + payment on this student.</p>
-                <div id="financials-invoices" class="text-sm text-neutral-500">Loading…</div>
+                <h3 class="text-lg font-semibold text-navy-900 mb-1">Invoices</h3>
+                <p class="text-xs text-navy-500 mb-4">Every invoice + payment on this student.</p>
+                <div id="financials-invoices" class="text-sm text-navy-500">Loading…</div>
             </div>
         </div>
         <div class="space-y-6">
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-3">Balance</h3>
-                <div id="financials-balance" class="text-sm text-neutral-500">—</div>
+                <h3 class="text-lg font-semibold text-navy-900 mb-3">Balance</h3>
+                <div id="financials-balance" class="text-sm text-navy-500">—</div>
             </div>
             <div class="cu-card p-6">
-                <h3 class="text-lg font-semibold text-neutral-900 mb-3">Recent payments</h3>
-                <div id="financials-payments" class="text-sm text-neutral-500">—</div>
+                <h3 class="text-lg font-semibold text-navy-900 mb-3">Recent payments</h3>
+                <div id="financials-payments" class="text-sm text-navy-500">—</div>
             </div>
         </div>
     </div>
@@ -492,12 +589,13 @@
     <!-- REPORTS TAB — big list of finalised cards                 -->
     <!-- ========================================================= -->
     <div data-tab-panel="reports" class="hidden cu-card p-6">
-        <h3 class="text-lg font-semibold text-neutral-900 mb-1">All report cards</h3>
-        <p class="text-xs text-neutral-500 mb-4">
+        <h3 class="text-lg font-semibold text-navy-900 mb-1">All report cards</h3>
+        <p class="text-xs text-navy-500 mb-4">
             Grouped by academic year. Click any row to open the full report.
         </p>
-        <div id="reports-full" class="text-sm text-neutral-500">Loading…</div>
+        <div id="reports-full" class="text-sm text-navy-500">Loading…</div>
     </div>
+    {% endif %}{# /parent vs staff tabs #}
 </div>
 
 {% set STUDENT_ID = student.id | string %}
@@ -509,7 +607,10 @@
     const btns = Array.from(document.querySelectorAll('.tab-btn'));
     const loaded = new Set();
 
-    const loaders = {
+    const IS_PARENT_VIEW = {{ 'true' if is_parent_view else 'false' }};
+    const BILLING_CURRENCY = {{ (billing_currency or 'USD') | tojson }};
+    // Parents' tabs are server-rendered (no staff/MIS API calls).
+    const loaders = IS_PARENT_VIEW ? {} : {
         academics: loadAcademics,
         attendance: loadAttendance,
         financials: loadFinancials,
@@ -526,7 +627,7 @@
             b.classList.toggle('border-primary-500', on);
             b.classList.toggle('text-primary-600', on);
             b.classList.toggle('border-transparent', !on);
-            b.classList.toggle('text-neutral-500', !on);
+            b.classList.toggle('text-navy-500', !on);
         });
         panels.forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== name));
         // Deep-link via hash so the browser's back button + shareable
@@ -541,7 +642,7 @@
 
     // Open to the hash tab if the URL already has one
     const initial = (location.hash || '#overview').slice(1);
-    if (['academics', 'attendance', 'financials', 'reports'].includes(initial)) {
+    if (initial !== 'overview' && btns.some(b => b.dataset.tab === initial)) {
         activate(initial);
     }
 
@@ -551,11 +652,16 @@
         try { return new Date(iso).toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'}); }
         catch (e) { return iso; }
     }
+    // One money format everywhere (P-BILL-05): "$1,234.00".
     function fmtMoney(n, cur) {
-        if (n == null) return '—';
-        const sym = { USD: '$', ZAR: 'R', ZWL: 'Z$' }[cur] || (cur || '');
-        return `${sym} ${Number(n).toFixed(2)}`;
+        if (n == null || n === '') return '—';
+        const code = cur || BILLING_CURRENCY;
+        const sym = { USD: '$', ZAR: 'R', ZWL: 'Z$', ZWG: 'ZiG ', GBP: '£', EUR: '€', BWP: 'P', KES: 'KSh ', NGN: '₦' }[code] || (code ? code + ' ' : '');
+        const v = Number(n);
+        const abs = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return `${v < 0 ? '-' : ''}${sym}${abs}`;
     }
+    const STATUS_WORDS = { PAID: 'Paid', PARTIALLY_PAID: 'Part paid', OVERDUE: 'Overdue', SENT: 'Sent', DRAFT: 'Draft', CANCELLED: 'Cancelled', FINALIZED: 'Published' };
 
     // ───── Academics: reports list + progress ─────
     async function loadAcademics() {
@@ -564,25 +670,25 @@
             const r = await ClassUp.fetch(`/api/v1/reports/student/${STUDENT_ID}`);
             const rows = (r.data || []).slice(0, 20);
             if (!rows.length) {
-                box.innerHTML = '<p class="text-neutral-500">No reports yet.</p>';
+                box.innerHTML = '<p class="text-navy-500">No reports yet.</p>';
             } else {
                 box.innerHTML = `
                     <table class="min-w-full text-sm">
-                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                        <thead class="bg-navy-50 border-b border-navy-100">
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Report</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase"></th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Date</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Report</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Status</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-neutral-100">
+                        <tbody class="divide-y divide-navy-50">
                             ${rows.map(r => `
-                                <tr class="hover:bg-neutral-50">
-                                    <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${fmtDate(r.report_date)}</td>
-                                    <td class="px-3 py-2 text-neutral-800">${r.template_name || 'Report'}</td>
+                                <tr class="hover:bg-navy-50">
+                                    <td class="px-3 py-2 whitespace-nowrap text-navy-600">${fmtDate(r.report_date)}</td>
+                                    <td class="px-3 py-2 text-navy-900">${r.template_name || 'Report'}</td>
                                     <td class="px-3 py-2">
-                                        <span class="text-xs px-2 py-0.5 rounded ${r.status === 'FINALIZED' ? 'bg-success-100 text-success-700' : 'bg-neutral-100 text-neutral-600'}">${r.status || '—'}</span>
+                                        <span class="text-xs px-2 py-0.5 rounded ${r.status === 'FINALIZED' ? 'bg-success-100 text-success-700' : 'bg-navy-50 text-navy-600'}">${STATUS_WORDS[r.status] || r.status || '—'}</span>
                                     </td>
                                     <td class="px-3 py-2 text-right"><a href="/reports/${r.id}" class="text-xs text-primary-600 hover:underline">Open</a></td>
                                 </tr>
@@ -603,28 +709,28 @@
             const p = await ClassUp.fetch(`/api/v1/mis/students/${STUDENT_ID}/progress?from_date=${fromDate}&to_date=${today}`);
             const d = p.data;
             if (!d || !d.current) {
-                progBox.innerHTML = '<p class="text-neutral-500">No term data yet.</p>';
+                progBox.innerHTML = '<p class="text-navy-500">No term data yet.</p>';
                 return;
             }
             const delta = d.aggregate_delta_pct;
-            const deltaCls = delta == null ? 'text-neutral-500' : (delta >= 0 ? 'text-success-700' : 'text-danger-700');
+            const deltaCls = delta == null ? 'text-navy-500' : (delta >= 0 ? 'text-success-700' : 'text-danger-700');
             const deltaLabel = delta == null ? '—' : (delta >= 0 ? '+' : '') + delta.toFixed(1) + '%';
             progBox.innerHTML = `
                 <div class="space-y-3">
-                    <div><p class="text-xs text-neutral-500 uppercase">Current aggregate</p>
+                    <div><p class="text-xs text-navy-500 uppercase">Current aggregate</p>
                          <p class="text-2xl font-semibold text-primary-700">${d.current.aggregate_pct.toFixed(1)}%</p>
-                         <p class="text-xs text-neutral-400">${d.current.grade} · ${d.current.label}</p></div>
-                    <div><p class="text-xs text-neutral-500 uppercase">Movement</p>
+                         <p class="text-xs text-navy-400">${d.current.grade} · ${d.current.label}</p></div>
+                    <div><p class="text-xs text-navy-500 uppercase">Movement</p>
                          <p class="text-lg font-semibold ${deltaCls}">${deltaLabel}</p></div>
-                    <div><p class="text-xs text-neutral-500 uppercase">Class rank</p>
-                         <p class="text-lg font-semibold text-neutral-800">${d.current.rank_in_class ? '#' + d.current.rank_in_class : '—'}
-                            <span class="text-xs text-neutral-400 font-normal">of ${d.current.class_size || '—'}</span></p></div>
-                    <div class="pt-3 border-t border-neutral-100">
+                    <div><p class="text-xs text-navy-500 uppercase">Class rank</p>
+                         <p class="text-lg font-semibold text-navy-900">${d.current.rank_in_class ? '#' + d.current.rank_in_class : '—'}
+                            <span class="text-xs text-navy-400 font-normal">of ${d.current.class_size || '—'}</span></p></div>
+                    <div class="pt-3 border-t border-navy-50">
                         <a href="/mis/longitudinal#${STUDENT_ID}" class="text-xs text-primary-600 hover:underline">Full longitudinal view →</a>
                     </div>
                 </div>`;
         } catch (err) {
-            progBox.innerHTML = '<p class="text-xs text-neutral-400">MIS not enabled for this school.</p>';
+            progBox.innerHTML = '<p class="text-xs text-navy-400">MIS not enabled for this school.</p>';
         }
     }
 
@@ -636,18 +742,22 @@
             // Dedicated per-student endpoint returns both stats + records
             const r = await ClassUp.fetch(`/api/v1/attendance/student/${STUDENT_ID}`);
             const d = r.data || {};
-            const stats = d.stats || {};
+            // The API returns `summary` (StudentAttendanceSummary).
+            const stats = d.summary || d.stats || {};
             const total = stats.total_days || stats.total || 0;
             const present = stats.present_days ?? stats.present ?? 0;
             const late = stats.late_days ?? stats.late ?? 0;
             const absent = stats.absent_days ?? stats.absent ?? 0;
             const excused = stats.excused_days ?? stats.excused ?? 0;
-            const pct = total ? ((present + late + excused) / total * 100).toFixed(1) : '—';
+            // One rate definition: (present + late) / marked days — the
+            // same number the attendance history page shows.
+            const pct = stats.attendance_rate != null ? Number(stats.attendance_rate).toFixed(1)
+                : (total ? ((present + late) / total * 100).toFixed(1) : '—');
             summary.innerHTML = `
                 <dl class="space-y-2">
-                    <div class="flex justify-between"><dt class="text-neutral-500">Attendance rate</dt>
+                    <div class="flex justify-between"><dt class="text-navy-500">Attendance rate</dt>
                         <dd class="font-semibold text-primary-700">${pct}${pct === '—' ? '' : '%'}</dd></div>
-                    <div class="flex justify-between"><dt class="text-neutral-500">Sessions</dt><dd>${total}</dd></div>
+                    <div class="flex justify-between"><dt class="text-navy-500">Days marked</dt><dd>${total}</dd></div>
                     <div class="flex justify-between"><dt class="text-success-700">Present</dt><dd>${present}</dd></div>
                     <div class="flex justify-between"><dt class="text-warning-700">Late</dt><dd>${late}</dd></div>
                     <div class="flex justify-between"><dt class="text-info-600">Excused</dt><dd>${excused}</dd></div>
@@ -655,7 +765,7 @@
                 </dl>`;
             const records = (d.records || []).slice(0, 60);
             if (!records.length) {
-                table.innerHTML = '<p class="text-neutral-500">No attendance records.</p>';
+                table.innerHTML = '<p class="text-navy-500">No attendance records.</p>';
             } else {
                 const badge = (s) => {
                     const cls = {
@@ -663,24 +773,24 @@
                         LATE: 'bg-warning-100 text-warning-700',
                         EXCUSED: 'bg-info-100 text-info-600',
                         ABSENT: 'bg-danger-100 text-danger-700',
-                    }[s] || 'bg-neutral-100 text-neutral-600';
+                    }[s] || 'bg-navy-50 text-navy-600';
                     return `<span class="text-xs font-medium px-2 py-0.5 rounded ${cls}">${s}</span>`;
                 };
                 table.innerHTML = `
                     <table class="min-w-full text-sm">
-                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                        <thead class="bg-navy-50 border-b border-navy-100">
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Notes</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Date</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Status</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Notes</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-neutral-100">
+                        <tbody class="divide-y divide-navy-50">
                             ${records.map(r => `
                                 <tr>
-                                    <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${fmtDate(r.date)}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-navy-600">${fmtDate(r.date)}</td>
                                     <td class="px-3 py-2">${badge(r.status)}</td>
-                                    <td class="px-3 py-2 text-neutral-500">${r.notes || ''}</td>
+                                    <td class="px-3 py-2 text-navy-500">${r.notes || ''}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -704,13 +814,13 @@
             const d = b.data || {};
             balBox.innerHTML = `
                 <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between"><dt class="text-neutral-500">Total invoiced</dt><dd>${fmtMoney(d.total_invoiced, d.currency)}</dd></div>
-                    <div class="flex justify-between"><dt class="text-neutral-500">Total paid</dt><dd>${fmtMoney(d.total_paid, d.currency)}</dd></div>
-                    <div class="flex justify-between text-base pt-2 border-t border-neutral-100"><dt class="font-semibold">Outstanding</dt>
-                        <dd class="font-semibold ${Number(d.outstanding_balance) > 0 ? 'text-danger-700' : 'text-success-700'}">${fmtMoney(d.outstanding_balance, d.currency)}</dd></div>
+                    <div class="flex justify-between"><dt class="text-navy-500">Total invoiced</dt><dd>${fmtMoney(d.total_invoiced, d.currency)}</dd></div>
+                    <div class="flex justify-between"><dt class="text-navy-500">Total paid</dt><dd>${fmtMoney(d.total_paid, d.currency)}</dd></div>
+                    <div class="flex justify-between text-base pt-2 border-t border-navy-50"><dt class="font-semibold">Outstanding</dt>
+                        <dd class="font-semibold ${Number(d.balance ?? d.outstanding_balance) > 0 ? 'text-danger-700' : 'text-success-700'}">${fmtMoney(d.balance ?? d.outstanding_balance, d.currency)}</dd></div>
                 </dl>`;
         } catch (err) {
-            balBox.innerHTML = '<p class="text-xs text-neutral-400">Billing not enabled.</p>';
+            balBox.innerHTML = '<p class="text-xs text-navy-400">Billing not enabled.</p>';
         }
 
         // Invoices
@@ -718,37 +828,37 @@
             const inv = await ClassUp.fetch(`/api/v1/billing/invoices?student_id=${STUDENT_ID}&page_size=100`);
             const rows = inv.data || [];
             if (!rows.length) {
-                invBox.innerHTML = '<p class="text-neutral-500">No invoices yet.</p>';
+                invBox.innerHTML = '<p class="text-navy-500">No invoices yet.</p>';
             } else {
                 invBox.innerHTML = `
                     <table class="min-w-full text-sm">
-                        <thead class="bg-neutral-50 border-b border-neutral-200">
+                        <thead class="bg-navy-50 border-b border-navy-100">
                             <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Number</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Due</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Total</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Number</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Due</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Total</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-navy-500 uppercase">Balance</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-navy-500 uppercase">Status</th>
                                 <th class="px-3 py-2"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-neutral-100">
+                        <tbody class="divide-y divide-navy-50">
                             ${rows.map(i => {
                                 const stCls = {
                                     PAID: 'bg-success-100 text-success-700',
                                     PARTIALLY_PAID: 'bg-info-100 text-info-600',
                                     OVERDUE: 'bg-danger-100 text-danger-700',
-                                    SENT: 'bg-neutral-100 text-neutral-600',
-                                    DRAFT: 'bg-neutral-100 text-neutral-500',
-                                    CANCELLED: 'bg-neutral-100 text-neutral-500 line-through',
-                                }[i.status] || 'bg-neutral-100 text-neutral-500';
+                                    SENT: 'bg-navy-50 text-navy-600',
+                                    DRAFT: 'bg-navy-50 text-navy-500',
+                                    CANCELLED: 'bg-navy-50 text-navy-500 line-through',
+                                }[i.status] || 'bg-navy-50 text-navy-500';
                                 return `
-                                    <tr class="hover:bg-neutral-50">
-                                        <td class="px-3 py-2 whitespace-nowrap text-neutral-800 font-medium">${i.invoice_number || '(draft)'}</td>
-                                        <td class="px-3 py-2 whitespace-nowrap text-neutral-600">${fmtDate(i.due_date)}</td>
+                                    <tr class="hover:bg-navy-50">
+                                        <td class="px-3 py-2 whitespace-nowrap text-navy-900 font-medium">${i.invoice_number || '(draft)'}</td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-navy-600">${fmtDate(i.due_date)}</td>
                                         <td class="px-3 py-2 text-right">${fmtMoney(i.total_amount, i.currency)}</td>
-                                        <td class="px-3 py-2 text-right ${Number(i.balance) > 0 ? 'text-danger-700' : 'text-neutral-600'}">${fmtMoney(i.balance, i.currency)}</td>
-                                        <td class="px-3 py-2"><span class="text-xs font-medium px-2 py-0.5 rounded ${stCls}">${i.status || ''}</span></td>
+                                        <td class="px-3 py-2 text-right ${Number(i.balance) > 0 ? 'text-danger-700' : 'text-navy-600'}">${fmtMoney(i.balance, i.currency)}</td>
+                                        <td class="px-3 py-2"><span class="text-xs font-medium px-2 py-0.5 rounded ${stCls}">${STATUS_WORDS[i.status] || i.status || ''}</span></td>
                                         <td class="px-3 py-2 text-right"><a href="/billing/invoices/${i.id}" class="text-xs text-primary-600 hover:underline">Open</a></td>
                                     </tr>`;
                             }).join('')}
@@ -756,24 +866,29 @@
                     </table>`;
             }
         } catch (err) {
-            invBox.innerHTML = '<p class="text-xs text-neutral-400">Billing not enabled.</p>';
+            invBox.innerHTML = '<p class="text-xs text-navy-400">Billing not enabled.</p>';
         }
 
         // Payments (via statement)
         try {
             const st = await ClassUp.fetch(`/api/v1/billing/students/${STUDENT_ID}/statement`);
             const d = st.data || {};
-            const pays = (d.payments || []).slice(0, 10);
+            // StudentStatement has `entries` (type INVOICE / PAYMENT).
+            const pays = (d.payments || (d.entries || []).filter(e => e.type === 'PAYMENT').map(e => ({
+                amount: e.credit, payment_date: e.date,
+                payment_method: (e.description || '').replace('Payment - ', '').replace('_', ' '),
+                reference: e.reference,
+            }))).slice(0, 10);
             if (!pays.length) {
-                payBox.innerHTML = '<p class="text-neutral-500 text-xs">No payments.</p>';
+                payBox.innerHTML = '<p class="text-navy-500 text-xs">No payments.</p>';
             } else {
                 payBox.innerHTML = `
-                    <ul class="divide-y divide-neutral-100">
+                    <ul class="divide-y divide-navy-50">
                         ${pays.map(p => `
                             <li class="py-2 text-sm flex items-center justify-between">
                                 <div>
-                                    <p class="text-neutral-700">${fmtMoney(p.amount, d.currency)}</p>
-                                    <p class="text-xs text-neutral-500">${fmtDate(p.payment_date)} · ${p.payment_method || '—'}</p>
+                                    <p class="text-navy-800">${fmtMoney(p.amount, d.currency)}</p>
+                                    <p class="text-xs text-navy-500">${fmtDate(p.payment_date)} · ${p.payment_method || '—'}${p.reference ? ' · ' + ClassUp.escapeHtml(p.reference) : ''}</p>
                                 </div>
                                 ${p.invoice_number ? `<a href="/billing/invoices/${p.invoice_id}" class="text-xs text-primary-600 hover:underline">${p.invoice_number}</a>` : ''}
                             </li>`).join('')}
@@ -791,7 +906,7 @@
             const r = await ClassUp.fetch(`/api/v1/reports/student/${STUDENT_ID}`);
             const rows = r.data || [];
             if (!rows.length) {
-                box.innerHTML = '<p class="text-neutral-500">No reports yet.</p>';
+                box.innerHTML = '<p class="text-navy-500">No reports yet.</p>';
                 return;
             }
             // Group by year
@@ -803,13 +918,13 @@
             const years = Object.keys(byYear).sort().reverse();
             box.innerHTML = years.map(y => `
                 <div class="mb-5">
-                    <h4 class="text-xs font-semibold text-neutral-500 uppercase mb-2">${y}</h4>
-                    <ul class="divide-y divide-neutral-100">
+                    <h4 class="text-xs font-semibold text-navy-500 uppercase mb-2">${y}</h4>
+                    <ul class="divide-y divide-navy-50">
                         ${byYear[y].map(r => `
                             <li class="py-2 flex items-center justify-between gap-3">
                                 <div>
-                                    <p class="text-sm text-neutral-800">${r.template_name || 'Report'}</p>
-                                    <p class="text-xs text-neutral-500">${fmtDate(r.report_date)} · ${r.status}</p>
+                                    <p class="text-sm text-navy-900">${r.template_name || 'Report'}</p>
+                                    <p class="text-xs text-navy-500">${fmtDate(r.report_date)} · ${STATUS_WORDS[r.status] || r.status}</p>
                                 </div>
                                 <a href="/reports/${r.id}" class="text-xs text-primary-600 hover:underline">Open</a>
                             </li>`).join('')}
@@ -828,9 +943,9 @@
 <dialog id="invite-parent-dialog" class="rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50">
     <div class="p-6">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-neutral-800">Invite Parent</h2>
+            <h2 class="text-lg font-semibold text-navy-900">Invite Parent</h2>
             <button type="button" onclick="document.getElementById('invite-parent-dialog').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="text-navy-400 hover:text-navy-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -838,25 +953,25 @@
         </div>
         <form id="invite-parent-form" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Student</label>
-                <p class="text-sm text-neutral-800 font-medium bg-neutral-50 rounded-md px-3 py-2 border border-neutral-200">
+                <label class="block text-sm font-medium text-navy-800 mb-1">Student</label>
+                <p class="text-sm text-navy-900 font-medium bg-navy-50 rounded-md px-3 py-2 border border-navy-100">
                     {{ student.first_name }} {{ student.last_name }}
                 </p>
             </div>
             <div>
-                <label for="inv-search" class="block text-sm font-medium text-neutral-700 mb-1">
+                <label for="inv-search" class="block text-sm font-medium text-navy-800 mb-1">
                     Parent Email or Name
                 </label>
                 <div class="relative">
                     <input type="text" id="inv-search" name="search" required autocomplete="off"
-                           class="block w-full h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white
+                           class="block w-full h-9 px-3 text-sm border border-navy-200 rounded-md bg-white
                                   focus:border-primary-500 focus:ring-0"
                            placeholder="parent@example.com or Jane Doe">
                     {# Live-search dropdown — populated by the typeahead handler
                        as the admin types. Positioned absolutely under the input
                        so the dialog layout doesn't jump. Hidden by default. #}
                     <div id="inv-suggestions"
-                         class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-md shadow-lg max-h-56 overflow-y-auto">
+                         class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-navy-100 rounded-md shadow-lg max-h-56 overflow-y-auto">
                     </div>
                 </div>
                 {# Hidden inputs the form submit reads. If the admin clicks a
@@ -868,26 +983,26 @@
             <div id="inv-selected-parent" class="hidden rounded-md border border-primary-200 bg-primary-50 p-3 text-sm">
                 <div class="flex items-center justify-between gap-3">
                     <div>
-                        <p class="font-medium text-neutral-900">
+                        <p class="font-medium text-navy-900">
                             Link existing parent
                             <span id="inv-selected-name"></span>
                         </p>
-                        <p id="inv-selected-context" class="text-xs text-neutral-600 mt-0.5"></p>
+                        <p id="inv-selected-context" class="text-xs text-navy-600 mt-0.5"></p>
                     </div>
                     <button type="button" id="inv-clear-selection"
-                            class="text-xs text-neutral-500 hover:text-neutral-800 underline">
+                            class="text-xs text-navy-500 hover:text-navy-900 underline">
                         Clear
                     </button>
                 </div>
             </div>
-            <p class="text-xs text-neutral-500">
+            <p class="text-xs text-navy-500">
                 Start typing to search existing parents. If none match, type the full email to send a new invitation.
             </p>
             <div id="inv-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3"></div>
             <div id="inv-success" class="hidden text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"></div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('invite-parent-dialog').close()"
-                        class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                        class="px-4 py-2 text-sm text-navy-800 bg-white border border-navy-200 rounded-md hover:bg-navy-50">
                     Cancel
                 </button>
                 <button type="submit" id="inv-submit-btn"
@@ -971,12 +1086,12 @@ document.addEventListener('DOMContentLoaded', function() {
         suggestionsBox.innerHTML = parents.map(p => {
             const children = (p.children || []).map(c => c.first_name).join(', ');
             const childrenLine = children
-                ? `<p class="text-xs text-neutral-500 mt-0.5">Parent of ${children}</p>`
+                ? `<p class="text-xs text-navy-500 mt-0.5">Parent of ${children}</p>`
                 : '';
             return `
-                <button type="button" data-parent-id="${p.id}" class="inv-suggest w-full text-left px-3 py-2 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50">
-                    <p class="text-sm font-medium text-neutral-900">${p.first_name} ${p.last_name}</p>
-                    <p class="text-xs text-neutral-600">${p.email || ''}</p>
+                <button type="button" data-parent-id="${p.id}" class="inv-suggest w-full text-left px-3 py-2 border-b border-navy-50 last:border-b-0 hover:bg-navy-50">
+                    <p class="text-sm font-medium text-navy-900">${p.first_name} ${p.last_name}</p>
+                    <p class="text-xs text-navy-600">${p.email || ''}</p>
                     ${childrenLine}
                 </button>
             `;
@@ -1132,26 +1247,26 @@ async function cancelInvitation(invitationId) {
 <dialog id="subject-override-modal" class="rounded-xl p-0 w-full max-w-md backdrop:bg-black/60">
     <div class="p-6">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-neutral-800">
+            <h3 class="text-lg font-semibold text-navy-900">
                 Change subject: <span id="sor-subject-name"></span>
             </h3>
             <button type="button" onclick="document.getElementById('subject-override-modal').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="text-navy-400 hover:text-navy-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
 
-        <p class="text-xs text-neutral-500 mb-3">
+        <p class="text-xs text-navy-500 mb-3">
             Swap this subject for an alternate-body equivalent — e.g.
             Cambridge Mathematics instead of ZIMSEC Mathematics. The
             student's reports will grade this subject with the new
             body's scale.
         </p>
 
-        <label class="block text-sm font-medium text-neutral-700 mb-1">Replace with</label>
-        <select id="sor-subject-picker" class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg">
+        <label class="block text-sm font-medium text-navy-800 mb-1">Replace with</label>
+        <select id="sor-subject-picker" class="w-full px-3 py-2 text-sm border border-navy-200 rounded-lg">
             <option value="">Keep class default</option>
             {% for s in all_subjects %}
             <option value="{{ s.id }}" data-pack="{{ s.curriculum_pack_code or '' }}">
@@ -1162,7 +1277,7 @@ async function cancelInvitation(invitationId) {
 
         <div class="mt-5 flex gap-2 justify-end">
             <button type="button" onclick="document.getElementById('subject-override-modal').close()"
-                    class="px-4 py-2 text-sm text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50">
+                    class="px-4 py-2 text-sm text-navy-800 bg-white border border-navy-200 rounded-lg hover:bg-navy-50">
                 Cancel
             </button>
             <button type="button" id="sor-save-btn"

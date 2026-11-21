@@ -1,0 +1,92 @@
+{#-
+    "How to pay" card for parents (Parent Portal iter 1, P-BILL-01).
+
+    Needs: how_to_pay (dict from app/web/billing._how_to_pay).
+    Optional: pay_reference — e.g. "INV-2026-0012 / Rudo Masuku".
+
+    ClassUp doesn't collect school fees; this just puts the school's own
+    banking details + the reference to use in one place, with copy
+    buttons. Falls back to "contact the school office".
+-#}
+{% set _htp = how_to_pay if how_to_pay is defined and how_to_pay else {} %}
+{% set _ref = pay_reference if pay_reference is defined and pay_reference else '' %}
+<section class="cu-card p-5" aria-labelledby="how-to-pay-h">
+    <div class="flex items-center gap-3 mb-3">
+        <span class="w-10 h-10 rounded-xl bg-gold-50 text-gold-600 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/></svg>
+        </span>
+        <div>
+            <h2 id="how-to-pay-h" class="text-base font-bold text-navy-900">How to pay</h2>
+            <p class="text-xs text-navy-500">Pay the school directly. Use the reference so they can match your payment.</p>
+        </div>
+    </div>
+
+    {% if _htp.get('banking_details') or _htp.get('payment_instructions') %}
+    <div>
+        {% if _htp.get('banking_details') %}
+        <div class="cu-copy-row">
+            <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-navy-500 mb-1">Banking details</p>
+                <p class="cu-copy-value" data-copy-src>{{ _htp.banking_details }}</p>
+            </div>
+            <button type="button" class="cu-btn-soft !py-2 !px-3 !text-xs flex-shrink-0" data-copy-btn aria-label="Copy banking details">Copy</button>
+        </div>
+        {% endif %}
+        {% if _ref %}
+        <div class="cu-copy-row">
+            <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-navy-500 mb-1">Payment reference</p>
+                <p class="cu-copy-value font-semibold" data-copy-src>{{ _ref }}</p>
+            </div>
+            <button type="button" class="cu-btn-soft !py-2 !px-3 !text-xs flex-shrink-0" data-copy-btn aria-label="Copy payment reference">Copy</button>
+        </div>
+        {% endif %}
+        {% if _htp.get('payment_instructions') %}
+        <div class="cu-copy-row">
+            <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-navy-500 mb-1">Instructions</p>
+                <p class="cu-copy-value" data-copy-src>{{ _htp.payment_instructions }}</p>
+            </div>
+            <button type="button" class="cu-btn-soft !py-2 !px-3 !text-xs flex-shrink-0" data-copy-btn aria-label="Copy payment instructions">Copy</button>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="text-sm text-navy-700">The school hasn't added payment details here yet. Please contact the school office to arrange payment{% if _ref %} and quote <strong>{{ _ref }}</strong>{% endif %}.</p>
+    {% endif %}
+
+    {% if _htp.get('school_phone') or _htp.get('school_email') %}
+    <div class="mt-3 pt-3 border-t border-navy-100 flex flex-wrap gap-2">
+        <span class="text-xs text-navy-500 w-full">Questions about fees? Contact the school office:</span>
+        {% if _htp.get('school_phone') %}<a href="tel:{{ _htp.school_phone }}" class="cu-btn-soft !py-2 !text-xs">Call {{ _htp.school_phone }}</a>{% endif %}
+        {% if _htp.get('school_email') %}<a href="mailto:{{ _htp.school_email }}{% if _ref %}?subject={{ ('Fees: ' ~ _ref)|urlencode }}{% endif %}" class="cu-btn-soft !py-2 !text-xs max-w-full"><span class="truncate">Email {{ _htp.school_email }}</span></a>{% endif %}
+    </div>
+    {% endif %}
+</section>
+<script>
+(function () {
+    if (window.__cuCopyBound) return;
+    window.__cuCopyBound = true;
+    document.addEventListener('click', async function (ev) {
+        const btn = ev.target.closest('[data-copy-btn]');
+        if (!btn) return;
+        const row = btn.closest('.cu-copy-row');
+        const src = row && row.querySelector('[data-copy-src]');
+        if (!src) return;
+        const text = src.textContent.trim();
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch (_) {}
+            ta.remove();
+        }
+        const old = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = old; }, 1500);
+        if (window.ClassUp && ClassUp.toast) ClassUp.toast('Copied', 'success');
+    });
+})();
+</script>

@@ -33,7 +33,7 @@
     <!-- Chat Messages Area -->
     <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-navy-50/40">
         {% if not messages %}
-        <div class="text-center py-12 text-neutral-400 text-sm">
+        <div class="text-center py-12 text-navy-400 text-sm">
             No messages yet. Send the first message below.
         </div>
         {% endif %}
@@ -42,12 +42,12 @@
         <div class="flex {{ 'justify-end' if msg.sender_id == user.id else 'justify-start' }}">
             <div class="max-w-[80%] sm:max-w-[70%]">
                 {% if msg.sender_id != user.id %}
-                <p class="text-xs text-neutral-400 mb-1 ml-1">{{ msg.sender.first_name if msg.sender else 'Unknown' }}</p>
+                <p class="text-xs text-navy-400 mb-1 ml-1">{{ msg.sender.first_name if msg.sender else 'Unknown' }}</p>
                 {% endif %}
                 <div class="{{ 'bg-navy-600 text-white' if msg.sender_id == user.id else 'bg-white border border-navy-100 text-navy-800' }} px-3.5 py-2.5 rounded-2xl shadow-soft">
                     <p class="text-sm whitespace-pre-wrap break-words">{{ msg.body }}</p>
                 </div>
-                <p class="text-[10px] mt-1 {{ 'text-right mr-1' if msg.sender_id == user.id else 'ml-1' }} text-neutral-400">
+                <p class="text-[10px] mt-1 {{ 'text-right mr-1' if msg.sender_id == user.id else 'ml-1' }} text-navy-400">
                     {{ msg.created_at.strftime('%b %d, %H:%M') }}
                 </p>
             </div>
@@ -119,12 +119,12 @@
 
         let html = '<div class="max-w-[80%] sm:max-w-[70%]">';
         if (!isOwn && senderFirst) {
-            html += '<p class="text-xs text-neutral-400 mb-1 ml-1">' + senderFirst + '</p>';
+            html += '<p class="text-xs text-navy-400 mb-1 ml-1">' + senderFirst + '</p>';
         }
-        html += '<div class="' + (isOwn ? 'bg-primary-500 text-white' : 'bg-white border border-neutral-200 text-neutral-800') + ' px-3.5 py-2.5 rounded-2xl shadow-sm">';
+        html += '<div class="' + (isOwn ? 'bg-primary-500 text-white' : 'bg-white border border-navy-100 text-navy-900') + ' px-3.5 py-2.5 rounded-2xl shadow-sm">';
         html += '<p class="text-sm whitespace-pre-wrap break-words">' + ClassUp.escapeHtml(data.body) + '</p>';
         html += '</div>';
-        html += '<p class="text-[10px] mt-1 ' + (isOwn ? 'text-right mr-1' : 'ml-1') + ' text-neutral-400">' + time + '</p>';
+        html += '<p class="text-[10px] mt-1 ' + (isOwn ? 'text-right mr-1' : 'ml-1') + ' text-navy-400">' + time + '</p>';
         html += '</div>';
 
         wrapper.innerHTML = html;

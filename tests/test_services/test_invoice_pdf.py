@@ -70,3 +70,48 @@ class TestInvoicePdf:
     def test_many_line_items_spill_onto_extra_pages(self):
         pdf = _render(line_items=_items(80), total_amount="8000.00")
         assert _page_count(pdf) >= 2
+
+
+def _pdf_text(pdf: bytes) -> str:
+    """Inflate every content stream and return the drawn text (fpdf2
+    writes text as ``(...) Tj`` operands)."""
+    import zlib
+    out = []
+    for m in re.finditer(rb"stream\r?\n(.*?)\r?\nendstream", pdf, flags=re.S):
+        raw = m.group(1)
+        try:
+            raw = zlib.decompress(raw)
+        except zlib.error:
+            pass
+        out.extend(re.findall(rb"\((.*?)\)\s*Tj", raw, flags=re.S))
+    return " ".join(b.decode("latin-1") for b in out)
+
+
+class TestInvoicePdfPaymentState:
+    """D1: the PDF must never present the full total as owing once a
+    payment exists, and money reads "$1,100.00"."""
+
+    def test_unpaid_legacy_call_shows_total_as_amount_due(self):
+        text = _pdf_text(_render(currency="$", total_amount="1100.00"))
+        assert "Amount due" in text or "AMOUNT DUE" in text.upper()
+        assert "$1,100.00" in text
+        assert "$ 1100.00" not in text
+
+    def test_part_paid_shows_paid_and_balance(self):
+        text = _pdf_text(_render(currency="$", total_amount="1100.00",
+                                 amount_paid="500.00", balance_due="600.00"))
+        assert "AMOUNT PAID" in text and "$500.00" in text
+        assert "BALANCE DUE" in text and "$600.00" in text
+        assert "$1,100.00" in text  # total still shown, as the total
+        assert "PAID" not in text.replace("AMOUNT PAID", "")
+
+    def test_fully_paid_shows_paid_state(self):
+        text = _pdf_text(_render(currency="$", total_amount="1100.00",
+                                 amount_paid="1100.00", balance_due="0.00"))
+        assert "PAID" in text.replace("AMOUNT PAID", "")
+        assert "paid in full" in text
+        assert "Amount due" not in text
+
+    def test_letter_code_currency_format(self):
+        text = _pdf_text(_render(currency="USD", total_amount="2300"))
+        assert "USD 2,300.00" in text

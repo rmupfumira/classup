@@ -18,6 +18,7 @@ from app.utils.tenant_context import (
     get_current_user_role,
 )
 from app.web.helpers import get_teacher_class_context
+from app.web._parent_context import login_redirect, require_login
 
 router = APIRouter(prefix="/messages")
 
@@ -43,11 +44,11 @@ async def messages_inbox(
     """Render the messages inbox page."""
     user_id = get_current_user_id_or_none()
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     role = get_current_user_role()
     permissions = PermissionChecker(role)
@@ -73,6 +74,9 @@ async def messages_inbox(
         "permissions": permissions,
     }
     context.update(class_ctx)
+    if role == "PARENT":
+        from app.web._parent_context import get_parent_child_context
+        context.update(await get_parent_child_context(request, db))
 
     return templates.TemplateResponse("messages/inbox.html", context)
 
@@ -86,11 +90,11 @@ async def messages_thread(
     """Render the conversation thread page."""
     user_id = get_current_user_id_or_none()
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     role = get_current_user_role()
     permissions = PermissionChecker(role)
@@ -174,17 +178,32 @@ async def messages_compose(
     """Render the compose message page."""
     user_id = get_current_user_id_or_none()
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     role = get_current_user_role()
     permissions = PermissionChecker(role)
 
     service = get_message_service()
     compose_context = await service.get_compose_context(db)
+
+    # Parents: default the child to the persisted selection (P-COMM-04).
+    # Only used to pre-select an option the service already offers.
+    preselect_default = None
+    if role == "PARENT":
+        from app.web._parent_context import get_parent_child_context
+        _ctx = await get_parent_child_context(request, db)
+        if student_id is None and _ctx.get("selected_child_id"):
+            preselect_default = str(_ctx["selected_child_id"])
+        # Canonical child order (D8) for the "About your child" options.
+        _order = {str(c.id): i for i, c in enumerate(_ctx.get("parent_children", []))}
+        compose_context = sorted(
+            compose_context,
+            key=lambda item: _order.get(str(item.get("student_id")), len(_order)),
+        )
 
     # Teacher class context for nav
     class_ctx = {}
@@ -247,7 +266,7 @@ async def messages_compose(
         "current_language": get_current_language(),
         "compose_data": compose_context,
         "compose_data_json": json.dumps(compose_context),
-        "preselected_student_id": str(student_id) if student_id else None,
+        "preselected_student_id": str(student_id) if student_id else preselect_default,
         "permissions": permissions,
         "compose_copy": compose_copy,
     }

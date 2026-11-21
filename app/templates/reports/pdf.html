@@ -157,7 +157,7 @@
             </td>
             <td style="text-align: right;">
                 <span class="status-badge {% if status == 'FINALIZED' %}finalized{% else %}draft{% endif %}">
-                    {% if status == 'FINALIZED' %}Finalised{% else %}Draft · not yet sent to parents{% endif %}
+                    {% if status == 'FINALIZED' %}Published{% else %}Draft · not yet sent to parents{% endif %}
                 </span>
             </td>
         </tr>
@@ -322,7 +322,7 @@
 
 <div class="footer-meta">
     {% if finalized_at %}
-        Finalised on {{ finalized_at }}
+        Published on {{ finalized_at }}
     {% else %}
         Draft · created by {{ created_by_name or 'teacher' }}
     {% endif %}

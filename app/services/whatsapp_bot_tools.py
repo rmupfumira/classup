@@ -756,6 +756,9 @@ async def get_child_invoice_pdf(
             tenant_email=tenant.email if tenant else None,
             banking_details=banking_details,
             payment_instructions=payment_instructions,
+            # Show what's actually owed, not the original total.
+            amount_paid=invoice.amount_paid,
+            balance_due=invoice.balance,
         )
     except Exception:
         logger.exception(

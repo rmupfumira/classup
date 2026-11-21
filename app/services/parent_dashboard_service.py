@@ -77,6 +77,11 @@ class NeedsAttentionItem:
     icon: str = "bell"             # "invoice" | "announcement" | "rsvp" | "bell"
     amount_text: str | None = None  # Big-type amount for invoice cards
     badge_text: str | None = None   # Small coloured chip (e.g. "OVERDUE")
+    # Parent Portal iter 1 (P-DASH-01 / P-MULTI-03): which child(ren)
+    # the card concerns ("Rudo", "Rudo · Tatenda") and a secondary line
+    # (invoice items, periods). Both are presentation-only.
+    child_label: str | None = None
+    secondary: str | None = None
 
 
 def _tenant_tz(tenant: Tenant | None) -> ZoneInfo:
@@ -116,6 +121,21 @@ class ChildCard:
     class_name: str | None
 
 
+@dataclass(frozen=True)
+class DayDot:
+    """One school day in the "this week" strip (P-DASH-04)."""
+    label: str      # "Mon"
+    day: date
+    state: str      # present | late | absent | excused | unmarked | upcoming
+
+
+@dataclass(frozen=True)
+class TodayStatus:
+    """The selected child's attendance for today (P-DASH-04)."""
+    state: str      # present | late | absent | excused | unmarked | no_school
+    label: str      # "Present", "Late · 08:12", "Not marked yet", ...
+
+
 @dataclass
 class ParentDashboard:
     """Everything the parent dashboard template needs."""
@@ -126,6 +146,12 @@ class ParentDashboard:
     unread_messages: int = 0
     billing_currency: str = "USD"
     tenant_name: str = ""
+    # Parent Portal iter 1 additions (all read-only / presentation).
+    today_status: TodayStatus | None = None
+    week_dots: list[DayDot] = field(default_factory=list)
+    family_outstanding: Decimal = Decimal("0")
+    family_outstanding_text: str | None = None
+    children_with_balance: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +177,10 @@ async def _load_children(
         .order_by(Student.first_name, Student.last_name)
     )
     rows = (await db.execute(stmt)).scalars().unique().all()
+    # Canonical parent-portal order (same key as app/web/_parent_context).
+    rows = sorted(rows, key=lambda s: (
+        (s.first_name or "").lower(), (s.last_name or "").lower(), str(s.id),
+    ))
     return [
         ChildCard(
             id=s.id,
@@ -168,6 +198,7 @@ async def _unpaid_invoices(
     student_ids: list[uuid.UUID],
     today: date,
     currency_symbol: str,
+    child_names: dict[uuid.UUID, str] | None = None,
 ) -> list[NeedsAttentionItem]:
     """Unpaid invoices with due date within 7 days or already overdue.
 
@@ -197,15 +228,15 @@ async def _unpaid_invoices(
             ),
         )
         .order_by(BillingInvoice.due_date.asc().nulls_last())
-        .limit(5)
+        .limit(50)
     )
     rows = (await db.execute(stmt)).scalars().all()
     if not rows:
         return []
+    names = child_names or {}
 
-    # Batch-load the first line item per invoice — one query instead
-    # of N. "First" = lowest id (invoice items don't have a sort column
-    # beyond insertion order, which the UUIDv4 PK roughly tracks).
+    # Batch-load the line items — one query instead of N. Insertion
+    # order (the PK) is the only ordering invoice items have.
     inv_ids = [inv.id for inv in rows]
     items_stmt = (
         select(BillingInvoiceItem)
@@ -213,22 +244,54 @@ async def _unpaid_invoices(
         .order_by(BillingInvoiceItem.invoice_id, BillingInvoiceItem.id)
     )
     item_rows = (await db.execute(items_stmt)).scalars().all()
-    first_item_by_invoice: dict[uuid.UUID, str] = {}
+    items_by_invoice: dict[uuid.UUID, list[str]] = {}
     for item in item_rows:
-        if item.invoice_id not in first_item_by_invoice and item.description:
-            first_item_by_invoice[item.invoice_id] = item.description
+        if item.description:
+            items_by_invoice.setdefault(item.invoice_id, []).append(item.description)
+
+    def _money(v) -> str:
+        return f"{currency_symbol}{v:,.2f}"
+
+    # P-DASH-01: when a child has more than one overdue invoice, show ONE
+    # collapsed card for that child instead of a stack of red cards.
+    overdue_by_child: dict[uuid.UUID, list[BillingInvoice]] = {}
+    for inv in rows:
+        if inv.due_date is not None and inv.due_date < today:
+            overdue_by_child.setdefault(inv.student_id, []).append(inv)
+    collapsed_children = {sid for sid, invs in overdue_by_child.items() if len(invs) > 1}
 
     out: list[NeedsAttentionItem] = []
+    for sid in collapsed_children:
+        invs = overdue_by_child[sid]
+        total = sum((i.balance for i in invs), Decimal("0"))
+        oldest = min(i.due_date for i in invs)
+        days = (today - oldest).days
+        periods = [_period_label(i) for i in invs]
+        out.append(NeedsAttentionItem(
+            kind="invoice",
+            title=f"{len(invs)} overdue invoices · {_money(total)} outstanding",
+            detail=f"Oldest due {oldest.strftime('%d %b %Y')} · overdue by {days} day{'s' if days != 1 else ''}",
+            primary_label="See fees",
+            primary_url=f"/billing/statement?child_id={sid}",
+            ordering_key=-10 - min(days, 30),
+            urgency=_URGENCY_CRITICAL,
+            icon="invoice",
+            amount_text=_money(total),
+            badge_text="OVERDUE",
+            child_label=names.get(sid),
+            secondary=" · ".join(dict.fromkeys(periods)),
+        ))
+
     for inv in rows:
-        description = (
-            first_item_by_invoice.get(inv.id)
-            or (inv.notes.strip() if inv.notes else None)
-            or "School fees"
+        if inv.student_id in collapsed_children and inv.due_date is not None and inv.due_date < today:
+            continue
+        item_names = items_by_invoice.get(inv.id) or []
+        items_text = ", ".join(dict.fromkeys(item_names)) or (
+            inv.notes.strip() if inv.notes else None
         )
-        # Keep the card title to one strong line — fee description +
-        # amount — so a parent eyeballing the feed knows WHAT it's for
-        # and HOW MUCH at a glance.
-        title = f"{description} — {currency_symbol}{inv.balance:,.2f}"
+        # P-DASH-03: lead with the period (what it's for) + the
+        # outstanding balance (how much). Items drop to a secondary line.
+        title = f"{_period_label(inv)} fees · {_money(inv.balance)} outstanding"
 
         overdue = inv.due_date is not None and inv.due_date < today
         if overdue:
@@ -277,10 +340,54 @@ async def _unpaid_invoices(
             ordering_key=order,
             urgency=urgency,
             icon="invoice",
-            amount_text=f"{currency_symbol}{inv.balance:,.2f}",
+            amount_text=_money(inv.balance),
             badge_text=badge,
+            child_label=names.get(inv.student_id),
+            secondary=items_text,
         ))
     return out
+
+
+def _period_label(inv: BillingInvoice) -> str:
+    """"Aug 2026", "Jul–Aug 2026", "Dec 2025–Jan 2026"; falls back to
+    the due month, then to the invoice number."""
+    start, end = inv.billing_period_start, inv.billing_period_end
+    if start and end:
+        if (start.year, start.month) == (end.year, end.month):
+            return start.strftime("%b %Y")
+        if start.year == end.year:
+            return f"{start.strftime('%b')}–{end.strftime('%b %Y')}"
+        return f"{start.strftime('%b %Y')}–{end.strftime('%b %Y')}"
+    if start:
+        return start.strftime("%b %Y")
+    if inv.due_date:
+        return inv.due_date.strftime("%b %Y")
+    return inv.invoice_number or "School"
+
+
+async def _family_outstanding(
+    db: AsyncSession, tenant_id: uuid.UUID, student_ids: list[uuid.UUID],
+) -> tuple[Decimal, int]:
+    """Sum of open balances across the family + how many children owe.
+
+    Read-only aggregate of the stored ``balance`` column (no new
+    financial calculation) over the same invoice set the cards use.
+    """
+    if not student_ids:
+        return Decimal("0"), 0
+    rows = (await db.execute(
+        select(BillingInvoice.student_id, func.sum(BillingInvoice.balance))
+        .where(
+            BillingInvoice.tenant_id == tenant_id,
+            BillingInvoice.student_id.in_(student_ids),
+            BillingInvoice.deleted_at.is_(None),
+            BillingInvoice.status.not_in(("DRAFT", "CANCELLED")),
+            BillingInvoice.balance > 0,
+        )
+        .group_by(BillingInvoice.student_id)
+    )).all()
+    total = sum((Decimal(str(r[1] or 0)) for r in rows), Decimal("0"))
+    return total, sum(1 for r in rows if (r[1] or 0) > 0)
 
 
 async def _pending_rsvps(
@@ -289,19 +396,27 @@ async def _pending_rsvps(
     parent_id: uuid.UUID,
     student_ids: list[uuid.UUID],
     today: date,
+    class_children: dict[uuid.UUID, list[str]] | None = None,
+    child_names: dict[uuid.UUID, str] | None = None,
 ) -> list[NeedsAttentionItem]:
     """Events this parent is invited to with no RSVP yet, where the
     deadline is within 7 days or the event itself is within 7 days."""
-    from sqlalchemy.orm import selectinload
-
     if not student_ids:
         return []
+    class_children = class_children or {}
+    child_names = child_names or {}
 
-    # Collect candidate events: SCHOOL-scope on this tenant, or
-    # STUDENT-scope for any of this parent's children. (CLASS-scope
-    # would need class_ids too — skipped here since the signal is
-    # "needs me to RSVP" and class-wide events usually RSVP by class
-    # anyway. Future enhancement.)
+    # Only events whose audience includes this parent (P-MULTI-03):
+    # SCHOOL scope, CLASS scope for one of the children's classes, or
+    # STUDENT scope for one of the children. Mirrors
+    # event_service.resolve_audience.
+    audience = [SchoolEvent.scope == "SCHOOL",
+                and_(SchoolEvent.scope == "STUDENT", SchoolEvent.student_id.in_(student_ids))]
+    if class_children:
+        audience.append(and_(
+            SchoolEvent.scope == "CLASS",
+            SchoolEvent.class_id.in_(list(class_children.keys())),
+        ))
     deadline_cutoff = datetime.now(timezone.utc) + timedelta(days=7)
     stmt = (
         select(SchoolEvent)
@@ -311,6 +426,7 @@ async def _pending_rsvps(
             SchoolEvent.cancelled_at.is_(None),
             SchoolEvent.rsvp_required.is_(True),
             SchoolEvent.starts_at >= datetime.now(timezone.utc),
+            or_(*audience),
             or_(
                 SchoolEvent.rsvp_deadline.is_(None),
                 SchoolEvent.rsvp_deadline <= deadline_cutoff,
@@ -356,6 +472,11 @@ async def _pending_rsvps(
             urgency=_URGENCY_CRITICAL if days_to_start <= 1 else _URGENCY_WARNING,
             icon="rsvp",
             badge_text="RSVP TODAY" if days_to_start == 0 else "RSVP NEEDED",
+            child_label=(
+                child_names.get(e.student_id) if e.scope == "STUDENT"
+                else " · ".join(class_children.get(e.class_id, [])) or None
+                if e.scope == "CLASS" else "Whole school"
+            ),
         ))
     return out
 
@@ -365,6 +486,7 @@ async def _urgent_announcements(
     tenant_id: uuid.UUID,
     student_class_ids: list[uuid.UUID],
     tz: ZoneInfo,
+    class_children: dict[uuid.UUID, list[str]] | None = None,
 ) -> list[NeedsAttentionItem]:
     """URGENT / EMERGENCY announcements from the last 14 days.
 
@@ -420,54 +542,119 @@ async def _urgent_announcements(
             urgency=urgency,
             icon="announcement",
             badge_text=badge,
+            child_label=(
+                " · ".join((class_children or {}).get(a.class_id, [])) or None
+                if a.class_id else "Whole school"
+            ),
         ))
     return out
 
 
-async def _attendance_rollup_this_week(
+_DAY_LABELS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def _fmt_time(value: datetime | None, tz: ZoneInfo | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        if tz is not None:
+            value = value.astimezone(tz)
+        return value.strftime("%H:%M")
+    except Exception:
+        return None
+
+
+async def _attendance_week(
     db: AsyncSession,
     tenant_id: uuid.UUID,
     student_id: uuid.UUID,
     today: date,
-) -> ThisWeekItem | None:
-    """Count attendance statuses from the Monday of this week to today."""
+    tz: ZoneInfo | None = None,
+) -> tuple[ThisWeekItem | None, TodayStatus, list[DayDot]]:
+    """This week's records for one child, in ONE read-only query.
+
+    Returns the "This week" summary card, today's status and the
+    Mon–Fri day dots (P-DASH-04). Late is reported as late (never as a
+    tick); the summary counts late days as "in school", matching the
+    attendance-rate definition used on /attendance/student/{id}.
+    """
     monday = today - timedelta(days=today.weekday())
-    stmt = (
-        select(AttendanceRecord.status, func.count(AttendanceRecord.id))
+    week_end = monday + timedelta(days=6)
+    rows = (await db.execute(
+        select(AttendanceRecord.date, AttendanceRecord.status, AttendanceRecord.check_in_time)
         .where(
             AttendanceRecord.tenant_id == tenant_id,
             AttendanceRecord.student_id == student_id,
             AttendanceRecord.date >= monday,
-            AttendanceRecord.date <= today,
+            AttendanceRecord.date <= week_end,
         )
-        .group_by(AttendanceRecord.status)
-    )
-    rows = (await db.execute(stmt)).all()
-    counts = {row[0]: int(row[1]) for row in rows}
-    present = counts.get(AttendanceStatus.PRESENT.value, 0)
-    late = counts.get(AttendanceStatus.LATE.value, 0)
-    absent = counts.get(AttendanceStatus.ABSENT.value, 0)
-    excused = counts.get(AttendanceStatus.EXCUSED.value, 0)
-    total_marked = present + late + absent + excused
-    if total_marked == 0:
-        return None
+    )).all()
+    by_day = {r[0]: (str(r[1]).upper(), r[2]) for r in rows}
 
-    present_total = present + late  # late still counts as "in school"
-    title = f"✓ Attendance: {present_total} of {total_marked} days present"
-    parts = []
-    if absent:
-        parts.append(f"{absent} absent")
-    if excused:
-        parts.append(f"{excused} excused")
-    if late:
-        parts.append(f"{late} late")
-    detail = " · ".join(parts) if parts else "All present this week"
-    return ThisWeekItem(
-        kind="attendance",
-        title=title,
-        detail=detail,
-        url=f"/attendance?student_id={student_id}",
-    )
+    # Today
+    rec = by_day.get(today)
+    if rec is not None:
+        status, check_in = rec
+        if status == AttendanceStatus.LATE.value:
+            t = _fmt_time(check_in, tz)
+            today_status = TodayStatus("late", f"Late · arrived {t}" if t else "Late")
+        elif status == AttendanceStatus.PRESENT.value:
+            t = _fmt_time(check_in, tz)
+            today_status = TodayStatus("present", f"Present · in at {t}" if t else "Present")
+        elif status == AttendanceStatus.ABSENT.value:
+            today_status = TodayStatus("absent", "Absent")
+        elif status == "EXEAT":
+            today_status = TodayStatus("excused", "Away on exeat")
+        else:
+            today_status = TodayStatus("excused", "Excused")
+    elif today.weekday() >= 5:
+        today_status = TodayStatus("no_school", "No school today")
+    else:
+        today_status = TodayStatus("unmarked", "Not marked yet")
+
+    # Day dots — school week Mon–Fri, plus a weekend day only if marked.
+    dots: list[DayDot] = []
+    for i in range(7):
+        d = monday + timedelta(days=i)
+        rec = by_day.get(d)
+        if i >= 5 and rec is None:
+            continue
+        if rec is not None:
+            state = {
+                AttendanceStatus.PRESENT.value: "present",
+                AttendanceStatus.LATE.value: "late",
+                AttendanceStatus.ABSENT.value: "absent",
+            }.get(rec[0], "excused")
+        else:
+            state = "upcoming" if d > today else "unmarked"
+        dots.append(DayDot(label=_DAY_LABELS[i], day=d, state=state))
+
+    statuses = [v[0] for d, v in by_day.items() if d <= today]
+    present = statuses.count(AttendanceStatus.PRESENT.value)
+    late = statuses.count(AttendanceStatus.LATE.value)
+    absent = statuses.count(AttendanceStatus.ABSENT.value)
+    excused = statuses.count(AttendanceStatus.EXCUSED.value)
+    total_marked = present + late + absent + excused
+    summary = None
+    if total_marked:
+        in_school = present + late
+        title = f"Present {in_school} of {total_marked} day{'s' if total_marked != 1 else ''} this week"
+        parts = []
+        if late:
+            parts.append(f"{late} late")
+        if absent:
+            parts.append(f"{absent} absent")
+        if excused:
+            parts.append(f"{excused} excused")
+        summary = ThisWeekItem(
+            kind="attendance",
+            title=title,
+            detail=" · ".join(parts) if parts else "On time every day so far",
+            url=f"/attendance/student/{student_id}",
+        )
+    return summary, today_status, dots
 
 
 async def _recent_report(
@@ -497,8 +684,8 @@ async def _recent_report(
     finalised = report.finalized_at.strftime("%d %b") if report.finalized_at else "recently"
     return ThisWeekItem(
         kind="report",
-        title="📄 New report ready",
-        detail=f"Finalised {finalised} · PDF available",
+        title="New report published",
+        detail=f"Published {finalised} · Tap to read or download",
         url=f"/reports/{report.id}",
     )
 
@@ -557,47 +744,69 @@ async def build_parent_dashboard(
         else:
             dashboard.selected_child = children[0]
     child_ids = [c.id for c in children]
-    class_ids = [c.id for c in children if c.class_name]  # placeholder — we actually need Student.class_id
-    # Re-fetch class ids directly from Student rows for accuracy.
+    child_names = {c.id: c.first_name for c in children}
+    # Class ids straight from the Student rows (ChildCard only carries
+    # the class name). class_children maps class → child first names
+    # for the per-card child labels (P-MULTI-03).
+    class_children: dict[uuid.UUID, list[str]] = {}
     try:
         class_id_rows = (await db.execute(
-            select(Student.class_id)
+            select(Student.id, Student.class_id)
             .where(
                 Student.id.in_(child_ids),
                 Student.class_id.is_not(None),
             )
-        )).all()
-        class_ids = [row[0] for row in class_id_rows if row[0]]
+        )).all() if child_ids else []
+        for sid_, cid_ in class_id_rows:
+            if cid_:
+                class_children.setdefault(cid_, []).append(child_names.get(sid_, ""))
     except Exception:
-        class_ids = []
+        class_children = {}
+    class_ids = list(class_children.keys())
 
     # Needs attention — collect from each source, sort by ordering_key.
     needs: list[NeedsAttentionItem] = []
     try:
-        needs.extend(await _unpaid_invoices(db, tenant_id, child_ids, today, currency_symbol))
+        needs.extend(await _unpaid_invoices(
+            db, tenant_id, child_ids, today, currency_symbol, child_names,
+        ))
     except Exception:
         logger.exception("needs_attention: unpaid invoices failed for parent %s", parent_id)
     try:
-        needs.extend(await _pending_rsvps(db, tenant_id, parent_id, child_ids, today))
+        needs.extend(await _pending_rsvps(
+            db, tenant_id, parent_id, child_ids, today, class_children, child_names,
+        ))
     except Exception:
         logger.exception("needs_attention: pending RSVPs failed for parent %s", parent_id)
     try:
-        needs.extend(await _urgent_announcements(db, tenant_id, class_ids, tz))
+        needs.extend(await _urgent_announcements(db, tenant_id, class_ids, tz, class_children))
     except Exception:
         logger.exception("needs_attention: urgent announcements failed for parent %s", parent_id)
     needs.sort(key=lambda i: i.ordering_key)
     dashboard.needs_attention = needs
+
+    # Family total (P-DASH-01) — shown by the template for 2+ children.
+    try:
+        total, owing = await _family_outstanding(db, tenant_id, child_ids)
+        dashboard.family_outstanding = total
+        dashboard.children_with_balance = owing
+        if total > 0:
+            dashboard.family_outstanding_text = f"{currency_symbol}{total:,.2f}"
+    except Exception:
+        logger.exception("family outstanding failed for parent %s", parent_id)
 
     # This week — scoped to the selected child.
     this_week: list[ThisWeekItem] = []
     if dashboard.selected_child:
         sid = dashboard.selected_child.id
         try:
-            att = await _attendance_rollup_this_week(db, tenant_id, sid, today)
+            att, today_status, dots = await _attendance_week(db, tenant_id, sid, today, tz)
+            dashboard.today_status = today_status
+            dashboard.week_dots = dots
             if att:
                 this_week.append(att)
         except Exception:
-            logger.exception("this_week: attendance rollup failed for parent %s", parent_id)
+            logger.exception("this_week: attendance week failed for parent %s", parent_id)
         try:
             rpt = await _recent_report(db, tenant_id, sid, today)
             if rpt:

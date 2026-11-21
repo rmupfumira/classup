@@ -26,8 +26,59 @@ from app.utils.tenant_context import (
     get_tenant_id,
 )
 from app.web.helpers import get_teacher_class_context
+from app.web._parent_context import (
+    get_parent_child_context,
+    load_parent_children,
+    pick_child,
+    remember_child,
+    require_login,
+    safe_next_path,
+    SELECTED_CHILD_COOKIE,
+)
 
 router = APIRouter()
+
+
+@router.get("/dashboard/select-child")
+async def select_child(
+    request: Request,
+    child_id: str | None = None,
+    next: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Persist the parent's child selection and go back to ``next``.
+
+    Used by the shared child switcher + mobile drawer so switching a
+    child keeps the parent on the same page (Fees stays Fees). The id is
+    validated against the parent's own children; anything else falls
+    back to the first own child. If ``next`` contains the previously
+    selected child's id (e.g. /attendance/student/<id>) it is swapped
+    for the new one.
+    """
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    target = safe_next_path(next)
+    if get_current_user_role() != "PARENT":
+        return RedirectResponse(url=target, status_code=302)
+
+    children = await load_parent_children(db, get_current_user_id())
+    chosen = pick_child(children, child_id)
+    if chosen is not None:
+        for c in children:
+            if c.id != chosen.id and str(c.id) in target:
+                target = target.replace(str(c.id), str(chosen.id))
+        # Point any ?child_id / ?student_id at the new child too.
+        from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+        parts = urlsplit(target)
+        query = [
+            (k, str(chosen.id) if k in ("child_id", "student_id") else v)
+            for k, v in parse_qsl(parts.query)
+        ]
+        target = urlunsplit(("", "", parts.path, urlencode(query), parts.fragment))
+    response = RedirectResponse(url=target or "/dashboard", status_code=302)
+    remember_child(response, {"selected_child": chosen})
+    return response
 
 
 async def _get_school_admin_dashboard_data(db: AsyncSession):
@@ -163,15 +214,10 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id, request: Request
     tenant_id = get_tenant_id()
     today = date.today()
 
-    # Which child is selected (multi-child parents)
-    selected_child_id = None
-    raw = request.query_params.get("child_id")
-    if raw:
-        import uuid as _uuid
-        try:
-            selected_child_id = _uuid.UUID(raw)
-        except (ValueError, TypeError):
-            selected_child_id = None
+    # Which child is selected: ?child_id → selected_child_id cookie →
+    # first child, each validated against the parent's own links.
+    child_ctx = await get_parent_child_context(request, db)
+    selected_child_id = child_ctx.get("selected_child_id")
 
     dashboard = await build_parent_dashboard(
         db, user_id, tenant_id, selected_child_id,
@@ -180,6 +226,7 @@ async def _get_parent_dashboard_data(db: AsyncSession, user_id, request: Request
     return {
         "parent_dashboard": dashboard,
         "today": today,
+        **child_ctx,
     }
 
 
@@ -388,5 +435,8 @@ async def dashboard(
         tenant_id = get_tenant_id()
         tenant = await db.get(Tenant, tenant_id)
         context["tenant"] = tenant
+        response = templates.TemplateResponse(template_name, context)
+        remember_child(response, parent_data)
+        return response
 
     return templates.TemplateResponse(template_name, context)

@@ -14,11 +14,13 @@ from app.services.class_service import get_class_service
 from app.templates_config import templates
 from app.utils.permissions import PermissionChecker
 from app.utils.tenant_context import (
+    get_tenant_id,
     get_current_language,
     get_current_user_id_or_none,
     get_current_user_role,
 )
 from app.web.helpers import get_teacher_class_context
+from app.web._parent_context import login_redirect, require_login
 
 router = APIRouter(prefix="/announcements")
 
@@ -48,11 +50,11 @@ async def announcements_list(
     """Render the announcements list page."""
     user_id = get_current_user_id_or_none()
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     role = get_current_user_role()
     permissions = PermissionChecker(role)
@@ -105,6 +107,34 @@ async def announcements_list(
     }
     context.update(class_ctx)
 
+    if role == "PARENT":
+        # P-COMM-03: label class notices by child and pin recent urgent
+        # ones first (re-ordering the already-scoped page only).
+        from datetime import datetime, timedelta, timezone
+        from app.models import Tenant
+        from app.web._parent_context import get_parent_child_context
+        child_ctx = await get_parent_child_context(request, db)
+        class_children: dict[str, list[str]] = {}
+        for c in child_ctx.get("parent_children", []):
+            if c.class_id:
+                class_children.setdefault(str(c.class_id), []).append(c.first_name)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+
+        def _pinned(a) -> bool:
+            created = a.created_at
+            if created is not None and created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            return a.severity in ("URGENT", "EMERGENCY") and created is not None and created >= cutoff
+
+        context["announcements"] = sorted(
+            announcements, key=lambda a: (0 if _pinned(a) else 1),
+        )
+        context["pinned_ids"] = {str(a.id) for a in announcements if _pinned(a)}
+        context["class_children"] = class_children
+        tenant = await db.get(Tenant, get_tenant_id())
+        context["school_name"] = tenant.name if tenant else ""
+        context.update(child_ctx)
+
     return templates.TemplateResponse("announcements/list.html", context)
 
 
@@ -116,11 +146,11 @@ async def announcements_create(
     """Render the create announcement form."""
     user_id = get_current_user_id_or_none()
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     role = get_current_user_role()
     permissions = PermissionChecker(role)
@@ -166,11 +196,11 @@ async def announcement_detail(
     """Render the announcement detail page."""
     user_id = get_current_user_id_or_none()
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     role = get_current_user_role()
     permissions = PermissionChecker(role)

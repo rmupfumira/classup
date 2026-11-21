@@ -1,9 +1,64 @@
 {% extends "base.html" %}
 
-{% block title %}Reports - {{ app_name }}{% endblock %}
+{% block title %}{% if user.role == 'PARENT' and selected_child is defined and selected_child %}{{ selected_child.first_name }}'s reports{% else %}Reports{% endif %} - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-5 md:space-y-6">
+    {% if user.role == 'PARENT' %}
+    {# ================= Parent view (P-ACAD-02) =================
+       One child at a time (shared switcher), published reports only,
+       grouped by year, term label instead of a time stamp. #}
+    {% set _c = selected_child if selected_child is defined else none %}
+    <header class="cu-parent-head">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-gold-600">Learning</span>
+        <h1 class="cu-parent-head-title">{% if _c %}{{ _c.first_name }}'s reports{% else %}Reports{% endif %}</h1>
+        <p class="text-sm text-navy-500">Report cards and notes from {{ _c.first_name if _c else 'your child' }}'s teachers.</p>
+    </header>
+
+    {% include "components/_child_switcher.html" %}
+
+    {% if reports %}
+    {% for year, items in report_years %}
+    <section class="space-y-2" aria-labelledby="reports-year-{{ year }}">
+        <h2 id="reports-year-{{ year }}" class="text-sm font-bold uppercase tracking-wider text-navy-500 px-1">{{ year or 'Undated' }}</h2>
+        <ul class="cu-card overflow-hidden divide-y divide-navy-100/60">
+            {% for report in items %}
+            {% set _term = term_labels.get(report.id) %}
+            {% set _is_card = report.report_type in ('REPORT_CARD', 'PROGRESS_REPORT') %}
+            <li class="flex items-stretch">
+                <a href="/reports/{{ report.id }}" class="flex-1 min-w-0 flex items-center gap-3 p-4 hover:bg-navy-50/40 transition-colors">
+                    <span class="w-10 h-10 rounded-xl {{ 'bg-gold-50 text-gold-600' if _is_card else 'bg-navy-50 text-navy-600' }} flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </span>
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-sm font-semibold text-navy-900 truncate">{{ report.template_name or 'Report' }}</span>
+                        <span class="block text-xs text-navy-500 mt-0.5">
+                            {% if _term %}{{ _term }} &middot; {{ report.report_date.strftime('%d %b') }}{% else %}{{ report.report_date.strftime('%d %b %Y') }}{% endif %}
+                            {% if report.finalized_at and report.finalized_at.date() != report.report_date %}&middot; Published {{ report.finalized_at.strftime('%d %b') }}{% endif %}
+                        </span>
+                    </span>
+                    <svg class="cu-tap-row-chevron w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+                <a href="/reports/{{ report.id }}/pdf" class="flex-shrink-0 w-14 flex items-center justify-center border-l border-navy-100/60 text-navy-500 hover:text-navy-800 hover:bg-navy-50/40"
+                   aria-label="Download {{ report.template_name or 'report' }} ({{ report.report_date.strftime('%d %b %Y') }}) as PDF" title="Download PDF">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endfor %}
+    {% else %}
+    <div class="cu-card cu-empty">
+        <div class="cu-empty-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        </div>
+        <p class="cu-empty-title">No reports yet</p>
+        <p class="cu-empty-text">{% if _c %}{{ _c.first_name }}'s reports will appear here once the school publishes them.{% else %}Reports will appear here once your child is linked to your account.{% endif %}</p>
+    </div>
+    {% endif %}
+
+    {% else %}
 
     {# ------ Hero banner ------ #}
     <section class="cu-hero">
@@ -17,6 +72,7 @@
             </div>
             {% if permissions.is_staff %}
             <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                {% if permissions.is_school_admin or permissions.is_super_admin %}
                 <a href="/reports/templates/manage" class="cu-btn-ghost-dark">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -24,6 +80,7 @@
                     </svg>
                     Templates
                 </a>
+                {% endif %}
                 <a href="/reports/create" class="cu-btn-gold">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
@@ -152,6 +209,7 @@
         {% endif %}
     </div>
     {% endif %}
+    {% endif %}{# /parent vs staff #}
 </div>
 {% endblock %}
 

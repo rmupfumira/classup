@@ -1,267 +1,248 @@
 {% extends "base.html" %}
 
-{% block title %}Account Statement - {{ app_name }}{% endblock %}
+{% block title %}{% if selected_child is defined and selected_child %}Fees · {{ selected_child.first_name }}{% else %}Fees{% endif %} - {{ app_name }}{% endblock %}
+
+{#-
+    Parent "Fees" page (Parent Portal iter 1, P-BILL-02). Presentation
+    over existing data only: stored invoice balances/statuses, the
+    existing per-child balances and the existing statement entries (the
+    statement's dating/ordering is unchanged; it sits behind "Show full
+    statement"). Staff use /billing.
+-#}
+
+{% macro period_title(inv) -%}
+{% if inv.billing_period_start and inv.billing_period_end %}{{ inv.billing_period_start.strftime('%b') }}{% if inv.billing_period_start.strftime('%b %Y') != inv.billing_period_end.strftime('%b %Y') %}&ndash;{{ inv.billing_period_end.strftime('%b') }}{% endif %} {{ inv.billing_period_end.strftime('%Y') }} fees{% else %}Fees due {{ inv.due_date.strftime('%b %Y') }}{% endif %}
+{%- endmacro %}
+
+{% macro pdf_link(inv) -%}
+<a href="/billing/invoices/{{ inv.id }}/pdf" class="inline-flex items-center gap-1 px-2 min-h-[44px] text-xs font-semibold text-navy-600 hover:text-navy-900"
+   aria-label="Download invoice {{ inv.invoice_number }} as PDF">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+    Download PDF
+</a>
+{%- endmacro %}
+
+{% macro status_chip(mod, text) -%}
+<span class="cu-status cu-status--{{ mod }}">{{ text }}</span>
+{%- endmacro %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-5 md:space-y-6">
+    <header class="cu-parent-head">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-gold-600">Fees</span>
+        <h1 class="cu-parent-head-title">School fees</h1>
+        <p class="text-sm text-navy-500">What you owe, what you've paid, and how to pay.</p>
+    </header>
 
-    {# ------ Hero ------ #}
-    <section class="cu-hero">
-        <div class="max-w-3xl">
-            <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Finance</span>
-            <h1 class="cu-page-title text-white">Account Statement</h1>
-            <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">
-                View invoices, payments, and outstanding balances for your children.
-            </p>
-        </div>
-    </section>
-
-    {% if balances and balances | length > 0 %}
-    {# ------ Balance summary cards ------ #}
-    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-{{ [balances | length, 3] | min }}">
-        {% for bal in balances %}
-        <div class="cu-card p-5">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="cu-avatar cu-avatar-sm">
-                    {% set name_parts = bal.student_name.split(' ') %}
-                    {{ name_parts[0][0] | upper }}{% if name_parts | length > 1 %}{{ name_parts[-1][0] | upper }}{% endif %}
-                </div>
-                <div class="min-w-0">
-                    <h3 class="text-sm font-semibold text-navy-800 truncate">
-                        {{ bal.student_name }}
-                    </h3>
-                </div>
-            </div>
-
-            <div class="space-y-2">
-                <div class="flex items-center justify-between text-sm">
-                    <span class="text-navy-500">Total Invoiced</span>
-                    <span class="font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(bal.total_invoiced) }}</span>
-                </div>
-                <div class="flex items-center justify-between text-sm">
-                    <span class="text-navy-500">Total Paid</span>
-                    <span class="font-semibold text-emerald-700">{{ currency }} {{ "%.2f"|format(bal.total_paid) }}</span>
-                </div>
-                <div class="border-t border-navy-100 pt-2 flex items-center justify-between">
-                    <span class="text-sm font-semibold text-navy-700">Balance</span>
-                    <span class="text-lg font-bold {% if bal.balance > 0 %}text-rose-700{% elif bal.balance < 0 %}text-emerald-700{% else %}text-navy-800{% endif %}">
-                        {{ currency }} {{ "%.2f"|format(bal.balance) }}
-                    </span>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </section>
-
-    {# ------ Tab navigation (if multiple children) ------ #}
-    {% if children_statements | length > 1 %}
-    <section class="cu-card p-3 inline-flex items-center gap-1 overflow-x-auto">
-        <div class="flex items-center gap-1" id="child-tabs" role="tablist">
-            {% for cs in children_statements %}
-            <button type="button" role="tab"
-                    onclick="showChildTab('{{ cs.child.id }}')"
-                    id="tab-{{ cs.child.id }}"
-                    class="child-tab cu-pill {% if loop.first %}cu-pill-active{% endif %}"
-                    aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
-                {{ cs.child.first_name }} {{ cs.child.last_name }}
-            </button>
-            {% endfor %}
-        </div>
-    </section>
-    {% endif %}
-
-    {# ------ Statement tables ------ #}
-    {% for cs in children_statements %}
-    <div id="statement-{{ cs.child.id }}"
-         class="child-statement-panel {% if not loop.first and children_statements | length > 1 %}hidden{% endif %}">
-
-        {% set entries = cs.statement.entries if cs.statement else [] %}
-        {% if entries | length > 0 %}
-        <div class="cu-table-wrap">
-            {% if children_statements | length <= 1 %}
-            <div class="px-4 py-3 border-b border-navy-100 bg-navy-50">
-                <h2 class="text-sm font-semibold text-navy-800">
-                    {{ cs.child.first_name }} {{ cs.child.last_name }} — Transaction History
-                </h2>
-            </div>
-            {% endif %}
-
-            {# Desktop table #}
-            <div class="hidden md:block overflow-x-auto">
-                <table class="cu-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Reference</th>
-                            <th style="text-align:right">Debit</th>
-                            <th style="text-align:right">Credit</th>
-                            <th style="text-align:right">Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for entry in entries %}
-                        <tr>
-                            <td class="text-navy-600">
-                                {{ entry.date.strftime('%Y-%m-%d') if entry.date else '—' }}
-                            </td>
-                            <td class="text-navy-800">
-                                {{ entry.description }}
-                            </td>
-                            <td>
-                                {% if entry.type == 'INVOICE' %}
-                                <a href="/billing/invoices/{{ entry.entity_id }}"
-                                   class="text-navy-700 hover:text-navy-900 font-semibold">
-                                    {{ entry.reference }}
-                                </a>
-                                {% else %}
-                                <span class="text-navy-500">{{ entry.reference or '—' }}</span>
-                                {% endif %}
-                            </td>
-                            <td style="text-align:right">
-                                {% if entry.debit %}
-                                <span class="font-medium text-navy-800">{{ currency }} {{ "%.2f"|format(entry.debit) }}</span>
-                                {% else %}
-                                <span class="text-navy-300">—</span>
-                                {% endif %}
-                            </td>
-                            <td style="text-align:right">
-                                {% if entry.credit %}
-                                <span class="font-medium text-emerald-700">{{ currency }} {{ "%.2f"|format(entry.credit) }}</span>
-                                {% else %}
-                                <span class="text-navy-300">—</span>
-                                {% endif %}
-                            </td>
-                            <td style="text-align:right"
-                                class="font-semibold {% if entry.running_balance > 0 %}text-rose-700{% elif entry.running_balance < 0 %}text-emerald-700{% else %}text-navy-800{% endif %}">
-                                {{ currency }} {{ "%.2f"|format(entry.running_balance) }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                    <tfoot>
-                        <tr style="background: #f4f7fb; border-top: 2px solid #dce4f0;" class="font-bold">
-                            <td colspan="3" style="padding: 0.875rem 1rem;" class="text-navy-800">Total</td>
-                            <td style="text-align:right; padding: 0.875rem 1rem;" class="text-navy-800">
-                                {% set total_debit = entries | selectattr('debit') | map(attribute='debit') | sum %}
-                                {{ currency }} {{ "%.2f"|format(total_debit) }}
-                            </td>
-                            <td style="text-align:right; padding: 0.875rem 1rem;" class="text-emerald-700">
-                                {% set total_credit = entries | selectattr('credit') | map(attribute='credit') | sum %}
-                                {{ currency }} {{ "%.2f"|format(total_credit) }}
-                            </td>
-                            <td style="text-align:right; padding: 0.875rem 1rem;"
-                                class="{% if entries[-1].running_balance > 0 %}text-rose-700{% elif entries[-1].running_balance < 0 %}text-emerald-700{% else %}text-navy-800{% endif %}">
-                                {{ currency }} {{ "%.2f"|format(entries[-1].running_balance) }}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            {# Mobile cards #}
-            <div class="md:hidden border-t border-navy-50">
-                {% for entry in entries %}
-                <div class="p-4 border-b border-navy-50">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs text-navy-500">
-                            {{ entry.date.strftime('%Y-%m-%d') if entry.date else '—' }}
-                        </span>
-                        <span class="text-xs font-semibold
-                            {% if entry.running_balance > 0 %}text-rose-700{% elif entry.running_balance < 0 %}text-emerald-700{% else %}text-navy-600{% endif %}">
-                            Bal: {{ currency }} {{ "%.2f"|format(entry.running_balance) }}
-                        </span>
-                    </div>
-                    <p class="text-sm text-navy-800 mb-1">{{ entry.description }}</p>
-                    <div class="flex items-center justify-between">
-                        <div>
-                            {% if entry.type == 'INVOICE' %}
-                            <a href="/billing/invoices/{{ entry.entity_id }}"
-                               class="text-xs text-navy-700 hover:text-navy-900 font-semibold">
-                                {{ entry.reference }}
-                            </a>
-                            {% elif entry.reference %}
-                            <span class="text-xs text-navy-500">{{ entry.reference }}</span>
-                            {% endif %}
-                        </div>
-                        <div class="text-right">
-                            {% if entry.debit %}
-                            <span class="text-sm font-semibold text-navy-800">{{ currency }} {{ "%.2f"|format(entry.debit) }}</span>
-                            <span class="text-xs text-navy-400 ml-1">DR</span>
-                            {% elif entry.credit %}
-                            <span class="text-sm font-semibold text-emerald-700">{{ currency }} {{ "%.2f"|format(entry.credit) }}</span>
-                            <span class="text-xs text-navy-400 ml-1">CR</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-
-                {# Mobile total #}
-                <div class="p-4 bg-navy-50">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-semibold text-navy-700">Outstanding Balance</span>
-                        <span class="text-lg font-bold
-                            {% if entries[-1].running_balance > 0 %}text-rose-700{% elif entries[-1].running_balance < 0 %}text-emerald-700{% else %}text-navy-800{% endif %}">
-                            {{ currency }} {{ "%.2f"|format(entries[-1].running_balance) }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {% else %}
-        <div class="cu-card cu-empty">
-            <div class="cu-empty-icon">
-                <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-            </div>
-            <p class="cu-empty-title">No transactions yet</p>
-            <p class="cu-empty-text">
-                There are no invoices or payments recorded for {{ cs.child.first_name }} yet.
-            </p>
-        </div>
-        {% endif %}
+    {% if user.role != 'PARENT' %}
+    <div class="cu-card cu-empty">
+        <p class="cu-empty-title">This is the parent fees view</p>
+        <p class="cu-empty-text">Use <a href="/billing" class="font-semibold text-navy-700 underline">Billing</a> to manage invoices and payments.</p>
     </div>
-    {% endfor %}
 
-    {% else %}
+    {% elif not children_fees %}
     <div class="cu-card cu-empty">
         <div class="cu-empty-icon">
-            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-            </svg>
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
         </div>
-        <p class="cu-empty-title">No billing information available</p>
-        <p class="cu-empty-text">
-            Your account statement will appear here once billing has been set up.
-        </p>
+        <p class="cu-empty-title">No fees to show</p>
+        <p class="cu-empty-text">Fees will appear here once your child is linked and the school sends an invoice.</p>
     </div>
+
+    {% else %}
+    {% set sf = selected_fees %}
+
+    {# ------ Family summary ------ #}
+    <section class="cu-card p-5" aria-labelledby="family-summary-h">
+        <h2 id="family-summary-h" class="sr-only">Family summary</h2>
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold text-navy-500">{% if children_fees|length > 1 %}Family total to pay{% else %}Total to pay{% endif %}</p>
+                <p class="text-3xl font-extrabold tracking-tight {{ 'text-rose-700' if family.overdue > 0 else 'text-navy-900' }}">{{ family.outstanding|money(currency) }}</p>
+                {% if family.overdue > 0 %}<p class="text-xs font-semibold text-rose-700 mt-0.5">{{ family.overdue|money(currency) }} is overdue</p>
+                {% elif family.outstanding <= 0 %}<p class="text-xs font-semibold text-emerald-700 mt-0.5">You're all paid up</p>{% endif %}
+            </div>
+        </div>
+        {% if children_fees|length > 1 %}
+        <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+            {% for cf in children_fees %}
+            <li>
+                <div class="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 min-h-[44px] bg-navy-50 text-navy-800">
+                    <span class="text-sm font-semibold truncate">{{ cf.child.full_name }}</span>
+                    <span class="text-sm font-bold whitespace-nowrap {{ 'text-rose-700' if cf.overdue_amount > 0 else ('text-emerald-700' if cf.balance <= 0 else '') }}">{{ cf.balance|money(currency) if cf.balance > 0 else 'Paid up' }}</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </section>
+
+    {# D3: "How to pay" sits right under the family summary whenever
+       anything is owed — for any child, not just the selected one. The
+       reference uses the selected child's oldest open invoice, else the
+       first child that owes. #}
+    {% set _owing = (sf.to_pay and sf) or (children_fees|selectattr('to_pay')|first) %}
+    {% if family.outstanding > 0 or _owing %}
+    {% set _ref_inv = _owing.to_pay[0].invoice if _owing else none %}
+    {% set pay_reference = (_ref_inv.invoice_number ~ ' / ' ~ _owing.child.full_name) if _ref_inv else '' %}
+    {% include "components/_parent_how_to_pay.html" %}
+    {% endif %}
+
+    {% if children_fees|length > 1 %}{% include "components/_child_switcher.html" %}{% endif %}
+
+    {% if sf %}
+
+    {# ------ To pay ------ #}
+    <section class="space-y-3" aria-labelledby="to-pay-h">
+        <h2 id="to-pay-h" class="text-lg font-bold text-navy-900">
+            To pay &middot; {{ sf.child.first_name }}
+            {% if sf.to_pay %}<span class="cu-pill-count">{{ sf.to_pay|length }}</span>{% endif %}
+        </h2>
+        {% if sf.to_pay %}
+        <ul class="space-y-3">
+            {% for row in sf.to_pay %}
+            {% set inv = row.invoice %}
+            <li>
+                <a href="/billing/invoices/{{ inv.id }}" class="cu-card cu-card-hover block p-4 {{ 'border-l-4 border-rose-500' if row.status_mod == 'overdue' else '' }}">
+                    <div class="cu-tap-row">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                {{ status_chip(row.status_mod, row.status_text) }}
+                                <span class="text-xs text-navy-500">{{ inv.invoice_number }}</span>
+                            </div>
+                            <p class="mt-1 text-[0.95rem] font-semibold text-navy-900">{{ period_title(inv) }}</p>
+                            <p class="text-xs text-navy-600 mt-0.5">
+                                {% if row.status_mod == 'overdue' %}Was due {{ inv.due_date.strftime('%d %b %Y') }}{% else %}Due {{ inv.due_date.strftime('%d %b %Y') }}{% endif %}
+                                {% if inv.amount_paid and inv.amount_paid > 0 %}&middot; {{ inv.amount_paid|money(currency) }} paid of {{ inv.total_amount|money(currency) }}{% endif %}
+                            </p>
+                            {% if inv.items %}<p class="text-xs text-navy-500 mt-0.5 line-clamp-2">{{ inv.items|map(attribute='description')|join(', ') }}</p>{% endif %}
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-base font-bold {{ 'text-rose-700' if row.status_mod == 'overdue' else 'text-navy-900' }}">{{ inv.balance|money(currency) }}</p>
+                            <p class="text-[11px] text-navy-500">to pay</p>
+                        </div>
+                        <svg class="cu-tap-row-chevron w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </div>
+                </a>
+                <div class="flex justify-end mt-1">{{ pdf_link(inv) }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="cu-card p-4 flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0" aria-hidden="true"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></span>
+            <p class="text-sm text-navy-700">Nothing to pay for {{ sf.child.first_name }} right now.</p>
+        </div>
+        {% endif %}
+    </section>
+
+
+    {# ------ Payments received ------ #}
+    <section class="cu-card overflow-hidden" aria-labelledby="payments-h">
+        <div class="px-4 py-3 border-b border-navy-100">
+            <h2 id="payments-h" class="text-base font-bold text-navy-900">Payments received</h2>
+        </div>
+        {% if sf.payments %}
+        <ul class="divide-y divide-navy-100">
+            {% for p in sf.payments[:12] %}
+            {% set _m = (p.description or '').replace('Payment - ', '') %}
+            <li class="px-4 py-3 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-navy-900">{{ p.date.strftime('%d %b %Y') if p.date else '' }}</p>
+                    <p class="text-xs text-navy-500 truncate">{{ payment_method_labels.get(_m, _m|replace('_', ' ')|capitalize) }}{% if p.reference %} &middot; {{ p.reference }}{% endif %}</p>
+                </div>
+                <p class="text-sm font-bold text-emerald-700 whitespace-nowrap">{{ p.credit|money(currency) }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-4 py-4 text-sm text-navy-500">No payments recorded for {{ sf.child.first_name }} yet.</p>
+        {% endif %}
+    </section>
+
+    {# ------ Paid invoices (D4) ------ #}
+    {% if sf.paid %}
+    <section class="space-y-3" aria-labelledby="paid-h">
+        <h2 id="paid-h" class="text-lg font-bold text-navy-900">Paid &middot; {{ sf.child.first_name }}</h2>
+        <ul class="space-y-3">
+            {% for row in sf.paid %}
+            {% set inv = row.invoice %}
+            {% set _issued = inv.sent_at or inv.created_at %}
+            <li>
+                <a href="/billing/invoices/{{ inv.id }}" class="cu-card cu-card-hover block p-4">
+                    <div class="cu-tap-row">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                {{ status_chip('paid', 'Paid') }}
+                                <span class="text-xs text-navy-500">{{ inv.invoice_number }}</span>
+                            </div>
+                            <p class="mt-1 text-[0.95rem] font-semibold text-navy-900">{{ period_title(inv) }}</p>
+                            <p class="text-xs text-navy-600 mt-0.5">
+                                {% if _issued %}Issued {{ _issued.strftime('%d %b %Y') }} &middot; {% endif %}Due {{ inv.due_date.strftime('%d %b %Y') }}
+                            </p>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-base font-bold text-navy-900">{{ inv.total_amount|money(currency) }}</p>
+                            <p class="text-[11px] text-emerald-700">paid</p>
+                        </div>
+                        <svg class="cu-tap-row-chevron w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </div>
+                </a>
+                <div class="flex justify-end mt-1">{{ pdf_link(inv) }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {# ------ Full statement (ledger) behind a disclosure ------ #}
+    {% set entries = sf.statement.entries if sf.statement else [] %}
+    {% if entries %}
+    <details class="cu-card cu-disclosure overflow-hidden">
+        <summary class="px-4 text-sm font-semibold text-navy-800">
+            Show full statement
+            <svg class="cu-disclosure-chevron w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="border-t border-navy-100">
+            <table class="cu-table cu-table--stack">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>What</th>
+                        <th style="text-align:right">Charged</th>
+                        <th style="text-align:right">Paid</th>
+                        <th style="text-align:right">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td class="cu-stack-primary">
+                            <span class="block text-sm font-semibold text-navy-900 sm:font-normal sm:text-navy-600">{{ entry.date.strftime('%d %b %Y') if entry.date else '' }}</span>
+                        </td>
+                        <td data-label="What">
+                            {% if entry.type == 'INVOICE' %}
+                            <a href="/billing/invoices/{{ entry.entity_id }}" class="inline-flex items-center min-h-[44px] text-navy-700 hover:text-navy-900 font-semibold">Invoice {{ entry.reference }}</a>
+                            {% else %}
+                            {% set _m = (entry.description or '').replace('Payment - ', '') %}
+                            <span class="text-navy-800">Payment ({{ payment_method_labels.get(_m, _m|replace('_', ' ')|capitalize) }})</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Charged" style="text-align:right" class="{{ '' if entry.debit else 'cu-stack-hide' }}">{% if entry.debit %}{{ entry.debit|money(currency) }}{% endif %}</td>
+                        <td data-label="Paid" style="text-align:right" class="text-emerald-700 {{ '' if entry.credit else 'cu-stack-hide' }}">{% if entry.credit %}{{ entry.credit|money(currency) }}{% endif %}</td>
+                        <td data-label="Balance" style="text-align:right" class="font-semibold">{{ entry.running_balance|money(currency) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="px-4 py-3 bg-navy-50 flex flex-wrap justify-between gap-2 text-sm">
+                <span class="text-navy-600">Charged {{ sf.total_invoiced|money(currency) }} &middot; Paid {{ sf.total_paid|money(currency) }}</span>
+                <span class="font-bold text-navy-900">Balance {{ sf.balance|money(currency) }}</span>
+            </div>
+        </div>
+    </details>
+    {% endif %}
+    {% endif %}
     {% endif %}
 </div>
-{% endblock %}
-
-{% block scripts %}
-{% if children_statements | length > 1 %}
-<script>
-function showChildTab(childId) {
-    document.querySelectorAll('.child-tab').forEach(tab => {
-        tab.classList.remove('cu-pill-active');
-        tab.setAttribute('aria-selected', 'false');
-    });
-
-    const activeTab = document.getElementById(`tab-${childId}`);
-    activeTab.classList.add('cu-pill-active');
-    activeTab.setAttribute('aria-selected', 'true');
-
-    document.querySelectorAll('.child-statement-panel').forEach(panel => {
-        panel.classList.add('hidden');
-    });
-    document.getElementById(`statement-${childId}`).classList.remove('hidden');
-}
-</script>
-{% endif %}
 {% endblock %}

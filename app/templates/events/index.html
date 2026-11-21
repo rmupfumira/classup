@@ -45,18 +45,18 @@
 
     <!-- Event list -->
     <div id="events-list" class="space-y-3">
-        <p class="text-center text-neutral-400 py-8">Loading events…</p>
+        <p class="text-center text-navy-400 py-8">Loading events…</p>
     </div>
 </div>
 
 <!-- Create / edit modal (staff only) -->
 {% if is_staff %}
-<dialog id="event-modal" class="rounded-xl border border-neutral-200 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
+<dialog id="event-modal" class="rounded-xl border border-navy-100 shadow-xl p-0 w-full max-w-lg backdrop:bg-black/50">
     <div class="p-6">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold" id="event-modal-title">New event</h3>
             <button type="button" onclick="document.getElementById('event-modal').close()"
-                    class="text-neutral-400 hover:text-neutral-600">
+                    class="text-navy-400 hover:text-navy-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -65,15 +65,15 @@
             <input type="hidden" name="event_id" value="">
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Title *</label>
+                <label class="block text-sm font-medium text-navy-800 mb-1">Title *</label>
                 <input type="text" name="title" required maxlength="200"
                        placeholder="e.g. Term 3 Parent-Teacher Conference"
-                       class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                       class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Type</label>
-                <select name="event_type" class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <label class="block text-sm font-medium text-navy-800 mb-1">Type</label>
+                <select name="event_type" class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                     <option value="PARENT_MEETING">Parent meeting</option>
                     <option value="PARENT_TEACHER_CONFERENCE">Parent-teacher conference</option>
                     <option value="ASSEMBLY">Assembly</option>
@@ -84,15 +84,15 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Who's invited *</label>
+                <label class="block text-sm font-medium text-navy-800 mb-1">Who's invited *</label>
                 <select name="scope" id="scope-select" onchange="onScopeChange()"
-                        class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                     <option value="SCHOOL">Everyone (whole school)</option>
                     <option value="CLASS">A class</option>
                 </select>
                 <div id="class-picker-wrap" class="mt-3 hidden">
-                    <label class="block text-xs font-medium text-neutral-500 mb-1">Class</label>
-                    <select name="class_id" class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <label class="block text-xs font-medium text-navy-500 mb-1">Class</label>
+                    <select name="class_id" class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Select a class…</option>
                         {% for c in classes %}
                         <option value="{{ c.id }}">{{ c.name }}</option>
@@ -103,50 +103,50 @@
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Starts *</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">Starts *</label>
                     <input type="datetime-local" name="starts_at" required
-                           class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                           class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-neutral-700 mb-1">Ends</label>
+                    <label class="block text-sm font-medium text-navy-800 mb-1">Ends</label>
                     <input type="datetime-local" name="ends_at"
-                           class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                           class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 </div>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Location</label>
+                <label class="block text-sm font-medium text-navy-800 mb-1">Location</label>
                 <input type="text" name="location" maxlength="300"
                        placeholder="e.g. School hall / Room 12 / Sports field"
-                       class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                       class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                <label class="block text-sm font-medium text-navy-800 mb-1">Description</label>
                 <textarea name="description" rows="3" maxlength="5000"
                           placeholder="Anything parents need to know — agenda, what to bring, etc."
-                          class="w-full px-3 py-2 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                          class="w-full px-3 py-2 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
             </div>
 
-            <div class="border-t border-neutral-200 pt-4">
+            <div class="border-t border-navy-100 pt-4">
                 <label class="flex items-start gap-2">
                     <input type="checkbox" name="rsvp_required" onchange="toggleRsvpDeadline(this.checked)"
-                           class="mt-0.5 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                           class="mt-0.5 h-4 w-4 rounded border-navy-200 text-primary-600 focus:ring-primary-500">
                     <span>
-                        <span class="block text-sm font-medium text-neutral-800">Request RSVPs</span>
-                        <span class="block text-xs text-neutral-500">Parents get Yes / Maybe / Can't-make-it buttons in the email.</span>
+                        <span class="block text-sm font-medium text-navy-900">Request RSVPs</span>
+                        <span class="block text-xs text-navy-500">Parents get Yes / Maybe / Can't-make-it buttons in the email.</span>
                     </span>
                 </label>
                 <div id="rsvp-deadline-wrap" class="mt-3 hidden">
-                    <label class="block text-xs font-medium text-neutral-500 mb-1">RSVP deadline</label>
+                    <label class="block text-xs font-medium text-navy-500 mb-1">RSVP deadline</label>
                     <input type="datetime-local" name="rsvp_deadline"
-                           class="w-full h-10 px-3 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                           class="w-full h-10 px-3 text-sm border border-navy-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 </div>
             </div>
 
             <div class="flex items-center justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('event-modal').close()"
-                        class="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800">Cancel</button>
+                        class="px-4 py-2 text-sm text-navy-600 hover:text-navy-900">Cancel</button>
                 <button type="submit" id="event-submit-btn"
                         class="inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">
                     Create event & send invites
@@ -183,14 +183,10 @@ function typeIcon(t) {
 }
 
 function rsvpBadge(response) {
-    if (!response) return '<span class="text-xs text-neutral-400">Not responded</span>';
-    const styles = {
-        YES: 'bg-green-100 text-green-700',
-        NO: 'bg-neutral-100 text-neutral-700',
-        MAYBE: 'bg-amber-100 text-amber-700',
-    };
+    if (!response) return '<span class="cu-chip-neutral">Not responded yet</span>';
+    const styles = { YES: 'cu-chip-emerald', NO: 'cu-chip-rose', MAYBE: 'cu-chip-gold' };
     const labels = { YES: '✓ Attending', NO: 'Can’t make it', MAYBE: 'Maybe' };
-    return `<span class="text-xs px-2 py-0.5 rounded ${styles[response]}">${labels[response]}</span>`;
+    return `<span class="${styles[response]}">${labels[response]}</span>`;
 }
 
 async function loadEvents() {
@@ -203,26 +199,28 @@ async function loadEvents() {
         const items = res.data || [];
         if (!items.length) {
             wrap.innerHTML = `
-                <div class="text-center py-12 border-2 border-dashed border-neutral-200 rounded-lg">
-                    <p class="text-neutral-500">${IS_STAFF ? 'No events scheduled yet.' : 'No upcoming events. You will be notified by email + WhatsApp when the school schedules one.'}</p>
-                    ${IS_STAFF ? '<button type="button" onclick="openCreateModal()" class="mt-4 inline-flex items-center px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">Create your first event</button>' : ''}
+                <div class="cu-card cu-empty">
+                    <div class="cu-empty-icon"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+                    <p class="cu-empty-title">${IS_STAFF ? 'No events scheduled yet' : 'No upcoming events'}</p>
+                    <p class="cu-empty-text">${IS_STAFF ? 'Create an event and parents get an email and WhatsApp invite.' : 'You will be notified by email and WhatsApp when the school schedules one.'}</p>
+                    ${IS_STAFF ? '<button type="button" onclick="openCreateModal()" class="cu-btn-primary mt-4">Create your first event</button>' : ''}
                 </div>`;
             return;
         }
         wrap.innerHTML = items.map(ev => `
-            <div class="bg-white rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-sm transition-all ${ev.cancelled_at ? 'opacity-60' : ''}">
-                <div class="p-4 flex flex-col sm:flex-row gap-4">
-                    <div class="text-3xl">${typeIcon(ev.event_type)}</div>
+            <div id="event-${ev.id}" class="cu-card cu-card-hover ${ev.cancelled_at ? 'opacity-60' : ''}">
+                <div class="p-4 sm:p-5 flex flex-col sm:flex-row gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-navy-50 flex items-center justify-center text-2xl flex-shrink-0">${typeIcon(ev.event_type)}</div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <h3 class="text-base font-semibold text-neutral-900 ${ev.cancelled_at ? 'line-through' : ''}">${ev.title}</h3>
-                                <p class="text-sm text-neutral-500 mt-0.5">${fmtWhen(ev.starts_at)}${ev.location ? ' · ' + ev.location : ''}</p>
+                                <h3 class="text-base font-semibold text-navy-900 ${ev.cancelled_at ? 'line-through' : ''}">${ClassUp.escapeHtml(ev.title || '')}</h3>
+                                <p class="text-sm text-navy-500 mt-0.5">${fmtWhen(ev.starts_at)}${ev.location ? ' · ' + ClassUp.escapeHtml(ev.location) : ''}</p>
                             </div>
                             <div class="shrink-0">${scopeBadge(ev)}</div>
                         </div>
                         ${ev.cancelled_at ? '<p class="mt-2 text-xs font-medium text-red-600">Cancelled</p>' : ''}
-                        ${ev.description ? `<p class="mt-2 text-sm text-neutral-600 line-clamp-2">${ev.description}</p>` : ''}
+                        ${ev.description ? `<p class="mt-2 text-sm text-navy-600 line-clamp-2">${ClassUp.escapeHtml(ev.description)}</p>` : ''}
 
                         <div class="mt-3 flex flex-wrap items-center gap-2">
                             ${IS_STAFF
@@ -234,8 +232,14 @@ async function loadEvents() {
                 </div>
             </div>
         `).join('');
+        // Deep link from the dashboard (/events#event-<id>): scroll to it
+        // once the list exists (scroll-margin clears the navbar).
+        if (location.hash && location.hash.startsWith('#event-')) {
+            const target = document.getElementById(location.hash.slice(1));
+            if (target) { target.scrollIntoView({ block: 'start' }); target.classList.add('ring-2', 'ring-gold-400'); }
+        }
     } catch (e) {
-        wrap.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load events.</p>';
+        wrap.innerHTML = '<div class="cu-card cu-empty"><p class="cu-empty-title">Couldn’t load events</p><p class="cu-empty-text">Check your connection and refresh the page.</p></div>';
         console.error(e);
     }
 }
@@ -245,22 +249,28 @@ function renderStaffActions(ev) {
         ? (ev.rsvp_summary.YES || 0) + (ev.rsvp_summary.NO || 0) + (ev.rsvp_summary.MAYBE || 0)
         : 0;
     const summary = ev.rsvp_summary && rsvpTotal > 0 && ev.rsvp_required
-        ? `<span class="text-xs text-neutral-500">RSVPs: ${ev.rsvp_summary.YES || 0} yes · ${ev.rsvp_summary.MAYBE || 0} maybe · ${ev.rsvp_summary.NO || 0} no</span>`
-        : ev.rsvp_required ? '<span class="text-xs text-neutral-400">No RSVPs yet</span>' : '';
-    const view = `<a href="/events/${ev.id}" class="text-xs text-primary-600 hover:underline">View</a>`;
-    const cancel = ev.cancelled_at ? '' : `<button type="button" onclick="cancelEvent('${ev.id}', '${ev.title.replace(/'/g, "\\'")}')" class="text-xs text-red-600 hover:underline">Cancel</button>`;
-    return [summary, view, cancel].filter(Boolean).join('<span class="text-neutral-300">·</span>');
+        ? `<span class="text-xs text-navy-500">RSVPs: ${ev.rsvp_summary.YES || 0} yes · ${ev.rsvp_summary.MAYBE || 0} maybe · ${ev.rsvp_summary.NO || 0} no</span>`
+        : ev.rsvp_required ? '<span class="text-xs text-navy-400">No RSVPs yet</span>' : '';
+    const view = `<a href="/events/${ev.id}" class="text-xs font-semibold text-navy-600 hover:underline">View</a>`;
+    const cancel = (ev.cancelled_at || !ev.can_edit) ? '' : `<button type="button" onclick="cancelEvent('${ev.id}', '${ev.title.replace(/'/g, "\\'")}')" class="text-xs text-red-600 hover:underline">Cancel</button>`;
+    return [summary, view, cancel].filter(Boolean).join('<span class="text-navy-300">·</span>');
 }
 
 function renderParentActions(ev) {
-    if (ev.cancelled_at) return '<span class="text-xs text-red-600 font-medium">Event cancelled</span>';
-    if (!ev.rsvp_required) return `<a href="/events/${ev.id}" class="text-xs text-primary-600 hover:underline">View details</a>`;
+    if (ev.cancelled_at) return '<span class="cu-chip-rose">Event cancelled</span>';
+    if (!ev.rsvp_required) return `<a href="/events/${ev.id}" class="cu-btn-soft !py-2 !text-xs">View details</a>`;
+    // Large tap targets (44px+) — parents RSVP from a phone. The current
+    // answer is shown filled so it's obvious what was chosen.
+    const opt = (val, label, on) => `<button type="button" onclick="rsvp('${ev.id}', '${val}')"
+        class="flex-1 min-h-[44px] px-4 rounded-full text-sm font-semibold transition-colors ${ev.my_rsvp === val ? on : 'bg-white text-navy-700 ring-1 ring-inset ring-navy-100 hover:bg-navy-50'}">${label}</button>`;
     return `
-        <div class="flex items-center gap-2 flex-wrap">
-            ${rsvpBadge(ev.my_rsvp)}
-            <button type="button" onclick="rsvp('${ev.id}', 'YES')" class="text-xs px-3 py-1 border border-green-300 text-green-700 rounded hover:bg-green-50">Yes, I'll be there</button>
-            <button type="button" onclick="rsvp('${ev.id}', 'MAYBE')" class="text-xs px-3 py-1 border border-amber-300 text-amber-700 rounded hover:bg-amber-50">Maybe</button>
-            <button type="button" onclick="rsvp('${ev.id}', 'NO')" class="text-xs px-3 py-1 border border-neutral-300 text-neutral-600 rounded hover:bg-neutral-50">Can't make it</button>
+        <div class="w-full space-y-2">
+            <div>${rsvpBadge(ev.my_rsvp)}</div>
+            <div class="flex flex-col sm:flex-row gap-2">
+                ${opt('YES', 'Yes, I’ll be there', 'bg-emerald-600 text-white')}
+                ${opt('MAYBE', 'Maybe', 'bg-gold-500 text-navy-900')}
+                ${opt('NO', 'Can’t make it', 'bg-navy-600 text-white')}
+            </div>
         </div>`;
 }
 
@@ -294,10 +304,10 @@ function setFilter(f) {
     _filter = f;
     document.getElementById('tab-upcoming').className = f === 'upcoming'
         ? 'px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-500'
-        : 'px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700';
+        : 'px-4 py-2 text-sm font-medium text-navy-500 hover:text-navy-800';
     document.getElementById('tab-all').className = f === 'all'
         ? 'px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-500'
-        : 'px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700';
+        : 'px-4 py-2 text-sm font-medium text-navy-500 hover:text-navy-800';
     loadEvents();
 }
 

@@ -3,7 +3,9 @@
 {% block title %}Notifications - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+{% set _is_admin = user and user.role in ('SCHOOL_ADMIN', 'SUPER_ADMIN') %}
+<div class="space-y-5 md:space-y-6">
+    {% if _is_admin %}
     <section class="cu-hero">
         <div>
             <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Configuration</span>
@@ -11,10 +13,18 @@
             <p class="mt-2 text-sm text-white/80">Notification preferences for this device.</p>
         </div>
     </section>
+    {% else %}
+    {# Parents / teachers: no admin settings tabs (P-IA-01). #}
+    <header class="cu-parent-head">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-gold-600">More</span>
+        <h1 class="cu-parent-head-title">Notifications</h1>
+        <p class="text-sm text-navy-500">Choose whether this phone or computer alerts you about school news, messages, attendance and reports.</p>
+    </header>
+    {% endif %}
 
-
+    {% if _is_admin %}
     <!-- Tabs (mirroring settings/features.html) -->
-    <div class="border-b border-neutral-200 mb-6">
+    <div class="border-b border-navy-100 mb-6">
         <nav class="-mb-px flex space-x-8 overflow-x-auto">
             <a href="/settings/general"   class="border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">General</a>
             <a href="/settings/features"  class="border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">Features</a>
@@ -23,16 +33,17 @@
             <a href="/settings/webhooks"  class="border-transparent text-navy-500 hover:border-navy-200 hover:text-navy-700 whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold">Webhooks</a>
         </nav>
     </div>
+    {% endif %}
 
     <!-- Push state card -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 p-6 mb-6">
+    <div class="bg-white rounded-lg shadow-card border border-navy-100 p-6 mb-6">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
-                <h2 class="text-lg font-semibold text-neutral-800">Push notifications on this device</h2>
+                <h2 class="text-lg font-semibold text-navy-900">Push notifications on this device</h2>
                 <p class="text-sm text-navy-500 mt-0.5">Get instant alerts for new messages, attendance updates, and reports — even when {{ app_name }} isn't open.</p>
             </div>
             <span id="push-state-badge"
-                  class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
+                  class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-navy-50 text-navy-800">
                 Checking…
             </span>
         </div>
@@ -59,9 +70,9 @@
             </ol>
         </div>
 
-        <div id="state-server-not-configured" class="hidden p-4 rounded-md bg-neutral-50 border border-neutral-200">
-            <p class="text-sm text-neutral-700">
-                <strong>Push not set up yet.</strong> Push notifications haven't been configured by an administrator. They need to run the VAPID key setup before push can be enabled.
+        <div id="state-server-not-configured" class="hidden p-4 rounded-md bg-navy-50 border border-navy-100">
+            <p class="text-sm text-navy-800">
+                {% if _is_admin %}<strong>Push not set up yet.</strong> Push notifications haven't been configured by an administrator. They need to run the VAPID key setup before push can be enabled.{% else %}<strong>Not available yet.</strong> Your school hasn't switched on phone notifications. You'll still get messages by email and WhatsApp, and everything shows up in {{ app_name }}.{% endif %}
             </p>
         </div>
 
@@ -104,7 +115,7 @@
                     Send test notification
                 </button>
                 <button id="btn-disable" type="button"
-                        class="inline-flex items-center px-3 py-1.5 bg-white text-neutral-700 text-sm rounded-md border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50">
+                        class="inline-flex items-center px-3 py-1.5 bg-white text-navy-800 text-sm rounded-md border border-navy-200 hover:bg-navy-50 disabled:opacity-50">
                     Turn off on this device
                 </button>
             </div>
@@ -112,15 +123,28 @@
     </div>
 
     <!-- Devices list -->
-    <div class="bg-white rounded-lg shadow-card border border-neutral-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-neutral-100">
-            <h3 class="text-sm font-semibold text-neutral-800">Enrolled devices</h3>
+    <div class="bg-white rounded-lg shadow-card border border-navy-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-navy-50">
+            <h3 class="text-sm font-semibold text-navy-900">Enrolled devices</h3>
             <p class="text-xs text-navy-500 mt-0.5">All devices where you've enabled push notifications.</p>
         </div>
-        <div id="devices-body" class="divide-y divide-neutral-100">
+        <div id="devices-body" class="divide-y divide-navy-50">
             <p class="px-6 py-8 text-center text-sm text-navy-400">Loading…</p>
         </div>
     </div>
+
+    {% if not _is_admin %}
+    <a href="/profile" class="cu-card cu-card-hover p-4 flex items-center gap-3">
+        <span class="w-10 h-10 rounded-xl bg-navy-50 text-navy-600 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </span>
+        <span class="flex-1 min-w-0">
+            <span class="block text-sm font-semibold text-navy-900">Email, WhatsApp and language</span>
+            <span class="block text-xs text-navy-500">Change your contact details and preferences on your profile</span>
+        </span>
+        <svg class="cu-tap-row-chevron w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </a>
+    {% endif %}
 </div>
 
 <script>
@@ -128,9 +152,9 @@
 const STATE_META = {
     'unsupported':            { label: 'Not supported',  cls: 'bg-warning-100 text-warning-800' },
     'ios-need-install':       { label: 'Install first',  cls: 'bg-info-100 text-info-800' },
-    'server-not-configured':  { label: 'Not configured', cls: 'bg-neutral-100 text-neutral-700' },
+    'server-not-configured':  { label: 'Not configured', cls: 'bg-navy-50 text-navy-800' },
     'denied':                 { label: 'Blocked',        cls: 'bg-danger-100 text-danger-800' },
-    'ready':                  { label: 'Off',            cls: 'bg-neutral-100 text-neutral-700' },
+    'ready':                  { label: 'Off',            cls: 'bg-navy-50 text-navy-800' },
     'subscribed':             { label: 'On',             cls: 'bg-success-100 text-success-800' },
 };
 const PANEL_IDS = Object.keys(STATE_META).map(s => 'state-' + s);
@@ -181,7 +205,7 @@ async function renderDevices() {
     body.innerHTML = subs.map(s => `
         <div class="px-6 py-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
-                <p class="text-sm font-medium text-neutral-800">${ClassUp.escapeHtml(deviceLabel(s.user_agent || ''))}</p>
+                <p class="text-sm font-medium text-navy-900">${ClassUp.escapeHtml(deviceLabel(s.user_agent || ''))}</p>
                 <p class="text-xs text-navy-500 mt-0.5">
                     Last seen: ${ClassUp.escapeHtml(formatTimestamp(s.last_seen_at))}
                     ${s.last_failed_at ? '· <span class="text-danger-600">Last failure: ' + ClassUp.escapeHtml(formatTimestamp(s.last_failed_at)) + '</span>' : ''}
@@ -262,6 +286,23 @@ document.getElementById('btn-test').addEventListener('click', async (e) => {
     }
 });
 
-refresh();
+// push.js is loaded with `defer` from base.html, i.e. AFTER this inline
+// script runs. Wait for window.ClassUpPush before the first refresh
+// (D2: the page used to stick on "Checking…" with a ReferenceError).
+function whenPushReady(cb, tries = 0) {
+    if (window.ClassUpPush) return cb();
+    if (tries > 100) {  // ~5s: script failed to load
+        showPanel('unsupported');
+        const badge = document.getElementById('push-state-badge');
+        if (badge) badge.textContent = 'Unavailable';
+        return;
+    }
+    setTimeout(() => whenPushReady(cb, tries + 1), 50);
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => whenPushReady(refresh));
+} else {
+    whenPushReady(refresh);
+}
 </script>
 {% endblock %}

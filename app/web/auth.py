@@ -10,6 +10,7 @@ from app.schemas.auth import LoginRequest, RegisterRequest
 from app.services.auth_service import MultipleTenantsException, get_auth_service
 from app.templates_config import templates
 from app.utils.tenant_context import get_current_language
+from app.web._parent_context import safe_next_path
 
 router = APIRouter()
 
@@ -35,7 +36,7 @@ async def login_page(request: Request, error: str | None = None, next: str | Non
         {
             "request": request,
             "error": error,
-            "next": next or "/dashboard",
+            "next": safe_next_path(next),
             "current_language": get_current_language(),
         },
     )
@@ -58,6 +59,9 @@ async def login_submit(
     multiple schools, catch MultipleTenantsException and re-render
     with a school chooser instead of logging in blindly.
     """
+    # Only same-site paths: a crafted ?next=https://evil.example must not
+    # bounce a freshly logged-in user off-site.
+    next = safe_next_path(next)
     try:
         auth_service = get_auth_service()
         login_request = LoginRequest(

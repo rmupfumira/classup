@@ -10,7 +10,7 @@
             <div class="max-w-xl">
                 <span class="cu-eyebrow cu-eyebrow-on-dark mb-3">Communication</span>
                 <h1 class="cu-page-title text-white">Messages</h1>
-                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">Conversations about students</p>
+                <p class="mt-2 text-sm md:text-base text-white/80 leading-relaxed">{% if user.role == 'PARENT' and parent_children is defined and parent_children %}Messages with {{ parent_children|map(attribute='first_name')|join(' and ') }}'s teachers{% else %}Conversations about students{% endif %}</p>
             </div>
             {% if permissions.can_create_message() or permissions.can_reply_to_message() %}
             <a href="/messages/compose" class="cu-btn-gold">

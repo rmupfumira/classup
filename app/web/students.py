@@ -43,13 +43,58 @@ async def _get_current_user(db: AsyncSession) -> User | None:
 
 
 def _require_auth(request: Request):
-    """Check authentication and return redirect if not authenticated."""
-    user_id = get_current_user_id_or_none()
-    if not user_id:
-        response = RedirectResponse(url="/login", status_code=302)
-        response.delete_cookie("access_token")
-        return response
-    return None
+    """Check authentication; redirect to login keeping ``?next=``."""
+    from app.web._parent_context import require_login
+    return require_login(request)
+
+
+async def _parent_profile_extras(request: Request, db: AsyncSession, student, tenant) -> dict:
+    """Server-rendered parent summaries for the child profile tabs.
+
+    P-ATT-01: the Attendance tab shows the SAME summary as
+    /attendance/student/{id} (same service call, same "This term"
+    period, same rate definition). P-MULTI-01: the Fees tab shows the
+    child's own balance from the existing parent-scoped billing service
+    call and links to the Fees page. P-ACAD-04: latest published report.
+    All read-only, all through existing services.
+    """
+    from datetime import date as _date
+    from app.services.attendance_service import get_attendance_service
+    from app.services.report_service import get_report_service
+    from app.web.attendance import _period_range
+    from app.web._parent_context import get_parent_child_context
+
+    extras: dict = {}
+    extras.update(await get_parent_child_context(request, db, explicit=student.id))
+
+    try:
+        date_from, date_to, label = await _period_range(db, "term", _date.today())
+        _records, _total, summary = await get_attendance_service().get_student_attendance_history(
+            db, student_id=student.id, date_from=date_from, date_to=date_to, page=1, page_size=1,
+        )
+        extras["att_summary"] = summary
+        extras["att_period_label"] = label
+    except Exception:
+        extras["att_summary"] = None
+
+    features = (tenant.features if tenant else {}) or {}
+    extras["billing_on"] = bool(features.get("billing", False))
+    if extras["billing_on"]:
+        try:
+            from app.services.billing_service import get_billing_service
+            extras["fee_balance"] = await get_billing_service().get_student_balance(db, student.id)
+            extras["billing_currency"] = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
+        except Exception:
+            extras["fee_balance"] = None
+
+    try:
+        reports, _ = await get_report_service().get_reports(
+            db, student_id=student.id, page=1, page_size=5,
+        )
+        extras["recent_reports"] = reports
+    except Exception:
+        extras["recent_reports"] = []
+    return extras
 
 
 @router.get("", response_class=HTMLResponse)
@@ -100,11 +145,17 @@ async def students_list(
         if parsed_class_id is None and teacher_ctx.get("selected_class_id"):
             parsed_class_id = teacher_ctx["selected_class_id"]
 
-    # Parents see their own children
+    # Parents see their own children (canonical parent-portal order)
+    parent_ctx: dict = {}
     if user.role == Role.PARENT.value:
+        from app.web._parent_context import get_parent_child_context
         students = await student_service.get_my_children(db, user.id)
+        students = sorted(students, key=lambda s: (
+            (s.first_name or "").lower(), (s.last_name or "").lower(), str(s.id),
+        ))
         total = len(students)
         classes = []
+        parent_ctx = await get_parent_child_context(request, db)
     else:
         students, total = await student_service.get_students(
             db,
@@ -147,6 +198,8 @@ async def students_list(
     # Inject teacher class context for navbar class selector
     if teacher_ctx:
         context.update(teacher_ctx)
+    if parent_ctx:
+        context.update(parent_ctx)
     return templates.TemplateResponse("students/list.html", context)
 
 
@@ -442,11 +495,18 @@ async def student_detail(
         "tenant": tenant,
         "subject_rows": subject_rows,
         "all_subjects": all_subjects,
+        "billing_currency": tenant.get_setting("billing_currency", "USD") if tenant else "USD",
         "current_language": get_current_language(),
         "permissions": permissions,
     }
     if user.role == Role.TEACHER.value:
         context.update(await get_teacher_class_context(request, db))
+    if user.role == Role.PARENT.value:
+        from app.web._parent_context import remember_child
+        context.update(await _parent_profile_extras(request, db, student, tenant))
+        response = templates.TemplateResponse("students/detail.html", context)
+        remember_child(response, context)
+        return response
     return templates.TemplateResponse("students/detail.html", context)
 
 

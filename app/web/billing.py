@@ -24,6 +24,13 @@ from app.utils.tenant_context import (
     get_current_user_role,
     get_tenant_id,
 )
+from app.web._parent_context import (
+    SELECTED_CHILD_COOKIE,
+    get_parent_child_context,
+    is_own_child,
+    remember_child,
+    requested_child_id,
+)
 
 router = APIRouter(prefix="/billing")
 
@@ -68,6 +75,43 @@ async def _get_tenant(db: AsyncSession):
     from app.models import Tenant
     tenant_id = get_tenant_id()
     return await db.get(Tenant, tenant_id)
+
+
+def _how_to_pay(tenant) -> dict:
+    """What a parent needs to settle fees (P-BILL-01).
+
+    Read straight from the tenant's billing settings — the same values
+    the invoice email + PDF print. ClassUp never collects fees itself.
+    """
+    settings_ = (tenant.settings or {}) if tenant else {}
+    return {
+        "banking_details": (settings_.get("billing_banking_details") or "").strip() or None,
+        "payment_instructions": (settings_.get("billing_payment_instructions") or "").strip() or None,
+        "school_name": tenant.name if tenant else None,
+        "school_phone": tenant.phone if tenant else None,
+        "school_email": tenant.email if tenant else None,
+    }
+
+
+_PAYMENT_METHOD_LABELS = {
+    "CASH": "Cash", "BANK_TRANSFER": "Bank transfer", "EFT": "EFT",
+    "CARD": "Card", "CHEQUE": "Cheque", "OTHER": "Other",
+}
+
+
+def _plain_invoice_status(invoice, today: date) -> tuple[str, str]:
+    """(css-modifier, plain words) for an invoice — no accounting terms."""
+    status = (invoice.status or "").upper()
+    balance = invoice.balance or 0
+    if status == "PAID" or (balance <= 0 and status not in ("DRAFT", "CANCELLED")):
+        return "paid", "Paid"
+    if status == "CANCELLED":
+        return "info", "Cancelled"
+    if status == "OVERDUE" or (invoice.due_date and invoice.due_date < today):
+        return "overdue", "Overdue"
+    if status == "PARTIALLY_PAID":
+        return "due", "Part paid"
+    return "due", "To pay"
 
 
 # =========================================================================
@@ -430,7 +474,100 @@ async def invoice_detail(
         "current_language": get_current_language(),
         "permissions": PermissionChecker(user.role),
     }
+    if role == Role.PARENT.value:
+        today = date.today()
+        status_mod, status_text = _plain_invoice_status(invoice, today)
+        context.update({
+            "how_to_pay": _how_to_pay(tenant),
+            "plain_status": status_text,
+            "plain_status_mod": status_mod,
+            "days_overdue": (today - invoice.due_date).days
+            if invoice.due_date and invoice.due_date < today and status_mod == "overdue" else 0,
+            "payment_method_labels": _PAYMENT_METHOD_LABELS,
+        })
+        child_ctx = await get_parent_child_context(request, db, explicit=invoice.student_id)
+        context.update(child_ctx)
+        response = templates.TemplateResponse("billing/invoices/detail.html", context)
+        remember_child(response, child_ctx)
+        return response
     return templates.TemplateResponse("billing/invoices/detail.html", context)
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+async def invoice_pdf(
+    request: Request,
+    invoice_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download an invoice as PDF (P-BILL-03).
+
+    Same access path as the invoice detail page: parents go through
+    ``verify_parent_access`` + the parent-scoped ``get_invoice`` (own
+    children only, never drafts → 404). Teachers have no billing access.
+    The PDF is the same one the invoice email attaches, built with the
+    same parameters.
+    """
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+
+    role = get_current_user_role()
+    if role not in (Role.PARENT.value, Role.SCHOOL_ADMIN.value, Role.SUPER_ADMIN.value):
+        raise ForbiddenException("Access denied")
+
+    billing_service = get_billing_service()
+    if role == Role.PARENT.value:
+        from app.utils.tenant_context import get_current_user_id
+        if not await billing_service.verify_parent_access(db, get_current_user_id(), invoice_id):
+            raise ForbiddenException("Access denied")
+    invoice = await billing_service.get_invoice(db, invoice_id)
+
+    from fastapi.responses import Response
+    from app.services import jurisdiction_service
+    from app.services.invoice_pdf import generate_invoice_pdf
+
+    tenant = await _get_tenant(db)
+    jurisdiction = await jurisdiction_service.get_jurisdiction_for_tenant(db, tenant)
+    htp = _how_to_pay(tenant)
+    student_name = (
+        f"{invoice.student.first_name} {invoice.student.last_name}"
+        if invoice.student else "Student"
+    )
+    pdf_bytes = generate_invoice_pdf(
+        invoice_number=invoice.invoice_number,
+        student_name=student_name,
+        due_date=invoice.due_date.strftime("%d %b %Y"),
+        total_amount=f"{invoice.total_amount:.2f}",
+        currency=jurisdiction.currency_symbol,
+        line_items=[
+            {
+                "description": item.description,
+                "quantity": item.quantity,
+                "unit_amount": float(item.unit_amount),
+                "total_amount": float(item.total_amount),
+            }
+            for item in (invoice.items or [])
+        ],
+        tenant_name=tenant.name if tenant else "School",
+        tenant_address=tenant.address if tenant else None,
+        tenant_phone=tenant.phone if tenant else None,
+        tenant_email=tenant.email if tenant else None,
+        banking_details=htp["banking_details"],
+        payment_instructions=htp["payment_instructions"],
+        # Stored values straight off the invoice (no recalculation).
+        amount_paid=invoice.amount_paid,
+        balance_due=invoice.balance,
+    )
+    import re
+    safe_number = re.sub(r"[^A-Za-z0-9._-]+", "_", invoice.invoice_number or "invoice")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_number}.pdf"',
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.get("/payments", response_class=HTMLResponse)
@@ -530,34 +667,9 @@ async def statement_page(
         raise ForbiddenException("Access denied")
 
     billing_service = get_billing_service()
-    student_service = get_student_service()
 
     from app.utils.tenant_context import get_current_user_id
     user_id = get_current_user_id()
-
-    if role == Role.PARENT.value:
-        children = await student_service.get_my_children(db, user_id)
-    else:
-        # Admin viewing — show all students (or could be filtered by query param)
-        children = []
-
-    # Build statement per child
-    children_statements = []
-    for child in children:
-        try:
-            statement = await billing_service.get_student_statement(db, child.id)
-            children_statements.append({
-                "child": child,
-                "statement": statement,
-            })
-        except Exception:
-            children_statements.append({
-                "child": child,
-                "statement": None,
-            })
-
-    # Get balances
-    balances = await billing_service.get_children_balances(db, user_id)
 
     tenant = await _get_tenant(db)
     currency = tenant.get_setting("billing_currency", "USD") if tenant else "USD"
@@ -565,10 +677,86 @@ async def statement_page(
     context = {
         "request": request,
         "user": user,
-        "children_statements": children_statements,
-        "balances": balances,
         "currency": currency,
         "current_language": get_current_language(),
         "permissions": PermissionChecker(user.role),
+        "children_fees": [],
+        "family": None,
     }
-    return templates.TemplateResponse("billing/statement.html", context)
+    if role != Role.PARENT.value:
+        # Staff use /billing; this page is the parent "Fees" view.
+        return templates.TemplateResponse("billing/statement.html", context)
+
+    # Parent "Fees" page (P-BILL-02) — presentation over existing data:
+    # stored invoice balances/statuses, the existing statement entries
+    # and the existing per-child balance figures. No new calculations.
+    child_ctx = await get_parent_child_context(request, db)
+    children = child_ctx.get("parent_children", [])
+    balances = {b.student_id: b for b in await billing_service.get_children_balances(db, user_id)}
+    today = date.today()
+
+    children_fees = []
+    for child in children:
+        invoices, _ = await billing_service.get_parent_invoices(
+            db, user_id, page=1, page_size=200, student_id=child.id,
+        )
+        try:
+            statement = await billing_service.get_student_statement(db, child.id)
+        except Exception:
+            statement = None
+        to_pay, paid = [], []
+        overdue_amount = 0
+        for inv in invoices:
+            mod, text = _plain_invoice_status(inv, today)
+            row = {"invoice": inv, "status_mod": mod, "status_text": text}
+            if mod == "paid":
+                paid.append(row)
+            elif mod != "info":
+                to_pay.append(row)
+                if mod == "overdue":
+                    overdue_amount += inv.balance or 0
+        to_pay.sort(key=lambda r: (r["invoice"].due_date or today))
+        payments = [
+            e for e in (statement.entries if statement else []) if e.type == "PAYMENT"
+        ]
+        payments.sort(key=lambda e: e.date, reverse=True)
+        bal = balances.get(child.id)
+        children_fees.append({
+            "child": child,
+            "balance": bal.balance if bal else 0,
+            "total_invoiced": bal.total_invoiced if bal else 0,
+            "total_paid": bal.total_paid if bal else 0,
+            "to_pay": to_pay,
+            "paid": paid,
+            "overdue_amount": overdue_amount,
+            "payments": payments,
+            "statement": statement,
+        })
+
+    # Which child to open: ?child_id → remembered child → the child with
+    # the largest overdue amount → first child.
+    selected = child_ctx.get("selected_child")
+    requested = requested_child_id(request) or request.cookies.get(SELECTED_CHILD_COOKIE)
+    if children_fees and not is_own_child(child_ctx, requested):
+        worst = max(children_fees, key=lambda cf: cf["overdue_amount"])
+        if worst["overdue_amount"] > 0:
+            selected = worst["child"]
+    child_ctx = {**child_ctx, "selected_child": selected,
+                 "selected_child_id": selected.id if selected else None}
+
+    family_outstanding = sum((cf["balance"] for cf in children_fees if cf["balance"] > 0), 0)
+    context.update({
+        **child_ctx,
+        "children_fees": children_fees,
+        "selected_fees": next((cf for cf in children_fees if selected and cf["child"].id == selected.id), None),
+        "family": {
+            "outstanding": family_outstanding,
+            "owing_children": sum(1 for cf in children_fees if cf["balance"] > 0),
+            "overdue": sum((cf["overdue_amount"] for cf in children_fees), 0),
+        },
+        "how_to_pay": _how_to_pay(tenant),
+        "payment_method_labels": _PAYMENT_METHOD_LABELS,
+    })
+    response = templates.TemplateResponse("billing/statement.html", context)
+    remember_child(response, child_ctx)
+    return response

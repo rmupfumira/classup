@@ -1,0 +1,41 @@
+{#-
+    Shared parent child switcher (Parent Portal iter 1, P-MULTI-02).
+
+    Needs: parent_children (list of ParentChild), selected_child.
+    Optional: switcher_label (eyebrow text), switch_next (where to land
+    after switching; defaults to the current page).
+
+    Every chip goes through /dashboard/select-child, which validates the
+    id against the parent's own children, stores the selected_child_id
+    cookie and returns to the same page — so switching on Fees stays on
+    Fees. With one child it renders as a compact "viewing" chip.
+-#}
+{% if parent_children is defined and parent_children %}
+{% set _next = switch_next if switch_next is defined and switch_next else (request.url.path ~ ('?' ~ request.url.query if request.url.query else '')) %}
+<section class="cu-child-switcher" aria-label="Choose a child">
+    {% if parent_children|length > 1 %}
+    <p class="text-[11px] font-bold uppercase tracking-wider text-gold-600 mb-2">{{ switcher_label if switcher_label is defined and switcher_label else 'Showing' }}</p>
+    {% endif %}
+    <div class="cu-filter-row cu-filter-row--scroll" role="list">
+        {% for child in parent_children %}
+        {% set _sel = selected_child and selected_child.id == child.id %}
+        {% if parent_children|length > 1 %}
+        <a href="/dashboard/select-child?child_id={{ child.id }}&next={{ _next|urlencode }}"
+           role="listitem" {% if _sel %}aria-current="true"{% endif %}
+           class="cu-child-chip {% if _sel %}is-selected{% endif %}">
+        {% else %}
+        <span role="listitem" class="cu-child-chip is-selected is-static">
+        {% endif %}
+            <span class="cu-child-chip-avatar" aria-hidden="true">{{ child.initials }}</span>
+            <span class="min-w-0 text-left">
+                <span class="block text-sm font-semibold truncate">{{ child.full_name }}</span>
+                <span class="block text-xs truncate cu-child-chip-sub">{{ child.class_name or 'No class yet' }}</span>
+            </span>
+            {% if _sel and parent_children|length > 1 %}
+            <svg class="w-4 h-4 flex-shrink-0 text-gold-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+            {% endif %}
+        {% if parent_children|length > 1 %}</a>{% else %}</span>{% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}

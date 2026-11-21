@@ -451,7 +451,7 @@ def _render_with_fpdf(
     pdf.set_font("Helvetica", "", 8.5)
     pdf.set_text_color(*pdf_brand.NAVY_500)
     finalized = report.finalized_at.strftime("%d %b %Y %H:%M") if report.finalized_at else "not finalised"
-    pdf.cell(0, 4, f"Finalised: {finalized}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 4, f"Published: {finalized}", new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(0, 0, 0)
 
     output = pdf.output()

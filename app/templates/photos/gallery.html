@@ -31,13 +31,13 @@
     <div class="cu-card p-4">
         <form method="get" class="flex flex-col sm:flex-row gap-4">
             <div class="sm:w-64">
-                <label for="class_id" class="block text-sm font-medium text-neutral-700 mb-1">Filter by Class</label>
+                <label for="class_id" class="block text-sm font-medium text-navy-800 mb-1">{{ 'Show' if class_child_names is defined else 'Filter by Class' }}</label>
                 <select name="class_id" id="class_id" onchange="this.form.submit()"
-                        class="block w-full rounded-lg border-neutral-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">All Classes</option>
+                        class="block w-full cu-input !rounded-xl">
+                    <option value="">{{ 'All my children' if class_child_names is defined else 'All Classes' }}</option>
                     {% for cls in classes %}
                     <option value="{{ cls.id }}" {% if current_class_id and (current_class_id|string) == (cls.id|string) %}selected{% endif %}>
-                        {{ cls.name }}
+                        {% if class_child_names is defined and class_child_names.get(cls.id|string) %}{{ class_child_names[cls.id|string]|join(' & ') }}'s class ({{ cls.name }}){% else %}{{ cls.name }}{% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -50,7 +50,7 @@
     {% if photos %}
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {% for photo in photos %}
-        <div class="group relative aspect-square bg-neutral-100 rounded-lg overflow-hidden cursor-pointer"
+        <div class="group relative aspect-square bg-navy-50 rounded-lg overflow-hidden cursor-pointer"
              onclick="openLightbox('{{ photo.full_url }}', '{{ photo.caption|e }}', '{{ photo.class_name|e }}', '{{ photo.sharer_name|e }}')">
             <img src="{{ photo.thumbnail_url }}" alt="{{ photo.original_name }}"
                  class="w-full h-full object-cover transition-transform group-hover:scale-105"
@@ -81,33 +81,33 @@
         <div class="flex-1 flex justify-between sm:hidden">
             {% if page > 1 %}
             <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-               class="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+               class="px-4 py-2 text-sm font-medium text-navy-800 bg-white border border-navy-200 rounded-md hover:bg-navy-50">
                 Previous
             </a>
             {% endif %}
             {% if page < total_pages %}
             <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-               class="ml-auto px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+               class="ml-auto px-4 py-2 text-sm font-medium text-navy-800 bg-white border border-navy-200 rounded-md hover:bg-navy-50">
                 Next
             </a>
             {% endif %}
         </div>
         <div class="hidden sm:flex sm:items-center sm:justify-between w-full">
             <div>
-                <p class="text-sm text-neutral-700">
+                <p class="text-sm text-navy-800">
                     Page <span class="font-medium">{{ page }}</span> of <span class="font-medium">{{ total_pages }}</span>
                 </p>
             </div>
             <div class="flex gap-2">
                 {% if page > 1 %}
                 <a href="?page={{ page - 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                   class="px-3 py-2 text-sm font-medium text-navy-800 bg-white border border-navy-200 rounded-md hover:bg-navy-50">
                     Previous
                 </a>
                 {% endif %}
                 {% if page < total_pages %}
                 <a href="?page={{ page + 1 }}{% if current_class_id %}&class_id={{ current_class_id }}{% endif %}"
-                   class="px-3 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50">
+                   class="px-3 py-2 text-sm font-medium text-navy-800 bg-white border border-navy-200 rounded-md hover:bg-navy-50">
                     Next
                 </a>
                 {% endif %}
@@ -141,7 +141,7 @@
 
 <!-- Lightbox Modal -->
 <div id="lightbox" class="fixed inset-0 z-50 hidden bg-black bg-opacity-90 flex items-center justify-center" onclick="closeLightbox()">
-    <button class="absolute top-4 right-4 text-white hover:text-neutral-300 z-10" onclick="closeLightbox()">
+    <button class="absolute top-4 right-4 text-white hover:text-navy-300 z-10" onclick="closeLightbox()">
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>

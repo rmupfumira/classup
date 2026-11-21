@@ -23,6 +23,7 @@ from app.utils.tenant_context import (
     get_current_user_id_or_none,
     get_tenant_id,
 )
+from app.web._parent_context import login_redirect, require_login
 
 router = APIRouter(prefix="/timetable")
 
@@ -39,12 +40,8 @@ async def _get_current_user(db: AsyncSession) -> User | None:
 
 
 def _require_auth(request: Request):
-    user_id = get_current_user_id_or_none()
-    if not user_id:
-        response = RedirectResponse(url="/login", status_code=302)
-        response.delete_cookie("access_token")
-        return response
-    return None
+    """Check authentication; redirect to login keeping ``?next=``."""
+    return require_login(request)
 
 
 async def _ensure_feature_enabled(db: AsyncSession) -> None:
@@ -66,7 +63,7 @@ async def timetable_home(
         return redirect
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     await _ensure_feature_enabled(db)
 
@@ -75,12 +72,12 @@ async def timetable_home(
         return RedirectResponse(url="/timetable/my-schedule", status_code=302)
 
     if user.role == Role.PARENT.value:
-        student_service = get_student_service()
-        children = await student_service.get_my_children(db, user.id)
-        if len(children) >= 1:
-            return RedirectResponse(
-                url=f"/timetable/child/{children[0].id}", status_code=302
-            )
+        # Open on the persisted (validated) child selection.
+        from app.web._parent_context import get_parent_child_context
+        ctx = await get_parent_child_context(request, db)
+        child = ctx.get("selected_child")
+        if child is not None:
+            return RedirectResponse(url=f"/timetable/child/{child.id}", status_code=302)
         return RedirectResponse(url="/dashboard", status_code=302)
 
     # Admin list view
@@ -109,7 +106,7 @@ async def timetable_config(
         return redirect
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     await _ensure_feature_enabled(db)
 
@@ -141,7 +138,7 @@ async def timetable_new(
         return redirect
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     await _ensure_feature_enabled(db)
 
@@ -172,7 +169,7 @@ async def my_schedule(
         return redirect
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     await _ensure_feature_enabled(db)
 
@@ -218,7 +215,7 @@ async def child_schedule(
         return redirect
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     await _ensure_feature_enabled(db)
 
@@ -255,8 +252,11 @@ async def child_schedule(
 
     # For parents with multiple children, pass the full list for switcher
     children = []
+    child_ctx: dict = {}
     if user.role == Role.PARENT.value:
-        children = await student_service.get_my_children(db, user.id)
+        from app.web._parent_context import get_parent_child_context
+        child_ctx = await get_parent_child_context(request, db, explicit=student_id)
+        children = child_ctx.get("parent_children", [])
 
     context = {
         "request": request,
@@ -268,8 +268,13 @@ async def child_schedule(
         "children": children,
         "current_language": get_current_language(),
         "permissions": PermissionChecker(user.role),
+        **child_ctx,
     }
-    return templates.TemplateResponse("timetable/child.html", context)
+    response = templates.TemplateResponse("timetable/child.html", context)
+    if child_ctx:
+        from app.web._parent_context import remember_child
+        remember_child(response, child_ctx)
+    return response
 
 
 @router.get("/{timetable_id}", response_class=HTMLResponse)
@@ -284,7 +289,7 @@ async def timetable_edit(
         return redirect
     user = await _get_current_user(db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return login_redirect(request)
 
     await _ensure_feature_enabled(db)
 
